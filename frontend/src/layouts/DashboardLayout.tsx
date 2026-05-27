@@ -52,12 +52,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <span className="material-symbols-outlined">settings</span>
           </button>
           <div className="flex items-center gap-2 ml-2 border-l border-outline-variant pl-4">
-            <a
+            <Link
+              to="/login"
               className="font-label-md text-label-md text-primary px-4 py-2 rounded-lg border border-primary hover:bg-primary-fixed transition-colors"
-              href="#"
             >
               Sign In
-            </a>
+            </Link>
             <Link
               to="/register"
               className="font-label-md text-label-md bg-primary text-on-primary px-4 py-2 rounded-lg tactile-btn hover:bg-on-primary-fixed-variant"
