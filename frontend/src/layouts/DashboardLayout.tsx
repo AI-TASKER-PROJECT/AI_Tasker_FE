@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface DashboardLayoutProps {
   children?: React.ReactNode; // Hoặc sử dụng <Outlet /> từ react-router-dom
@@ -57,12 +58,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             >
               Sign In
             </a>
-            <a
+            <Link
+              to="/register"
               className="font-label-md text-label-md bg-primary text-on-primary px-4 py-2 rounded-lg tactile-btn hover:bg-on-primary-fixed-variant"
-              href="#"
             >
               Register
-            </a>
+            </Link>
           </div>
         </div>
       </nav>

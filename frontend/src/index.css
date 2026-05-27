@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Thêm các class hiệu ứng đặc thù từ thiết kế cũ */
+/* Thiết kế cho trang overview */
 .hero-gradient {
   background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
 }
@@ -38,4 +38,25 @@
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
+}
+
+/* Styles bổ sung cho trang chọn role */
+.shadow-tactile {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 20px 0 rgba(0, 0, 0, 0.03);
+}
+
+.btn-black {
+    background-color: #111827;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-black:hover {
+    background-color: #000000;
+    transform: translateY(-1px);
+}
+
+.card-inner-ui {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-bottom: 1px solid #e2e8f0;
 }
