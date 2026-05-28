@@ -11,6 +11,6 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000, // Bạn có thể tùy chỉnh port chạy local tại đây
+    port: 8386, // Bạn có thể tùy chỉnh port chạy local tại đây
   },
 });
