@@ -1,19 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
+import { ROUTE_PATHS } from '@/app/routes/routePaths';
 
-interface DashboardLayoutProps {
-  children?: React.ReactNode; // Hoặc sử dụng <Outlet /> từ react-router-dom
-}
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC = () => {
   return (
     <div className="bg-background text-on-background font-body-md antialiased pt-16 min-h-screen flex flex-col">
-      {/* TopNavBar */}
       <nav className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop bg-surface dark:bg-on-surface h-16 border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none">
         <div className="flex items-center gap-lg">
-          <a
+          <Link
             className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed flex items-center gap-2"
-            href="#"
+            to={ROUTE_PATHS.home}
           >
             <span
               className="material-symbols-outlined"
@@ -22,26 +18,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               api
             </span>
             AIFlow Connect
-          </a>
+          </Link>
           <div className="hidden md:flex items-center gap-md">
-            <a
+            <Link
               className="text-primary dark:text-primary-fixed border-b-2 border-primary dark:border-primary-fixed pb-1 font-label-md text-label-md"
-              href="#"
+              to={ROUTE_PATHS.home}
             >
-              Jobs
-            </a>
-            <a
-              className="text-secondary dark:text-secondary-fixed-dim hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-md text-label-md hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded-lg"
-              href="#"
-            >
-              Experts
-            </a>
-            <a
-              className="text-secondary dark:text-secondary-fixed-dim hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-md text-label-md hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded-lg"
-              href="#"
-            >
-              Dashboard
-            </a>
+              Home
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -53,13 +37,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </button>
           <div className="flex items-center gap-2 ml-2 border-l border-outline-variant pl-4">
             <Link
-              to="/login"
+              to={ROUTE_PATHS.login}
               className="font-label-md text-label-md text-primary px-4 py-2 rounded-lg border border-primary hover:bg-primary-fixed transition-colors"
             >
               Sign In
             </Link>
             <Link
-              to="/register"
+              to={ROUTE_PATHS.register}
               className="font-label-md text-label-md bg-primary text-on-primary px-4 py-2 rounded-lg tactile-btn hover:bg-on-primary-fixed-variant"
             >
               Register
@@ -68,16 +52,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
       </nav>
 
-      {/* Main Content Body */}
-      <div className="flex-grow">{children}</div>
+      <main className="flex-grow">
+        <Outlet />
+      </main>
 
-      {/* Footer */}
       <footer className="w-full py-lg px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter bg-surface-container-lowest dark:bg-inverse-surface border-t border-outline-variant dark:border-outline flat no shadows mt-auto">
         <div className="font-headline-md text-headline-md font-bold text-on-surface dark:text-inverse-on-surface flex items-center gap-2">
           <span className="material-symbols-outlined">api</span> AIFlow Connect
         </div>
         <div className="font-body-md text-body-md text-on-surface-variant opacity-80">
-          © 2024 AIFlow Connect. All rights reserved.
+          © 2026 AIFlow Connect. All rights reserved.
         </div>
         <div className="flex gap-4">
           <a
