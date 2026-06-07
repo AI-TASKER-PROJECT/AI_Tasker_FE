@@ -29,6 +29,7 @@ import {
   MyJobsPage,
   OpportunitiesPage,
   ProposalsPage,
+  SubmitProposalPage,
 } from './pages/MarketplacePages';
 import { BusinessProfilePage, ExpertPortfolioPage, ExpertProfilePage } from './pages/ProfilePages';
 import { ExpertDirectoryPage, JobDetailPage, JobsPage, LandingPage } from './pages/PublicPages';
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="jobs" element={<PageTransition><MyJobsPage /></PageTransition>} />
         <Route path="jobs/new" element={<PageTransition><CreateJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/manage" element={<PageTransition><ManageJobPage /></PageTransition>} />
+        <Route path="jobs/:jobId/proposal" element={<PageTransition><SubmitProposalPage /></PageTransition>} />
         <Route path="business/profile" element={<PageTransition><BusinessProfilePage /></PageTransition>} />
 
         <Route path="opportunities" element={<PageTransition><OpportunitiesPage /></PageTransition>} />

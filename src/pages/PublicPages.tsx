@@ -11,9 +11,10 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { marketplaceApi } from '../lib/api';
-import { getSession } from '../lib/session';
+import { getPublicExperience } from '../lib/roleExperience';
+import { useSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
 import type { Job } from '../types';
 import {
@@ -22,21 +23,19 @@ import {
   Button,
   Card,
   EmptyState,
-  Field,
-  Input,
   LinkButton,
-  Modal,
   Notice,
   PageHeader,
   Progress,
   SearchInput,
   SectionHeading,
   StatusBadge,
-  Textarea,
 } from '../components/ui';
 
 export function LandingPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const session = useSession();
+  const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
     marketplaceApi.listJobs().then((data) => setJobs(data.slice(0, 3)));
@@ -51,20 +50,20 @@ export function LandingPage() {
           <div className="relative z-10">
             <Badge tone="brand">
               <Sparkles className="h-3.5 w-3.5" />
-              AI Project Marketplace
+              {publicExperience.badge}
             </Badge>
             <h1 className="mt-6 font-display text-4xl font-black tracking-[-0.055em] text-ink md:text-6xl">
-              Thuê chuyên gia AI, quản lý dự án và escrow trong một nền tảng sáng rõ.
+              {publicExperience.heroTitle}
             </h1>
             <p className="mt-6 max-w-xl text-base leading-8 text-slate-600">
-              AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận proposal, ký hợp đồng, chia milestone, nghiệm thu và xử lý dòng tiền minh bạch.
+              {publicExperience.heroDescription}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <LinkButton to="/register" size="lg">
-                Bắt đầu dự án <ArrowRight className="h-4 w-4" />
+              <LinkButton to={publicExperience.primaryPath} size="lg">
+                {publicExperience.primaryLabel} <ArrowRight className="h-4 w-4" />
               </LinkButton>
-              <LinkButton to="/jobs" size="lg" variant="secondary">
-                Xem cơ hội
+              <LinkButton to={publicExperience.secondaryPath} size="lg" variant="secondary">
+                {publicExperience.secondaryLabel}
               </LinkButton>
             </div>
             <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
@@ -199,6 +198,8 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('ALL');
+  const session = useSession();
+  const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
     marketplaceApi.listJobs().then(setJobs);
@@ -222,7 +223,7 @@ export function JobsPage() {
         eyebrow="Marketplace"
         title="Cơ hội dự án AI"
         description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
-        actions={<LinkButton to="/register">Đăng ký để nộp proposal</LinkButton>}
+        actions={<LinkButton to={publicExperience.primaryPath}>{publicExperience.primaryLabel}</LinkButton>}
       />
       <Card className="mt-8 p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_120px]">
@@ -296,11 +297,8 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
 
 export function JobDetailPage() {
   const { jobId } = useParams();
-  const navigate = useNavigate();
+  const session = useSession();
   const [job, setJob] = useState<Job | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [proposal, setProposal] = useState({ bidAmount: '', technicalSolution: '' });
 
   useEffect(() => {
     marketplaceApi.getJob(Number(jobId)).then(setJob);
@@ -310,17 +308,8 @@ export function JobDetailPage() {
     return <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">Đang tải job...</main>;
   }
 
-  const submitProposal = async () => {
-    setSubmitting(true);
-    await marketplaceApi.submitProposal({
-      jobId: job.jobId,
-      bidAmount: Number(proposal.bidAmount),
-      technicalSolution: proposal.technicalSolution,
-    });
-    setSubmitting(false);
-    setModalOpen(false);
-    navigate('/app/proposals');
-  };
+  const isOpenJob = job.status === 'OPEN';
+  const canSubmitProposal = session?.role === 'EXPERT' && isOpenJob;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
@@ -364,9 +353,36 @@ export function JobDetailPage() {
               <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={job.companyName || 'Đang cập nhật'} />
               <InfoRow icon={<Bot className="h-4 w-4" />} label="AI tag" value={job.aiTag || 'General AI'} />
             </div>
-            <Button className="mt-5 w-full" onClick={() => setModalOpen(true)} disabled={job.status === 'CLOSED'}>
-              Nộp báo giá dự thầu
-            </Button>
+            {canSubmitProposal && (
+              <LinkButton to={`/app/jobs/${job.jobId}/proposal`} className="mt-5 w-full">
+                Nộp báo giá dự thầu
+              </LinkButton>
+            )}
+            {!session && (
+              <LinkButton to="/login" className="mt-5 w-full">
+                Nộp báo giá dự thầu
+              </LinkButton>
+            )}
+            {session && session.role !== 'EXPERT' && (
+              <>
+                <Button className="mt-5 w-full" disabled>
+                  Nộp báo giá dự thầu
+                </Button>
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  Chỉ tài khoản Chuyên gia mới có thể nộp báo giá cho dự án.
+                </p>
+              </>
+            )}
+            {session?.role === 'EXPERT' && !isOpenJob && (
+              <>
+                <Button className="mt-5 w-full" disabled>
+                  Nộp báo giá dự thầu
+                </Button>
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  Dự án cần ở trạng thái OPEN để nhận proposal.
+                </p>
+              </>
+            )}
           </Card>
           <Notice tone="info" title="Luồng dual-flow">
             Doanh nghiệp sẽ thấy proposal của bạn trong tab Proposals, song song với tab AI đề xuất chuyên gia.
@@ -374,47 +390,6 @@ export function JobDetailPage() {
         </aside>
       </div>
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Nộp proposal"
-        description="Gửi mức giá và tóm tắt giải pháp sơ bộ cho doanh nghiệp."
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={submitProposal} loading={submitting}>
-              Gửi proposal
-            </Button>
-          </>
-        }
-      >
-        {!getSession() && (
-          <Notice tone="warning" title="Bạn cần đăng nhập để gọi API thật">
-            Đăng nhập bằng tài khoản Expert thật hoặc đăng ký tài khoản mới trước khi nộp.
-          </Notice>
-        )}
-        <div className="mt-4 grid gap-4">
-          <Field label="Bid amount">
-            <Input
-              type="number"
-              value={proposal.bidAmount}
-              onChange={(event) => setProposal((value) => ({ ...value, bidAmount: event.target.value }))}
-              placeholder="Ví dụ: 165000000"
-            />
-          </Field>
-          <Field label="Giải pháp kỹ thuật">
-            <Textarea
-              value={proposal.technicalSolution}
-              onChange={(event) =>
-                setProposal((value) => ({ ...value, technicalSolution: event.target.value }))
-              }
-              placeholder="Mô tả kiến trúc, cách triển khai, chỉ số cam kết..."
-            />
-          </Field>
-        </div>
-      </Modal>
     </main>
   );
 }
