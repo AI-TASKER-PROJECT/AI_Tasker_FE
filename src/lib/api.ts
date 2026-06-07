@@ -334,6 +334,9 @@ export const adminApi = {
   createStaff(payload: Partial<Staff>) {
     return call<Staff>({ method: 'POST', url: '/api/v1/admin/staffs', data: payload });
   },
+  updateStaff(staffId: number, payload: Partial<Staff>) {
+    return call<Staff>({ method: 'PATCH', url: `/api/v1/admin/staffs/${staffId}`, data: payload });
+  },
   analyticsOverview() {
     return call<AnalyticsOverview>({ method: 'GET', url: '/api/v1/admin/analytics/overview' });
   },
