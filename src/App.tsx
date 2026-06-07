@@ -6,12 +6,14 @@ import { PublicShell } from './components/PublicShell';
 import { getSession } from './lib/session';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 import {
+  AccountsPage,
   AnalyticsPage,
   AuditLogsPage,
   MasterDataPage,
   ReportsPage,
   SettingsPage,
   StaffPage,
+  SystemWalletPage,
 } from './pages/AdminPages';
 import { DashboardPage, NotificationsPage } from './pages/DashboardPages';
 import {
@@ -103,6 +105,8 @@ export default function App() {
         <Route path="verifications/:type/:id" element={<PageTransition><VerificationDetailPage /></PageTransition>} />
 
         <Route path="admin/analytics" element={<PageTransition><AnalyticsPage /></PageTransition>} />
+        <Route path="admin/wallet" element={<PageTransition><SystemWalletPage /></PageTransition>} />
+        <Route path="admin/accounts" element={<PageTransition><AccountsPage /></PageTransition>} />
         <Route path="admin/staff" element={<PageTransition><StaffPage /></PageTransition>} />
         <Route path="admin/settings" element={<PageTransition><SettingsPage /></PageTransition>} />
         <Route path="admin/master-data" element={<PageTransition><MasterDataPage /></PageTransition>} />

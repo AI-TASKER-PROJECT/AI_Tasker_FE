@@ -21,10 +21,10 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../types';
-import { clearSession, createDemoSession, roleLabel, useSession } from '../lib/session';
+import { clearSession, roleLabel, useSession } from '../lib/session';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
 import { Avatar, Badge, Button } from './ui';
@@ -59,6 +59,8 @@ const roleNav: Record<Role, NavItem[]> = {
     { label: 'System Settings', to: '/app/admin/settings', icon: <Settings2 className="h-4 w-4" /> },
   ],
   ADMIN: [
+    { label: 'System Wallet', to: '/app/admin/wallet', icon: <WalletCards className="h-4 w-4" /> },
+    { label: 'Accounts', to: '/app/admin/accounts', icon: <Users className="h-4 w-4" /> },
     { label: 'Analytics', to: '/app/admin/analytics', icon: <BarChart3 className="h-4 w-4" /> },
     { label: 'Duyệt hồ sơ', to: '/app/verifications', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Tranh chấp', to: '/app/tickets', icon: <Gavel className="h-4 w-4" /> },
@@ -73,24 +75,33 @@ const roleNav: Record<Role, NavItem[]> = {
 export function AppShell() {
   const session = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
-  const [dataMode, setDataMode] = useState(localStorage.getItem('aitasker.data-mode') || 'demo');
+
+  const accountStatus = session?.accountStatus || 'Approved';
+  const needsVerification = !!session && (session.role === 'BUSINESS' || session.role === 'EXPERT') && accountStatus !== 'Approved';
+  const verificationPath = session?.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile';
+  const navItems = useMemo(() => {
+    if (!session) return [];
+    if (needsVerification) {
+      return roleNav[session.role].filter((item) => item.to === verificationPath);
+    }
+    return [...commonNav, ...roleNav[session.role]].filter((item) => {
+      if (session.role === 'STAFF') return !item.to.startsWith('/app/admin');
+      if (session.role === 'ADMIN') return item.to !== '/app/verifications';
+      return true;
+    });
+  }, [needsVerification, session?.role, verificationPath]);
 
   useEffect(() => {
-    const sync = () => setDataMode(localStorage.getItem('aitasker.data-mode') || 'demo');
-    window.addEventListener('aitasker:data-mode-change', sync);
-    return () => window.removeEventListener('aitasker:data-mode-change', sync);
-  }, []);
+    if (!session) return;
+    if (needsVerification && location.pathname !== verificationPath) {
+      navigate(verificationPath, { replace: true });
+    }
+  }, [location.pathname, navigate, needsVerification, session, verificationPath]);
 
   if (!session) return null;
-  const navItems = [...commonNav, ...roleNav[session.role]];
-
-  const switchRole = (role: Role) => {
-    createDemoSession(role);
-    setRoleOpen(false);
-    navigate('/app');
-  };
 
   const logout = () => {
     clearSession();
@@ -109,6 +120,7 @@ export function AppShell() {
               Không gian làm việc
             </p>
             <p className="mt-1 text-sm font-extrabold text-ink">{roleLabel(session.role)}</p>
+            {needsVerification && <p className="mt-1 text-xs font-bold text-amber-700">Status: {accountStatus}</p>}
           </div>
         </div>
         <nav className="mt-5 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
@@ -161,9 +173,9 @@ export function AppShell() {
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Badge tone={dataMode === 'live' ? 'mint' : 'amber'} className="hidden sm:inline-flex">
-                <span className={cn('h-1.5 w-1.5 rounded-full', dataMode === 'live' ? 'bg-mint-500' : 'bg-amber-500')} />
-                {dataMode === 'live' ? 'API trực tiếp' : 'Dữ liệu demo'}
+              <Badge tone="mint" className="hidden sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-mint-500" />
+                API trực tiếp
               </Badge>
               <NavLink
                 to="/app/notifications"
@@ -188,24 +200,12 @@ export function AppShell() {
                 {roleOpen && (
                   <div className="absolute right-0 top-14 w-64 rounded-3xl border border-slate-100 bg-white p-2 shadow-soft">
                     <p className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
-                      Chuyển vai trò demo
+                      Tài khoản hiện tại
                     </p>
-                    {(['BUSINESS', 'EXPERT', 'STAFF', 'ADMIN'] as Role[]).map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => switchRole(role)}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-sm font-semibold transition',
-                          role === session.role
-                            ? 'bg-brand-50 text-brand-700'
-                            : 'text-slate-600 hover:bg-slate-50',
-                        )}
-                      >
-                        {roleLabel(role)}
-                        {role === session.role && <span className="h-2 w-2 rounded-full bg-brand-500" />}
-                      </button>
-                    ))}
+                    <div className="rounded-2xl bg-brand-50 px-3 py-2.5">
+                      <p className="text-sm font-extrabold text-brand-700">{roleLabel(session.role)}</p>
+                      <p className="mt-1 truncate text-xs text-slate-500">{session.email}</p>
+                    </div>
                     <div className="my-2 border-t border-slate-100" />
                     <button
                       type="button"
@@ -223,6 +223,11 @@ export function AppShell() {
         </header>
         <main className="px-4 py-6 md:px-6 md:py-8">
           <div className="mx-auto max-w-[1440px]">
+            {needsVerification && (
+              <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                Tai khoan dang o trang thai {accountStatus}. Hay hoan thien ho so xac minh va doi staff duyet de mo khoa chuc nang.
+              </div>
+            )}
             <Outlet />
           </div>
         </main>

@@ -1,4 +1,5 @@
 export type Role = 'BUSINESS' | 'EXPERT' | 'ADMIN' | 'STAFF';
+export type AccountStatus = 'Pending' | 'Approved' | 'Rejected' | 'Lock';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -12,10 +13,11 @@ export interface SessionUser {
   accessToken: string;
   refreshToken?: string;
   role: Role;
+  accountStatus?: AccountStatus;
   email: string;
   fullName: string;
   pictureUrl?: string;
-  authProvider?: 'LOCAL' | 'GOOGLE' | 'DEMO';
+  authProvider?: 'LOCAL' | 'GOOGLE';
 }
 
 export interface Job {
@@ -89,7 +91,8 @@ export interface ContractChangeRequest {
 
 export interface Milestone {
   milestoneId: number;
-  contractId: number;
+  jobId: number;
+  contractId?: number;
   milestoneName: string;
   fundsAllocated: number;
   orderIndex: number;
@@ -130,14 +133,6 @@ export interface Transaction {
   milestoneName?: string;
 }
 
-export interface Invoice {
-  invoiceId: number;
-  transactionId: number;
-  bankTxCode?: string;
-  receiptImgUrl?: string;
-  createdAt?: string;
-}
-
 export interface Dispute {
   disputeId: number;
   contractId: number;
@@ -172,8 +167,8 @@ export interface ExpertProfile {
   expertId: number;
   accountId: number;
   nationalId: string;
-  idCardFrontUrl?: string;
-  idCardBackUrl?: string;
+  portfolioUrl?: string;
+  yearsOfExperience?: number;
   kycStatus: string;
   approvedBy?: number;
   createdAt?: string;
@@ -225,7 +220,38 @@ export interface SystemSetting {
   valueType: string;
   description?: string;
   isActive: boolean;
-  updatedBy?: number;
+  updatedByRoleId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SystemWallet {
+  systemWalletId: number;
+  accountId: number;
+  roleId: number;
+  walletType: 'ADMIN_SYSTEM' | 'BUSINESS' | 'EXPERT' | 'STAFF';
+  transactionId?: number;
+  depositedBusinessCount: number;
+  successfulDepositCount: number;
+  currentBalance: number;
+  availableBalance: number;
+  escrowBalance: number;
+  totalRevenue: number;
+  holdingBalance: number;
+  disputedBalance: number;
+  currency: string;
+  lastSyncedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminAccount {
+  accountId: number;
+  email: string;
+  phone?: string;
+  fullName: string;
+  role: Role;
+  status: AccountStatus;
   createdAt?: string;
   updatedAt?: string;
 }

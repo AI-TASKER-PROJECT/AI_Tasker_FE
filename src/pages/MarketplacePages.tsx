@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { mockJobs, mockProposals } from '../data/mock';
-import { contractApi, marketplaceApi } from '../lib/api';
+import { catalogApi, contractApi, marketplaceApi, type Domain, type Skill } from '../lib/api';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
 import type { Job, Proposal } from '../types';
 import {
@@ -121,31 +120,74 @@ export function CreateJobPage() {
     plannedDurationUnit: 'tuần',
     status: 'DRAFT',
   });
+  const [milestones, setMilestones] = useState([
+    { milestoneName: 'Discovery va solution design', fundsAllocated: '30000000', orderIndex: '1' },
+    { milestoneName: 'MVP delivery', fundsAllocated: '90000000', orderIndex: '2' },
+  ]);
   const [loading, setLoading] = useState(false);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    Promise.all([catalogApi.listDomains(true), catalogApi.listSkills(true)]).then(([domainItems, skillItems]) => {
+      setDomains(domainItems);
+      setSkills(skillItems);
+      setSelectedDomainIds(domainItems.slice(0, 2).map((item) => item.domainId));
+      setSelectedSkillIds(skillItems.slice(0, 3).map((item) => item.skillId));
+    });
+  }, []);
 
   const generateSow = () => {
     setForm((value) => ({
       ...value,
       structuredSow:
         'AI đề xuất SoW: xây dựng trợ lý hội thoại tiếng Việt có RAG, quản trị tri thức, kiểm soát câu trả lời, dashboard chất lượng và quy trình hand-off cho nhân viên CSKH.',
-      aiTag: 'NLP',
+      aiTag: domains.filter((domain) => selectedDomainIds.includes(domain.domainId)).map((domain) => domain.domainCode).join(',') || 'NLP',
     }));
+  };
+
+  const toggleDomain = (domainId: number) => {
+    setSelectedDomainIds((items) => items.includes(domainId) ? items.filter((id) => id !== domainId) : [...items, domainId]);
+  };
+
+  const toggleSkill = (skillId: number) => {
+    setSelectedSkillIds((items) => items.includes(skillId) ? items.filter((id) => id !== skillId) : [...items, skillId]);
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
+    const aiTag = domains.filter((domain) => selectedDomainIds.includes(domain.domainId)).map((domain) => domain.domainCode).join(',');
     const job = await marketplaceApi.createJob({
       title: form.title,
       rawRequirements: form.rawRequirements,
       structuredSow: form.structuredSow,
-      aiTag: form.aiTag,
+      aiTag: aiTag || form.aiTag,
       budget: Number(form.budget),
       plannedDurationValue: Number(form.plannedDurationValue),
       plannedDurationUnit: form.plannedDurationUnit,
       status: form.status,
     });
+    await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
+    await catalogApi.replaceJobSkills(job.jobId, selectedSkillIds.map((skillId) => ({
+      skillId,
+      requiredLevel: 'Intermediate',
+      isMandatory: true,
+      minYearsExperience: 1,
+    })));
+    for (const milestone of milestones) {
+      if (!milestone.milestoneName.trim()) continue;
+      await contractApi.createMilestone({
+        jobId: job.jobId,
+        milestoneName: milestone.milestoneName,
+        fundsAllocated: Number(milestone.fundsAllocated || 0),
+        orderIndex: Number(milestone.orderIndex || 1),
+        status: 'Pending',
+      });
+    }
     setSavedJob(job);
     setLoading(false);
   };
@@ -175,10 +217,7 @@ export function CreateJobPage() {
             <Field label="Structured SoW">
               <Textarea value={form.structuredSow} onChange={(event) => setForm((value) => ({ ...value, structuredSow: event.target.value }))} />
             </Field>
-            <div className="grid gap-4 md:grid-cols-4">
-              <Field label="AI tag">
-                <Input value={form.aiTag} onChange={(event) => setForm((value) => ({ ...value, aiTag: event.target.value }))} />
-              </Field>
+            <div className="grid gap-4 md:grid-cols-3">
               <Field label="Ngân sách">
                 <Input type="number" value={form.budget} onChange={(event) => setForm((value) => ({ ...value, budget: event.target.value }))} required />
               </Field>
@@ -188,6 +227,49 @@ export function CreateJobPage() {
               <Field label="Đơn vị">
                 <Input value={form.plannedDurationUnit} onChange={(event) => setForm((value) => ({ ...value, plannedDurationUnit: event.target.value }))} />
               </Field>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Lĩnh vực nền tảng hỗ trợ">
+                <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
+                  <div className="grid gap-2">
+                    {domains.map((domain) => (
+                      <label key={domain.domainId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        <input type="checkbox" checked={selectedDomainIds.includes(domain.domainId)} onChange={() => toggleDomain(domain.domainId)} />
+                        {domain.domainName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </Field>
+              <Field label="Kỹ năng yêu cầu">
+                <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
+                  <div className="grid gap-2">
+                    {skills.map((skill) => (
+                      <label key={skill.skillId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        <input type="checkbox" checked={selectedSkillIds.includes(skill.skillId)} onChange={() => toggleSkill(skill.skillId)} />
+                        {skill.skillName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </Field>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <SectionHeading
+                title="Project milestones"
+                description="Milestones are attached to the job, then reused by the contract after proposal acceptance."
+                action={<Button type="button" size="sm" variant="secondary" onClick={() => setMilestones((items) => [...items, { milestoneName: '', fundsAllocated: '', orderIndex: String(items.length + 1) }])}><Plus className="h-4 w-4" /> Add</Button>}
+              />
+              <div className="mt-4 grid gap-3">
+                {milestones.map((milestone, index) => (
+                  <div key={index} className="grid gap-3 rounded-2xl bg-white p-3 md:grid-cols-[1fr_160px_110px_auto]">
+                    <Input value={milestone.milestoneName} placeholder="Milestone name" onChange={(event) => setMilestones((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, milestoneName: event.target.value } : item))} />
+                    <Input type="number" value={milestone.fundsAllocated} placeholder="Budget" onChange={(event) => setMilestones((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, fundsAllocated: event.target.value } : item))} />
+                    <Input type="number" value={milestone.orderIndex} placeholder="Order" onChange={(event) => setMilestones((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, orderIndex: event.target.value } : item))} />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setMilestones((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setForm((value) => ({ ...value, status: 'OPEN' }))}>
@@ -409,9 +491,15 @@ function ProposalCard({
 
 export function OpportunitiesPage() {
   const [query, setQuery] = useState('');
-  const jobs = useMemo(
-    () => mockJobs.filter((job) => job.status === 'OPEN' && `${job.title} ${job.aiTag}`.toLowerCase().includes(query.toLowerCase())),
-    [query],
+  const [jobs, setJobs] = useState<Job[]>([]);
+
+  useEffect(() => {
+    marketplaceApi.listJobs().then(setJobs).catch(() => setJobs([]));
+  }, []);
+
+  const filteredJobs = useMemo(
+    () => jobs.filter((job) => `${job.title} ${job.aiTag}`.toLowerCase().includes(query.toLowerCase())),
+    [jobs, query],
   );
   return (
     <div className="space-y-6">
@@ -424,10 +512,11 @@ export function OpportunitiesPage() {
         <SearchInput value={query} onChange={setQuery} placeholder="Tìm cơ hội theo kỹ năng..." />
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
-        {jobs.map((job) => (
+        {filteredJobs.map((job) => (
           <JobCard key={job.jobId} job={job} />
         ))}
       </div>
+      {filteredJobs.length === 0 && <EmptyState title="Chưa có job mở" description="Dữ liệu được lấy trực tiếp từ backend `/api/v1/jobs`." />}
     </div>
   );
 }
@@ -442,8 +531,8 @@ export function ProposalsPage() {
         actions={<LinkButton to="/app/opportunities" variant="secondary"><RefreshCw className="h-4 w-4" /> Tìm job mới</LinkButton>}
       />
       <div className="grid gap-4">
-        {mockProposals.map((proposal) => {
-          const job = mockJobs.find((item) => item.jobId === proposal.jobId);
+        {([] as Proposal[]).map((proposal) => {
+          const job = ([] as Job[]).find((item) => item.jobId === proposal.jobId);
           return (
             <Card key={proposal.proposalId} className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

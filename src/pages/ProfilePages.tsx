@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Building2, ClipboardCheck, IdCard, Link2, Save, ShieldCheck } from 'lucide-react';
 import { profileApi } from '../lib/api';
-import { mockPortfolio } from '../data/mock';
+import { getSession, saveSession } from '../lib/session';
 import {
   Button,
   Card,
@@ -16,10 +16,10 @@ import {
 
 export function BusinessProfilePage() {
   const [form, setForm] = useState({
-    taxCode: '0312345678',
-    companyName: 'Nova Retail',
-    address: 'Quận 1, TP. Hồ Chí Minh',
-    businessLicenseUrl: 'https://example.com/license.pdf',
+    taxCode: '',
+    companyName: '',
+    address: '',
+    businessLicenseUrl: '',
   });
   const [status, setStatus] = useState('Chưa gửi');
   const [loading, setLoading] = useState(false);
@@ -29,6 +29,8 @@ export function BusinessProfilePage() {
     setLoading(true);
     const profile = await profileApi.upsertBusiness(form);
     setStatus(profile.kybStatus);
+    const session = getSession();
+    if (session) saveSession({ ...session, accountStatus: 'Pending' });
     setLoading(false);
   };
 
@@ -88,9 +90,9 @@ export function BusinessProfilePage() {
 
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
-    nationalId: '079203001234',
-    idCardFrontUrl: 'https://example.com/id-front.jpg',
-    idCardBackUrl: 'https://example.com/id-back.jpg',
+    nationalId: '',
+    portfolioUrl: '',
+    yearsOfExperience: '1',
   });
   const [status, setStatus] = useState('Chưa gửi');
   const [loading, setLoading] = useState(false);
@@ -98,8 +100,14 @@ export function ExpertProfilePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const profile = await profileApi.upsertExpert(form);
+    const profile = await profileApi.upsertExpert({
+      nationalId: form.nationalId,
+      portfolioUrl: form.portfolioUrl,
+      yearsOfExperience: Number(form.yearsOfExperience),
+    });
     setStatus(profile.kycStatus);
+    const session = getSession();
+    if (session) saveSession({ ...session, accountStatus: 'Pending' });
     setLoading(false);
   };
 
@@ -117,11 +125,11 @@ export function ExpertProfilePage() {
               <Input value={form.nationalId} onChange={(event) => setForm((value) => ({ ...value, nationalId: event.target.value }))} required />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="URL ảnh mặt trước">
-                <Input value={form.idCardFrontUrl} onChange={(event) => setForm((value) => ({ ...value, idCardFrontUrl: event.target.value }))} />
+              <Field label="Portfolio URL">
+                <Input value={form.portfolioUrl} onChange={(event) => setForm((value) => ({ ...value, portfolioUrl: event.target.value }))} required />
               </Field>
-              <Field label="URL ảnh mặt sau">
-                <Input value={form.idCardBackUrl} onChange={(event) => setForm((value) => ({ ...value, idCardBackUrl: event.target.value }))} />
+              <Field label="Số năm kinh nghiệm">
+                <Input type="number" min="0" value={form.yearsOfExperience} onChange={(event) => setForm((value) => ({ ...value, yearsOfExperience: event.target.value }))} required />
               </Field>
             </div>
             <div className="flex justify-end">
@@ -156,11 +164,11 @@ export function ExpertProfilePage() {
 
 export function ExpertPortfolioPage() {
   const [form, setForm] = useState({
-    context: mockPortfolio.context,
-    dataProcessing: mockPortfolio.dataProcessing,
-    modelArchitecture: mockPortfolio.modelArchitecture,
-    performanceMetrics: mockPortfolio.performanceMetrics,
-    pocUrl: mockPortfolio.pocUrl || '',
+    context: '',
+    dataProcessing: '',
+    modelArchitecture: '',
+    performanceMetrics: '',
+    pocUrl: '',
   });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);

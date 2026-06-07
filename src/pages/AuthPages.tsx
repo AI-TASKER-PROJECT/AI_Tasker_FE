@@ -5,12 +5,11 @@ import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { Logo } from '../components/Logo';
 import { Badge, Button, Card, Field, Input, LinkButton, Notice, Select } from '../components/ui';
 import { authApi } from '../lib/api';
-import { createDemoSession, getSession, saveSession } from '../lib/session';
-import type { Role } from '../types';
+import { getSession, saveSession } from '../lib/session';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: 'business@demo.aitasker.vn', password: '12345678' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -19,7 +18,10 @@ export function LoginPage() {
     setLoading(true);
     setMessage('');
     try {
-      const session = await authApi.login(form);
+      const session = await authApi.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
       saveSession(session);
       navigate('/app');
     } catch {
@@ -27,11 +29,6 @@ export function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const demo = (role: Role) => {
-    createDemoSession(role);
-    navigate('/app');
   };
 
   const loginWithGoogle = useCallback(
@@ -87,16 +84,6 @@ export function LoginPage() {
         onCredential={loginWithGoogle}
         onError={(errorMessage) => setMessage(errorMessage)}
       />
-      <div className="mt-6 rounded-3xl bg-slate-50 p-4">
-        <p className="text-sm font-extrabold text-ink">Chạy nhanh bằng role demo</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {(['BUSINESS', 'EXPERT', 'STAFF', 'ADMIN'] as Role[]).map((role) => (
-            <Button key={role} type="button" variant="secondary" onClick={() => demo(role)}>
-              {role}
-            </Button>
-          ))}
-        </div>
-      </div>
       <p className="mt-6 text-center text-sm text-slate-500">
         Chưa có tài khoản?{' '}
         <Link to="/register" className="font-bold text-brand-600">
@@ -117,22 +104,38 @@ export function RegisterPage() {
     role: 'BUSINESS' as 'BUSINESS' | 'EXPERT',
   });
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const register = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const session = await authApi.register(form);
-    saveSession(session);
-    navigate(form.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile');
+    setMessage('');
+    try {
+      const session = await authApi.register({
+        ...form,
+        email: form.email.trim().toLowerCase(),
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim(),
+      });
+      saveSession(session);
+      navigate(form.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile');
+    } catch {
+      setMessage('Không thể đăng ký. Kiểm tra email đã tồn tại, dữ liệu nhập hoặc trạng thái back-end.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const registerWithGoogle = useCallback(
     async (credential: string) => {
       setLoading(true);
+      setMessage('');
       try {
         const session = await authApi.googleRegister(credential, form.role);
         saveSession(session);
         navigate(form.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile');
+      } catch {
+        setMessage('Back-end chưa có endpoint đăng ký Google.');
       } finally {
         setLoading(false);
       }
@@ -147,6 +150,7 @@ export function RegisterPage() {
       title="Tạo tài khoản theo vai trò"
       description="REG-01 yêu cầu khóa chặt email với một vai trò đã chọn."
     >
+      {message && <Notice tone="danger" title={message} className="mb-4" />}
       <div className="mb-5 grid grid-cols-2 gap-3">
         <RoleCard
           active={form.role === 'BUSINESS'}

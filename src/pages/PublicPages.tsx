@@ -15,7 +15,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { marketplaceApi } from '../lib/api';
 import { getSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
-import { mockExperts } from '../data/mock';
 import type { Job } from '../types';
 import {
   Avatar,
@@ -99,7 +98,7 @@ export function LandingPage() {
                 </span>
                 <div>
                   <p className="text-sm font-extrabold text-ink">Escrow bảo vệ 2 chiều</p>
-                  <p className="text-xs text-slate-500">Milestone, NDA, dispute, invoice</p>
+                  <p className="text-xs text-slate-500">Milestone, NDA, dispute, VNPay</p>
                 </div>
               </div>
             </div>
@@ -135,7 +134,7 @@ export function LandingPage() {
           <div className="flex items-start justify-between gap-4">
             <SectionHeading
               title="Job đang nổi bật"
-              description="Dữ liệu gọi từ API `/api/v1/jobs`, tự fallback khi back-end chưa chạy."
+              description="Dữ liệu được tải trực tiếp từ API `/api/v1/jobs`; khi back-end chưa có dữ liệu, giao diện hiển thị trạng thái trống."
             />
             <LinkButton to="/jobs" variant="secondary" size="sm">
               Xem tất cả
@@ -393,7 +392,7 @@ export function JobDetailPage() {
       >
         {!getSession() && (
           <Notice tone="warning" title="Bạn cần đăng nhập để gọi API thật">
-            Có thể đăng nhập demo role Expert hoặc đăng ký tài khoản mới trước khi nộp.
+            Đăng nhập bằng tài khoản Expert thật hoặc đăng ký tài khoản mới trước khi nộp.
           </Notice>
         )}
         <div className="mt-4 grid gap-4">
@@ -438,10 +437,10 @@ export function ExpertDirectoryPage() {
       <PageHeader
         eyebrow="Expert network"
         title="Danh bạ chuyên gia AI"
-        description="Giao diện phục vụ matching, review uy tín và lựa chọn chuyên gia. API public expert profile chưa có nên trang dùng dữ liệu demo có cấu trúc."
+        description="Giao diện phục vụ matching, review uy tín và lựa chọn chuyên gia. Khi API public expert profile chưa có dữ liệu, trang hiển thị trạng thái trống."
       />
       <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {mockExperts.map((expert) => (
+        {([] as import('../types').ExpertProfile[]).map((expert) => (
           <Card key={expert.expertId} hover className="p-5">
             <Avatar name={expert.fullName} size="xl" />
             <h3 className="mt-4 font-display text-lg font-extrabold text-ink">{expert.fullName}</h3>

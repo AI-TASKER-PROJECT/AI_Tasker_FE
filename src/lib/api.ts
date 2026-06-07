@@ -1,20 +1,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
-import {
-  mockAnalytics,
-  mockBusinessProfiles,
-  mockContracts,
-  mockCriteria,
-  mockExperts,
-  mockJobs,
-  mockMilestones,
-  mockPortfolio,
-  mockProposals,
-  mockReviews,
-  mockSettings,
-  mockStaffs,
-} from '../data/mock';
 import type {
   AcceptanceCriteria,
+  AdminAccount,
   AnalyticsOverview,
   ApiResponse,
   BusinessProfile,
@@ -23,7 +10,6 @@ import type {
   Deliverable,
   Dispute,
   ExpertProfile,
-  Invoice,
   Job,
   Milestone,
   Portfolio,
@@ -32,15 +18,14 @@ import type {
   SessionUser,
   Staff,
   SystemSetting,
+  SystemWallet,
   Transaction,
 } from '../types';
 import { getSession } from './session';
-import { sleep } from './utils';
-import { createGoogleSession, inferRoleFromGoogleEmail } from './googleAuth';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
-  timeout: 8000,
+  timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -50,55 +35,54 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const fallbackEnabled = import.meta.env.VITE_ENABLE_MOCK_FALLBACK !== 'false';
-
-function setDataMode(mode: 'live' | 'demo') {
+function setDataMode(mode: 'live') {
   localStorage.setItem('aitasker.data-mode', mode);
   window.dispatchEvent(new Event('aitasker:data-mode-change'));
 }
 
-async function call<T>(config: AxiosRequestConfig, fallback: T): Promise<T> {
-  try {
-    const response = await api.request<ApiResponse<T>>(config);
-    setDataMode('live');
-    return response.data.data;
-  } catch (error) {
-    if (!fallbackEnabled) throw error;
-    setDataMode('demo');
-    await sleep(220);
-    return fallback;
-  }
+async function call<T>(config: AxiosRequestConfig): Promise<T> {
+  const response = await api.request<ApiResponse<T>>(config);
+  setDataMode('live');
+  return response.data.data;
 }
 
-let nextId = 20000;
-const id = () => nextId++;
+export interface Domain {
+  domainId: number;
+  domainCode: string;
+  domainName: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Skill {
+  skillId: number;
+  skillCode: string;
+  skillName: string;
+  description?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JobDomain {
+  id: { jobId: number; domainId: number };
+  createdAt?: string;
+}
+
+export interface JobSkill {
+  id: { jobId: number; skillId: number };
+  requiredLevel?: string;
+  isMandatory: boolean;
+  minYearsExperience?: number;
+  createdAt?: string;
+}
 
 export const authApi = {
   login(payload: { email: string; password: string }) {
-    const role = payload.email.toLowerCase().includes('admin')
-      ? 'ADMIN'
-      : payload.email.toLowerCase().includes('staff')
-        ? 'STAFF'
-        : payload.email.toLowerCase().includes('expert')
-          ? 'EXPERT'
-          : 'BUSINESS';
-    return call<SessionUser>(
-      { method: 'POST', url: '/api/auth/login', data: payload },
-      {
-        accessToken: `demo-${role.toLowerCase()}-token`,
-        refreshToken: 'demo-refresh-token',
-        role,
-        email: payload.email,
-        fullName:
-          role === 'BUSINESS'
-            ? 'Nguyễn Minh Anh'
-            : role === 'EXPERT'
-              ? 'Trần Hoàng Nam'
-              : role === 'ADMIN'
-                ? 'Lê Thu Quản Trị'
-                : 'Phạm Quốc Huy',
-      },
-    );
+    return call<SessionUser>({ method: 'POST', url: '/api/auth/login', data: payload });
   },
   register(payload: {
     email: string;
@@ -107,326 +91,173 @@ export const authApi = {
     phone: string;
     role: 'BUSINESS' | 'EXPERT';
   }) {
-    return call<SessionUser>(
-      { method: 'POST', url: '/api/auth/register', data: payload },
-      {
-        accessToken: `demo-${payload.role.toLowerCase()}-token`,
-        refreshToken: 'demo-refresh-token',
-        role: payload.role,
-        email: payload.email,
-        fullName: payload.fullName,
-      },
-    );
+    return call<SessionUser>({ method: 'POST', url: '/api/auth/register', data: payload });
   },
-  googleLogin(credential: string) {
-    const email = createGoogleSession(credential, 'BUSINESS').email;
-    const role = inferRoleFromGoogleEmail(email);
-    setDataMode('demo');
-    return Promise.resolve(createGoogleSession(credential, role));
+  googleLogin(_credential: string) {
+    return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
   },
-  googleRegister(credential: string, role: 'BUSINESS' | 'EXPERT') {
-    setDataMode('demo');
-    return Promise.resolve(createGoogleSession(credential, role));
+  googleRegister(_credential: string, _role: 'BUSINESS' | 'EXPERT') {
+    return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
   },
 };
 
 export const profileApi = {
   upsertBusiness(payload: Partial<BusinessProfile>) {
-    return call<BusinessProfile>(
-      { method: 'POST', url: '/api/v1/profiles/business', data: payload },
-      {
-        businessId: 1,
-        accountId: 10,
-        taxCode: payload.taxCode || '',
-        companyName: payload.companyName || '',
-        address: payload.address,
-        businessLicenseUrl: payload.businessLicenseUrl,
-        kybStatus: 'Pending',
-      },
-    );
+    return call<BusinessProfile>({ method: 'POST', url: '/api/v1/profiles/business', data: payload });
   },
   upsertExpert(payload: Partial<ExpertProfile>) {
-    return call<ExpertProfile>(
-      { method: 'POST', url: '/api/v1/profiles/expert', data: payload },
-      {
-        expertId: 11,
-        accountId: 21,
-        nationalId: payload.nationalId || '',
-        idCardFrontUrl: payload.idCardFrontUrl,
-        idCardBackUrl: payload.idCardBackUrl,
-        kycStatus: 'Pending',
-      },
-    );
+    return call<ExpertProfile>({ method: 'POST', url: '/api/v1/profiles/expert', data: payload });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
-    return call<Portfolio>(
-      { method: 'POST', url: '/api/v1/profiles/portfolio', data: payload },
-      { ...mockPortfolio, ...payload },
-    );
+    return call<Portfolio>({ method: 'POST', url: '/api/v1/profiles/portfolio', data: payload });
   },
   listBusinesses() {
-    return call<BusinessProfile[]>(
-      { method: 'GET', url: '/api/v1/profiles/business' },
-      mockBusinessProfiles,
-    );
+    return call<BusinessProfile[]>({ method: 'GET', url: '/api/v1/profiles/business' });
   },
   listExperts() {
-    return call<ExpertProfile[]>(
-      { method: 'GET', url: '/api/v1/profiles/expert' },
-      mockExperts,
-    );
+    return call<ExpertProfile[]>({ method: 'GET', url: '/api/v1/profiles/expert' });
   },
   listPortfolios() {
-    return call<Portfolio[]>(
-      { method: 'GET', url: '/api/v1/profiles/portfolio' },
-      [mockPortfolio],
-    );
+    return call<Portfolio[]>({ method: 'GET', url: '/api/v1/profiles/portfolio' });
   },
   approve(type: 'BUSINESS' | 'EXPERT', profileId: number, status: 'Approved' | 'Rejected') {
-    const source = type === 'BUSINESS' ? mockBusinessProfiles[0] : mockExperts[0];
-    return call<BusinessProfile | ExpertProfile>(
-      {
-        method: 'POST',
-        url: `/api/v1/profiles/approve/${type}/${profileId}`,
-        params: { status },
-      },
-      { ...source, ...(type === 'BUSINESS' ? { kybStatus: status } : { kycStatus: status }) },
-    );
+    return call<BusinessProfile | ExpertProfile>({
+      method: 'POST',
+      url: `/api/v1/profiles/approve/${type}/${profileId}`,
+      params: { status },
+    });
+  },
+};
+
+export const catalogApi = {
+  listDomains(activeOnly = true) {
+    return call<Domain[]>({ method: 'GET', url: '/api/v1/domains', params: { activeOnly } });
+  },
+  createDomain(payload: Partial<Domain>) {
+    return call<Domain>({ method: 'POST', url: '/api/v1/domains', data: payload });
+  },
+  updateDomain(domainId: number, payload: Partial<Domain>) {
+    return call<Domain>({ method: 'PATCH', url: `/api/v1/domains/${domainId}`, data: payload });
+  },
+  listSkills(activeOnly = true) {
+    return call<Skill[]>({ method: 'GET', url: '/api/v1/skills', params: { activeOnly } });
+  },
+  createSkill(payload: Partial<Skill>) {
+    return call<Skill>({ method: 'POST', url: '/api/v1/skills', data: payload });
+  },
+  updateSkill(skillId: number, payload: Partial<Skill>) {
+    return call<Skill>({ method: 'PATCH', url: `/api/v1/skills/${skillId}`, data: payload });
+  },
+  listJobDomains(jobId: number) {
+    return call<JobDomain[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/domains` });
+  },
+  replaceJobDomains(jobId: number, domainIds: number[]) {
+    return call<JobDomain[]>({ method: 'PUT', url: `/api/v1/jobs/${jobId}/domains`, data: domainIds });
+  },
+  listJobSkills(jobId: number) {
+    return call<JobSkill[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/skills` });
+  },
+  replaceJobSkills(
+    jobId: number,
+    assignments: Array<{ skillId: number; requiredLevel?: string; isMandatory?: boolean; minYearsExperience?: number }>,
+  ) {
+    return call<JobSkill[]>({ method: 'PUT', url: `/api/v1/jobs/${jobId}/skills`, data: assignments });
   },
 };
 
 export const marketplaceApi = {
   listJobs() {
-    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs' }, mockJobs);
+    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs' });
   },
   getJob(jobId: number) {
-    return call<Job>(
-      { method: 'GET', url: `/api/v1/jobs/${jobId}` },
-      mockJobs.find((job) => job.jobId === jobId) || mockJobs[0],
-    );
+    return call<Job>({ method: 'GET', url: `/api/v1/jobs/${jobId}` });
   },
   createJob(payload: Partial<Job>) {
-    return call<Job>(
-      { method: 'POST', url: '/api/v1/jobs', data: payload },
-      {
-        jobId: id(),
-        businessId: 1,
-        title: payload.title || '',
-        rawRequirements: payload.rawRequirements || '',
-        structuredSow: payload.structuredSow,
-        aiTag: payload.aiTag,
-        budget: payload.budget || 0,
-        status: payload.status || 'DRAFT',
-        plannedDurationValue: payload.plannedDurationValue,
-        plannedDurationUnit: payload.plannedDurationUnit,
-      },
-    );
+    return call<Job>({ method: 'POST', url: '/api/v1/jobs', data: payload });
   },
   updateJobStatus(jobId: number, status: string) {
-    const job = mockJobs.find((item) => item.jobId === jobId) || mockJobs[0];
-    return call<Job>(
-      { method: 'PATCH', url: `/api/v1/jobs/${jobId}/status`, params: { status } },
-      { ...job, status },
-    );
+    return call<Job>({ method: 'PATCH', url: `/api/v1/jobs/${jobId}/status`, params: { status } });
   },
   submitProposal(payload: Partial<Proposal>) {
-    return call<Proposal>(
-      { method: 'POST', url: '/api/v1/proposals', data: payload },
-      {
-        proposalId: id(),
-        jobId: payload.jobId || 0,
-        expertId: 11,
-        technicalSolution: payload.technicalSolution || '',
-        bidAmount: payload.bidAmount || 0,
-        status: 'Pending',
-      },
-    );
+    return call<Proposal>({ method: 'POST', url: '/api/v1/proposals', data: payload });
   },
   listProposals(jobId: number) {
-    return call<Proposal[]>(
-      { method: 'GET', url: `/api/v1/jobs/${jobId}/proposals` },
-      mockProposals.filter((proposal) => proposal.jobId === jobId),
-    );
+    return call<Proposal[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/proposals` });
   },
   reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
-    const proposal =
-      mockProposals.find((item) => item.proposalId === proposalId) || mockProposals[0];
-    return call<Proposal>(
-      {
-        method: 'PATCH',
-        url: `/api/v1/proposals/${proposalId}/status`,
-        params: { status },
-      },
-      { ...proposal, status },
-    );
+    return call<Proposal>({
+      method: 'PATCH',
+      url: `/api/v1/proposals/${proposalId}/status`,
+      params: { status },
+    });
   },
   matching(jobId: number) {
-    return call<Proposal[]>(
-      { method: 'GET', url: `/api/v1/jobs/${jobId}/matching` },
-      mockProposals
-        .filter((proposal) => proposal.jobId === jobId)
-        .map((proposal, index) => ({ ...proposal, matchScore: proposal.matchScore || 92 - index * 6 })),
-    );
+    return call<Proposal[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/matching` });
   },
 };
 
 export const contractApi = {
   listContracts() {
-    return call<Contract[]>({ method: 'GET', url: '/api/v1/contracts' }, mockContracts);
+    return call<Contract[]>({ method: 'GET', url: '/api/v1/contracts' });
   },
   createFromProposal(proposalId: number, payload: Partial<Contract>) {
-    const proposal =
-      mockProposals.find((item) => item.proposalId === proposalId) || mockProposals[0];
-    return call<Contract>(
-      {
-        method: 'POST',
-        url: `/api/v1/contracts/from-proposals/${proposalId}`,
-        data: payload,
-      },
-      {
-        contractId: id(),
-        jobId: proposal.jobId,
-        businessId: 1,
-        expertId: proposal.expertId,
-        technologyUsed: payload.technologyUsed,
-        totalBudget: payload.totalBudget || proposal.bidAmount,
-        timelineDays: payload.timelineDays || 60,
-        ndaSigned: false,
-        status: 'Draft',
-      },
-    );
+    return call<Contract>({
+      method: 'POST',
+      url: `/api/v1/contracts/from-proposals/${proposalId}`,
+      data: payload,
+    });
   },
   requestChange(payload: Partial<ContractChangeRequest>) {
-    return call<ContractChangeRequest>(
-      { method: 'POST', url: '/api/v1/contracts/change-requests', data: payload },
-      {
-        requestId: id(),
-        contractId: payload.contractId || 0,
-        requestedByAccountId: 21,
-        changeType: payload.changeType || 'SCOPE',
-        changeSummary: payload.changeSummary || '',
-        proposedBudget: payload.proposedBudget,
-        proposedTimelineDays: payload.proposedTimelineDays,
-        status: 'Pending',
-      },
-    );
+    return call<ContractChangeRequest>({ method: 'POST', url: '/api/v1/contracts/change-requests', data: payload });
   },
   activate(contractId: number) {
-    const contract =
-      mockContracts.find((item) => item.contractId === contractId) || mockContracts[0];
-    return call<Contract>(
-      { method: 'POST', url: `/api/v1/contracts/${contractId}/activate` },
-      { ...contract, status: 'Active' },
-    );
+    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/activate` });
   },
   signNda(contractId: number) {
-    const contract =
-      mockContracts.find((item) => item.contractId === contractId) || mockContracts[0];
-    return call<Contract>(
-      { method: 'POST', url: `/api/v1/contracts/${contractId}/nda-sign` },
-      { ...contract, ndaSigned: true },
-    );
+    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/nda-sign` });
   },
   terminate(contractId: number, reason: string) {
-    const contract =
-      mockContracts.find((item) => item.contractId === contractId) || mockContracts[0];
-    return call<Contract>(
-      {
-        method: 'POST',
-        url: `/api/v1/contracts/${contractId}/terminate`,
-        params: { reason },
-      },
-      { ...contract, status: 'Terminated' },
-    );
+    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/terminate`, params: { reason } });
   },
   createMilestone(payload: Partial<Milestone>) {
-    return call<Milestone>(
-      { method: 'POST', url: '/api/v1/milestones', data: payload },
-      {
-        milestoneId: id(),
-        contractId: payload.contractId || 0,
-        milestoneName: payload.milestoneName || '',
-        fundsAllocated: payload.fundsAllocated || 0,
-        orderIndex: payload.orderIndex || 1,
-        status: payload.status || 'Pending',
-      },
-    );
+    return call<Milestone>({ method: 'POST', url: '/api/v1/milestones', data: payload });
   },
   listMilestones(contractId: number) {
-    return call<Milestone[]>(
-      { method: 'GET', url: `/api/v1/contracts/${contractId}/milestones` },
-      mockMilestones.filter((milestone) => milestone.contractId === contractId),
-    );
+    return call<Milestone[]>({ method: 'GET', url: `/api/v1/contracts/${contractId}/milestones` });
+  },
+  listJobMilestones(jobId: number) {
+    return call<Milestone[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/milestones` });
   },
   createCriteria(payload: Partial<AcceptanceCriteria>) {
-    return call<AcceptanceCriteria>(
-      { method: 'POST', url: '/api/v1/criteria', data: payload },
-      {
-        criteriaId: id(),
-        milestoneId: payload.milestoneId || 0,
-        description: payload.description || '',
-        isPassed: payload.isPassed || false,
-      },
-    );
+    return call<AcceptanceCriteria>({ method: 'POST', url: '/api/v1/criteria', data: payload });
   },
   listCriteria(milestoneId: number) {
-    return call<AcceptanceCriteria[]>(
-      { method: 'GET', url: `/api/v1/milestones/${milestoneId}/criteria` },
-      mockCriteria.filter((criteria) => criteria.milestoneId === milestoneId),
-    );
+    return call<AcceptanceCriteria[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/criteria` });
   },
   submitDeliverable(payload: Partial<Deliverable>) {
-    return call<Deliverable>(
-      { method: 'POST', url: '/api/v1/deliverables', data: payload },
-      {
-        deliverableId: id(),
-        milestoneId: payload.milestoneId || 0,
-        sourceCodeUrl: payload.sourceCodeUrl,
-        demoLink: payload.demoLink,
-        submissionNotes: payload.submissionNotes,
-      },
-    );
+    return call<Deliverable>({ method: 'POST', url: '/api/v1/deliverables', data: payload });
+  },
+  listDeliverables(milestoneId: number) {
+    return call<Deliverable[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/deliverables` });
   },
   runSlaAutoApprove() {
-    return call<Milestone[]>(
-      { method: 'POST', url: '/api/v1/milestones/sla-auto-approve' },
-      mockMilestones.map((milestone) =>
-        milestone.status === 'Under Review' ? { ...milestone, status: 'Released' } : milestone,
-      ),
-    );
+    return call<Milestone[]>({ method: 'POST', url: '/api/v1/milestones/sla-auto-approve' });
   },
 };
 
 export const financeApi = {
   createTransaction(payload: Partial<Transaction>) {
-    return call<Transaction>(
-      { method: 'POST', url: '/api/v1/transactions', data: payload },
-      {
-        transactionId: id(),
-        milestoneId: payload.milestoneId || 0,
-        amount: payload.amount || 0,
-        commissionFee: payload.commissionFee || 0,
-        transactionType: payload.transactionType || 'Deposit',
-        status: payload.status || 'Pending',
-      },
-    );
+    return call<Transaction>({ method: 'POST', url: '/api/v1/transactions', data: payload });
+  },
+  listTransactions(milestoneId: number) {
+    return call<Transaction[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/transactions` });
   },
   updateTransactionStatus(transactionId: number, status: string) {
-    return call<Transaction>(
-      {
-        method: 'PATCH',
-        url: `/api/v1/transactions/${transactionId}/status`,
-        params: { status },
-      },
-      {
-        transactionId,
-        milestoneId: 0,
-        amount: 0,
-        commissionFee: 0,
-        transactionType: 'Deposit',
-        status,
-      },
-    );
+    return call<Transaction>({
+      method: 'PATCH',
+      url: `/api/v1/transactions/${transactionId}/status`,
+      params: { status },
+    });
   },
   paymentWebhook(
     transactionId: number,
@@ -434,171 +265,105 @@ export const financeApi = {
     bankTxCode?: string,
     receiptImgUrl?: string,
   ) {
-    return call<Transaction>(
-      {
-        method: 'POST',
-        url: `/api/v1/transactions/${transactionId}/webhook`,
-        params: { paymentStatus, bankTxCode, receiptImgUrl },
-      },
-      {
-        transactionId,
-        milestoneId: 0,
-        amount: 0,
-        commissionFee: 0,
-        transactionType: 'Deposit',
-        status: paymentStatus,
-      },
-    );
+    return call<Transaction>({
+      method: 'POST',
+      url: `/api/v1/transactions/${transactionId}/webhook`,
+      params: { paymentStatus, bankTxCode, receiptImgUrl },
+    });
   },
-  createInvoice(payload: Partial<Invoice>) {
-    return call<Invoice>(
-      { method: 'POST', url: '/api/v1/invoices', data: payload },
-      {
-        invoiceId: id(),
-        transactionId: payload.transactionId || 0,
-        bankTxCode: payload.bankTxCode,
-        receiptImgUrl: payload.receiptImgUrl,
-      },
-    );
+};
+
+export const walletApi = {
+  current() {
+    return call<SystemWallet>({ method: 'GET', url: '/api/v1/wallet/me' });
   },
 };
 
 export const disputeApi = {
   create(payload: Partial<Dispute>) {
-    return call<Dispute>(
-      { method: 'POST', url: '/api/v1/disputes', data: payload },
-      {
-        disputeId: id(),
-        contractId: payload.contractId || 0,
-        milestoneId: payload.milestoneId,
-        evidenceReport: payload.evidenceReport,
-        proposedAction: payload.proposedAction,
-        status: payload.status || 'Open',
-      },
-    );
+    return call<Dispute>({ method: 'POST', url: '/api/v1/disputes', data: payload });
+  },
+  listByContract(contractId: number) {
+    return call<Dispute[]>({ method: 'GET', url: `/api/v1/contracts/${contractId}/disputes` });
+  },
+  get(disputeId: number) {
+    return call<Dispute>({ method: 'GET', url: `/api/v1/disputes/${disputeId}` });
   },
   assign(disputeId: number, staffId: number) {
-    return call<Dispute>(
-      {
-        method: 'PATCH',
-        url: `/api/v1/disputes/${disputeId}/assign`,
-        params: { staffId },
-      },
-      {
-        disputeId,
-        contractId: 0,
-        assignedStaffId: staffId,
-        status: 'UnderReview',
-      },
-    );
+    return call<Dispute>({ method: 'PATCH', url: `/api/v1/disputes/${disputeId}/assign`, params: { staffId } });
   },
   resolve(disputeId: number, proposedAction: string) {
-    return call<Dispute>(
-      {
-        method: 'PATCH',
-        url: `/api/v1/disputes/${disputeId}/resolve`,
-        params: { proposedAction },
-      },
-      {
-        disputeId,
-        contractId: 0,
-        proposedAction,
-        status: 'Resolved',
-      },
-    );
+    return call<Dispute>({ method: 'PATCH', url: `/api/v1/disputes/${disputeId}/resolve`, params: { proposedAction } });
   },
   demoTesting(disputeId: number, testResult: string) {
-    return call<Dispute>(
-      {
-        method: 'POST',
-        url: `/api/v1/disputes/${disputeId}/demo-testing`,
-        params: { testResult },
-      },
-      {
-        disputeId,
-        contractId: 0,
-        evidenceReport: testResult,
-        status: 'UnderReview',
-      },
-    );
+    return call<Dispute>({
+      method: 'POST',
+      url: `/api/v1/disputes/${disputeId}/demo-testing`,
+      params: { testResult },
+    });
   },
   technicalReport(disputeId: number, reportContent: string, proposedAction?: string) {
-    return call<Dispute>(
-      {
-        method: 'POST',
-        url: `/api/v1/disputes/${disputeId}/technical-report`,
-        params: { reportContent, proposedAction },
-      },
-      {
-        disputeId,
-        contractId: 0,
-        evidenceReport: reportContent,
-        proposedAction,
-        status: 'Escalated',
-      },
-    );
+    return call<Dispute>({
+      method: 'POST',
+      url: `/api/v1/disputes/${disputeId}/technical-report`,
+      params: { reportContent, proposedAction },
+    });
   },
 };
 
 export const adminApi = {
   createReview(payload: Partial<Review>) {
-    return call<Review>(
-      { method: 'POST', url: '/api/v1/admin/reviews', data: payload },
-      {
-        reviewId: id(),
-        contractId: payload.contractId || 0,
-        reviewerId: 10,
-        revieweeId: 23,
-        rating: payload.rating || 5,
-        comment: payload.comment,
-      },
-    );
+    return call<Review>({ method: 'POST', url: '/api/v1/admin/reviews', data: payload });
   },
   listReviews(contractId: number) {
-    return call<Review[]>(
-      { method: 'GET', url: `/api/v1/admin/reviews/contracts/${contractId}` },
-      mockReviews.filter((review) => review.contractId === contractId),
-    );
+    return call<Review[]>({ method: 'GET', url: `/api/v1/admin/reviews/contracts/${contractId}` });
   },
   listSettings() {
-    return call<SystemSetting[]>(
-      { method: 'GET', url: '/api/v1/admin/settings' },
-      mockSettings,
-    );
+    return call<SystemSetting[]>({ method: 'GET', url: '/api/v1/admin/settings' });
   },
   updateSetting(settingKey: string, value?: string, isActive?: boolean) {
-    const setting =
-      mockSettings.find((item) => item.settingKey === settingKey) || mockSettings[0];
-    return call<SystemSetting>(
-      {
-        method: 'PATCH',
-        url: `/api/v1/admin/settings/${settingKey}`,
-        params: { value, isActive },
-      },
-      {
-        ...setting,
-        settingValue: value ?? setting.settingValue,
-        isActive: isActive ?? setting.isActive,
-      },
-    );
+    return call<SystemSetting>({
+      method: 'PATCH',
+      url: `/api/v1/admin/settings/${settingKey}`,
+      params: { value, isActive },
+    });
   },
   listStaffs() {
-    return call<Staff[]>({ method: 'GET', url: '/api/v1/admin/staffs' }, mockStaffs);
+    return call<Staff[]>({ method: 'GET', url: '/api/v1/admin/staffs' });
   },
   createStaff(payload: Partial<Staff>) {
-    return call<Staff>(
-      { method: 'POST', url: '/api/v1/admin/staffs', data: payload },
-      {
-        staffId: id(),
-        accountId: payload.accountId || 0,
-        specialization: payload.specialization,
-      },
-    );
+    return call<Staff>({ method: 'POST', url: '/api/v1/admin/staffs', data: payload });
   },
   analyticsOverview() {
-    return call<AnalyticsOverview>(
-      { method: 'GET', url: '/api/v1/admin/analytics/overview' },
-      mockAnalytics,
-    );
+    return call<AnalyticsOverview>({ method: 'GET', url: '/api/v1/admin/analytics/overview' });
+  },
+  getSystemWallet() {
+    return call<SystemWallet>({ method: 'GET', url: '/api/v1/admin/wallet' });
+  },
+  syncSystemWallet() {
+    return call<SystemWallet>({ method: 'POST', url: '/api/v1/admin/wallet/sync' });
+  },
+  listAccounts() {
+    return call<AdminAccount[]>({ method: 'GET', url: '/api/v1/admin/accounts' });
+  },
+  createAccount(payload: Partial<AdminAccount> & { password?: string }) {
+    return call<AdminAccount>({ method: 'POST', url: '/api/v1/admin/accounts', data: payload });
+  },
+  updateAccount(accountId: number, payload: Partial<AdminAccount> & { password?: string }) {
+    return call<AdminAccount>({ method: 'PATCH', url: `/api/v1/admin/accounts/${accountId}`, data: payload });
+  },
+  setAccountStatus(accountId: number, status: AdminAccount['status']) {
+    return call<AdminAccount>({
+      method: 'PATCH',
+      url: `/api/v1/admin/accounts/${accountId}/status`,
+      params: { status },
+    });
+  },
+  setAccountActive(accountId: number, active: boolean) {
+    return call<AdminAccount>({
+      method: 'PATCH',
+      url: `/api/v1/admin/accounts/${accountId}/active`,
+      params: { active },
+    });
   },
 };

@@ -6,6 +6,7 @@ import {
   Gavel,
   Plus,
   ReceiptText,
+  RefreshCw,
   Save,
   Settings2,
   ShieldAlert,
@@ -14,17 +15,9 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import {
-  mockAuditLogs,
-  mockBusinessProfiles,
-  mockContracts,
-  mockDisputes,
-  mockJobs,
-  mockReviews,
-} from '../data/mock';
-import { adminApi } from '../lib/api';
+import { adminApi, contractApi, marketplaceApi, profileApi } from '../lib/api';
 import { formatCompactCurrency, formatDate } from '../lib/utils';
-import type { AnalyticsOverview, Staff, SystemSetting } from '../types';
+import type { AccountStatus, AdminAccount, AnalyticsOverview, Role, Staff, SystemSetting, SystemWallet } from '../types';
 import {
   Badge,
   Button,
@@ -121,6 +114,180 @@ function Funnel({ label, value, max, color = 'brand' }: { label: string; value: 
         <span className="font-extrabold text-ink">{value}</span>
       </div>
       <Progress value={(value / max) * 100} color={color === 'amber' ? 'coral' : color} />
+    </div>
+  );
+}
+
+export function SystemWalletPage() {
+  const [wallet, setWallet] = useState<SystemWallet | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async (sync = false) => {
+    setLoading(true);
+    try {
+      setWallet(sync ? await adminApi.syncSystemWallet() : await adminApi.getSystemWallet());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="ADM-WALLET"
+        title="System Wallet"
+        description="Live aggregate from transactions and disputes. Admin owns fund-flow monitoring."
+        actions={<Button onClick={() => load(true)} disabled={loading}><RefreshCw className="h-4 w-4" /> Sync</Button>}
+      />
+      {wallet && (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AdminMetric label="Current balance" value={formatCompactCurrency(wallet.currentBalance)} icon={<WalletCards className="h-5 w-5" />} tone="mint" />
+            <AdminMetric label="Escrow balance" value={formatCompactCurrency(wallet.escrowBalance)} icon={<ShieldAlert className="h-5 w-5" />} tone="amber" />
+            <AdminMetric label="Total revenue" value={formatCompactCurrency(wallet.totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} />
+            <AdminMetric label="Disputed balance" value={formatCompactCurrency(wallet.disputedBalance)} icon={<ShieldAlert className="h-5 w-5" />} tone="coral" />
+          </div>
+          <Card className="p-6">
+            <SectionHeading title="Wallet ledger snapshot" description="Values are recalculated by backend whenever transaction or dispute data changes." />
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <WalletFact label="Currency" value={wallet.currency} />
+              <WalletFact label="Wallet type" value={wallet.walletType} />
+              <WalletFact label="Available balance" value={formatCompactCurrency(wallet.availableBalance)} />
+              <WalletFact label="Deposited businesses" value={wallet.depositedBusinessCount} />
+              <WalletFact label="Successful deposits" value={wallet.successfulDepositCount} />
+              <WalletFact label="Latest transaction" value={wallet.transactionId ? `#${wallet.transactionId}` : 'None'} />
+              <WalletFact label="Admin account" value={`#${wallet.accountId}`} />
+              <WalletFact label="Last synced" value={wallet.lastSyncedAt ? formatDate(wallet.lastSyncedAt) : 'Pending'} />
+              <WalletFact label="Updated at" value={wallet.updatedAt ? formatDate(wallet.updatedAt) : 'Pending'} />
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function WalletFact({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-2 text-lg font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+const accountRoles: Role[] = ['BUSINESS', 'EXPERT', 'STAFF', 'ADMIN'];
+const accountStatuses: AccountStatus[] = ['Pending', 'Approved', 'Rejected', 'Lock'];
+
+export function AccountsPage() {
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminAccount | null>(null);
+  const [form, setForm] = useState({ email: '', password: '', phone: '', fullName: '', role: 'BUSINESS' as Role, status: 'Pending' as AccountStatus });
+
+  const load = async () => setAccounts(await adminApi.listAccounts());
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const beginCreate = () => {
+    setEditing(null);
+    setForm({ email: '', password: '', phone: '', fullName: '', role: 'BUSINESS', status: 'Pending' });
+    setOpen(true);
+  };
+
+  const beginEdit = (account: AdminAccount) => {
+    setEditing(account);
+    setForm({
+      email: account.email,
+      password: '',
+      phone: account.phone || '',
+      fullName: account.fullName,
+      role: account.role,
+      status: account.status,
+    });
+    setOpen(true);
+  };
+
+  const saveAccount = async () => {
+    const payload = {
+      email: form.email,
+      password: form.password || undefined,
+      phone: form.phone,
+      fullName: form.fullName,
+      role: form.role,
+      status: form.status,
+    };
+    const saved = editing
+      ? await adminApi.updateAccount(editing.accountId, payload)
+      : await adminApi.createAccount(payload);
+    setAccounts((items) => editing
+      ? items.map((item) => (item.accountId === saved.accountId ? saved : item))
+      : [...items, saved]);
+    setOpen(false);
+  };
+
+  const changeStatus = async (account: AdminAccount, status: AccountStatus) => {
+    const updated = await adminApi.setAccountStatus(account.accountId, status);
+    setAccounts((items) => items.map((item) => (item.accountId === updated.accountId ? updated : item)));
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="ADM-ACCOUNTS"
+        title="Account Management"
+        description="Admin can create, update, activate, and deactivate every role account."
+        actions={<Button onClick={beginCreate}><Plus className="h-4 w-4" /> Create account</Button>}
+      />
+      <Card className="overflow-hidden">
+        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[80px_1fr_150px_130px_180px]">
+          <span>ID</span><span>Account</span><span>Role</span><span>Status</span><span>Actions</span>
+        </div>
+        {accounts.map((account) => (
+          <div key={account.accountId} className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[80px_1fr_150px_130px_180px] md:items-center">
+            <span className="font-extrabold text-slate-500">#{account.accountId}</span>
+            <div>
+              <p className="font-extrabold text-ink">{account.fullName}</p>
+              <p className="text-slate-500">{account.email}</p>
+            </div>
+            <Badge tone={account.role === 'ADMIN' ? 'rose' : account.role === 'STAFF' ? 'amber' : 'brand'}>{account.role}</Badge>
+            <Badge tone={account.status === 'Approved' ? 'mint' : account.status === 'Rejected' ? 'rose' : account.status === 'Lock' ? 'slate' : 'amber'}>{account.status}</Badge>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => beginEdit(account)}>Edit</Button>
+              <Button variant="ghost" onClick={() => changeStatus(account, account.status === 'Lock' ? 'Approved' : 'Lock')}>{account.status === 'Lock' ? 'Unlock' : 'Lock'}</Button>
+            </div>
+          </div>
+        ))}
+      </Card>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? 'Edit account' : 'Create account'}
+        footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={saveAccount}><Save className="h-4 w-4" /> Save</Button></>}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Email"><Input value={form.email} onChange={(event) => setForm((value) => ({ ...value, email: event.target.value }))} /></Field>
+          <Field label={editing ? 'New password' : 'Password'}><Input type="password" value={form.password} onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))} /></Field>
+          <Field label="Full name"><Input value={form.fullName} onChange={(event) => setForm((value) => ({ ...value, fullName: event.target.value }))} /></Field>
+          <Field label="Phone"><Input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} /></Field>
+          <Field label="Role">
+            <select value={form.role} onChange={(event) => setForm((value) => ({ ...value, role: event.target.value as Role }))} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none">
+              {accountRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value as AccountStatus }))} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none">
+              {accountStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </Field>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -240,15 +407,34 @@ export function SettingsPage() {
 
 export function MasterDataPage() {
   const [query, setQuery] = useState('');
+  const [counts, setCounts] = useState({ accounts: 0, jobs: 0, contracts: 0, reviews: 0, disputes: 0 });
+
+  useEffect(() => {
+    Promise.all([
+      profileApi.listBusinesses().catch(() => []),
+      profileApi.listExperts().catch(() => []),
+      marketplaceApi.listJobs().catch(() => []),
+      contractApi.listContracts().catch(() => []),
+    ]).then(([businesses, experts, jobs, contracts]) => {
+      setCounts({
+        accounts: businesses.length + experts.length,
+        jobs: jobs.length,
+        contracts: contracts.length,
+        reviews: 0,
+        disputes: 0,
+      });
+    });
+  }, []);
+
   const datasets = useMemo(
     () => [
-      { title: 'Accounts', count: mockBusinessProfiles.length + mockStaffsCount(), status: 'UI waiting API', icon: <Users className="h-5 w-5" /> },
-      { title: 'Jobs', count: mockJobs.length, status: 'GET /jobs available', icon: <BriefcaseBusiness className="h-5 w-5" /> },
-      { title: 'Contracts', count: mockContracts.length, status: 'GET /contracts available', icon: <FileText className="h-5 w-5" /> },
-      { title: 'Reviews', count: mockReviews.length, status: 'Review API available', icon: <BarChart3 className="h-5 w-5" /> },
-      { title: 'Disputes', count: mockDisputes.length, status: 'List API waiting', icon: <Gavel className="h-5 w-5" /> },
+      { title: 'Accounts', count: counts.accounts, status: 'API live', icon: <Users className="h-5 w-5" /> },
+      { title: 'Jobs', count: counts.jobs, status: 'API live', icon: <BriefcaseBusiness className="h-5 w-5" /> },
+      { title: 'Contracts', count: counts.contracts, status: 'API live', icon: <FileText className="h-5 w-5" /> },
+      { title: 'Reviews', count: counts.reviews, status: 'Endpoint theo contract', icon: <BarChart3 className="h-5 w-5" /> },
+      { title: 'Disputes', count: counts.disputes, status: 'Endpoint theo contract', icon: <Gavel className="h-5 w-5" /> },
     ],
-    [],
+    [counts],
   );
   const filtered = datasets.filter((item) => item.title.toLowerCase().includes(query.toLowerCase()));
   return (
@@ -279,10 +465,6 @@ export function MasterDataPage() {
   );
 }
 
-function mockStaffsCount() {
-  return 3;
-}
-
 export function AuditLogsPage() {
   return (
     <div className="space-y-6">
@@ -295,7 +477,7 @@ export function AuditLogsPage() {
         <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[130px_1fr_170px_120px_150px]">
           <span>Time</span><span>Action</span><span>Entity</span><span>Actor</span><span>IP</span>
         </div>
-        {mockAuditLogs.map((log) => (
+        {([] as import('../types').AuditLog[]).map((log) => (
           <div key={log.logId} className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[130px_1fr_170px_120px_150px]">
             <span className="text-slate-500">{formatDate(log.createdAt)}</span>
             <span className="font-extrabold text-ink">{log.action}</span>
@@ -335,7 +517,7 @@ export function ReportsPage() {
           </div>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Preview báo cáo" description="Các chỉ số này dùng mock cho đến khi có API theo chu kỳ." />
+          <SectionHeading title="Preview báo cáo" description="Các chỉ số hiện lấy từ API live đang có; báo cáo theo chu kỳ cần bổ sung endpoint tổng hợp." />
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {[
               ['Doanh thu phí sàn', '1.24 tỷ', <WalletCards className="h-5 w-5" />],

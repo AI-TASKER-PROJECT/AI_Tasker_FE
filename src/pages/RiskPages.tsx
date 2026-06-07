@@ -8,9 +8,8 @@ import {
 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { mockBusinessProfiles, mockDisputes, mockExperts, mockStaffs } from '../data/mock';
-import { disputeApi, profileApi } from '../lib/api';
-import type { BusinessProfile, Dispute, ExpertProfile } from '../types';
+import { adminApi, contractApi, disputeApi, profileApi } from '../lib/api';
+import type { BusinessProfile, Dispute, ExpertProfile, Staff } from '../types';
 import {
   Avatar,
   Badge,
@@ -32,7 +31,17 @@ import {
 
 export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const [query, setQuery] = useState('');
-  const disputes = mockDisputes.filter((item) =>
+  const [items, setItems] = useState<Dispute[]>([]);
+
+  useEffect(() => {
+    contractApi
+      .listContracts()
+      .then((contracts) => Promise.all(contracts.map((contract) => disputeApi.listByContract(contract.contractId))))
+      .then((groups) => setItems(groups.flat()))
+      .catch(() => setItems([]));
+  }, []);
+
+  const disputes = items.filter((item) =>
     `${item.title} ${item.jobTitle} ${item.status}`.toLowerCase().includes(query.toLowerCase()),
   );
   return (
@@ -75,14 +84,23 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
 
 export function DisputeDetailPage({ staffMode = false }: { staffMode?: boolean }) {
   const { disputeId } = useParams();
-  const [dispute, setDispute] = useState<Dispute>(
-    mockDisputes.find((item) => item.disputeId === Number(disputeId)) || mockDisputes[0],
-  );
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [staffs, setStaffs] = useState<Staff[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [staffId, setStaffId] = useState(String(dispute.assignedStaffId || mockStaffs[0].staffId));
+  const [staffId, setStaffId] = useState('');
   const [testResult, setTestResult] = useState('');
   const [report, setReport] = useState({ reportContent: '', proposedAction: 'FORCE_PAYOUT_70_30' });
+
+  useEffect(() => {
+    disputeApi.get(Number(disputeId)).then((data) => {
+      setDispute(data);
+      setStaffId(String(data.assignedStaffId || ''));
+    }).catch(() => setDispute(null));
+    adminApi.listStaffs().then(setStaffs).catch(() => setStaffs([]));
+  }, [disputeId]);
+
+  if (!dispute) return <EmptyState title="Không tìm thấy dispute" description="Dữ liệu dispute được lấy trực tiếp từ backend." />;
 
   const assign = async () => {
     setDispute(await disputeApi.assign(dispute.disputeId, Number(staffId)));
@@ -250,10 +268,18 @@ export function VerificationsPage() {
 export function VerificationDetailPage() {
   const { type, id } = useParams();
   const isBusiness = type === 'business';
-  const initial = isBusiness
-    ? mockBusinessProfiles.find((item) => item.businessId === Number(id)) || mockBusinessProfiles[0]
-    : mockExperts.find((item) => item.expertId === Number(id)) || mockExperts[0];
-  const [profile, setProfile] = useState<BusinessProfile | ExpertProfile>(initial);
+  const [profile, setProfile] = useState<BusinessProfile | ExpertProfile | null>(null);
+
+  useEffect(() => {
+    if (isBusiness) {
+      profileApi.listBusinesses().then((items) => setProfile(items.find((item) => item.businessId === Number(id)) || null)).catch(() => setProfile(null));
+    } else {
+      profileApi.listExperts().then((items) => setProfile(items.find((item) => item.expertId === Number(id)) || null)).catch(() => setProfile(null));
+    }
+  }, [id, isBusiness]);
+
+  if (!profile) return <EmptyState title="Không tìm thấy hồ sơ" description="Dữ liệu KYC/KYB được lấy trực tiếp từ backend." />;
+
   const title = isBusiness ? (profile as BusinessProfile).companyName : (profile as ExpertProfile).fullName || `Expert #${(profile as ExpertProfile).expertId}`;
   const status = isBusiness ? (profile as BusinessProfile).kybStatus : (profile as ExpertProfile).kycStatus;
   const profileId = isBusiness ? (profile as BusinessProfile).businessId : (profile as ExpertProfile).expertId;
@@ -284,8 +310,8 @@ export function VerificationDetailPage() {
             ) : (
               <>
                 <Info label="National ID" value={(profile as ExpertProfile).nationalId} />
-                <Info label="ID front URL" value={(profile as ExpertProfile).idCardFrontUrl || 'Chưa có'} />
-                <Info label="ID back URL" value={(profile as ExpertProfile).idCardBackUrl || 'Chưa có'} />
+                <Info label="Portfolio URL" value={(profile as ExpertProfile).portfolioUrl || 'Chưa có'} />
+                <Info label="Years of experience" value={(profile as ExpertProfile).yearsOfExperience == null ? 'Chưa có' : String((profile as ExpertProfile).yearsOfExperience)} />
               </>
             )}
           </div>
@@ -327,14 +353,22 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 export function NewDisputePage() {
-  const [form, setForm] = useState({ contractId: '9001', milestoneId: '702', evidenceReport: '', proposedAction: '' });
+  const [form, setForm] = useState({ contractId: '', milestoneId: '', evidenceReport: '', proposedAction: '' });
   const [created, setCreated] = useState<Dispute | null>(null);
+  const [message, setMessage] = useState('');
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    const contractId = Number(form.contractId);
+    const milestoneId = form.milestoneId ? Number(form.milestoneId) : undefined;
+    if (!Number.isFinite(contractId) || contractId <= 0 || (milestoneId !== undefined && (!Number.isFinite(milestoneId) || milestoneId <= 0))) {
+      setMessage('Contract ID và Milestone ID phải là số dương từ database thật.');
+      return;
+    }
+    setMessage('');
     const dispute = await disputeApi.create({
-      contractId: Number(form.contractId),
-      milestoneId: Number(form.milestoneId),
+      contractId,
+      milestoneId,
       evidenceReport: form.evidenceReport,
       proposedAction: form.proposedAction,
       status: 'Open',
@@ -347,9 +381,10 @@ export function NewDisputePage() {
       <PageHeader eyebrow="RSK-01" title="Tạo tranh chấp" description="Dùng khi một bên khiếu nại và cần đóng băng dòng tiền milestone." />
       <Card className="p-6">
         <form onSubmit={submit} className="grid gap-4">
+          {message && <Notice tone="danger" title={message} />}
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Contract ID"><Input value={form.contractId} onChange={(event) => setForm((value) => ({ ...value, contractId: event.target.value }))} /></Field>
-            <Field label="Milestone ID"><Input value={form.milestoneId} onChange={(event) => setForm((value) => ({ ...value, milestoneId: event.target.value }))} /></Field>
+            <Field label="Contract ID"><Input type="number" min={1} value={form.contractId} onChange={(event) => setForm((value) => ({ ...value, contractId: event.target.value }))} required /></Field>
+            <Field label="Milestone ID"><Input type="number" min={1} value={form.milestoneId} onChange={(event) => setForm((value) => ({ ...value, milestoneId: event.target.value }))} /></Field>
           </div>
           <Field label="Bằng chứng / mô tả"><Textarea value={form.evidenceReport} onChange={(event) => setForm((value) => ({ ...value, evidenceReport: event.target.value }))} /></Field>
           <Field label="Proposed action ban đầu"><Input value={form.proposedAction} onChange={(event) => setForm((value) => ({ ...value, proposedAction: event.target.value }))} /></Field>
