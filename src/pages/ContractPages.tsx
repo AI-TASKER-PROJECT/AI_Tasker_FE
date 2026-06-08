@@ -39,10 +39,18 @@ import {
 
 export function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [activeStatus, setActiveStatus] = useState<'ALL' | 'Draft' | 'Negotiating' | 'Active'>('ALL');
 
   useEffect(() => {
     contractApi.listContracts().then(setContracts).catch(() => setContracts([]));
   }, []);
+
+  const filteredContracts = activeStatus === 'ALL'
+    ? contracts
+    : contracts.filter((contract) => contract.status === activeStatus);
+  const draftCount = contracts.filter((contract) => contract.status === 'Draft').length;
+  const negotiatingCount = contracts.filter((contract) => contract.status === 'Negotiating').length;
+  const activeCount = contracts.filter((contract) => contract.status === 'Active').length;
 
   return (
     <div className="space-y-6">
@@ -51,14 +59,37 @@ export function ContractsPage() {
         title="Hợp đồng"
         description="Danh sách contract để đi vào đàm phán, NDA, workspace milestone, escrow và review."
       />
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'ALL', label: 'Tất cả', count: contracts.length },
+            { id: 'Draft', label: 'Nháp', count: draftCount },
+            { id: 'Negotiating', label: 'Đàm phán', count: negotiatingCount },
+            { id: 'Active', label: 'Đang chạy', count: activeCount },
+          ].map((item) => (
+            <Button
+              key={item.id}
+              type="button"
+              variant={activeStatus === item.id ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setActiveStatus(item.id as typeof activeStatus)}
+            >
+              {item.label}
+              <Badge tone={activeStatus === item.id ? 'mint' : 'slate'}>{item.count}</Badge>
+            </Button>
+          ))}
+        </div>
+      </Card>
       <div className="grid gap-4 xl:grid-cols-3">
-        {contracts.map((contract) => (
+        {filteredContracts.map((contract) => (
           <Card key={contract.contractId} hover className="p-5">
             <div className="flex items-start justify-between gap-3">
               <Badge tone="brand">#{contract.contractId}</Badge>
               <StatusBadge status={contract.status} />
             </div>
-            <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">{contract.title}</h3>
+            <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">
+              {contract.title || `Hợp đồng nháp #${contract.contractId}`}
+            </h3>
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
               <div>
                 <p className="text-xs font-bold text-slate-400">Giá trị</p>
@@ -87,6 +118,12 @@ export function ContractsPage() {
           </Card>
         ))}
       </div>
+      {filteredContracts.length === 0 && (
+        <EmptyState
+          title={activeStatus === 'Draft' ? 'Chưa có hợp đồng nháp' : 'Chưa có hợp đồng'}
+          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp accept proposal và bấm tạo contract từ màn hình quản lý job."
+        />
+      )}
     </div>
   );
 }

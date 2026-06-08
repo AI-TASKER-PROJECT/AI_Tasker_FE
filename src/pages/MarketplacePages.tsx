@@ -42,7 +42,7 @@ export function MyJobsPage() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    marketplaceApi.listJobs().then(setJobs);
+    marketplaceApi.listMyJobs().then(setJobs).catch(() => setJobs([]));
   }, []);
 
   const filtered = jobs.filter((job) => `${job.title} ${job.aiTag}`.toLowerCase().includes(query.toLowerCase()));
@@ -120,7 +120,6 @@ export function CreateJobPage() {
     budget: '180000000',
     plannedDurationValue: '10',
     plannedDurationUnit: 'tuần',
-    status: 'DRAFT',
   });
   const [milestones, setMilestones] = useState([
     { milestoneName: 'Discovery va solution design', fundsAllocated: '30000000', orderIndex: '1' },
@@ -128,6 +127,7 @@ export function CreateJobPage() {
   ]);
   const [loading, setLoading] = useState(false);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
+  const [createMessage, setCreateMessage] = useState('');
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
@@ -162,36 +162,52 @@ export function CreateJobPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const aiTag = domains.filter((domain) => selectedDomainIds.includes(domain.domainId)).map((domain) => domain.domainCode).join(',');
-    const job = await marketplaceApi.createJob({
-      title: form.title,
-      rawRequirements: form.rawRequirements,
-      structuredSow: form.structuredSow,
-      aiTag: aiTag || form.aiTag,
-      budget: Number(form.budget),
-      plannedDurationValue: Number(form.plannedDurationValue),
-      plannedDurationUnit: form.plannedDurationUnit,
-      status: form.status,
-    });
-    await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
-    await catalogApi.replaceJobSkills(job.jobId, selectedSkillIds.map((skillId) => ({
-      skillId,
-      requiredLevel: 'Intermediate',
-      isMandatory: true,
-      minYearsExperience: 1,
-    })));
-    for (const milestone of milestones) {
-      if (!milestone.milestoneName.trim()) continue;
-      await contractApi.createMilestone({
-        jobId: job.jobId,
-        milestoneName: milestone.milestoneName,
-        fundsAllocated: Number(milestone.fundsAllocated || 0),
-        orderIndex: Number(milestone.orderIndex || 1),
-        status: 'Pending',
+    setCreateMessage('');
+    try {
+      const aiTag = domains.filter((domain) => selectedDomainIds.includes(domain.domainId)).map((domain) => domain.domainCode).join(',');
+      const job = await marketplaceApi.createJob({
+        title: form.title,
+        rawRequirements: form.rawRequirements,
+        structuredSow: form.structuredSow,
+        aiTag: aiTag || form.aiTag,
+        budget: Number(form.budget),
+        plannedDurationValue: Number(form.plannedDurationValue),
+        plannedDurationUnit: form.plannedDurationUnit,
       });
+      setSavedJob(job);
+      setCreateMessage('Job nháp đã được tạo. Bạn có thể kiểm tra, quản lý hoặc mở public job ngay bên dưới.');
+
+      try {
+        await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
+        await catalogApi.replaceJobSkills(job.jobId, selectedSkillIds.map((skillId) => ({
+          skillId,
+          requiredLevel: 'Intermediate',
+          isMandatory: true,
+          minYearsExperience: 1,
+        })));
+        for (const milestone of milestones) {
+          if (!milestone.milestoneName.trim()) continue;
+          await contractApi.createMilestone({
+            jobId: job.jobId,
+            milestoneName: milestone.milestoneName,
+            fundsAllocated: Number(milestone.fundsAllocated || 0),
+            orderIndex: Number(milestone.orderIndex || 1),
+            status: 'Pending',
+          });
+        }
+      } catch {
+        setCreateMessage('Job nháp đã được tạo, nhưng một phần domain/skill/milestone chưa lưu được. Bạn vẫn có thể vào quản lý job để kiểm tra.');
+      }
+    } finally {
+      setLoading(false);
     }
-    setSavedJob(job);
-    setLoading(false);
+  };
+
+  const publishSavedJob = async () => {
+    if (!savedJob) return;
+    const updated = await marketplaceApi.updateJobStatus(savedJob.jobId, 'OPEN');
+    setSavedJob(updated);
+    setCreateMessage('Job đã được mở public. Chuyên gia có thể nhìn thấy và gửi proposal.');
   };
 
   return (
@@ -274,34 +290,57 @@ export function CreateJobPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setForm((value) => ({ ...value, status: 'OPEN' }))}>
-                Chuyển sang OPEN
-              </Button>
               <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
-                Lưu job
+                Lưu job nháp
               </Button>
             </div>
           </form>
         </Card>
         <div className="space-y-4">
+          {savedJob && (
+            <Card className="p-5">
+              <SectionHeading title="Quản lý job nháp" description={createMessage || 'Job đã được lưu ở trạng thái nháp.'} />
+              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-400">#{savedJob.jobId}</p>
+                    <p className="mt-1 break-words font-extrabold text-ink">{savedJob.title}</p>
+                  </div>
+                  <StatusBadge status={savedJob.status} />
+                </div>
+                <div className="mt-4 grid gap-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">Ngân sách</span>
+                    <span className="break-words text-right font-extrabold text-ink">{formatCurrency(savedJob.budget)}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">AI tag</span>
+                    <span className="break-words text-right font-extrabold text-ink">{savedJob.aiTag || 'General AI'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2">
+                <LinkButton to={`/app/jobs/${savedJob.jobId}/manage`} variant="secondary">
+                  Quản lý job
+                </LinkButton>
+                {savedJob.status !== 'OPEN' && (
+                  <Button type="button" variant="success" onClick={publishSavedJob}>
+                    Mở public job
+                  </Button>
+                )}
+                <LinkButton to="/app/jobs" variant="ghost">
+                  Xem tất cả job nháp
+                </LinkButton>
+              </div>
+            </Card>
+          )}
           <Card className="overflow-hidden p-5">
             <img src="/images/ai-job-assistant.png" alt="AI assistant" className="rounded-3xl" />
             <Notice tone="info" title="Backend gap được giữ trong UI" className="mt-4">
               Khi tích hợp Python AI Service, nút mô phỏng sẽ được đổi sang API thật mà không thay đổi layout.
             </Notice>
           </Card>
-          {savedJob && (
-            <Card className="p-5">
-              <SectionHeading title="Job đã lưu" />
-              <p className="mt-3 font-extrabold text-ink">#{savedJob.jobId} - {savedJob.title}</p>
-              <div className="mt-4">
-                <LinkButton to={`/app/jobs/${savedJob.jobId}/manage`} variant="secondary">
-                  Đi tới quản lý job
-                </LinkButton>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </div>
@@ -457,6 +496,7 @@ export function SubmitProposalPage() {
 
 export function ManageJobPage() {
   const { jobId } = useParams();
+  const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [matches, setMatches] = useState<Proposal[]>([]);
@@ -480,12 +520,13 @@ export function ManageJobPage() {
 
   const createContract = async () => {
     if (!contractModal) return;
-    await contractApi.createFromProposal(contractModal.proposalId, {
+    const contract = await contractApi.createFromProposal(contractModal.proposalId, {
       technologyUsed: contractForm.technologyUsed,
       totalBudget: Number(contractForm.totalBudget || contractModal.bidAmount),
       timelineDays: Number(contractForm.timelineDays),
     });
     setContractModal(null);
+    navigate(`/app/contracts/${contract.contractId}`);
   };
 
   return (
@@ -527,17 +568,23 @@ export function ManageJobPage() {
         </Card>
         <Card className="p-6">
           <SectionHeading title="Tóm tắt SoW" />
-          <p className="mt-4 text-sm leading-7 text-slate-600">{job.structuredSow}</p>
+          <p className="mt-4 break-words text-sm leading-7 text-slate-600">{job.structuredSow || job.rawRequirements}</p>
           <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
-            <div className="flex justify-between text-sm">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
               <span className="text-slate-500">Ngân sách</span>
-              <span className="font-extrabold text-ink">{formatCurrency(job.budget)}</span>
+              <span className="min-w-0 break-words text-right font-extrabold text-ink">{formatCurrency(job.budget)}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
               <span className="text-slate-500">AI tag</span>
-              <span className="font-extrabold text-ink">{job.aiTag}</span>
+              <div className="flex min-w-0 flex-wrap justify-end gap-1">
+                {(job.aiTag || 'General AI').split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                  <Badge key={tag} tone="brand">
+                    <span className="max-w-[180px] break-words text-xs">{tag}</span>
+                  </Badge>
+                ))}
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Trạng thái</span>
               <StatusBadge status={job.status} />
             </div>
@@ -597,6 +644,8 @@ function ProposalCard({
   const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
   const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
     if (!expertOpen) return;
@@ -609,6 +658,10 @@ function ProposalCard({
         profileApi.listExperts(),
         profileApi.listPortfolios(),
         adminApi.listAccounts(),
+      ]);
+      const [domainsResult, skillsResult] = await Promise.allSettled([
+        catalogApi.listDomains(true),
+        catalogApi.listSkills(true),
       ]);
 
       if (ignore) return;
@@ -623,6 +676,8 @@ function ProposalCard({
       setExpertProfile(profile);
       setPortfolio(matchedPortfolio);
       setExpertAccount(account);
+      setDomains(domainsResult.status === 'fulfilled' ? domainsResult.value : []);
+      setSkills(skillsResult.status === 'fulfilled' ? skillsResult.value : []);
       setDetailLoading(false);
 
       if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected' || accountsResult.status === 'rejected') {
@@ -637,6 +692,8 @@ function ProposalCard({
   }, [expertOpen, proposal.expertId]);
 
   const expertName = expertAccount?.fullName || expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
+  const domainNames = resolveCatalogNames(portfolio?.domainIds, domains, 'domainId', 'domainName');
+  const skillNames = resolveCatalogNames(portfolio?.skillIds, skills, 'skillId', 'skillName');
   const expertPhone = expertAccount?.phone || 'Chưa có dữ liệu';
 
   return (
@@ -711,16 +768,32 @@ function ProposalCard({
 
           <SectionHeading title="Portfolio" description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng." />
           <div className="grid gap-3">
-            <ExpertInfoItem label="context" value={portfolio?.context || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="data_processing" value={portfolio?.dataProcessing || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="model_architecture" value={portfolio?.modelArchitecture || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="performance_metrics" value={portfolio?.performanceMetrics || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="poc_url" value={portfolio?.pocUrl || 'Chưa có dữ liệu'} />
+            <ExpertInfoItem label="Lĩnh vực" value={domainNames || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="Skill" value={skillNames || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="Số năm kinh nghiệm" value={portfolio?.yearsExperience != null ? `${portfolio.yearsExperience} năm` : 'Chưa có dữ liệu'} />
+            <ExpertInfoItem label="Chứng chỉ" value={portfolio?.certificates || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="Mô tả bản thân" value={portfolio?.selfDescription || 'Chưa có dữ liệu'} multiline />
           </div>
         </div>
       </Modal>
     </div>
   );
+}
+
+function resolveCatalogNames(
+  ids: string | undefined,
+  items: Array<Domain | Skill>,
+  idKey: 'domainId' | 'skillId',
+  nameKey: 'domainName' | 'skillName',
+) {
+  if (!ids) return '';
+  const parsedIds = ids.split(',').map((item) => Number(item.trim())).filter((item) => Number.isFinite(item));
+  if (parsedIds.length === 0) return ids;
+  const names = parsedIds.map((id) => {
+    const item = items.find((catalogItem) => Number(catalogItem[idKey as keyof typeof catalogItem]) === id);
+    return item ? String(item[nameKey as keyof typeof item]) : String(id);
+  });
+  return names.join(', ');
 }
 
 function ExpertInfoItem({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
@@ -767,6 +840,45 @@ export function OpportunitiesPage() {
 }
 
 export function ProposalsPage() {
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [jobsById, setJobsById] = useState<Record<number, Job>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProposals() {
+      setLoading(true);
+      try {
+        const items = await marketplaceApi.listMyProposals();
+        if (ignore) return;
+        setProposals(items);
+        const uniqueJobIds = Array.from(new Set(items.map((item) => item.jobId)));
+        const jobResults = await Promise.allSettled(uniqueJobIds.map((id) => marketplaceApi.getJob(id)));
+        if (ignore) return;
+        const map: Record<number, Job> = {};
+        jobResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            map[result.value.jobId] = result.value;
+          }
+        });
+        setJobsById(map);
+      } catch {
+        if (!ignore) {
+          setProposals([]);
+          setJobsById({});
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadProposals();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -775,9 +887,10 @@ export function ProposalsPage() {
         description="Back-end chưa có API list proposal theo expert, UI giữ màn hình để nối khi endpoint bổ sung."
         actions={<LinkButton to="/app/opportunities" variant="secondary"><RefreshCw className="h-4 w-4" /> Tìm job mới</LinkButton>}
       />
+      {loading && <Notice tone="info" title="Đang tải proposal..." />}
       <div className="grid gap-4">
-        {([] as Proposal[]).map((proposal) => {
-          const job = ([] as Job[]).find((item) => item.jobId === proposal.jobId);
+        {proposals.map((proposal) => {
+          const job = jobsById[proposal.jobId];
           return (
             <Card key={proposal.proposalId} className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -786,7 +899,7 @@ export function ProposalsPage() {
                     <StatusBadge status={proposal.status} />
                     <Badge tone="brand">{job?.aiTag || 'AI'}</Badge>
                   </div>
-                  <h3 className="mt-3 font-display text-lg font-extrabold text-ink">{job?.title}</h3>
+                  <h3 className="mt-3 font-display text-lg font-extrabold text-ink">{job?.title || `Job #${proposal.jobId}`}</h3>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{proposal.technicalSolution}</p>
                   <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
                     <span className="inline-flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {proposal.deliveryDays || 60} ngày</span>
@@ -802,6 +915,9 @@ export function ProposalsPage() {
           );
         })}
       </div>
+      {!loading && proposals.length === 0 && (
+        <EmptyState title="Chưa có proposal" description="Khi chuyên gia gửi proposal cho job public, dữ liệu sẽ xuất hiện tại đây." />
+      )}
     </div>
   );
 }

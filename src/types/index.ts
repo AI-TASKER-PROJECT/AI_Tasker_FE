@@ -183,11 +183,11 @@ export interface ExpertProfile {
 export interface Portfolio {
   portfolioId: number;
   expertId: number;
-  context: string;
-  dataProcessing: string;
-  modelArchitecture: string;
-  performanceMetrics: string;
-  pocUrl?: string;
+  domainIds: string;
+  skillIds: string;
+  yearsExperience: number;
+  certificates?: string;
+  selfDescription: string;
   createdAt?: string;
   updatedAt?: string;
 }

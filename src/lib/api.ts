@@ -169,6 +169,9 @@ export const marketplaceApi = {
   listJobs() {
     return call<Job[]>({ method: 'GET', url: '/api/v1/jobs' });
   },
+  listMyJobs() {
+    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs/my' });
+  },
   getJob(jobId: number) {
     return call<Job>({ method: 'GET', url: `/api/v1/jobs/${jobId}` });
   },
@@ -183,6 +186,9 @@ export const marketplaceApi = {
   },
   listProposals(jobId: number) {
     return call<Proposal[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/proposals` });
+  },
+  listMyProposals() {
+    return call<Proposal[]>({ method: 'GET', url: '/api/v1/proposals/my' });
   },
   reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
     return call<Proposal>({
