@@ -1,31 +1,49 @@
-import { ArrowRight, Building2, ShieldCheck, Sparkles, UserRoundCheck } from 'lucide-react';
-import { FormEvent, useCallback, useState, type ReactNode } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { GoogleAuthButton } from '../components/GoogleAuthButton';
-import { Logo } from '../components/Logo';
-import { Badge, Button, Card, Field, Input, LinkButton, Notice, Select } from '../components/ui';
-import { authApi } from '../lib/api';
-import { getSession, saveSession } from '../lib/session';
+import {
+  ArrowRight,
+  Building2,
+  ShieldCheck,
+  Sparkles,
+  UserRoundCheck,
+  CheckCircle2,
+} from "lucide-react";
+import { FormEvent, useCallback, useState, useEffect, type ReactNode } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { GoogleAuthButton } from "../components/GoogleAuthButton";
+import { Logo } from "../components/Logo";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  LinkButton,
+  Notice,
+  Select,
+} from "../components/ui";
+import { authApi } from "../lib/api";
+import { getSession, saveSession } from "../lib/session";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    setMessage('');
+    setMessage("");
     try {
       const session = await authApi.login({
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
       saveSession(session);
-      navigate('/app');
+      navigate("/app");
     } catch {
-      setMessage('Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.');
+      setMessage(
+        "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
+      );
     } finally {
       setLoading(false);
     }
@@ -34,13 +52,13 @@ export function LoginPage() {
   const loginWithGoogle = useCallback(
     async (credential: string) => {
       setLoading(true);
-      setMessage('');
+      setMessage("");
       try {
         const session = await authApi.googleLogin(credential);
         saveSession(session);
-        navigate('/app');
+        navigate("/app");
       } catch {
-        setMessage('Không thể đăng nhập bằng Google. Vui lòng thử lại.');
+        setMessage("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -61,7 +79,9 @@ export function LoginPage() {
           <Input
             type="email"
             value={form.email}
-            onChange={(event) => setForm((value) => ({ ...value, email: event.target.value }))}
+            onChange={(event) =>
+              setForm((value) => ({ ...value, email: event.target.value }))
+            }
             required
           />
         </Field>
@@ -70,7 +90,9 @@ export function LoginPage() {
             type="password"
             minLength={8}
             value={form.password}
-            onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
+            onChange={(event) =>
+              setForm((value) => ({ ...value, password: event.target.value }))
+            }
             required
           />
         </Field>
@@ -85,7 +107,7 @@ export function LoginPage() {
         onError={(errorMessage) => setMessage(errorMessage)}
       />
       <p className="mt-6 text-center text-sm text-slate-500">
-        Chưa có tài khoản?{' '}
+        Chưa có tài khoản?{" "}
         <Link to="/register" className="font-bold text-brand-600">
           Đăng ký
         </Link>
@@ -96,139 +118,311 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [step, setStep] = useState<"FORM" | "OTP">("FORM");
   const [form, setForm] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    phone: '',
-    role: 'BUSINESS' as 'BUSINESS' | 'EXPERT',
+    email: "",
+    password: "",
+    fullName: "",
+    phone: "",
+    role: "BUSINESS" as "BUSINESS" | "EXPERT",
+    otp: "", 
   });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"danger" | "success">("danger");
+  
+  // State lưu thời gian đếm ngược
+  const [countdown, setCountdown] = useState(0);
 
-  const register = async (event: FormEvent) => {
+  // =========================================================================
+  // BỘ ĐẾM THỜI GIAN (Giảm 1s mỗi 1 giây khi ở bước OTP)
+  // =========================================================================
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (step === "OTP" && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    
+    return () => clearInterval(timer);
+  }, [step, countdown]);
+
+  // =========================================================================
+  // ĐĂNG KÝ BƯỚC 1: Gửi thông tin & Nhận OTP (Lấy thời gian từ BE)
+  // =========================================================================
+  const handleRegisterSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    setMessage('');
+    setMessage("");
     try {
-      const session = await authApi.register({
-        ...form,
+      const response = await authApi.sendOtp({
         email: form.email.trim().toLowerCase(),
-        fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
       });
-      saveSession(session);
-      navigate(form.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile');
+
+      setStep("OTP");
+      
+      // Lấy thời gian từ Back-end (phòng hờ cấu trúc trả về là response.data hoặc response trực tiếp)
+      setCountdown((response as any)?.data?.expiresIn || (response as any)?.expiresIn || 60);
+
+      setMessageTone("success");
+      setMessage(
+        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`
+      );
     } catch {
-      setMessage('Không thể đăng ký. Kiểm tra email đã tồn tại, dữ liệu nhập hoặc trạng thái back-end.');
+      setMessageTone("danger");
+      setMessage(
+        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const registerWithGoogle = useCallback(
-    async (credential: string) => {
-      setLoading(true);
-      setMessage('');
-      try {
-        const session = await authApi.googleRegister(credential, form.role);
-        saveSession(session);
-        navigate(form.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile');
-      } catch {
-        setMessage('Back-end chưa có endpoint đăng ký Google.');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [form.role, navigate],
-  );
+  // =========================================================================
+  // XỬ LÝ GỬI LẠI MÃ OTP
+  // =========================================================================
+  const handleResendOtp = async () => {
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await authApi.sendOtp({
+        email: form.email.trim().toLowerCase(),
+      });
+
+      setCountdown((response as any)?.data?.expiresIn || (response as any)?.expiresIn || 60);
+
+      setMessageTone("success");
+      setMessage("Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.");
+    } catch {
+      setMessageTone("danger");
+      setMessage("Lỗi khi gửi lại mã OTP. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================================================================
+  // ĐĂNG KÝ BƯỚC 2: Xác thực OTP rồi tự động Đăng ký
+  // =========================================================================
+  const handleVerifyOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      // 1. Gọi API xác thực OTP
+      await authApi.verifyOtp({
+        email: form.email.trim().toLowerCase(),
+        otp: form.otp.trim(),
+      });
+
+      // 2. Nếu OTP đúng, gọi API đăng ký
+      const session = await authApi.register({
+        email: form.email.trim().toLowerCase(),
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim(),
+        password: form.password,
+        role: form.role,
+      });
+
+      saveSession(session);
+      navigate(
+        form.role === "BUSINESS"
+          ? "/app/business/profile"
+          : "/app/expert/profile"
+      );
+    } catch (error) {
+      setMessageTone("danger");
+      setMessage(
+        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email đã tồn tại."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (getSession()) return <Navigate to="/app" replace />;
 
   return (
     <AuthFrame
-      title="Tạo tài khoản theo vai trò"
-      description="REG-01 yêu cầu khóa chặt email với một vai trò đã chọn."
+      title={step === "FORM" ? "Tạo tài khoản theo vai trò" : "Xác thực Email"}
+      description={
+        step === "FORM"
+          ? "REG-01 yêu cầu khóa chặt email với một vai trò đã chọn."
+          : "Vui lòng nhập mã gồm 6 chữ số vừa được gửi tới email của bạn."
+      }
     >
-      {message && <Notice tone="danger" title={message} className="mb-4" />}
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <RoleCard
-          active={form.role === 'BUSINESS'}
-          icon={<Building2 className="h-5 w-5" />}
-          title="Doanh nghiệp"
-          desc="Đăng job, quản lý proposal, hợp đồng và escrow."
-          onClick={() => setForm((value) => ({ ...value, role: 'BUSINESS' }))}
-        />
-        <RoleCard
-          active={form.role === 'EXPERT'}
-          icon={<UserRoundCheck className="h-5 w-5" />}
-          title="Chuyên gia"
-          desc="Tạo portfolio, nộp proposal, bàn giao sản phẩm."
-          onClick={() => setForm((value) => ({ ...value, role: 'EXPERT' }))}
-        />
-      </div>
-      <form onSubmit={register} className="grid gap-4">
-        <Field label="Họ tên">
-          <Input
-            value={form.fullName}
-            onChange={(event) => setForm((value) => ({ ...value, fullName: event.target.value }))}
-            required
-          />
-        </Field>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Email">
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(event) => setForm((value) => ({ ...value, email: event.target.value }))}
-              required
-            />
-          </Field>
-          <Field label="Số điện thoại">
-            <Input
-              value={form.phone}
-              onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))}
-              required
-            />
-          </Field>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Mật khẩu" hint="Tối thiểu 8 ký tự">
-            <Input
-              type="password"
-              minLength={8}
-              value={form.password}
-              onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
-              required
-            />
-          </Field>
-          <Field label="Vai trò">
-            <Select
-              value={form.role}
-              onChange={(event) =>
-                setForm((value) => ({ ...value, role: event.target.value as 'BUSINESS' | 'EXPERT' }))
+      {message && (
+        <Notice tone={messageTone} title={message} className="mb-4" />
+      )}
+
+      {step === "FORM" ? (
+        // ---------------------------------------------------------------------
+        // GIAO DIỆN BƯỚC 1: ĐIỀN FORM
+        // ---------------------------------------------------------------------
+        <>
+          <div className="mb-5 grid grid-cols-2 gap-3">
+            <RoleCard
+              active={form.role === "BUSINESS"}
+              icon={<Building2 className="h-5 w-5" />}
+              title="Doanh nghiệp"
+              desc="Đăng job, quản lý proposal, hợp đồng và escrow."
+              onClick={() =>
+                setForm((value) => ({ ...value, role: "BUSINESS" }))
               }
-            >
-              <option value="BUSINESS">Doanh nghiệp</option>
-              <option value="EXPERT">Chuyên gia</option>
-            </Select>
+            />
+            <RoleCard
+              active={form.role === "EXPERT"}
+              icon={<UserRoundCheck className="h-5 w-5" />}
+              title="Chuyên gia"
+              desc="Tạo portfolio, nộp proposal, bàn giao sản phẩm."
+              onClick={() => setForm((value) => ({ ...value, role: "EXPERT" }))}
+            />
+          </div>
+
+          <form onSubmit={handleRegisterSubmit} className="grid gap-4">
+            <Field label="Họ tên">
+              <Input
+                value={form.fullName}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    fullName: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      email: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+              <Field label="Số điện thoại">
+                <Input
+                  value={form.phone}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      phone: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Mật khẩu" hint="Tối thiểu 8 ký tự">
+                <Input
+                  type="password"
+                  minLength={8}
+                  value={form.password}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      password: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+              <Field label="Vai trò">
+                <Select
+                  value={form.role}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      role: event.target.value as "BUSINESS" | "EXPERT",
+                    }))
+                  }
+                >
+                  <option value="BUSINESS">Doanh nghiệp</option>
+                  <option value="EXPERT">Chuyên gia</option>
+                </Select>
+              </Field>
+            </div>
+            <Button type="submit" size="lg" loading={loading}>
+              Tạo tài khoản <ArrowRight className="h-4 w-4" />
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Đã có tài khoản?{" "}
+            <Link to="/login" className="font-bold text-brand-600">
+              Đăng nhập
+            </Link>
+          </p>
+        </>
+      ) : (
+        // ---------------------------------------------------------------------
+        // GIAO DIỆN BƯỚC 2: NHẬP OTP (CÓ ĐỒNG HỒ & NÚT GỬI LẠI)
+        // ---------------------------------------------------------------------
+        <form onSubmit={handleVerifyOtp} className="grid gap-4">
+          <Field label="Mã xác thực (OTP)" hint="Mã có 6 chữ số">
+            <Input
+              type="text"
+              maxLength={6}
+              value={form.otp}
+              onChange={(event) =>
+                setForm((value) => ({ ...value, otp: event.target.value }))
+              }
+              placeholder="VD: 123456"
+              autoFocus
+              required
+              className="text-center text-2xl tracking-widest font-mono"
+            />
           </Field>
-        </div>
-        <Button type="submit" size="lg" loading={loading}>
-          Tạo tài khoản <ArrowRight className="h-4 w-4" />
-        </Button>
-      </form>
-      <AuthDivider />
-      <GoogleAuthButton mode="register" onCredential={registerWithGoogle} />
-      <Notice tone="info" title="Đăng ký Google theo vai trò đã chọn" className="mt-4">
-        Google cung cấp email và họ tên; sau đó hệ thống đưa bạn tới bước nộp hồ sơ KYB/KYC tương ứng.
-      </Notice>
-      <p className="mt-6 text-center text-sm text-slate-500">
-        Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-brand-600">
-          Đăng nhập
-        </Link>
-      </p>
+
+          <div className="flex flex-col gap-3 mt-2">
+            <Button type="submit" size="lg" loading={loading}>
+              Xác thực Email <CheckCircle2 className="h-4 w-4 ml-2" />
+            </Button>
+
+            {/* Khối hiển thị Đồng hồ đếm ngược hoặc Nút gửi lại */}
+            <div className="text-center text-sm my-1">
+              {countdown > 0 ? (
+                <span className="text-slate-500">
+                  Chưa nhận được mã? Gửi lại sau <strong className="text-slate-700">{countdown}s</strong>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                  className="font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+                >
+                  Gửi lại mã OTP
+                </button>
+              )}
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setStep("FORM");
+                setMessage("");
+                setForm((prev) => ({ ...prev, otp: "" }));
+                setCountdown(0); // Xóa đồng hồ khi quay lại
+              }}
+              disabled={loading}
+              className="text-slate-500"
+            >
+              Quay lại chỉnh sửa thông tin
+            </Button>
+          </div>
+        </form>
+      )}
     </AuthFrame>
   );
 }
@@ -269,7 +463,8 @@ function AuthFrame({
               Một tài khoản, một vai trò, một luồng nghiệp vụ rõ ràng.
             </h1>
             <p className="mt-5 max-w-md text-sm leading-7 text-blue-50">
-              Sau đăng nhập, app tự điều hướng tới dashboard đúng role để tránh gọi chéo API sai thẩm quyền.
+              Sau đăng nhập, app tự điều hướng tới dashboard đúng role để tránh
+              gọi chéo API sai thẩm quyền.
             </p>
             <img
               src="/images/ai-job-assistant.png"
@@ -288,8 +483,12 @@ function AuthFrame({
                 <ShieldCheck className="h-3.5 w-3.5" />
                 JWT + RBAC
               </Badge>
-              <h2 className="mt-4 font-display text-3xl font-black tracking-tight text-ink">{title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+              <h2 className="mt-4 font-display text-3xl font-black tracking-tight text-ink">
+                {title}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {description}
+              </p>
             </div>
             {children}
           </Card>
@@ -317,7 +516,9 @@ function RoleCard({
       type="button"
       onClick={onClick}
       className={`rounded-3xl border p-4 text-left transition ${
-        active ? 'border-brand-200 bg-brand-50 ring-4 ring-brand-50' : 'border-slate-100 hover:bg-slate-50'
+        active
+          ? "border-brand-200 bg-brand-50 ring-4 ring-brand-50"
+          : "border-slate-100 hover:bg-slate-50"
       }`}
     >
       <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">

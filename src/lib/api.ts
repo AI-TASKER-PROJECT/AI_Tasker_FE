@@ -84,6 +84,13 @@ export const authApi = {
   login(payload: { email: string; password: string }) {
     return call<SessionUser>({ method: 'POST', url: '/api/auth/login', data: payload });
   },
+  sendOtp(payload: { email: string }) {
+    //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload }); 
+    return call<{ expiresIn: number }>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });
+  },
+  verifyOtp(payload: { email: string; otp: string }) {
+    return call<void>({ method: 'POST', url: '/api/auth/email/verify-otp', data: payload }); 
+  },
   register(payload: {
     email: string;
     password: string;
@@ -94,9 +101,6 @@ export const authApi = {
     return call<SessionUser>({ method: 'POST', url: '/api/auth/register', data: payload });
   },
   googleLogin(_credential: string) {
-    return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
-  },
-  googleRegister(_credential: string, _role: 'BUSINESS' | 'EXPERT') {
     return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
   },
 };
