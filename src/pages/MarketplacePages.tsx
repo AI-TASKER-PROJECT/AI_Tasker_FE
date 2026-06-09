@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { adminApi, catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type Skill } from '../lib/api';
+import { catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type Skill } from '../lib/api';
 import { useSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
-import type { AdminAccount, ExpertProfile, Job, Portfolio, Proposal } from '../types';
+import type { ExpertProfile, Job, Portfolio, Proposal } from '../types';
 import {
   Avatar,
   Badge,
@@ -642,7 +642,6 @@ function ProposalCard({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailMessage, setDetailMessage] = useState('');
   const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
-  const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -654,10 +653,9 @@ function ProposalCard({
     async function loadExpertDetail() {
       setDetailLoading(true);
       setDetailMessage('');
-      const [expertsResult, portfoliosResult, accountsResult] = await Promise.allSettled([
+      const [expertsResult, portfoliosResult] = await Promise.allSettled([
         profileApi.listExperts(),
         profileApi.listPortfolios(),
-        adminApi.listAccounts(),
       ]);
       const [domainsResult, skillsResult] = await Promise.allSettled([
         catalogApi.listDomains(true),
@@ -668,19 +666,16 @@ function ProposalCard({
 
       const experts = expertsResult.status === 'fulfilled' ? expertsResult.value : [];
       const portfolios = portfoliosResult.status === 'fulfilled' ? portfoliosResult.value : [];
-      const accounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
       const profile = experts.find((item) => item.expertId === proposal.expertId) || null;
       const matchedPortfolio = portfolios.find((item) => item.expertId === proposal.expertId) || null;
-      const account = profile ? accounts.find((item) => item.accountId === profile.accountId) || null : null;
 
       setExpertProfile(profile);
       setPortfolio(matchedPortfolio);
-      setExpertAccount(account);
       setDomains(domainsResult.status === 'fulfilled' ? domainsResult.value : []);
       setSkills(skillsResult.status === 'fulfilled' ? skillsResult.value : []);
       setDetailLoading(false);
 
-      if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected' || accountsResult.status === 'rejected') {
+      if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected') {
         setDetailMessage('Một số thông tin chưa lấy được từ API hiện tại.');
       }
     }
@@ -691,10 +686,10 @@ function ProposalCard({
     };
   }, [expertOpen, proposal.expertId]);
 
-  const expertName = expertAccount?.fullName || expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
+  const expertName = expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
   const domainNames = resolveCatalogNames(portfolio?.domainIds, domains, 'domainId', 'domainName');
   const skillNames = resolveCatalogNames(portfolio?.skillIds, skills, 'skillId', 'skillName');
-  const expertPhone = expertAccount?.phone || 'Chưa có dữ liệu';
+  const expertPhone = expertProfile?.phone || 'Chưa có dữ liệu';
 
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">

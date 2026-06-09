@@ -3,3 +3,8 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# Firebase service account key
+/secrets/
+*.firebase-service-account.json
+firebase-service-account.json

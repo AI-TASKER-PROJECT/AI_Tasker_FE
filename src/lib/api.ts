@@ -26,12 +26,16 @@ import { getSession } from './session';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
 });
 
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  } else if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
   return config;
 });
 
@@ -105,11 +109,29 @@ export const profileApi = {
   upsertBusiness(payload: Partial<BusinessProfile>) {
     return call<BusinessProfile>({ method: 'POST', url: '/api/v1/profiles/business', data: payload });
   },
+  uploadBusinessLicense(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/business/license-file',
+      data: formData,
+    });
+  },
   upsertExpert(payload: Partial<ExpertProfile>) {
     return call<ExpertProfile>({ method: 'POST', url: '/api/v1/profiles/expert', data: payload });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
     return call<Portfolio>({ method: 'POST', url: '/api/v1/profiles/portfolio', data: payload });
+  },
+  uploadExpertCertificate(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/portfolio/certificate-file',
+      data: formData,
+    });
   },
   listBusinesses() {
     return call<BusinessProfile[]>({ method: 'GET', url: '/api/v1/profiles/business' });

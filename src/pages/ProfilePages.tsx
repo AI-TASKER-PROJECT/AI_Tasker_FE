@@ -22,17 +22,33 @@ export function BusinessProfilePage() {
     address: '',
     businessLicenseUrl: '',
   });
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [status, setStatus] = useState('Chưa gửi');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const profile = await profileApi.upsertBusiness(form);
-    setStatus(profile.kybStatus);
-    const session = getSession();
-    if (session) saveSession({ ...session, accountStatus: 'Pending' });
-    setLoading(false);
+    setMessage('');
+    setError('');
+    try {
+      let businessLicenseUrl = form.businessLicenseUrl;
+      if (licenseFile) {
+        businessLicenseUrl = await profileApi.uploadBusinessLicense(licenseFile);
+      }
+      const profile = await profileApi.upsertBusiness({ ...form, businessLicenseUrl });
+      setForm((value) => ({ ...value, businessLicenseUrl }));
+      setStatus(profile.kybStatus);
+      setMessage('Đã lưu hồ sơ doanh nghiệp và đường dẫn file Firebase.');
+      const session = getSession();
+      if (session) saveSession({ ...session, accountStatus: 'Pending' });
+    } catch (submitError) {
+      setError(readApiError(submitError, 'Không thể lưu hồ sơ doanh nghiệp.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,6 +61,8 @@ export function BusinessProfilePage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
+            {message && <Notice tone="success" title={message} />}
+            {error && <Notice tone="danger" title={error} />}
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Mã số thuế">
                 <Input value={form.taxCode} onChange={(event) => setForm((value) => ({ ...value, taxCode: event.target.value }))} required />
@@ -56,8 +74,8 @@ export function BusinessProfilePage() {
             <Field label="Địa chỉ">
               <Input value={form.address} onChange={(event) => setForm((value) => ({ ...value, address: event.target.value }))} />
             </Field>
-            <Field label="URL giấy phép kinh doanh" hint="Tạm dùng URL vì back-end chưa tích hợp Firebase Storage.">
-              <Input value={form.businessLicenseUrl} onChange={(event) => setForm((value) => ({ ...value, businessLicenseUrl: event.target.value }))} />
+            <Field label="Tệp giấy phép kinh doanh" hint={form.businessLicenseUrl || 'Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage.'}>
+              <Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setLicenseFile(event.target.files?.[0] || null)} />
             </Field>
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
@@ -169,11 +187,13 @@ export function ExpertPortfolioPage() {
     certificates: '',
     selfDescription: '',
   });
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -196,15 +216,27 @@ export function ExpertPortfolioPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    await profileApi.upsertPortfolio({
-      domainIds: selectedDomainIds.join(','),
-      skillIds: selectedSkillIds.join(','),
-      yearsExperience: Number(form.yearsExperience),
-      certificates: form.certificates,
-      selfDescription: form.selfDescription,
-    });
-    setSaved(true);
-    setLoading(false);
+    setSaved(false);
+    setError('');
+    try {
+      let certificates = form.certificates;
+      if (certificateFile) {
+        certificates = await profileApi.uploadExpertCertificate(certificateFile);
+      }
+      await profileApi.upsertPortfolio({
+        domainIds: selectedDomainIds.join(','),
+        skillIds: selectedSkillIds.join(','),
+        yearsExperience: Number(form.yearsExperience),
+        certificates,
+        selfDescription: form.selfDescription,
+      });
+      setForm((value) => ({ ...value, certificates }));
+      setSaved(true);
+    } catch (submitError) {
+      setError(readApiError(submitError, 'Không thể lưu portfolio.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -217,6 +249,7 @@ export function ExpertPortfolioPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
+            {error && <Notice tone="danger" title={error} />}
             <div className="grid gap-4 lg:grid-cols-2">
               <Field label="Lĩnh vực">
                 <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
@@ -247,8 +280,8 @@ export function ExpertPortfolioPage() {
               <Field label="Số năm kinh nghiệm">
                 <Input type="number" min="0" value={form.yearsExperience} onChange={(event) => setForm((value) => ({ ...value, yearsExperience: event.target.value }))} required />
               </Field>
-              <Field label="Chứng chỉ" hint="Tạm thời nhập text, sau này có thể đổi sang Firebase URL.">
-                <Input value={form.certificates} onChange={(event) => setForm((value) => ({ ...value, certificates: event.target.value }))} placeholder="Ví dụ: Google Cloud, AWS, Coursera..." />
+              <Field label="Chứng chỉ" hint={form.certificates || 'Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage.'}>
+                <Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setCertificateFile(event.target.files?.[0] || null)} />
               </Field>
             </div>
             <Field label="Mô tả bản thân">
@@ -282,4 +315,9 @@ export function ExpertPortfolioPage() {
       </div>
     </div>
   );
+}
+
+function readApiError(error: unknown, fallback: string) {
+  const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+  return apiError.response?.data?.message || apiError.message || fallback;
 }
