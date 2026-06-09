@@ -7,13 +7,13 @@ import {
   FileCheck2,
   Gavel,
   WalletCards,
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { contractApi, disputeApi, marketplaceApi } from '../lib/api';
-import { roleLabel, useSession } from '../lib/session';
-import { formatCompactCurrency } from '../lib/utils';
-import type { Contract, Dispute, Job, NotificationItem } from '../types';
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { contractApi, disputeApi, marketplaceApi } from "../lib/api";
+import { roleLabel, useSession } from "../lib/session";
+import { formatCompactCurrency } from "../lib/utils";
+import type { Contract, Dispute, Job, NotificationItem } from "../types";
 import {
   Badge,
   Card,
@@ -24,7 +24,7 @@ import {
   PageHeader,
   SectionHeading,
   StatusBadge,
-} from '../components/ui';
+} from "../components/ui";
 
 export function DashboardPage() {
   const session = useSession();
@@ -34,13 +34,18 @@ export function DashboardPage() {
   const notifications: NotificationItem[] = [];
 
   useEffect(() => {
-    marketplaceApi.listJobs().then(setJobs).catch(() => setJobs([]));
+    marketplaceApi
+      .listJobs()
+      .then(setJobs)
+      .catch(() => setJobs([]));
     contractApi
       .listContracts()
       .then(async (items) => {
         setContracts(items);
         const disputeGroups = await Promise.all(
-          items.map((contract) => disputeApi.listByContract(contract.contractId).catch(() => [])),
+          items.map((contract) =>
+            disputeApi.listByContract(contract.contractId).catch(() => []),
+          ),
         );
         setDisputes(disputeGroups.flat());
       })
@@ -54,24 +59,40 @@ export function DashboardPage() {
 
   const roleActions = {
     BUSINESS: [
-      ['Tạo job bằng AI', '/app/jobs/new', 'Chuẩn hóa yêu cầu thô thành SoW'],
-      ['Quản lý proposal', '/app/jobs', 'Chọn job thật để xem đề xuất và báo giá'],
-      ['Theo dõi escrow', '/app/finance', 'Ký quỹ, VNPay sandbox, webhook'],
+      ["Tạo job bằng AI", "/app/jobs/new", "Chuẩn hóa yêu cầu thô thành SoW"],
+      [
+        "Quản lý proposal",
+        "/app/jobs",
+        "Chọn job thật để xem đề xuất và báo giá",
+      ],
+      ["Theo dõi escrow", "/app/finance", "Ký quỹ, VNPay sandbox, webhook"],
     ],
     EXPERT: [
-      ['Tìm cơ hội', '/app/opportunities', 'Nộp proposal cho job phù hợp'],
-      ['Cập nhật portfolio', '/app/expert/portfolio', '4 thành phần năng lực AI'],
-      ['Bàn giao milestone', '/app/contracts', 'Chọn hợp đồng thật để mở workspace'],
+      ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho job phù hợp"],
+      [
+        "Cập nhật portfolio",
+        "/app/expert/portfolio",
+        "4 thành phần năng lực AI",
+      ],
+      [
+        "Bàn giao milestone",
+        "/app/contracts",
+        "Chọn hợp đồng thật để mở workspace",
+      ],
     ],
     STAFF: [
-      ['Duyệt hồ sơ', '/app/verifications', 'KYC/KYB pending'],
-      ['Demo testing', '/app/tickets', 'Chọn dispute thật để kiểm thử và ghi nhận kết quả'],
-      ['Viết technical report', '/app/tickets', 'Đề xuất phương án xử lý'],
+      ["Duyệt hồ sơ", "/app/verifications", "KYC/KYB pending"],
+      [
+        "Demo testing",
+        "/app/tickets",
+        "Chọn dispute thật để kiểm thử và ghi nhận kết quả",
+      ],
+      ["Viết technical report", "/app/tickets", "Đề xuất phương án xử lý"],
     ],
     ADMIN: [
-      ['Analytics', '/app/admin/analytics', 'Doanh thu và tỷ lệ thành công'],
-      ['Phân công dispute', '/app/tickets', 'Assign staff và resolve'],
-      ['System settings', '/app/admin/settings', 'SLA, phí sàn, auto-routing'],
+      ["Analytics", "/app/admin/analytics", "Doanh thu và tỷ lệ thành công"],
+      ["Phân công dispute", "/app/tickets", "Assign staff và resolve"],
+      ["System settings", "/app/admin/settings", "SLA, phí sàn, auto-routing"],
     ],
   }[session.role];
 
@@ -92,27 +113,39 @@ export function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Job đang mở"
-          value={jobs.filter((job) => job.status === 'OPEN').length}
+          value={jobs.filter((job) => job.status === "OPEN").length}
           helper="Từ marketplace"
           icon={<BriefcaseBusiness className="h-5 w-5" />}
         />
         <MetricCard
           label="Hợp đồng active"
-          value={contracts.filter((contract) => contract.status === 'Active').length}
+          value={
+            contracts.filter((contract) => contract.status === "Active").length
+          }
           helper="Đang thực thi"
           icon={<FileCheck2 className="h-5 w-5" />}
           tone="mint"
         />
         <MetricCard
           label="Giá trị hợp đồng"
-          value={formatCompactCurrency(contracts.reduce((total, contract) => total + Number(contract.totalBudget || 0), 0))}
+          value={formatCompactCurrency(
+            contracts.reduce(
+              (total, contract) => total + Number(contract.totalBudget || 0),
+              0,
+            ),
+          )}
           helper="Từ contract API"
           icon={<WalletCards className="h-5 w-5" />}
           tone="coral"
         />
         <MetricCard
           label="Dispute mở"
-          value={disputes.filter((dispute) => !['Resolved', 'Closed', 'Rejected'].includes(dispute.status)).length}
+          value={
+            disputes.filter(
+              (dispute) =>
+                !["Resolved", "Closed", "Rejected"].includes(dispute.status),
+            ).length
+          }
           helper="Cần xử lý"
           icon={<Gavel className="h-5 w-5" />}
           tone="amber"
@@ -146,10 +179,14 @@ export function DashboardPage() {
         </Card>
 
         <Card className="overflow-hidden p-6">
-          <SectionHeading title="Tín hiệu hệ thống" description="Dữ liệu realtime sẽ hiển thị khi back-end có API hoặc WebSocket tương ứng." />
+          <SectionHeading
+            title="Tín hiệu hệ thống"
+            description="Dữ liệu realtime sẽ hiển thị khi back-end có API hoặc WebSocket tương ứng."
+          />
           <div className="mt-5 space-y-4">
             <Notice tone="info" title="Kết nối back-end thật">
-              App gọi trực tiếp API back-end. Với endpoint chưa có, giao diện hiển thị trạng thái trống hoặc thông báo cần bổ sung API.
+              App gọi trực tiếp API back-end. Với endpoint chưa có, giao diện
+              hiển thị trạng thái trống hoặc thông báo cần bổ sung API.
             </Notice>
             <div className="rounded-3xl bg-gradient-to-br from-brand-600 to-indigo-700 p-5 text-white">
               <p className="font-extrabold">Dữ liệu đang tải từ API</p>
@@ -174,7 +211,14 @@ export function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="p-6 xl:col-span-2">
-          <SectionHeading title="Hợp đồng gần đây" action={<LinkButton to="/app/contracts" variant="secondary" size="sm">Xem tất cả</LinkButton>} />
+          <SectionHeading
+            title="Hợp đồng gần đây"
+            action={
+              <LinkButton to="/app/contracts" variant="secondary" size="sm">
+                Xem tất cả
+              </LinkButton>
+            }
+          />
           <div className="mt-5 grid gap-3">
             {contracts.map((contract) => (
               <ListLink
@@ -194,7 +238,7 @@ export function DashboardPage() {
             {notifications.slice(0, 3).map((item) => (
               <ListLink
                 key={item.id}
-                to={item.href || '/app/notifications'}
+                to={item.href || "/app/notifications"}
                 title={item.title}
                 description={`${item.time} • ${item.description}`}
                 leading={
@@ -224,15 +268,27 @@ export function NotificationsPage() {
           <Card key={item.id} className="p-5">
             <div className="flex items-start gap-4">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
-                {item.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> : item.type === 'warning' ? <Clock3 className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+                {item.type === "success" ? (
+                  <CheckCircle2 className="h-5 w-5" />
+                ) : item.type === "warning" ? (
+                  <Clock3 className="h-5 w-5" />
+                ) : (
+                  <Bell className="h-5 w-5" />
+                )}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-lg font-extrabold text-ink">{item.title}</h3>
+                  <h3 className="font-display text-lg font-extrabold text-ink">
+                    {item.title}
+                  </h3>
                   {!item.read && <Badge tone="coral">Mới</Badge>}
                 </div>
-                <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
-                <p className="mt-2 text-xs font-bold text-slate-400">{item.time}</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  {item.description}
+                </p>
+                <p className="mt-2 text-xs font-bold text-slate-400">
+                  {item.time}
+                </p>
               </div>
               {item.href && (
                 <LinkButton to={item.href} variant="secondary" size="sm">
@@ -250,7 +306,8 @@ export function NotificationsPage() {
 export function ProfilePagesHint() {
   return (
     <Notice tone="info" title="Luồng xác minh">
-      Hồ sơ mặc định ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved để mở khóa giao dịch.
+      Hồ sơ mặc định ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved
+      để mở khóa giao dịch.
     </Notice>
   );
 }

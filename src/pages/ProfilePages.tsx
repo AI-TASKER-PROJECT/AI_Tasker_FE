@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Building2, ClipboardCheck, IdCard, Link2, PencilLine, Save } from 'lucide-react';
-import { profileApi } from '../lib/api';
-import type { BusinessProfile, ExpertProfile } from '../types';
+import { Building2, ClipboardCheck, IdCard, Link2, Save, ShieldCheck } from 'lucide-react';
+import { catalogApi, profileApi, type Domain, type Skill } from '../lib/api';
+import { getSession, saveSession } from '../lib/session';
 import {
+  Badge,
   Button,
   Card,
   Field,
@@ -14,84 +15,25 @@ import {
   Textarea,
 } from '../components/ui';
 
-const EMPTY_PROFILE_STATUS = 'Chưa gửi';
-const LOCKED_FIELD_CLASS = 'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500';
-
-const EMPTY_BUSINESS_FORM = {
-  taxCode: '',
-  companyName: '',
-  address: '',
-  businessLicenseUrl: '',
-};
-
-const EMPTY_EXPERT_FORM = {
-  nationalId: '',
-  portfolioUrl: '',
-  yearsOfExperience: '1',
-};
-
 export function BusinessProfilePage() {
-  const [form, setForm] = useState(EMPTY_BUSINESS_FORM);
-  const [status, setStatus] = useState(EMPTY_PROFILE_STATUS);
-  const [hasProfile, setHasProfile] = useState(false);
-  const [isEditing, setIsEditing] = useState(true);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [form, setForm] = useState({
+    taxCode: '',
+    companyName: '',
+    address: '',
+    businessLicenseUrl: '',
+  });
+  const [status, setStatus] = useState('Chưa gửi');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadProfile() {
-      try {
-        const profile = await profileApi.myBusinessProfile();
-        if (!active) return;
-        setForm(businessProfileToForm(profile));
-        setStatus(profile.kybStatus || 'Approved');
-        setHasProfile(true);
-        setIsEditing(false);
-      } catch (error) {
-        if (!active) return;
-        if (isNotFoundError(error)) {
-          setForm(EMPTY_BUSINESS_FORM);
-          setStatus(EMPTY_PROFILE_STATUS);
-          setHasProfile(false);
-          setIsEditing(true);
-        } else {
-          setMessage(profileLoadErrorMessage(error));
-          setIsEditing(false);
-        }
-      } finally {
-        if (active) setLoadingProfile(false);
-      }
-    }
-
-    loadProfile();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!isEditing) return;
     setLoading(true);
-    setMessage('');
-    try {
-      const profile = await profileApi.upsertBusiness(form);
-      setForm(businessProfileToForm(profile));
-      setStatus(profile.kybStatus);
-      setHasProfile(true);
-      setIsEditing(false);
-    } catch (error) {
-      setMessage(businessProfileErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
+    const profile = await profileApi.upsertBusiness(form);
+    setStatus(profile.kybStatus);
+    const session = getSession();
+    if (session) saveSession({ ...session, accountStatus: 'Pending' });
+    setLoading(false);
   };
-
-  const fieldsDisabled = loadingProfile || !isEditing;
-  const taxCodeDisabled = loadingProfile || hasProfile || !isEditing;
 
   return (
     <div className="space-y-6">
@@ -103,56 +45,22 @@ export function BusinessProfilePage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
-            {message && <Notice tone="danger" title={message} />}
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Mã số thuế">
-                <Input
-                  value={form.taxCode}
-                  onChange={(event) => setForm((value) => ({ ...value, taxCode: event.target.value }))}
-                  disabled={taxCodeDisabled}
-                  className={LOCKED_FIELD_CLASS}
-                  required
-                />
+                <Input value={form.taxCode} onChange={(event) => setForm((value) => ({ ...value, taxCode: event.target.value }))} required />
               </Field>
               <Field label="Tên doanh nghiệp">
-                <Input
-                  value={form.companyName}
-                  onChange={(event) => setForm((value) => ({ ...value, companyName: event.target.value }))}
-                  disabled={fieldsDisabled}
-                  className={LOCKED_FIELD_CLASS}
-                  required
-                />
+                <Input value={form.companyName} onChange={(event) => setForm((value) => ({ ...value, companyName: event.target.value }))} required />
               </Field>
             </div>
             <Field label="Địa chỉ">
-              <Input
-                value={form.address}
-                onChange={(event) => setForm((value) => ({ ...value, address: event.target.value }))}
-                disabled={fieldsDisabled}
-                className={LOCKED_FIELD_CLASS}
-              />
+              <Input value={form.address} onChange={(event) => setForm((value) => ({ ...value, address: event.target.value }))} />
             </Field>
             <Field label="URL giấy phép kinh doanh" hint="Tạm dùng URL vì back-end chưa tích hợp Firebase Storage.">
-              <Input
-                value={form.businessLicenseUrl}
-                onChange={(event) => setForm((value) => ({ ...value, businessLicenseUrl: event.target.value }))}
-                disabled={fieldsDisabled}
-                className={LOCKED_FIELD_CLASS}
-              />
+              <Input value={form.businessLicenseUrl} onChange={(event) => setForm((value) => ({ ...value, businessLicenseUrl: event.target.value }))} />
             </Field>
-            <div className="flex justify-end gap-2">
-              {hasProfile && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsEditing(true)}
-                  disabled={isEditing || loading || loadingProfile}
-                >
-                  <PencilLine className="h-4 w-4" />
-                  Sửa hồ sơ
-                </Button>
-              )}
-              <Button type="submit" loading={loading} disabled={!isEditing || loadingProfile}>
+            <div className="flex justify-end">
+              <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
                 Lưu hồ sơ
               </Button>
@@ -170,11 +78,10 @@ export function BusinessProfilePage() {
               <div className="mt-1">
                 <StatusBadge status={status} />
               </div>
-              <p className="mt-1 text-xs font-semibold text-slate-500">{profileStatusLabel(status)}</p>
             </div>
           </div>
           <Notice tone="warning" title="Điều kiện mở khóa giao dịch" className="mt-4">
-            Back-end hiện kiểm role nhưng chưa chặn mọi giao dịch theo Approved status. UI vẫn thể hiện đúng yêu cầu nghiệp vụ để team BE bổ sung sau.
+            Back-end kiểm tra role và trạng thái Approved cho các nghiệp vụ chính. Hồ sơ cập nhật sẽ quay về Pending để staff duyệt lại.
           </Notice>
         </Card>
       </div>
@@ -182,203 +89,54 @@ export function BusinessProfilePage() {
   );
 }
 
-function businessProfileErrorMessage(error: unknown) {
-  const apiError = error as {
-    response?: { status?: number; data?: { message?: string } };
-    message?: string;
-  };
-  const status = apiError.response?.status;
-  const message = apiError.response?.data?.message || apiError.message || '';
-
-  if (status === 409 && isTaxCodeConflict(message)) {
-    return 'Mã số thuế này đã tồn tại trong hệ thống. Vui lòng kiểm tra lại hoặc dùng mã số thuế khác.';
-  }
-  if (status === 409) {
-    return 'Thông tin hồ sơ bị trùng với dữ liệu đã có trong hệ thống.';
-  }
-  return message || 'Không thể lưu hồ sơ doanh nghiệp. Vui lòng thử lại.';
-}
-
-function isTaxCodeConflict(message: string) {
-  const text = message.toLowerCase();
-  return (
-    text.includes('tax_code') ||
-    text.includes('tax code') ||
-    text.includes('ma so thue') ||
-    text.includes('mã số thuế')
-  );
-}
-
-function businessProfileToForm(profile: BusinessProfile) {
-  return {
-    taxCode: profile.taxCode || '',
-    companyName: profile.companyName || '',
-    address: profile.address || '',
-    businessLicenseUrl: profile.businessLicenseUrl || '',
-  };
-}
-
-function expertProfileToForm(profile: ExpertProfile) {
-  return {
-    nationalId: profile.nationalId || '',
-    portfolioUrl: profile.portfolioUrl || '',
-    yearsOfExperience:
-      profile.yearsOfExperience == null ? '0' : String(profile.yearsOfExperience),
-  };
-}
-
-function profileStatusLabel(status: string) {
-  const normalized = status.toLowerCase();
-  if (normalized.includes('approved')) return 'Đã xác minh';
-  if (normalized.includes('pending')) return 'Chờ xác minh';
-  if (normalized.includes('rejected')) return 'Bị từ chối';
-  return 'Chưa gửi hồ sơ xác minh';
-}
-
-function isNotFoundError(error: unknown) {
-  return (error as { response?: { status?: number } }).response?.status === 404;
-}
-
-function profileLoadErrorMessage(error: unknown) {
-  const apiError = error as {
-    response?: { data?: { message?: string } };
-    message?: string;
-  };
-  return apiError.response?.data?.message || apiError.message || 'Không thể tải hồ sơ hiện tại.';
-}
-
-function profileSubmitErrorMessage(error: unknown, fallback: string) {
-  const apiError = error as {
-    response?: { data?: { message?: string } };
-    message?: string;
-  };
-  return apiError.response?.data?.message || apiError.message || fallback;
-}
-
 export function ExpertProfilePage() {
-  const [form, setForm] = useState(EMPTY_EXPERT_FORM);
-  const [status, setStatus] = useState(EMPTY_PROFILE_STATUS);
-  const [hasProfile, setHasProfile] = useState(false);
-  const [isEditing, setIsEditing] = useState(true);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [form, setForm] = useState({
+    nationalId: '',
+    portfolioUrl: '',
+    yearsOfExperience: '1',
+  });
+  const [status, setStatus] = useState('Chưa gửi');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadProfile() {
-      try {
-        const profile = await profileApi.myExpertProfile();
-        if (!active) return;
-        setForm(expertProfileToForm(profile));
-        setStatus(profile.kycStatus || 'Approved');
-        setHasProfile(true);
-        setIsEditing(false);
-      } catch (error) {
-        if (!active) return;
-        if (isNotFoundError(error)) {
-          setForm(EMPTY_EXPERT_FORM);
-          setStatus(EMPTY_PROFILE_STATUS);
-          setHasProfile(false);
-          setIsEditing(true);
-        } else {
-          setMessage(profileLoadErrorMessage(error));
-          setIsEditing(false);
-        }
-      } finally {
-        if (active) setLoadingProfile(false);
-      }
-    }
-
-    loadProfile();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!isEditing) return;
     setLoading(true);
-    setMessage('');
-    try {
-      const profile = await profileApi.upsertExpert({
-        nationalId: form.nationalId,
-        portfolioUrl: form.portfolioUrl,
-        yearsOfExperience: Number(form.yearsOfExperience),
-      });
-      setForm(expertProfileToForm(profile));
-      setStatus(profile.kycStatus);
-      setHasProfile(true);
-      setIsEditing(false);
-    } catch (error) {
-      setMessage(profileSubmitErrorMessage(error, 'Không thể lưu hồ sơ chuyên gia. Vui lòng thử lại.'));
-    } finally {
-      setLoading(false);
-    }
+    const profile = await profileApi.upsertExpert({
+      nationalId: form.nationalId,
+      portfolioUrl: form.portfolioUrl,
+      yearsOfExperience: Number(form.yearsOfExperience),
+    });
+    setStatus(profile.kycStatus);
+    const session = getSession();
+    if (session) saveSession({ ...session, accountStatus: 'Pending' });
+    setLoading(false);
   };
-
-  const fieldsDisabled = loadingProfile || !isEditing;
-  const nationalIdDisabled = loadingProfile || hasProfile || !isEditing;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="REG-02 / KYC"
         title="Hồ sơ xác minh chuyên gia"
-        description="Chuyên gia nộp CCCD/hộ chiếu và ảnh đối soát. Sau khi Approved mới nên mở khóa giao dịch."
+        description="Chuyên gia nộp CCCD/hộ chiếu và portfolio URL. Sau khi Approved mới nên mở khóa giao dịch."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
-            {message && <Notice tone="danger" title={message} />}
             <Field label="Số CCCD / Hộ chiếu">
-              <Input
-                value={form.nationalId}
-                onChange={(event) => setForm((value) => ({ ...value, nationalId: event.target.value }))}
-                disabled={nationalIdDisabled}
-                className={LOCKED_FIELD_CLASS}
-                required
-              />
+              <Input value={form.nationalId} onChange={(event) => setForm((value) => ({ ...value, nationalId: event.target.value }))} required />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Portfolio URL">
-                <Input
-                  value={form.portfolioUrl}
-                  onChange={(event) => setForm((value) => ({ ...value, portfolioUrl: event.target.value }))}
-                  disabled={fieldsDisabled}
-                  className={LOCKED_FIELD_CLASS}
-                  required
-                />
+                <Input value={form.portfolioUrl} onChange={(event) => setForm((value) => ({ ...value, portfolioUrl: event.target.value }))} required />
               </Field>
               <Field label="Số năm kinh nghiệm">
-                <Input
-                  type="number"
-                  min="0"
-                  value={form.yearsOfExperience}
-                  onChange={(event) => setForm((value) => ({ ...value, yearsOfExperience: event.target.value }))}
-                  disabled={fieldsDisabled}
-                  className={LOCKED_FIELD_CLASS}
-                  required
-                />
+                <Input type="number" min="0" value={form.yearsOfExperience} onChange={(event) => setForm((value) => ({ ...value, yearsOfExperience: event.target.value }))} required />
               </Field>
             </div>
-            <div className="flex justify-end gap-2">
-              {hasProfile && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsEditing(true)}
-                  disabled={isEditing || loading || loadingProfile}
-                >
-                  <PencilLine className="h-4 w-4" />
-                  Sửa hồ sơ
-                </Button>
-              )}
-              <Button type="submit" loading={loading} disabled={!isEditing || loadingProfile}>
-                <Save className="h-4 w-4" />
-                Lưu hồ sơ
+            <div className="flex justify-end">
+              <Button type="submit" loading={loading}>
+                <ShieldCheck className="h-4 w-4" />
+                Gửi xác minh
               </Button>
             </div>
           </form>
@@ -394,11 +152,10 @@ export function ExpertProfilePage() {
               <div className="mt-1">
                 <StatusBadge status={status} />
               </div>
-              <p className="mt-1 text-xs font-semibold text-slate-500">{profileStatusLabel(status)}</p>
             </div>
           </div>
           <Notice tone="info" title="Bước tiếp theo" className="mt-4">
-            Hoàn thiện Portfolio AI để xuất hiện ở tab AI đề xuất của doanh nghiệp.
+            Hoàn thiện Portfolio AI để doanh nghiệp xem được năng lực khi review proposal.
           </Notice>
         </Card>
       </div>
@@ -408,19 +165,44 @@ export function ExpertProfilePage() {
 
 export function ExpertPortfolioPage() {
   const [form, setForm] = useState({
-    context: '',
-    dataProcessing: '',
-    modelArchitecture: '',
-    performanceMetrics: '',
-    pocUrl: '',
+    yearsExperience: '1',
+    certificates: '',
+    selfDescription: '',
   });
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    Promise.all([catalogApi.listDomains(true), catalogApi.listSkills(true)]).then(([domainItems, skillItems]) => {
+      setDomains(domainItems);
+      setSkills(skillItems);
+      setSelectedDomainIds(domainItems.slice(0, 2).map((item) => item.domainId));
+      setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
+    });
+  }, []);
+
+  const toggleDomain = (domainId: number) => {
+    setSelectedDomainIds((items) => items.includes(domainId) ? items.filter((id) => id !== domainId) : [...items, domainId]);
+  };
+
+  const toggleSkill = (skillId: number) => {
+    setSelectedSkillIds((items) => items.includes(skillId) ? items.filter((id) => id !== skillId) : [...items, skillId]);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    await profileApi.upsertPortfolio(form);
+    await profileApi.upsertPortfolio({
+      domainIds: selectedDomainIds.join(','),
+      skillIds: selectedSkillIds.join(','),
+      yearsExperience: Number(form.yearsExperience),
+      certificates: form.certificates,
+      selfDescription: form.selfDescription,
+    });
     setSaved(true);
     setLoading(false);
   };
@@ -430,25 +212,47 @@ export function ExpertPortfolioPage() {
       <PageHeader
         eyebrow="PRF-01"
         title="Portfolio năng lực AI"
-        description="Bắt buộc theo mô hình 4 thành phần: bối cảnh, xử lý dữ liệu, kiến trúc mô hình và metrics."
+        description="Khai báo lĩnh vực, skill, kinh nghiệm và mô tả bản thân để doanh nghiệp xem khi review proposal."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
-            <Field label="1. Bối cảnh dự án">
-              <Textarea value={form.context} onChange={(event) => setForm((value) => ({ ...value, context: event.target.value }))} required />
-            </Field>
-            <Field label="2. Xử lý dữ liệu">
-              <Textarea value={form.dataProcessing} onChange={(event) => setForm((value) => ({ ...value, dataProcessing: event.target.value }))} required />
-            </Field>
-            <Field label="3. Kiến trúc mô hình">
-              <Textarea value={form.modelArchitecture} onChange={(event) => setForm((value) => ({ ...value, modelArchitecture: event.target.value }))} required />
-            </Field>
-            <Field label="4. Chỉ số hiệu năng">
-              <Textarea value={form.performanceMetrics} onChange={(event) => setForm((value) => ({ ...value, performanceMetrics: event.target.value }))} required />
-            </Field>
-            <Field label="PoC URL">
-              <Input value={form.pocUrl} onChange={(event) => setForm((value) => ({ ...value, pocUrl: event.target.value }))} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Lĩnh vực">
+                <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
+                  <div className="grid gap-2">
+                    {domains.map((domain) => (
+                      <label key={domain.domainId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        <input type="checkbox" checked={selectedDomainIds.includes(domain.domainId)} onChange={() => toggleDomain(domain.domainId)} />
+                        {domain.domainName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </Field>
+              <Field label="Skill">
+                <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
+                  <div className="grid gap-2">
+                    {skills.map((skill) => (
+                      <label key={skill.skillId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        <input type="checkbox" checked={selectedSkillIds.includes(skill.skillId)} onChange={() => toggleSkill(skill.skillId)} />
+                        {skill.skillName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </Field>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Số năm kinh nghiệm">
+                <Input type="number" min="0" value={form.yearsExperience} onChange={(event) => setForm((value) => ({ ...value, yearsExperience: event.target.value }))} required />
+              </Field>
+              <Field label="Chứng chỉ" hint="Tạm thời nhập text, sau này có thể đổi sang Firebase URL.">
+                <Input value={form.certificates} onChange={(event) => setForm((value) => ({ ...value, certificates: event.target.value }))} placeholder="Ví dụ: Google Cloud, AWS, Coursera..." />
+              </Field>
+            </div>
+            <Field label="Mô tả bản thân">
+              <Textarea value={form.selfDescription} onChange={(event) => setForm((value) => ({ ...value, selfDescription: event.target.value }))} required />
             </Field>
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
@@ -459,23 +263,20 @@ export function ExpertPortfolioPage() {
           </form>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Preview matching" description="Thông tin này dùng để so khớp với SoW." />
-          <div className="mt-5 space-y-3">
-            {['RAG', 'LLM', 'Vector DB', 'MLOps'].map((skill) => (
-              <div key={skill} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                <span className="font-bold text-ink">{skill}</span>
-                <span className="text-brand-600">High</span>
-              </div>
+          <SectionHeading title="Preview matching" description="Dữ liệu này sẽ hiển thị trong khung chi tiết chuyên gia của doanh nghiệp." />
+          <div className="mt-5 flex flex-wrap gap-2">
+            {skills.filter((skill) => selectedSkillIds.includes(skill.skillId)).map((skill) => (
+              <Badge key={skill.skillId} tone="brand">{skill.skillName}</Badge>
             ))}
           </div>
           {saved && (
             <Notice tone="success" title="Đã lưu portfolio" className="mt-4">
-              Portfolio đã sẵn sàng cho API matching hiện tại và AI matching sau này.
+              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
             </Notice>
           )}
           <div className="mt-5 flex items-center gap-2 rounded-2xl bg-brand-50 p-3 text-sm font-semibold text-brand-700">
             <Link2 className="h-4 w-4" />
-            {form.pocUrl || 'Chưa có PoC URL'}
+            {form.certificates || 'Chưa có chứng chỉ'}
           </div>
         </Card>
       </div>

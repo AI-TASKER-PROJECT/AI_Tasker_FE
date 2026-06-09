@@ -6,7 +6,13 @@ import {
   UserRoundCheck,
   CheckCircle2,
 } from "lucide-react";
-import { FormEvent, useCallback, useState, useEffect, type ReactNode } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { GoogleAuthButton } from "../components/GoogleAuthButton";
 import { Logo } from "../components/Logo";
@@ -125,12 +131,14 @@ export function RegisterPage() {
     fullName: "",
     phone: "",
     role: "BUSINESS" as "BUSINESS" | "EXPERT",
-    otp: "", 
+    otp: "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<"danger" | "success">("danger");
-  
+  const [messageTone, setMessageTone] = useState<"danger" | "success">(
+    "danger",
+  );
+
   // State lưu thời gian đếm ngược
   const [countdown, setCountdown] = useState(0);
 
@@ -144,7 +152,7 @@ export function RegisterPage() {
         setCountdown((prev) => prev - 1);
       }, 1000);
     }
-    
+
     return () => clearInterval(timer);
   }, [step, countdown]);
 
@@ -161,18 +169,22 @@ export function RegisterPage() {
       });
 
       setStep("OTP");
-      
+
       // Lấy thời gian từ Back-end (phòng hờ cấu trúc trả về là response.data hoặc response trực tiếp)
-      setCountdown((response as any)?.data?.expiresIn || (response as any)?.expiresIn || 60);
+      setCountdown(
+        (response as any)?.data?.expiresIn ||
+          (response as any)?.expiresIn ||
+          60,
+      );
 
       setMessageTone("success");
       setMessage(
-        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`
+        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
       );
     } catch {
       setMessageTone("danger");
       setMessage(
-        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end."
+        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end.",
       );
     } finally {
       setLoading(false);
@@ -190,7 +202,11 @@ export function RegisterPage() {
         email: form.email.trim().toLowerCase(),
       });
 
-      setCountdown((response as any)?.data?.expiresIn || (response as any)?.expiresIn || 60);
+      setCountdown(
+        (response as any)?.data?.expiresIn ||
+          (response as any)?.expiresIn ||
+          60,
+      );
 
       setMessageTone("success");
       setMessage("Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.");
@@ -230,12 +246,12 @@ export function RegisterPage() {
       navigate(
         form.role === "BUSINESS"
           ? "/app/business/profile"
-          : "/app/expert/profile"
+          : "/app/expert/profile",
       );
-    } catch (error) {
+    } catch {
       setMessageTone("danger");
       setMessage(
-        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email đã tồn tại."
+        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email đã tồn tại.",
       );
     } finally {
       setLoading(false);
@@ -392,7 +408,8 @@ export function RegisterPage() {
             <div className="text-center text-sm my-1">
               {countdown > 0 ? (
                 <span className="text-slate-500">
-                  Chưa nhận được mã? Gửi lại sau <strong className="text-slate-700">{countdown}s</strong>
+                  Chưa nhận được mã? Gửi lại sau{" "}
+                  <strong className="text-slate-700">{countdown}s</strong>
                 </span>
               ) : (
                 <button

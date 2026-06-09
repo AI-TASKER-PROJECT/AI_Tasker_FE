@@ -133,23 +133,11 @@ export const profileApi = {
       data: payload,
     });
   },
-  myBusinessProfile() {
-    return call<BusinessProfile>({
-      method: "GET",
-      url: "/api/v1/profiles/business/me",
-    });
-  },
   upsertExpert(payload: Partial<ExpertProfile>) {
     return call<ExpertProfile>({
       method: "POST",
       url: "/api/v1/profiles/expert",
       data: payload,
-    });
-  },
-  myExpertProfile() {
-    return call<ExpertProfile>({
-      method: "GET",
-      url: "/api/v1/profiles/expert/me",
     });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
@@ -292,6 +280,9 @@ export const marketplaceApi = {
   listJobs() {
     return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });
   },
+  listMyJobs() {
+    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs/my' });
+  },
   getJob(jobId: number) {
     return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` });
   },
@@ -318,7 +309,10 @@ export const marketplaceApi = {
       url: `/api/v1/jobs/${jobId}/proposals`,
     });
   },
-  reviewProposal(proposalId: number, status: "Accepted" | "Rejected") {
+  listMyProposals() {
+    return call<Proposal[]>({ method: 'GET', url: '/api/v1/proposals/my' });
+  },
+  reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
     return call<Proposal>({
       method: "PATCH",
       url: `/api/v1/proposals/${proposalId}/status`,
