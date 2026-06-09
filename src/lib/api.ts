@@ -19,6 +19,7 @@ import type {
   Staff,
   SystemSetting,
   SystemWallet,
+  TaxCheckResponse,
   Transaction,
 } from '../types';
 import { getSession } from './session';
@@ -94,9 +95,12 @@ export const authApi = {
     return call<SessionUser>({ method: 'POST', url: '/api/auth/register', data: payload });
   },
   googleLogin(_credential: string) {
+    void _credential;
     return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
   },
   googleRegister(_credential: string, _role: 'BUSINESS' | 'EXPERT') {
+    void _credential;
+    void _role;
     return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
   },
 };
@@ -126,6 +130,18 @@ export const profileApi = {
       url: `/api/v1/profiles/approve/${type}/${profileId}`,
       params: { status },
     });
+  },
+  async checkTaxCode(taxCode: string) {
+    const response = await api.request<TaxCheckResponse | ApiResponse<TaxCheckResponse>>({
+      method: 'GET',
+      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,
+    });
+    const body = response.data;
+    setDataMode('live');
+    if (body && typeof body === 'object' && 'data' in body && 'success' in body) {
+      return (body as ApiResponse<TaxCheckResponse>).data;
+    }
+    return body as TaxCheckResponse;
   },
 };
 

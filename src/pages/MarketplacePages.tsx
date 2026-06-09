@@ -292,7 +292,7 @@ export function CreateJobPage() {
                 required
               />
             </Field>
-            <Field label="Yêu cầu thô">
+            <Field label="Yêu cầu dự án">
               <Textarea
                 value={form.rawRequirements}
                 onChange={(event) =>
@@ -575,36 +575,39 @@ export function SubmitProposalPage() {
   const numericJobId = Number(jobId);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [savedProposal, setSavedProposal] = useState<Proposal | null>(null);
   const [form, setForm] = useState({
-    bidAmount: '',
-    technicalSolution: '',
-    projectIntention: '',
+    bidAmount: "",
+    technicalSolution: "",
+    projectIntention: "",
   });
 
   useEffect(() => {
-    marketplaceApi.getJob(numericJobId).then(setJob).catch(() => setJob(null));
+    marketplaceApi
+      .getJob(numericJobId)
+      .then(setJob)
+      .catch(() => setJob(null));
   }, [numericJobId]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (session?.role !== 'EXPERT') {
-      setMessage('Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.');
+    if (session?.role !== "EXPERT") {
+      setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
       return;
     }
     const bidAmount = Number(form.bidAmount);
     if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
-      setMessage('bid_amount phải là số lớn hơn 0.');
+      setMessage("bid_amount phải là số lớn hơn 0.");
       return;
     }
     if (!form.technicalSolution.trim()) {
-      setMessage('technical_solution không được để trống.');
+      setMessage("technical_solution không được để trống.");
       return;
     }
 
     setLoading(true);
-    setMessage('');
+    setMessage("");
     try {
       const proposal = await marketplaceApi.submitProposal({
         jobId: numericJobId,
@@ -612,17 +615,29 @@ export function SubmitProposalPage() {
         technicalSolution: form.technicalSolution.trim(),
       });
       setSavedProposal(proposal);
-      setMessage('Đã gửi proposal thành công.');
+      setMessage("Đã gửi proposal thành công.");
     } catch (error) {
-      const apiError = error as { response?: { data?: { message?: string } }; message?: string };
-      setMessage(apiError.response?.data?.message || apiError.message || 'Không thể gửi proposal.');
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      setMessage(
+        apiError.response?.data?.message ||
+          apiError.message ||
+          "Không thể gửi proposal.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   if (!job) {
-    return <EmptyState title="Không tìm thấy dự án" description="Dữ liệu job được tải trực tiếp từ backend." />;
+    return (
+      <EmptyState
+        title="Không tìm thấy dự án"
+        description="Dữ liệu job được tải trực tiếp từ backend."
+      />
+    );
   }
 
   return (
@@ -631,16 +646,26 @@ export function SubmitProposalPage() {
         eyebrow="MATCH-02"
         title="Nộp báo giá dự thầu"
         description={job.title}
-        actions={<LinkButton to={`/jobs/${job.jobId}`} variant="secondary">Quay lại job</LinkButton>}
+        actions={
+          <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+            Quay lại job
+          </LinkButton>
+        }
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-5">
             {message && (
-              <Notice tone={savedProposal ? 'success' : 'warning'} title={message} />
+              <Notice
+                tone={savedProposal ? "success" : "warning"}
+                title={message}
+              />
             )}
-            {session?.role !== 'EXPERT' && (
-              <Notice tone="danger" title="Tài khoản hiện tại không phải Chuyên gia">
+            {session?.role !== "EXPERT" && (
+              <Notice
+                tone="danger"
+                title="Tài khoản hiện tại không phải Chuyên gia"
+              >
                 Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
               </Notice>
             )}
@@ -649,7 +674,12 @@ export function SubmitProposalPage() {
                 type="number"
                 min={1}
                 value={form.bidAmount}
-                onChange={(event) => setForm((value) => ({ ...value, bidAmount: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    bidAmount: event.target.value,
+                  }))
+                }
                 placeholder="Ví dụ: 165000000"
                 required
               />
@@ -657,7 +687,12 @@ export function SubmitProposalPage() {
             <Field label="technical_solution">
               <Textarea
                 value={form.technicalSolution}
-                onChange={(event) => setForm((value) => ({ ...value, technicalSolution: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    technicalSolution: event.target.value,
+                  }))
+                }
                 placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
                 required
               />
@@ -665,15 +700,28 @@ export function SubmitProposalPage() {
             <Field label="Mô tả dự định của chuyên gia đối với dự án">
               <Textarea
                 value={form.projectIntention}
-                onChange={(event) => setForm((value) => ({ ...value, projectIntention: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    projectIntention: event.target.value,
+                  }))
+                }
                 placeholder="Bạn sẽ tiếp cận dự án như thế nào, ưu tiên rủi ro nào, kế hoạch phối hợp với doanh nghiệp ra sao."
               />
             </Field>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => navigate('/app/opportunities')}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigate("/app/opportunities")}
+              >
                 Hủy
               </Button>
-              <Button type="submit" loading={loading} disabled={session?.role !== 'EXPERT'}>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={session?.role !== "EXPERT"}
+              >
                 <Save className="h-4 w-4" />
                 Gửi proposal
               </Button>
@@ -687,20 +735,29 @@ export function SubmitProposalPage() {
             <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-500">Ngân sách</span>
-                <span className="font-extrabold text-ink">{formatCurrency(job.budget)}</span>
+                <span className="font-extrabold text-ink">
+                  {formatCurrency(job.budget)}
+                </span>
               </div>
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-500">AI tag</span>
-                <span className="font-extrabold text-ink">{job.aiTag || 'General AI'}</span>
+                <span className="font-extrabold text-ink">
+                  {job.aiTag || "General AI"}
+                </span>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">{job.structuredSow || job.rawRequirements}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              {job.structuredSow || job.rawRequirements}
+            </p>
           </Card>
           {savedProposal && (
             <Card className="p-5">
               <SectionHeading title="Proposal đã gửi" />
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <p><span className="font-bold text-ink">bid_amount:</span> {formatCurrency(savedProposal.bidAmount)}</p>
+                <p>
+                  <span className="font-bold text-ink">bid_amount:</span>{" "}
+                  {formatCurrency(savedProposal.bidAmount)}
+                </p>
               </div>
               <div className="mt-4">
                 <LinkButton to="/app/proposals" variant="secondary">
@@ -909,8 +966,10 @@ function ProposalCard({
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailMessage, setDetailMessage] = useState('');
-  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
+  const [detailMessage, setDetailMessage] = useState("");
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
+    null,
+  );
   const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
 
@@ -920,29 +979,41 @@ function ProposalCard({
 
     async function loadExpertDetail() {
       setDetailLoading(true);
-      setDetailMessage('');
-      const [expertsResult, portfoliosResult, accountsResult] = await Promise.allSettled([
-        profileApi.listExperts(),
-        profileApi.listPortfolios(),
-        adminApi.listAccounts(),
-      ]);
+      setDetailMessage("");
+      const [expertsResult, portfoliosResult, accountsResult] =
+        await Promise.allSettled([
+          profileApi.listExperts(),
+          profileApi.listPortfolios(),
+          adminApi.listAccounts(),
+        ]);
 
       if (ignore) return;
 
-      const experts = expertsResult.status === 'fulfilled' ? expertsResult.value : [];
-      const portfolios = portfoliosResult.status === 'fulfilled' ? portfoliosResult.value : [];
-      const accounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
-      const profile = experts.find((item) => item.expertId === proposal.expertId) || null;
-      const matchedPortfolio = portfolios.find((item) => item.expertId === proposal.expertId) || null;
-      const account = profile ? accounts.find((item) => item.accountId === profile.accountId) || null : null;
+      const experts =
+        expertsResult.status === "fulfilled" ? expertsResult.value : [];
+      const portfolios =
+        portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
+      const accounts =
+        accountsResult.status === "fulfilled" ? accountsResult.value : [];
+      const profile =
+        experts.find((item) => item.expertId === proposal.expertId) || null;
+      const matchedPortfolio =
+        portfolios.find((item) => item.expertId === proposal.expertId) || null;
+      const account = profile
+        ? accounts.find((item) => item.accountId === profile.accountId) || null
+        : null;
 
       setExpertProfile(profile);
       setPortfolio(matchedPortfolio);
       setExpertAccount(account);
       setDetailLoading(false);
 
-      if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected' || accountsResult.status === 'rejected') {
-        setDetailMessage('Một số thông tin chưa lấy được từ API hiện tại.');
+      if (
+        expertsResult.status === "rejected" ||
+        portfoliosResult.status === "rejected" ||
+        accountsResult.status === "rejected"
+      ) {
+        setDetailMessage("Một số thông tin chưa lấy được từ API hiện tại.");
       }
     }
 
@@ -952,8 +1023,12 @@ function ProposalCard({
     };
   }, [expertOpen, proposal.expertId]);
 
-  const expertName = expertAccount?.fullName || expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
-  const expertPhone = expertAccount?.phone || 'Chưa có dữ liệu';
+  const expertName =
+    expertAccount?.fullName ||
+    expertProfile?.fullName ||
+    proposal.expertName ||
+    `Expert #${proposal.expertId}`;
+  const expertPhone = expertAccount?.phone || "Chưa có dữ liệu";
 
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">
@@ -995,7 +1070,11 @@ function ProposalCard({
           <Star className="h-3.5 w-3.5" />
           {proposal.rating || 4.8}
         </Badge>
-        <Button variant="secondary" size="sm" onClick={() => setExpertOpen(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setExpertOpen(true)}
+        >
           <Eye className="h-4 w-4" />
           Xem chi tiết
         </Button>
@@ -1024,9 +1103,17 @@ function ProposalCard({
           <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
             <Avatar name={expertName} size="xl" />
             <div className="min-w-0">
-              <p className="font-display text-2xl font-black text-ink">{expertName}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{expertPhone}</p>
-              {detailLoading && <p className="mt-2 text-xs font-bold text-brand-600">Đang tải hồ sơ...</p>}
+              <p className="font-display text-2xl font-black text-ink">
+                {expertName}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {expertPhone}
+              </p>
+              {detailLoading && (
+                <p className="mt-2 text-xs font-bold text-brand-600">
+                  Đang tải hồ sơ...
+                </p>
+              )}
             </div>
           </div>
 
@@ -1035,13 +1122,35 @@ function ProposalCard({
             <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
           </div>
 
-          <SectionHeading title="Portfolio" description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng." />
+          <SectionHeading
+            title="Portfolio"
+            description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng."
+          />
           <div className="grid gap-3">
-            <ExpertInfoItem label="context" value={portfolio?.context || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="data_processing" value={portfolio?.dataProcessing || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="model_architecture" value={portfolio?.modelArchitecture || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="performance_metrics" value={portfolio?.performanceMetrics || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="poc_url" value={portfolio?.pocUrl || 'Chưa có dữ liệu'} />
+            <ExpertInfoItem
+              label="context"
+              value={portfolio?.context || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="data_processing"
+              value={portfolio?.dataProcessing || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="model_architecture"
+              value={portfolio?.modelArchitecture || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="performance_metrics"
+              value={portfolio?.performanceMetrics || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="poc_url"
+              value={portfolio?.pocUrl || "Chưa có dữ liệu"}
+            />
           </div>
         </div>
       </Modal>
@@ -1049,11 +1158,27 @@ function ProposalCard({
   );
 }
 
-function ExpertInfoItem({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+function ExpertInfoItem({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4">
-      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={multiline ? 'mt-2 text-sm leading-6 text-slate-700' : 'mt-2 break-words text-sm font-extrabold text-ink'}>
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p
+        className={
+          multiline
+            ? "mt-2 text-sm leading-6 text-slate-700"
+            : "mt-2 break-words text-sm font-extrabold text-ink"
+        }
+      >
         {value}
       </p>
     </div>
