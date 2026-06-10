@@ -157,15 +157,32 @@ export function RegisterPage() {
   }, [step, countdown]);
 
   // =========================================================================
-  // ĐĂNG KÝ BƯỚC 1: Gửi thông tin & Nhận OTP (Lấy thời gian từ BE)
+  // ĐĂNG KÝ BƯỚC 1: Kiểm tra Email -> Gửi thông tin & Nhận OTP
   // =========================================================================
   const handleRegisterSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    
+    const normalizedEmail = form.email.trim().toLowerCase();
+
     try {
+      // 1. Gọi API kiểm tra email trước
+      // LƯU Ý: Đảm bảo authApi.checkEmail trả về đúng giá trị data từ axios
+      const isEmailAvailable = await authApi.checkEmail(normalizedEmail);
+      
+      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
+      // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
+      if (!isEmailAvailable /* hoặc !isEmailAvailable.data */) {
+        setMessageTone("danger");
+        setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
+        setLoading(false);
+        return; // Dừng lại, không gửi OTP
+      }
+
+      // 2. Nếu email hợp lệ, tiếp tục gửi OTP
       const response = await authApi.sendOtp({
-        email: form.email.trim().toLowerCase(),
+        email: normalizedEmail,
       });
 
       setStep("OTP");
@@ -190,7 +207,6 @@ export function RegisterPage() {
       setLoading(false);
     }
   };
-
   // =========================================================================
   // XỬ LÝ GỬI LẠI MÃ OTP
   // =========================================================================
