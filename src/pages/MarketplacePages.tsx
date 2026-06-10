@@ -11,11 +11,10 @@ import {
   Star,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import {
   catalogApi,
-  adminApi,
   contractApi,
   marketplaceApi,
   profileApi,
@@ -24,8 +23,8 @@ import {
 } from "../lib/api";
 import { formatCompactCurrency, formatCurrency } from "../lib/utils";
 import { useSession } from "../lib/session";
+import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import type {
-  AdminAccount,
   ExpertProfile,
   Job,
   Portfolio,
@@ -1038,7 +1037,6 @@ function ProposalCard({
   const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
     null,
   );
-  const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -1050,11 +1048,10 @@ function ProposalCard({
     async function loadExpertDetail() {
       setDetailLoading(true);
       setDetailMessage("");
-      const [expertsResult, portfoliosResult, accountsResult] =
+      const [expertsResult, portfoliosResult] =
         await Promise.allSettled([
           profileApi.listExperts(),
           profileApi.listPortfolios(),
-          adminApi.listAccounts(),
         ]);
       const [domainsResult, skillsResult] = await Promise.allSettled([
         catalogApi.listDomains(true),
@@ -1067,19 +1064,13 @@ function ProposalCard({
         expertsResult.status === "fulfilled" ? expertsResult.value : [];
       const portfolios =
         portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
-      const accounts =
-        accountsResult.status === "fulfilled" ? accountsResult.value : [];
       const profile =
         experts.find((item) => item.expertId === proposal.expertId) || null;
       const matchedPortfolio =
         portfolios.find((item) => item.expertId === proposal.expertId) || null;
-      const account = profile
-        ? accounts.find((item) => item.accountId === profile.accountId) || null
-        : null;
 
       setExpertProfile(profile);
       setPortfolio(matchedPortfolio);
-      setExpertAccount(account);
       setDomains(
         domainsResult.status === "fulfilled" ? domainsResult.value : [],
       );
@@ -1088,8 +1079,7 @@ function ProposalCard({
 
       if (
         expertsResult.status === "rejected" ||
-        portfoliosResult.status === "rejected" ||
-        accountsResult.status === "rejected"
+        portfoliosResult.status === "rejected"
       ) {
         setDetailMessage("Một số thông tin chưa lấy được từ API hiện tại.");
       }
@@ -1102,7 +1092,6 @@ function ProposalCard({
   }, [expertOpen, proposal.expertId]);
 
   const expertName =
-    expertAccount?.fullName ||
     expertProfile?.fullName ||
     proposal.expertName ||
     `Expert #${proposal.expertId}`;
@@ -1118,7 +1107,7 @@ function ProposalCard({
     "skillId",
     "skillName",
   );
-  const expertPhone = expertAccount?.phone || "Chưa có dữ liệu";
+  const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
 
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">
@@ -1235,11 +1224,13 @@ function ProposalCard({
                   : "Chưa có dữ liệu"
               }
             />
-            <ExpertInfoItem
-              label="Chứng chỉ"
-              value={portfolio?.certificates || "Chưa có dữ liệu"}
-              multiline
-            />
+            <ExpertInfoBlock label="Chứng chỉ">
+              <FirebaseFileLink
+                path={portfolio?.certificates}
+                emptyText="Chưa có chứng chỉ"
+                buttonText="Xem chứng chỉ"
+              />
+            </ExpertInfoBlock>
             <ExpertInfoItem
               label="Mô tả bản thân"
               value={portfolio?.selfDescription || "Chưa có dữ liệu"}
@@ -1297,6 +1288,23 @@ function ExpertInfoItem({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function ExpertInfoBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
