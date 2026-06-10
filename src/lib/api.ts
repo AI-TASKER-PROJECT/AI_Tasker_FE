@@ -33,6 +33,11 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  } else if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
   return config;
 });
 
@@ -133,6 +138,15 @@ export const profileApi = {
       data: payload,
     });
   },
+  uploadBusinessLicense(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/business/license-file',
+      data: formData,
+    });
+  },
   upsertExpert(payload: Partial<ExpertProfile>) {
     return call<ExpertProfile>({
       method: "POST",
@@ -145,6 +159,15 @@ export const profileApi = {
       method: "POST",
       url: "/api/v1/profiles/portfolio",
       data: payload,
+    });
+  },
+  uploadExpertCertificate(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/portfolio/certificate-file',
+      data: formData,
     });
   },
   listBusinesses() {
