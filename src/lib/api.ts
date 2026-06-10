@@ -79,6 +79,18 @@ export interface JobSkill {
   minYearsExperience?: number;
   createdAt?: string;
 }
+export interface ChatbotResponse {
+  answer: string;
+  sources: string[];
+}
+
+export const chatbotApi = {
+  ask(question: string) {
+    return api
+      .post<ChatbotResponse>('/api/chatbot/ask', { question })
+      .then((response) => response.data);
+  },
+};
 
 export const authApi = {
   login(payload: { email: string; password: string }) {
@@ -87,7 +99,7 @@ export const authApi = {
   checkEmail(email: string) {
     return call<boolean>({ 
       method: 'GET', 
-      url: '/api/auth/check-email', // Đảm bảo đường dẫn này khớp với backend của bạn
+      url: '/api/auth/check-email', 
       params: { email } 
     });
   },

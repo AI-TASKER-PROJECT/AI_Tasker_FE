@@ -28,6 +28,7 @@ import { clearSession, roleLabel, useSession } from '../lib/session';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
 import { Avatar, Badge, Button } from './ui';
+import { ChatBox } from './ChatBox';
 
 type NavItem = { label: string; to: string; icon: ReactNode };
 
@@ -277,6 +278,7 @@ export function AppShell() {
           </div>
         </div>
       )}
+      <ChatBox />
     </div>
   );
 }
