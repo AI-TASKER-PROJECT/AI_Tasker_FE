@@ -84,6 +84,13 @@ export const authApi = {
   login(payload: { email: string; password: string }) {
     return call<SessionUser>({ method: 'POST', url: '/api/auth/login', data: payload });
   },
+  checkEmail(email: string) {
+    return call<boolean>({ 
+      method: 'GET', 
+      url: '/api/auth/check-email', // Đảm bảo đường dẫn này khớp với backend của bạn
+      params: { email } 
+    });
+  },
   sendOtp(payload: { email: string }) {
     //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload }); 
     return call<{ expiresIn: number }>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });

@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   CheckCircle2,
+  Eye,
   FileCheck2,
   Lightbulb,
   Plus,
@@ -14,13 +15,22 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   catalogApi,
+  adminApi,
   contractApi,
   marketplaceApi,
+  profileApi,
   type Domain,
   type Skill,
 } from "../lib/api";
 import { formatCompactCurrency, formatCurrency } from "../lib/utils";
-import type { Job, Proposal } from "../types";
+import { useSession } from "../lib/session";
+import type {
+  AdminAccount,
+  ExpertProfile,
+  Job,
+  Portfolio,
+  Proposal,
+} from "../types";
 import {
   Avatar,
   Badge,
@@ -40,6 +50,7 @@ import {
   Textarea,
 } from "../components/ui";
 import { JobCard } from "./PublicPages";
+import { useNavigate } from "react-router-dom";
 
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -221,42 +232,45 @@ export function CreateJobPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const aiTag = domains
-      .filter((domain) => selectedDomainIds.includes(domain.domainId))
-      .map((domain) => domain.domainCode)
-      .join(",");
-    const job = await marketplaceApi.createJob({
-      title: form.title,
-      rawRequirements: form.rawRequirements,
-      structuredSow: form.structuredSow,
-      aiTag: aiTag || form.aiTag,
-      budget: Number(form.budget),
-      plannedDurationValue: Number(form.plannedDurationValue),
-      plannedDurationUnit: form.plannedDurationUnit,
-      status: form.status,
-    });
-    await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
-    await catalogApi.replaceJobSkills(
-      job.jobId,
-      selectedSkillIds.map((skillId) => ({
-        skillId,
-        requiredLevel: "Intermediate",
-        isMandatory: true,
-        minYearsExperience: 1,
-      })),
-    );
-    for (const milestone of milestones) {
-      if (!milestone.milestoneName.trim()) continue;
-      await contractApi.createMilestone({
-        jobId: job.jobId,
-        milestoneName: milestone.milestoneName,
-        fundsAllocated: Number(milestone.fundsAllocated || 0),
-        orderIndex: Number(milestone.orderIndex || 1),
-        status: "Pending",
+    try {
+      const aiTag = domains
+        .filter((domain) => selectedDomainIds.includes(domain.domainId))
+        .map((domain) => domain.domainCode)
+        .join(",");
+      const job = await marketplaceApi.createJob({
+        title: form.title,
+        rawRequirements: form.rawRequirements,
+        structuredSow: form.structuredSow,
+        aiTag: aiTag || form.aiTag,
+        budget: Number(form.budget),
+        plannedDurationValue: Number(form.plannedDurationValue),
+        plannedDurationUnit: form.plannedDurationUnit,
+        status: form.status,
       });
+      await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
+      await catalogApi.replaceJobSkills(
+        job.jobId,
+        selectedSkillIds.map((skillId) => ({
+          skillId,
+          requiredLevel: "Intermediate",
+          isMandatory: true,
+          minYearsExperience: 1,
+        })),
+      );
+      for (const milestone of milestones) {
+        if (!milestone.milestoneName.trim()) continue;
+        await contractApi.createMilestone({
+          jobId: job.jobId,
+          milestoneName: milestone.milestoneName,
+          fundsAllocated: Number(milestone.fundsAllocated || 0),
+          orderIndex: Number(milestone.orderIndex || 1),
+          status: "Pending",
+        });
+      }
+      setSavedJob(job);
+    } finally {
+      setLoading(false);
     }
-    setSavedJob(job);
-    setLoading(false);
   };
 
   return (
@@ -554,6 +568,153 @@ export function CreateJobPage() {
   );
 }
 
+export function SubmitProposalPage() {
+  const { jobId } = useParams();
+  const navigate = useNavigate();
+  const session = useSession();
+  const numericJobId = Number(jobId);
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [savedProposal, setSavedProposal] = useState<Proposal | null>(null);
+  const [form, setForm] = useState({
+    bidAmount: '',
+    technicalSolution: '',
+    projectIntention: '',
+  });
+
+  useEffect(() => {
+    marketplaceApi.getJob(numericJobId).then(setJob).catch(() => setJob(null));
+  }, [numericJobId]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (session?.role !== 'EXPERT') {
+      setMessage('Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.');
+      return;
+    }
+    const bidAmount = Number(form.bidAmount);
+    if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
+      setMessage('bid_amount phải là số lớn hơn 0.');
+      return;
+    }
+    if (!form.technicalSolution.trim()) {
+      setMessage('technical_solution không được để trống.');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+    try {
+      const proposal = await marketplaceApi.submitProposal({
+        jobId: numericJobId,
+        bidAmount,
+        technicalSolution: form.technicalSolution.trim(),
+      });
+      setSavedProposal(proposal);
+      setMessage('Đã gửi proposal thành công.');
+    } catch (error) {
+      const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+      setMessage(apiError.response?.data?.message || apiError.message || 'Không thể gửi proposal.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!job) {
+    return <EmptyState title="Không tìm thấy dự án" description="Dữ liệu job được tải trực tiếp từ backend." />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="MATCH-02"
+        title="Nộp báo giá dự thầu"
+        description={job.title}
+        actions={<LinkButton to={`/jobs/${job.jobId}`} variant="secondary">Quay lại job</LinkButton>}
+      />
+      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+        <Card className="p-6">
+          <form onSubmit={submit} className="grid gap-5">
+            {message && (
+              <Notice tone={savedProposal ? 'success' : 'warning'} title={message} />
+            )}
+            {session?.role !== 'EXPERT' && (
+              <Notice tone="danger" title="Tài khoản hiện tại không phải Chuyên gia">
+                Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
+              </Notice>
+            )}
+            <Field label="bid_amount">
+              <Input
+                type="number"
+                min={1}
+                value={form.bidAmount}
+                onChange={(event) => setForm((value) => ({ ...value, bidAmount: event.target.value }))}
+                placeholder="Ví dụ: 165000000"
+                required
+              />
+            </Field>
+            <Field label="technical_solution">
+              <Textarea
+                value={form.technicalSolution}
+                onChange={(event) => setForm((value) => ({ ...value, technicalSolution: event.target.value }))}
+                placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
+                required
+              />
+            </Field>
+            <Field label="Mô tả dự định của chuyên gia đối với dự án">
+              <Textarea
+                value={form.projectIntention}
+                onChange={(event) => setForm((value) => ({ ...value, projectIntention: event.target.value }))}
+                placeholder="Bạn sẽ tiếp cận dự án như thế nào, ưu tiên rủi ro nào, kế hoạch phối hợp với doanh nghiệp ra sao."
+              />
+            </Field>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => navigate('/app/opportunities')}>
+                Hủy
+              </Button>
+              <Button type="submit" loading={loading} disabled={session?.role !== 'EXPERT'}>
+                <Save className="h-4 w-4" />
+                Gửi proposal
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        <aside className="space-y-4">
+          <Card className="p-5">
+            <SectionHeading title="Tóm tắt dự án" />
+            <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
+              <div className="flex justify-between gap-4 text-sm">
+                <span className="text-slate-500">Ngân sách</span>
+                <span className="font-extrabold text-ink">{formatCurrency(job.budget)}</span>
+              </div>
+              <div className="flex justify-between gap-4 text-sm">
+                <span className="text-slate-500">AI tag</span>
+                <span className="font-extrabold text-ink">{job.aiTag || 'General AI'}</span>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-slate-600">{job.structuredSow || job.rawRequirements}</p>
+          </Card>
+          {savedProposal && (
+            <Card className="p-5">
+              <SectionHeading title="Proposal đã gửi" />
+              <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                <p><span className="font-bold text-ink">bid_amount:</span> {formatCurrency(savedProposal.bidAmount)}</p>
+              </div>
+              <div className="mt-4">
+                <LinkButton to="/app/proposals" variant="secondary">
+                  Xem proposal của tôi
+                </LinkButton>
+              </div>
+            </Card>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export function ManageJobPage() {
   const { jobId } = useParams();
   const [job, setJob] = useState<Job | null>(null);
@@ -746,6 +907,54 @@ function ProposalCard({
   onReject: () => void;
   onContract: () => void;
 }) {
+  const [expertOpen, setExpertOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailMessage, setDetailMessage] = useState('');
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
+  const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+
+  useEffect(() => {
+    if (!expertOpen) return;
+    let ignore = false;
+
+    async function loadExpertDetail() {
+      setDetailLoading(true);
+      setDetailMessage('');
+      const [expertsResult, portfoliosResult, accountsResult] = await Promise.allSettled([
+        profileApi.listExperts(),
+        profileApi.listPortfolios(),
+        adminApi.listAccounts(),
+      ]);
+
+      if (ignore) return;
+
+      const experts = expertsResult.status === 'fulfilled' ? expertsResult.value : [];
+      const portfolios = portfoliosResult.status === 'fulfilled' ? portfoliosResult.value : [];
+      const accounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
+      const profile = experts.find((item) => item.expertId === proposal.expertId) || null;
+      const matchedPortfolio = portfolios.find((item) => item.expertId === proposal.expertId) || null;
+      const account = profile ? accounts.find((item) => item.accountId === profile.accountId) || null : null;
+
+      setExpertProfile(profile);
+      setPortfolio(matchedPortfolio);
+      setExpertAccount(account);
+      setDetailLoading(false);
+
+      if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected' || accountsResult.status === 'rejected') {
+        setDetailMessage('Một số thông tin chưa lấy được từ API hiện tại.');
+      }
+    }
+
+    loadExpertDetail();
+    return () => {
+      ignore = true;
+    };
+  }, [expertOpen, proposal.expertId]);
+
+  const expertName = expertAccount?.fullName || expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
+  const expertPhone = expertAccount?.phone || 'Chưa có dữ liệu';
+
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -786,6 +995,10 @@ function ProposalCard({
           <Star className="h-3.5 w-3.5" />
           {proposal.rating || 4.8}
         </Badge>
+        <Button variant="secondary" size="sm" onClick={() => setExpertOpen(true)}>
+          <Eye className="h-4 w-4" />
+          Xem chi tiết
+        </Button>
         <Button variant="success" size="sm" onClick={onAccept}>
           <CheckCircle2 className="h-4 w-4" />
           Accept
@@ -799,6 +1012,50 @@ function ProposalCard({
           Tạo contract
         </Button>
       </div>
+      <Modal
+        open={expertOpen}
+        onClose={() => setExpertOpen(false)}
+        title="Thông tin chuyên gia"
+        description="Profile và portfolio của chuyên gia gửi proposal."
+        size="lg"
+      >
+        <div className="grid gap-5">
+          {detailMessage && <Notice tone="warning" title={detailMessage} />}
+          <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
+            <Avatar name={expertName} size="xl" />
+            <div className="min-w-0">
+              <p className="font-display text-2xl font-black text-ink">{expertName}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{expertPhone}</p>
+              {detailLoading && <p className="mt-2 text-xs font-bold text-brand-600">Đang tải hồ sơ...</p>}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
+            <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
+          </div>
+
+          <SectionHeading title="Portfolio" description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng." />
+          <div className="grid gap-3">
+            <ExpertInfoItem label="context" value={portfolio?.context || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="data_processing" value={portfolio?.dataProcessing || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="model_architecture" value={portfolio?.modelArchitecture || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="performance_metrics" value={portfolio?.performanceMetrics || 'Chưa có dữ liệu'} multiline />
+            <ExpertInfoItem label="poc_url" value={portfolio?.pocUrl || 'Chưa có dữ liệu'} />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function ExpertInfoItem({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={multiline ? 'mt-2 text-sm leading-6 text-slate-700' : 'mt-2 break-words text-sm font-extrabold text-ink'}>
+        {value}
+      </p>
     </div>
   );
 }

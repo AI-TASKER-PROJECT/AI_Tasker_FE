@@ -149,36 +149,45 @@ export function RegisterPage() {
   }, [step, countdown]);
 
   // =========================================================================
-  // ĐĂNG KÝ BƯỚC 1: Gửi thông tin & Nhận OTP (Lấy thời gian từ BE)
+  // ĐĂNG KÝ BƯỚC 1: Kiểm tra Email -> Gửi thông tin & Nhận OTP
   // =========================================================================
   const handleRegisterSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    
+    const normalizedEmail = form.email.trim().toLowerCase();
+
     try {
+      // 1. Gọi API kiểm tra email trước
+      // LƯU Ý: Đảm bảo authApi.checkEmail trả về đúng giá trị data từ axios
+      const isEmailAvailable = await authApi.checkEmail(normalizedEmail);
+      
+      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
+      // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
+      if (!isEmailAvailable /* hoặc !isEmailAvailable.data */) {
+        setMessageTone("danger");
+        setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
+        setLoading(false);
+        return; // Dừng lại, không gửi OTP
+      }
+
+      // 2. Nếu email hợp lệ, tiếp tục gửi OTP
       const response = await authApi.sendOtp({
-        email: form.email.trim().toLowerCase(),
+        email: normalizedEmail,
       });
 
       setStep("OTP");
-      
-      // Lấy thời gian từ Back-end (phòng hờ cấu trúc trả về là response.data hoặc response trực tiếp)
       setCountdown((response as any)?.data?.expiresIn || (response as any)?.expiresIn || 60);
-
       setMessageTone("success");
-      setMessage(
-        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`
-      );
-    } catch {
+      setMessage(`Mã OTP đã được gửi đến email ${normalizedEmail}. Vui lòng kiểm tra hộp thư.`);
+    } catch (error) {
       setMessageTone("danger");
-      setMessage(
-        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end."
-      );
+      setMessage("Không thể kiểm tra email hoặc gửi mã OTP. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
-
   // =========================================================================
   // XỬ LÝ GỬI LẠI MÃ OTP
   // =========================================================================
