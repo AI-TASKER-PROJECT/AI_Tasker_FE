@@ -1,14 +1,11 @@
 import {
-  CalendarDays,
   CheckCircle2,
   Eye,
   FileCheck2,
-  Lightbulb,
   Plus,
   RefreshCw,
   Save,
   Sparkles,
-  Star,
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -27,6 +24,7 @@ import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import type {
   ExpertProfile,
   Job,
+  Milestone,
   Portfolio,
   Proposal,
 } from "../types";
@@ -45,7 +43,6 @@ import {
   SearchInput,
   SectionHeading,
   StatusBadge,
-  Tabs,
   Textarea,
 } from "../components/ui";
 import { JobCard } from "./PublicPages";
@@ -53,6 +50,9 @@ import { useNavigate } from "react-router-dom";
 
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [milestonesByJobId, setMilestonesByJobId] = useState<
+    Record<number, Milestone[]>
+  >({});
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -61,6 +61,32 @@ export function MyJobsPage() {
       .then(setJobs)
       .catch(() => setJobs([]));
   }, []);
+
+  useEffect(() => {
+    if (jobs.length === 0) {
+      setMilestonesByJobId({});
+      return;
+    }
+    let ignore = false;
+
+    async function loadMilestones() {
+      const results = await Promise.allSettled(
+        jobs.map((job) => contractApi.listJobMilestones(job.jobId)),
+      );
+      if (ignore) return;
+      const map: Record<number, Milestone[]> = {};
+      results.forEach((result, index) => {
+        map[jobs[index].jobId] =
+          result.status === "fulfilled" ? result.value : [];
+      });
+      setMilestonesByJobId(map);
+    }
+
+    loadMilestones();
+    return () => {
+      ignore = true;
+    };
+  }, [jobs]);
 
   const filtered = jobs.filter((job) =>
     `${job.title} ${job.aiTag}`.toLowerCase().includes(query.toLowerCase()),
@@ -78,7 +104,7 @@ export function MyJobsPage() {
       <PageHeader
         eyebrow="JOB-01 / MATCH-01"
         title="Dự án của doanh nghiệp"
-        description="Tạo job, mở/đóng job và đi vào màn hình dual-flow AI đề xuất / Proposals."
+        description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
         actions={
           <LinkButton to="/app/jobs/new">
             <Plus className="h-4 w-4" />
@@ -122,6 +148,7 @@ export function MyJobsPage() {
                 </p>
               </div>
             </div>
+            <MilestoneCount count={(milestonesByJobId[job.jobId] || []).length} />
             <div className="mt-5 flex flex-wrap gap-2">
               <LinkButton
                 to={`/app/jobs/${job.jobId}/manage`}
@@ -573,6 +600,18 @@ export function CreateJobPage() {
                   </div>
                 </div>
               </div>
+              <CompactMilestones
+                milestones={milestones
+                  .filter((milestone) => milestone.milestoneName.trim())
+                  .map((milestone, index) => ({
+                    milestoneId: index + 1,
+                    jobId: savedJob.jobId,
+                    milestoneName: milestone.milestoneName,
+                    fundsAllocated: Number(milestone.fundsAllocated || 0),
+                    orderIndex: Number(milestone.orderIndex || index + 1),
+                    status: "Pending",
+                  }))}
+              />
               <div className="mt-4 grid gap-2">
                 <LinkButton
                   to={`/app/jobs/${savedJob.jobId}/manage`}
@@ -612,6 +651,56 @@ export function CreateJobPage() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
+  if (milestones.length === 0) {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+        Chưa có milestone.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-2">
+      {milestones
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((milestone) => (
+          <div
+            key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+            className="grid gap-2 rounded-2xl border border-slate-100 bg-white p-3 text-sm md:grid-cols-[56px_1fr_auto]"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              Mốc {milestone.orderIndex}
+            </p>
+            <div className="min-w-0">
+              <p className="break-words font-extrabold text-ink">
+                {milestone.milestoneName}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                {milestone.status || "Pending"}
+              </p>
+            </div>
+            <p className="font-extrabold text-ink md:text-right">
+              {formatCompactCurrency(milestone.fundsAllocated)}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function MilestoneCount({ count }: { count: number }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+      <p className="text-xs font-bold text-slate-400">Milestone</p>
+      <p className="mt-1 text-sm font-extrabold text-ink">
+        {count} mốc
+      </p>
     </div>
   );
 }
@@ -825,8 +914,7 @@ export function ManageJobPage() {
   const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [matches, setMatches] = useState<Proposal[]>([]);
-  const [active, setActive] = useState("ai");
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
     technologyUsed: "Python, FastAPI, PostgreSQL",
@@ -838,7 +926,10 @@ export function ManageJobPage() {
     const id = Number(jobId);
     marketplaceApi.getJob(id).then(setJob);
     marketplaceApi.listProposals(id).then(setProposals);
-    marketplaceApi.matching(id).then(setMatches);
+    contractApi
+      .listJobMilestones(id)
+      .then(setMilestones)
+      .catch(() => setMilestones([]));
   }, [jobId]);
 
   if (!job) return <div>Đang tải job...</div>;
@@ -874,7 +965,7 @@ export function ManageJobPage() {
       <PageHeader
         eyebrow="MATCH-01 / MATCH-02"
         title={job.title}
-        description="Màn hình dual-flow bắt buộc: AI đề xuất và proposal chuyên gia tự nộp nằm trong hai tab tách biệt."
+        description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
         actions={
           <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
             Xem public detail
@@ -883,20 +974,15 @@ export function ManageJobPage() {
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card className="p-6">
-          <Tabs
-            active={active}
-            onChange={setActive}
-            tabs={[
-              { id: "ai", label: "AI đề xuất", count: matches.length },
-              { id: "proposal", label: "Proposals", count: proposals.length },
-            ]}
+          <SectionHeading
+            title="Proposal của chuyên gia"
+            description="Danh sách proposal được chuyên gia gửi trực tiếp cho job này."
           />
           <div className="mt-6 grid gap-4">
-            {(active === "ai" ? matches : proposals).map((proposal) => (
+            {proposals.map((proposal) => (
               <ProposalCard
-                key={`${active}-${proposal.proposalId}`}
+                key={proposal.proposalId}
                 proposal={proposal}
-                mode={active as "ai" | "proposal"}
                 onAccept={() => review(proposal.proposalId, "Accepted")}
                 onReject={() => review(proposal.proposalId, "Rejected")}
                 onContract={() => {
@@ -908,10 +994,10 @@ export function ManageJobPage() {
                 }}
               />
             ))}
-            {(active === "ai" ? matches : proposals).length === 0 && (
+            {proposals.length === 0 && (
               <EmptyState
-                title="Chưa có dữ liệu"
-                description="Job này chưa có proposal hoặc chưa đủ dữ liệu matching."
+                title="Chưa có proposal"
+                description="Job này chưa có proposal từ chuyên gia."
               />
             )}
           </div>
@@ -948,15 +1034,15 @@ export function ManageJobPage() {
               <span className="text-slate-500">Trạng thái</span>
               <StatusBadge status={job.status} />
             </div>
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="text-slate-500">Milestone</span>
+              <span className="font-extrabold text-ink">{milestones.length} mốc</span>
+            </div>
           </div>
-          <Notice
-            tone="warning"
-            title="Chờ AI matching nâng cấp"
-            className="mt-4"
-          >
-            Endpoint hiện match keyword “AI”. UI đã chuẩn bị score, skill và
-            rating để thay bằng model matching sau này.
-          </Notice>
+          <div className="mt-5">
+            <SectionHeading title="Milestone" />
+            <CompactMilestones milestones={milestones} />
+          </div>
         </Card>
       </div>
 
@@ -1020,13 +1106,11 @@ export function ManageJobPage() {
 
 function ProposalCard({
   proposal,
-  mode,
   onAccept,
   onReject,
   onContract,
 }: {
   proposal: Proposal;
-  mode: "ai" | "proposal";
   onAccept: () => void;
   onReject: () => void;
   onContract: () => void;
@@ -1133,22 +1217,9 @@ function ProposalCard({
           <p className="font-display text-xl font-black text-ink">
             {formatCompactCurrency(proposal.bidAmount)}
           </p>
-          <p className="mt-1 text-xs font-bold text-slate-400">
-            {proposal.deliveryDays || 60} ngày
-          </p>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {mode === "ai" && (
-          <Badge tone="mint">
-            <Sparkles className="h-3.5 w-3.5" />
-            Match {proposal.matchScore || 90}%
-          </Badge>
-        )}
-        <Badge tone="amber">
-          <Star className="h-3.5 w-3.5" />
-          {proposal.rating || 4.8}
-        </Badge>
         <Button
           variant="secondary"
           size="sm"
@@ -1430,16 +1501,6 @@ export function ProposalsPage() {
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
                     {proposal.technicalSolution}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="h-4 w-4" />{" "}
-                      {proposal.deliveryDays || 60} ngày
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Lightbulb className="h-4 w-4" /> Score{" "}
-                      {proposal.matchScore || 88}%
-                    </span>
-                  </div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">Bid amount</p>

@@ -12,11 +12,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { marketplaceApi } from '../lib/api';
+import { contractApi, marketplaceApi, profileApi } from '../lib/api';
 import { getPublicExperience } from '../lib/roleExperience';
 import { useSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
-import type { Job } from '../types';
+import type { BusinessProfile, Job, Milestone } from '../types';
+import { FirebaseFileLink } from '../components/FirebaseFileLink';
 import {
   Avatar,
   Badge,
@@ -24,6 +25,7 @@ import {
   Card,
   EmptyState,
   LinkButton,
+  Modal,
   Notice,
   PageHeader,
   Progress,
@@ -260,6 +262,25 @@ export function JobsPage() {
 }
 
 export function JobCard({ job, manage = false }: { job: Job; manage?: boolean }) {
+  const [milestoneCount, setMilestoneCount] = useState(0);
+
+  useEffect(() => {
+    let ignore = false;
+
+    contractApi
+      .listJobMilestones(job.jobId)
+      .then((items) => {
+        if (!ignore) setMilestoneCount(items.length);
+      })
+      .catch(() => {
+        if (!ignore) setMilestoneCount(0);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [job.jobId]);
+
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
@@ -285,6 +306,10 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
           <p className="mt-1 text-sm font-extrabold text-ink">{job.proposalsCount || 0}</p>
         </div>
       </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Milestone</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">{milestoneCount} mốc</p>
+      </div>
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <span className="text-xs font-semibold text-slate-400">{job.companyName || 'Doanh nghiệp'}</span>
         <LinkButton to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`} size="sm" variant="secondary">
@@ -299,10 +324,42 @@ export function JobDetailPage() {
   const { jobId } = useParams();
   const session = useSession();
   const [job, setJob] = useState<Job | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [businessOpen, setBusinessOpen] = useState(false);
+  const [businessLoading, setBusinessLoading] = useState(false);
 
   useEffect(() => {
-    marketplaceApi.getJob(Number(jobId)).then(setJob);
+    const id = Number(jobId);
+    marketplaceApi.getJob(id).then(setJob);
+    contractApi
+      .listJobMilestones(id)
+      .then(setMilestones)
+      .catch(() => setMilestones([]));
   }, [jobId]);
+
+  useEffect(() => {
+    if (!job) return;
+    let ignore = false;
+    const currentJobId = job.jobId;
+
+    async function loadBusiness() {
+      setBusinessLoading(true);
+      try {
+        const profile = await profileApi.getBusinessByJob(currentJobId);
+        if (!ignore) setBusiness(profile);
+      } catch {
+        if (!ignore) setBusiness(null);
+      } finally {
+        if (!ignore) setBusinessLoading(false);
+      }
+    }
+
+    loadBusiness();
+    return () => {
+      ignore = true;
+    };
+  }, [job]);
 
   if (!job) {
     return <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">Đang tải job...</main>;
@@ -343,6 +400,13 @@ export function JobDetailPage() {
               ))}
             </div>
           </Card>
+          <Card className="mt-6 p-6">
+            <SectionHeading
+              title="Milestone dự án"
+              description="Các mốc công việc doanh nghiệp đã khai báo khi tạo job."
+            />
+            <MilestoneList milestones={milestones} />
+          </Card>
         </div>
         <aside className="space-y-4">
           <Card className="p-5">
@@ -350,9 +414,19 @@ export function JobDetailPage() {
             <div className="mt-5 grid gap-3">
               <InfoRow icon={<WalletCards className="h-4 w-4" />} label="Ngân sách" value={formatCurrency(job.budget)} />
               <InfoRow icon={<Clock3 className="h-4 w-4" />} label="Thời lượng" value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || 'tuần'}`} />
-              <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={job.companyName || 'Đang cập nhật'} />
+              <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={business?.companyName || job.companyName || 'Đang cập nhật'} />
+              <InfoRow icon={<ShieldCheck className="h-4 w-4" />} label="Mã số thuế" value={business?.taxCode || 'Đang cập nhật'} />
               <InfoRow icon={<Bot className="h-4 w-4" />} label="AI tag" value={job.aiTag || 'General AI'} />
+              <InfoRow icon={<CheckCircle2 className="h-4 w-4" />} label="Milestone" value={`${milestones.length} mốc`} />
             </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-5 w-full"
+              onClick={() => setBusinessOpen(true)}
+            >
+              Xem chi tiết doanh nghiệp
+            </Button>
             {canSubmitProposal && (
               <LinkButton to={`/app/jobs/${job.jobId}/proposal`} className="mt-5 w-full">
                 Nộp báo giá dự thầu
@@ -384,11 +458,53 @@ export function JobDetailPage() {
               </>
             )}
           </Card>
-          <Notice tone="info" title="Luồng dual-flow">
-            Doanh nghiệp sẽ thấy proposal của bạn trong tab Proposals, song song với tab AI đề xuất chuyên gia.
-          </Notice>
         </aside>
       </div>
+      <Modal
+        open={businessOpen}
+        onClose={() => setBusinessOpen(false)}
+        title="Thông tin doanh nghiệp"
+        description="Dữ liệu hồ sơ KYB của doanh nghiệp đăng job."
+        size="lg"
+      >
+        <div className="grid gap-4">
+          {businessLoading && <Notice tone="info" title="Đang tải hồ sơ doanh nghiệp..." />}
+          {!businessLoading && !business && (
+            <Notice tone="warning" title="Chưa lấy được hồ sơ doanh nghiệp từ API hiện tại." />
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            <BusinessInfoItem
+              label="Tên doanh nghiệp"
+              value={business?.companyName || job.companyName || "Chưa có dữ liệu"}
+            />
+            <BusinessInfoItem
+              label="Mã số thuế"
+              value={business?.taxCode || "Chưa có dữ liệu"}
+            />
+            <BusinessInfoItem
+              label="Trạng thái KYB"
+              value={business?.kybStatus || "Chưa có dữ liệu"}
+            />
+            <BusinessInfoItem
+              label="Địa chỉ"
+              value={business?.address || "Chưa có dữ liệu"}
+              multiline
+            />
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4">
+            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              Giấy phép kinh doanh
+            </p>
+            <div className="mt-2">
+              <FirebaseFileLink
+                path={business?.businessLicenseUrl}
+                emptyText="Chưa có giấy phép kinh doanh"
+                buttonText="Xem giấy phép"
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
 
     </main>
   );
@@ -402,6 +518,73 @@ function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value
         <p className="text-xs font-bold text-slate-400">{label}</p>
         <p className="text-sm font-extrabold text-ink">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function MilestoneList({ milestones }: { milestones: Milestone[] }) {
+  if (milestones.length === 0) {
+    return (
+      <EmptyState
+        title="Chưa có milestone"
+        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại đây."
+      />
+    );
+  }
+
+  return (
+    <div className="mt-5 grid gap-3">
+      {milestones
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((milestone) => (
+          <div
+            key={milestone.milestoneId}
+            className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-[64px_1fr_160px]"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              Mốc {milestone.orderIndex}
+            </p>
+            <div className="min-w-0">
+              <p className="break-words text-sm font-extrabold text-ink">
+                {milestone.milestoneName}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                {milestone.status || "Pending"}
+              </p>
+            </div>
+            <p className="text-sm font-extrabold text-ink md:text-right">
+              {formatCompactCurrency(milestone.fundsAllocated)}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function BusinessInfoItem({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p
+        className={
+          multiline
+            ? "mt-2 text-sm leading-6 text-slate-700"
+            : "mt-2 break-words text-sm font-extrabold text-ink"
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }

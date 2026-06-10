@@ -200,6 +200,12 @@ export const profileApi = {
       url: "/api/v1/profiles/business",
     });
   },
+  getBusinessByJob(jobId: number) {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/business/by-job/${jobId}`,
+    });
+  },
   listExperts() {
     return call<ExpertProfile[]>({
       method: "GET",
