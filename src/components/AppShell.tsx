@@ -8,6 +8,7 @@ import {
   FileCheck2,
   FileText,
   Gavel,
+  IdCard,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -50,6 +51,7 @@ const roleNav: Record<Role, NavItem[]> = {
     { label: 'Hợp đồng', to: '/app/contracts', icon: <FileCheck2 className="h-4 w-4" /> },
     { label: 'Tài chính', to: '/app/finance', icon: <WalletCards className="h-4 w-4" /> },
     { label: 'Tranh chấp', to: '/app/disputes', icon: <Gavel className="h-4 w-4" /> },
+    { label: 'Hồ sơ KYC', to: '/app/expert/profile', icon: <IdCard className="h-4 w-4" /> },
     { label: 'Portfolio AI', to: '/app/expert/portfolio', icon: <ClipboardCheck className="h-4 w-4" /> },
   ],
   STAFF: [
