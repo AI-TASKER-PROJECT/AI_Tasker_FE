@@ -163,14 +163,6 @@ export interface BusinessProfile {
   updatedAt?: string;
 }
 
-export interface TaxCheckResponse {
-  taxCode: string;
-  companyName?: string;
-  address?: string;
-  representative?: string;
-  status?: string;
-}
-
 export interface ExpertProfile {
   expertId: number;
   accountId: number;
