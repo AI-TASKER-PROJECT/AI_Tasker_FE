@@ -36,6 +36,18 @@ import {
   Textarea,
 } from "../components/ui";
 
+const businessRejectionReasons = [
+  "Mã số thuế không chính xác",
+  "Địa chỉ không chính xác",
+  "Tên doanh nghiệp không chính xác",
+  "Không xác minh được Giấy phép kinh doanh",
+];
+
+const expertRejectionReasons = [
+  "Số CCCD không chính xác",
+  "Không xác minh được Portfolio",
+];
+
 export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Dispute[]>([]);
@@ -422,6 +434,11 @@ export function VerificationDetailPage() {
   } | null>(null);
   const [taxCheckLoading, setTaxCheckLoading] = useState(false);
   const [taxCheckError, setTaxCheckError] = useState("");
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [selectedRejectReasons, setSelectedRejectReasons] = useState<string[]>(
+    [],
+  );
+  const [rejectError, setRejectError] = useState("");
 
   useEffect(() => {
     if (isBusiness) {
@@ -453,6 +470,12 @@ export function VerificationDetailPage() {
     }
   }, [id, isBusiness]);
 
+  useEffect(() => {
+    setRejectOpen(false);
+    setSelectedRejectReasons([]);
+    setRejectError("");
+  }, [id, isBusiness]);
+
   if (!profile)
     return (
       <EmptyState
@@ -471,6 +494,9 @@ export function VerificationDetailPage() {
   const profileId = isBusiness
     ? (profile as BusinessProfile).businessId
     : (profile as ExpertProfile).expertId;
+  const rejectionOptions = isBusiness
+    ? businessRejectionReasons
+    : expertRejectionReasons;
 
   const checkTaxCode = async () => {
     if (!isBusiness) return;
@@ -507,13 +533,41 @@ export function VerificationDetailPage() {
     }
   };
 
-  const approve = async (statusValue: "Approved" | "Rejected") => {
+  const approve = async (
+    statusValue: "Approved" | "Rejected",
+    reason?: string,
+  ) => {
     const updated = await profileApi.approve(
       isBusiness ? "BUSINESS" : "EXPERT",
       profileId,
       statusValue,
+      reason,
     );
     setProfile(updated);
+  };
+
+  const toggleRejectReason = (reason: string) => {
+    setSelectedRejectReasons((items) =>
+      items.includes(reason)
+        ? items.filter((item) => item !== reason)
+        : [...items, reason],
+    );
+    setRejectError("");
+  };
+
+  const beginReject = () => {
+    setSelectedRejectReasons([]);
+    setRejectError("");
+    setRejectOpen(true);
+  };
+
+  const submitReject = async () => {
+    if (selectedRejectReasons.length === 0) {
+      setRejectError("Vui lòng chọn ít nhất một lý do từ chối.");
+      return;
+    }
+    await approve("Rejected", selectedRejectReasons.join("; "));
+    setRejectOpen(false);
   };
 
   return (
@@ -592,11 +646,24 @@ export function VerificationDetailPage() {
               <CheckCircle2 className="h-4 w-4" />
               Approve
             </Button>
-            <Button variant="danger" onClick={() => approve("Rejected")}>
+            <Button variant="danger" onClick={beginReject}>
               <XCircle className="h-4 w-4" />
               Reject
             </Button>
           </div>
+          {status === "Rejected" && profile.rejectionReason && (
+            <Notice tone="danger" title="Lý do từ chối" className="mt-4">
+              <ul className="list-disc ml-5 mt-1 space-y-1">
+                {profile.rejectionReason.split(";").map((reason, index) => {
+                  const trimmedReason = reason.trim();
+                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
+                  return trimmedReason ? (
+                    <li key={index}>{trimmedReason}</li>
+                  ) : null;
+                })}
+              </ul>
+            </Notice>
+          )}
           <Notice tone="info" title="Audit trail" className="mt-4">
             Back-end ghi audit log khi duyệt. UI quản trị audit nằm ở module
             Admin.
@@ -654,6 +721,45 @@ export function VerificationDetailPage() {
           </Card>
         )}
       </div>
+      <Modal
+        open={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        title="Lý do từ chối"
+        description={
+          isBusiness
+            ? "Chọn một hoặc nhiều lý do từ chối hồ sơ doanh nghiệp."
+            : "Chọn một hoặc nhiều lý do từ chối hồ sơ chuyên gia."
+        }
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRejectOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="danger" onClick={submitReject}>
+              <XCircle className="h-4 w-4" />
+              Xác nhận từ chối
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-3">
+          {rejectError && <Notice tone="danger" title={rejectError} />}
+          {rejectionOptions.map((reason) => (
+            <label
+              key={reason}
+              className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm font-semibold text-slate-700"
+            >
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={selectedRejectReasons.includes(reason)}
+                onChange={() => toggleRejectReason(reason)}
+              />
+              <span>{reason}</span>
+            </label>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 }

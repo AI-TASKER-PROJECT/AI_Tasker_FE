@@ -159,6 +159,7 @@ export interface BusinessProfile {
   businessLicenseUrl?: string;
   kybStatus: string;
   approvedBy?: number;
+  rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -179,6 +180,7 @@ export interface ExpertProfile {
   yearsOfExperience?: number;
   kycStatus: string;
   approvedBy?: number;
+  rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
   fullName?: string;

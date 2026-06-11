@@ -21,6 +21,7 @@ import {
   StatusBadge,
   Textarea,
 } from "../components/ui";
+import type { AccountStatus } from "../types";
 
 export function BusinessProfilePage() {
   const [form, setForm] = useState({
@@ -31,6 +32,7 @@ export function BusinessProfilePage() {
   });
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [status, setStatus] = useState("Chưa gửi");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,7 @@ export function BusinessProfilePage() {
           businessLicenseUrl: profile.businessLicenseUrl || "",
         });
         setStatus(profile.kybStatus || "Chưa gửi");
+        setRejectionReason(profile.rejectionReason || "");
       })
       .catch(() => undefined);
   }, []);
@@ -65,17 +68,30 @@ export function BusinessProfilePage() {
         ...form,
         businessLicenseUrl,
       });
-      setForm((value) => ({ ...value, businessLicenseUrl }));
+      setForm({
+        taxCode: profile.taxCode || "",
+        companyName: profile.companyName || "",
+        address: profile.address || "",
+        businessLicenseUrl: profile.businessLicenseUrl || "",
+      });
       setStatus(profile.kybStatus);
+      setRejectionReason(profile.rejectionReason || "");
       setMessage("Đã lưu hồ sơ doanh nghiệp và đường dẫn file Firebase.");
       const session = getSession();
-      if (session) saveSession({ ...session, accountStatus: "Pending" });
+      if (session) {
+        saveSession({
+          ...session,
+          accountStatus: normalizeAccountStatus(profile.kybStatus),
+        });
+      }
     } catch (submitError) {
       setError(readApiError(submitError, "Không thể lưu hồ sơ doanh nghiệp."));
     } finally {
       setLoading(false);
     }
   };
+
+  const isApproved = status === "Approved";
 
   return (
     <div className="space-y-6">
@@ -93,6 +109,9 @@ export function BusinessProfilePage() {
               <Field label="Mã số thuế">
                 <Input
                   value={form.taxCode}
+                  disabled={isApproved}
+                  // Đổi màu nền khi isApproved (ví dụ: bg-slate-100 hoặc bg-brand-50)
+                  className={isApproved ? "!bg-brand-50" : ""}
                   onChange={(event) =>
                     setForm((value) => ({
                       ...value,
@@ -128,10 +147,7 @@ export function BusinessProfilePage() {
             </Field>
             <Field
               label="Tệp giấy phép kinh doanh"
-              hint={
-                form.businessLicenseUrl ||
-                "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
-              }
+              hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
             >
               <Input
                 type="file"
@@ -139,6 +155,13 @@ export function BusinessProfilePage() {
                 onChange={(event) =>
                   setLicenseFile(event.target.files?.[0] || null)
                 }
+              />
+              <FirebaseFileLink
+                path={form.businessLicenseUrl}
+                emptyText="Chưa có giấy phép"
+                buttonText="Xem giấy phép"
+                className="mt-3"
+                showPath={false}
               />
             </Field>
             <div className="flex justify-end">
@@ -162,18 +185,19 @@ export function BusinessProfilePage() {
               </div>
             </div>
           </div>
-          <Notice
-            tone="warning"
-            title="Điều kiện mở khóa giao dịch"
-            className="mt-4"
-          >
-            Back-end kiểm tra role và trạng thái Approved cho các nghiệp vụ
-            chính. Hồ sơ cập nhật sẽ quay về Pending để staff duyệt lại.
-          </Notice>
-          <div className="mt-4">
-            <SectionHeading title="Giấy phép kinh doanh" />
-            <FirebaseFileLink path={form.businessLicenseUrl} className="mt-3" />
-          </div>
+          {status === "Rejected" && rejectionReason && (
+            <Notice tone="danger" title="Lý do từ chối" className="mt-4">
+              <ul className="list-disc ml-5 mt-1 space-y-1">
+                {rejectionReason.split(";").map((reason, index) => {
+                  const trimmedReason = reason.trim();
+                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
+                  return trimmedReason ? (
+                    <li key={index}>{trimmedReason}</li>
+                  ) : null;
+                })}
+              </ul>
+            </Notice>
+          )}
         </Card>
       </div>
     </div>
@@ -190,6 +214,7 @@ export function ExpertProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Chưa gửi");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -202,6 +227,7 @@ export function ExpertProfilePage() {
           yearsOfExperience: String(profile.yearsOfExperience ?? 1),
         });
         setStatus(profile.kycStatus || "Chưa gửi");
+        setRejectionReason(profile.rejectionReason || "");
       })
       .catch(() => undefined);
   }, []);
@@ -221,17 +247,30 @@ export function ExpertProfilePage() {
         portfolioUrl,
         yearsOfExperience: Number(form.yearsOfExperience),
       });
-      setForm((value) => ({ ...value, portfolioUrl }));
+      setForm({
+        nationalId: profile.nationalId || "",
+        portfolioUrl: profile.portfolioUrl || "",
+        yearsOfExperience: String(profile.yearsOfExperience ?? 1),
+      });
       setStatus(profile.kycStatus);
-      setMessage("Đã lưu hồ sơ chuyên gia và tệp Portfolio.");
+      setRejectionReason(profile.rejectionReason || "");
+
       const session = getSession();
-      if (session) saveSession({ ...session, accountStatus: "Pending" });
+      setMessage("Đã lưu thành công hồ sơ");
+      if (session) {
+        saveSession({
+          ...session,
+          accountStatus: normalizeAccountStatus(profile.kycStatus),
+        });
+      }
     } catch (submitError) {
       setError(readApiError(submitError, "Không thể lưu hồ sơ chuyên gia."));
     } finally {
       setLoading(false);
     }
   };
+
+  const isApproved = status === "Approved";
 
   return (
     <div className="space-y-6">
@@ -243,9 +282,15 @@ export function ExpertProfilePage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
+            {/* Đã di chuyển thông báo lên đầu form */}
+            {message && <Notice tone="success" title={message} />}
+            {error && <Notice tone="danger" title={error} />}
+
             <Field label="Số CCCD / Hộ chiếu">
               <Input
                 value={form.nationalId}
+                disabled={isApproved}
+                className={isApproved ? "!bg-brand-50" : ""}
                 onChange={(event) =>
                   setForm((value) => ({
                     ...value,
@@ -256,14 +301,9 @@ export function ExpertProfilePage() {
               />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              {message && <Notice tone="success" title={message} />}
-              {error && <Notice tone="danger" title={error} />}
               <Field
                 label="Tệp Portfolio"
-                hint={
-                  form.portfolioUrl ||
-                  "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
-                }
+                hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
               >
                 <Input
                   type="file"
@@ -272,6 +312,13 @@ export function ExpertProfilePage() {
                     setPortfolioFile(event.target.files?.[0] || null)
                   }
                   required={!form.portfolioUrl}
+                />
+                <FirebaseFileLink
+                  path={form.portfolioUrl}
+                  emptyText="Chưa có tệp Portfolio"
+                  buttonText="Xem Portfolio"
+                  className="mt-3"
+                  showPath={false}
                 />
               </Field>
               <Field label="Số năm kinh nghiệm">
@@ -292,7 +339,7 @@ export function ExpertProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <ShieldCheck className="h-4 w-4" />
-                Gửi xác minh
+                Lưu hồ sơ
               </Button>
             </div>
           </form>
@@ -310,10 +357,19 @@ export function ExpertProfilePage() {
               </div>
             </div>
           </div>
-          <Notice tone="info" title="Bước tiếp theo" className="mt-4">
-            Hoàn thiện Portfolio AI để doanh nghiệp xem được năng lực khi review
-            proposal.
-          </Notice>
+          {status === "Rejected" && rejectionReason && (
+            <Notice tone="danger" title="Lý do từ chối" className="mt-4">
+              <ul className="list-disc ml-5 mt-1 space-y-1">
+                {rejectionReason.split(";").map((reason, index) => {
+                  const trimmedReason = reason.trim();
+                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
+                  return trimmedReason ? (
+                    <li key={index}>{trimmedReason}</li>
+                  ) : null;
+                })}
+              </ul>
+            </Notice>
+          )}
         </Card>
       </div>
     </div>
@@ -529,6 +585,7 @@ export function ExpertPortfolioPage() {
             emptyText="Chưa có chứng chỉ"
             buttonText="Xem chứng chỉ"
             className="mt-5"
+            showPath={false}
           />
         </Card>
       </div>
@@ -550,4 +607,10 @@ function parseCatalogIds(ids?: string) {
     .split(",")
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item));
+}
+
+function normalizeAccountStatus(status?: string): AccountStatus {
+  return status === "Approved" || status === "Rejected" || status === "Lock"
+    ? status
+    : "Pending";
 }

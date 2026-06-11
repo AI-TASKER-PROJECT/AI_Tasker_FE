@@ -257,11 +257,12 @@ export const profileApi = {
     type: "BUSINESS" | "EXPERT",
     profileId: number,
     status: "Approved" | "Rejected",
+    reason?: string,
   ) {
     return call<BusinessProfile | ExpertProfile>({
       method: "POST",
       url: `/api/v1/profiles/approve/${type}/${profileId}`,
-      params: { status },
+      params: { status, reason },
     });
   },
   async checkTaxCode(taxCode: string) {
