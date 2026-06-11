@@ -1,8 +1,14 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Building2, ClipboardCheck, IdCard, Save, ShieldCheck } from 'lucide-react';
-import { catalogApi, profileApi, type Domain, type Skill } from '../lib/api';
-import { getSession, saveSession } from '../lib/session';
-import { FirebaseFileLink } from '../components/FirebaseFileLink';
+import { FormEvent, useEffect, useState } from "react";
+import {
+  Building2,
+  ClipboardCheck,
+  IdCard,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
+import { catalogApi, profileApi, type Domain, type Skill } from "../lib/api";
+import { getSession, saveSession } from "../lib/session";
+import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import {
   Badge,
   Button,
@@ -14,31 +20,32 @@ import {
   SectionHeading,
   StatusBadge,
   Textarea,
-} from '../components/ui';
+} from "../components/ui";
 
 export function BusinessProfilePage() {
   const [form, setForm] = useState({
-    taxCode: '',
-    companyName: '',
-    address: '',
-    businessLicenseUrl: '',
+    taxCode: "",
+    companyName: "",
+    address: "",
+    businessLicenseUrl: "",
   });
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [status, setStatus] = useState('Chưa gửi');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [status, setStatus] = useState("Chưa gửi");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    profileApi.getMyBusiness()
+    profileApi
+      .getMyBusiness()
       .then((profile) => {
         setForm({
-          taxCode: profile.taxCode || '',
-          companyName: profile.companyName || '',
-          address: profile.address || '',
-          businessLicenseUrl: profile.businessLicenseUrl || '',
+          taxCode: profile.taxCode || "",
+          companyName: profile.companyName || "",
+          address: profile.address || "",
+          businessLicenseUrl: profile.businessLicenseUrl || "",
         });
-        setStatus(profile.kybStatus || 'Chưa gửi');
+        setStatus(profile.kybStatus || "Chưa gửi");
       })
       .catch(() => undefined);
   }, []);
@@ -46,21 +53,25 @@ export function BusinessProfilePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
     try {
       let businessLicenseUrl = form.businessLicenseUrl;
       if (licenseFile) {
-        businessLicenseUrl = await profileApi.uploadBusinessLicense(licenseFile);
+        businessLicenseUrl =
+          await profileApi.uploadBusinessLicense(licenseFile);
       }
-      const profile = await profileApi.upsertBusiness({ ...form, businessLicenseUrl });
+      const profile = await profileApi.upsertBusiness({
+        ...form,
+        businessLicenseUrl,
+      });
       setForm((value) => ({ ...value, businessLicenseUrl }));
       setStatus(profile.kybStatus);
-      setMessage('Đã lưu hồ sơ doanh nghiệp và đường dẫn file Firebase.');
+      setMessage("Đã lưu hồ sơ doanh nghiệp và đường dẫn file Firebase.");
       const session = getSession();
-      if (session) saveSession({ ...session, accountStatus: 'Pending' });
+      if (session) saveSession({ ...session, accountStatus: "Pending" });
     } catch (submitError) {
-      setError(readApiError(submitError, 'Không thể lưu hồ sơ doanh nghiệp.'));
+      setError(readApiError(submitError, "Không thể lưu hồ sơ doanh nghiệp."));
     } finally {
       setLoading(false);
     }
@@ -80,17 +91,55 @@ export function BusinessProfilePage() {
             {error && <Notice tone="danger" title={error} />}
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Mã số thuế">
-                <Input value={form.taxCode} onChange={(event) => setForm((value) => ({ ...value, taxCode: event.target.value }))} required />
+                <Input
+                  value={form.taxCode}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      taxCode: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </Field>
               <Field label="Tên doanh nghiệp">
-                <Input value={form.companyName} onChange={(event) => setForm((value) => ({ ...value, companyName: event.target.value }))} required />
+                <Input
+                  value={form.companyName}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      companyName: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </Field>
             </div>
             <Field label="Địa chỉ">
-              <Input value={form.address} onChange={(event) => setForm((value) => ({ ...value, address: event.target.value }))} />
+              <Input
+                value={form.address}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    address: event.target.value,
+                  }))
+                }
+              />
             </Field>
-            <Field label="Tệp giấy phép kinh doanh" hint={form.businessLicenseUrl || 'Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage.'}>
-              <Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setLicenseFile(event.target.files?.[0] || null)} />
+            <Field
+              label="Tệp giấy phép kinh doanh"
+              hint={
+                form.businessLicenseUrl ||
+                "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
+              }
+            >
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,application/pdf,.doc,.docx"
+                onChange={(event) =>
+                  setLicenseFile(event.target.files?.[0] || null)
+                }
+              />
             </Field>
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
@@ -113,8 +162,13 @@ export function BusinessProfilePage() {
               </div>
             </div>
           </div>
-          <Notice tone="warning" title="Điều kiện mở khóa giao dịch" className="mt-4">
-            Back-end kiểm tra role và trạng thái Approved cho các nghiệp vụ chính. Hồ sơ cập nhật sẽ quay về Pending để staff duyệt lại.
+          <Notice
+            tone="warning"
+            title="Điều kiện mở khóa giao dịch"
+            className="mt-4"
+          >
+            Back-end kiểm tra role và trạng thái Approved cho các nghiệp vụ
+            chính. Hồ sơ cập nhật sẽ quay về Pending để staff duyệt lại.
           </Notice>
           <div className="mt-4">
             <SectionHeading title="Giấy phép kinh doanh" />
@@ -128,22 +182,26 @@ export function BusinessProfilePage() {
 
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
-    nationalId: '',
-    portfolioUrl: '',
-    yearsOfExperience: '1',
+    nationalId: "",
+    portfolioUrl: "",
+    yearsOfExperience: "1",
   });
-  const [status, setStatus] = useState('Chưa gửi');
+  const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState("Chưa gửi");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    profileApi.getMyExpert()
+    profileApi
+      .getMyExpert()
       .then((profile) => {
         setForm({
-          nationalId: profile.nationalId || '',
-          portfolioUrl: profile.portfolioUrl || '',
+          nationalId: profile.nationalId || "",
+          portfolioUrl: profile.portfolioUrl || "",
           yearsOfExperience: String(profile.yearsOfExperience ?? 1),
         });
-        setStatus(profile.kycStatus || 'Chưa gửi');
+        setStatus(profile.kycStatus || "Chưa gửi");
       })
       .catch(() => undefined);
   }, []);
@@ -151,15 +209,28 @@ export function ExpertProfilePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const profile = await profileApi.upsertExpert({
-      nationalId: form.nationalId,
-      portfolioUrl: form.portfolioUrl,
-      yearsOfExperience: Number(form.yearsOfExperience),
-    });
-    setStatus(profile.kycStatus);
-    const session = getSession();
-    if (session) saveSession({ ...session, accountStatus: 'Pending' });
-    setLoading(false);
+    setMessage("");
+    setError("");
+    try {
+      let portfolioUrl = form.portfolioUrl;
+      if (portfolioFile) {
+        portfolioUrl = await profileApi.uploadExpertPortfolio(portfolioFile);
+      }
+      const profile = await profileApi.upsertExpert({
+        nationalId: form.nationalId,
+        portfolioUrl,
+        yearsOfExperience: Number(form.yearsOfExperience),
+      });
+      setForm((value) => ({ ...value, portfolioUrl }));
+      setStatus(profile.kycStatus);
+      setMessage("Đã lưu hồ sơ chuyên gia và tệp Portfolio.");
+      const session = getSession();
+      if (session) saveSession({ ...session, accountStatus: "Pending" });
+    } catch (submitError) {
+      setError(readApiError(submitError, "Không thể lưu hồ sơ chuyên gia."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -167,20 +238,55 @@ export function ExpertProfilePage() {
       <PageHeader
         eyebrow="REG-02 / KYC"
         title="Hồ sơ xác minh chuyên gia"
-        description="Chuyên gia nộp CCCD/hộ chiếu và portfolio URL. Sau khi Approved mới nên mở khóa giao dịch."
+        description="Chuyên gia nộp CCCD/hộ chiếu và tệp Portfolio. Sau khi Approved mới nên mở khóa giao dịch."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-4">
             <Field label="Số CCCD / Hộ chiếu">
-              <Input value={form.nationalId} onChange={(event) => setForm((value) => ({ ...value, nationalId: event.target.value }))} required />
+              <Input
+                value={form.nationalId}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    nationalId: event.target.value,
+                  }))
+                }
+                required
+              />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Portfolio URL">
-                <Input value={form.portfolioUrl} onChange={(event) => setForm((value) => ({ ...value, portfolioUrl: event.target.value }))} required />
+              {message && <Notice tone="success" title={message} />}
+              {error && <Notice tone="danger" title={error} />}
+              <Field
+                label="Tệp Portfolio"
+                hint={
+                  form.portfolioUrl ||
+                  "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
+                }
+              >
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
+                  onChange={(event) =>
+                    setPortfolioFile(event.target.files?.[0] || null)
+                  }
+                  required={!form.portfolioUrl}
+                />
               </Field>
               <Field label="Số năm kinh nghiệm">
-                <Input type="number" min="0" value={form.yearsOfExperience} onChange={(event) => setForm((value) => ({ ...value, yearsOfExperience: event.target.value }))} required />
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.yearsOfExperience}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      yearsOfExperience: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </Field>
             </div>
             <div className="flex justify-end">
@@ -205,7 +311,8 @@ export function ExpertProfilePage() {
             </div>
           </div>
           <Notice tone="info" title="Bước tiếp theo" className="mt-4">
-            Hoàn thiện Portfolio AI để doanh nghiệp xem được năng lực khi review proposal.
+            Hoàn thiện Portfolio AI để doanh nghiệp xem được năng lực khi review
+            proposal.
           </Notice>
         </Card>
       </div>
@@ -215,9 +322,9 @@ export function ExpertProfilePage() {
 
 export function ExpertPortfolioPage() {
   const [form, setForm] = useState({
-    yearsExperience: '1',
-    certificates: '',
-    selfDescription: '',
+    yearsExperience: "1",
+    certificates: "",
+    selfDescription: "",
   });
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -225,7 +332,7 @@ export function ExpertPortfolioPage() {
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -239,39 +346,50 @@ export function ExpertPortfolioPage() {
       if (portfolio) {
         setForm({
           yearsExperience: String(portfolio.yearsExperience ?? 1),
-          certificates: portfolio.certificates || '',
-          selfDescription: portfolio.selfDescription || '',
+          certificates: portfolio.certificates || "",
+          selfDescription: portfolio.selfDescription || "",
         });
         setSelectedDomainIds(parseCatalogIds(portfolio.domainIds));
         setSelectedSkillIds(parseCatalogIds(portfolio.skillIds));
       } else {
-        setSelectedDomainIds(domainItems.slice(0, 2).map((item) => item.domainId));
+        setSelectedDomainIds(
+          domainItems.slice(0, 2).map((item) => item.domainId),
+        );
         setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
       }
     });
   }, []);
 
   const toggleDomain = (domainId: number) => {
-    setSelectedDomainIds((items) => items.includes(domainId) ? items.filter((id) => id !== domainId) : [...items, domainId]);
+    setSelectedDomainIds((items) =>
+      items.includes(domainId)
+        ? items.filter((id) => id !== domainId)
+        : [...items, domainId],
+    );
   };
 
   const toggleSkill = (skillId: number) => {
-    setSelectedSkillIds((items) => items.includes(skillId) ? items.filter((id) => id !== skillId) : [...items, skillId]);
+    setSelectedSkillIds((items) =>
+      items.includes(skillId)
+        ? items.filter((id) => id !== skillId)
+        : [...items, skillId],
+    );
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setSaved(false);
-    setError('');
+    setError("");
     try {
       let certificates = form.certificates;
       if (certificateFile) {
-        certificates = await profileApi.uploadExpertCertificate(certificateFile);
+        certificates =
+          await profileApi.uploadExpertCertificate(certificateFile);
       }
       await profileApi.upsertPortfolio({
-        domainIds: selectedDomainIds.join(','),
-        skillIds: selectedSkillIds.join(','),
+        domainIds: selectedDomainIds.join(","),
+        skillIds: selectedSkillIds.join(","),
         yearsExperience: Number(form.yearsExperience),
         certificates,
         selfDescription: form.selfDescription,
@@ -279,7 +397,7 @@ export function ExpertPortfolioPage() {
       setForm((value) => ({ ...value, certificates }));
       setSaved(true);
     } catch (submitError) {
-      setError(readApiError(submitError, 'Không thể lưu portfolio.'));
+      setError(readApiError(submitError, "Không thể lưu portfolio."));
     } finally {
       setLoading(false);
     }
@@ -301,8 +419,15 @@ export function ExpertPortfolioPage() {
                 <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
                   <div className="grid gap-2">
                     {domains.map((domain) => (
-                      <label key={domain.domainId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                        <input type="checkbox" checked={selectedDomainIds.includes(domain.domainId)} onChange={() => toggleDomain(domain.domainId)} />
+                      <label
+                        key={domain.domainId}
+                        className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDomainIds.includes(domain.domainId)}
+                          onChange={() => toggleDomain(domain.domainId)}
+                        />
                         {domain.domainName}
                       </label>
                     ))}
@@ -313,8 +438,15 @@ export function ExpertPortfolioPage() {
                 <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
                   <div className="grid gap-2">
                     {skills.map((skill) => (
-                      <label key={skill.skillId} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                        <input type="checkbox" checked={selectedSkillIds.includes(skill.skillId)} onChange={() => toggleSkill(skill.skillId)} />
+                      <label
+                        key={skill.skillId}
+                        className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSkillIds.includes(skill.skillId)}
+                          onChange={() => toggleSkill(skill.skillId)}
+                        />
                         {skill.skillName}
                       </label>
                     ))}
@@ -324,14 +456,46 @@ export function ExpertPortfolioPage() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Số năm kinh nghiệm">
-                <Input type="number" min="0" value={form.yearsExperience} onChange={(event) => setForm((value) => ({ ...value, yearsExperience: event.target.value }))} required />
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.yearsExperience}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      yearsExperience: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </Field>
-              <Field label="Chứng chỉ" hint={form.certificates || 'Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage.'}>
-                <Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setCertificateFile(event.target.files?.[0] || null)} />
+              <Field
+                label="Chứng chỉ"
+                hint={
+                  form.certificates ||
+                  "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
+                }
+              >
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
+                  onChange={(event) =>
+                    setCertificateFile(event.target.files?.[0] || null)
+                  }
+                />
               </Field>
             </div>
             <Field label="Mô tả bản thân">
-              <Textarea value={form.selfDescription} onChange={(event) => setForm((value) => ({ ...value, selfDescription: event.target.value }))} required />
+              <Textarea
+                value={form.selfDescription}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    selfDescription: event.target.value,
+                  }))
+                }
+                required
+              />
             </Field>
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
@@ -342,18 +506,30 @@ export function ExpertPortfolioPage() {
           </form>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Preview matching" description="Dữ liệu này sẽ hiển thị trong khung chi tiết chuyên gia của doanh nghiệp." />
+          <SectionHeading
+            title="Preview matching"
+            description="Dữ liệu này sẽ hiển thị trong khung chi tiết chuyên gia của doanh nghiệp."
+          />
           <div className="mt-5 flex flex-wrap gap-2">
-            {skills.filter((skill) => selectedSkillIds.includes(skill.skillId)).map((skill) => (
-              <Badge key={skill.skillId} tone="brand">{skill.skillName}</Badge>
-            ))}
+            {skills
+              .filter((skill) => selectedSkillIds.includes(skill.skillId))
+              .map((skill) => (
+                <Badge key={skill.skillId} tone="brand">
+                  {skill.skillName}
+                </Badge>
+              ))}
           </div>
           {saved && (
             <Notice tone="success" title="Đã lưu portfolio" className="mt-4">
               Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
             </Notice>
           )}
-          <FirebaseFileLink path={form.certificates} emptyText="Chưa có chứng chỉ" buttonText="Xem chứng chỉ" className="mt-5" />
+          <FirebaseFileLink
+            path={form.certificates}
+            emptyText="Chưa có chứng chỉ"
+            buttonText="Xem chứng chỉ"
+            className="mt-5"
+          />
         </Card>
       </div>
     </div>
@@ -361,14 +537,17 @@ export function ExpertPortfolioPage() {
 }
 
 function readApiError(error: unknown, fallback: string) {
-  const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+  const apiError = error as {
+    response?: { data?: { message?: string } };
+    message?: string;
+  };
   return apiError.response?.data?.message || apiError.message || fallback;
 }
 
 function parseCatalogIds(ids?: string) {
   if (!ids) return [];
   return ids
-    .split(',')
+    .split(",")
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item));
 }

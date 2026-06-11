@@ -560,10 +560,13 @@ export function VerificationDetailPage() {
                   label="National ID"
                   value={(profile as ExpertProfile).nationalId}
                 />
-                <Info
-                  label="Portfolio URL"
-                  value={(profile as ExpertProfile).portfolioUrl || "Chưa có"}
-                />
+                <FileInfo label="Tệp Portfolio">
+                  <FirebaseFileLink
+                    path={(profile as ExpertProfile).portfolioUrl}
+                    emptyText="Chưa có tệp Portfolio"
+                    buttonText="Xem Portfolio"
+                  />
+                </FileInfo>
                 <Info
                   label="Years of experience"
                   value={
@@ -572,13 +575,6 @@ export function VerificationDetailPage() {
                       : String((profile as ExpertProfile).yearsOfExperience)
                   }
                 />
-                <FileInfo label="Chứng chỉ">
-                  <FirebaseFileLink
-                    path={portfolio?.certificates}
-                    emptyText="Chưa có chứng chỉ"
-                    buttonText="Xem chứng chỉ"
-                  />
-                </FileInfo>
               </>
             )}
           </div>

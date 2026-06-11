@@ -191,6 +191,15 @@ export const profileApi = {
       url: "/api/v1/profiles/expert/me",
     });
   },
+  uploadExpertPortfolio(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/profiles/expert/portfolio-file",
+      data: formData,
+    });
+  },
   upsertPortfolio(payload: Partial<Portfolio>) {
     return call<Portfolio>({
       method: "POST",
