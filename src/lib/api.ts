@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosRequestConfig } from "axios";
 import type {
   AcceptanceCriteria,
   AdminAccount,
@@ -19,30 +19,36 @@ import type {
   Staff,
   SystemSetting,
   SystemWallet,
+  TaxCheckResponse,
   Transaction,
-} from '../types';
-import { getSession } from './session';
+} from "../types";
+import { getSession } from "./session";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  baseURL: import.meta.env.VITE_API_BASE_URL || "",
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  } else if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
   return config;
 });
 
-function setDataMode(mode: 'live') {
-  localStorage.setItem('aitasker.data-mode', mode);
-  window.dispatchEvent(new Event('aitasker:data-mode-change'));
+function setDataMode(mode: "live") {
+  localStorage.setItem("aitasker.data-mode", mode);
+  window.dispatchEvent(new Event("aitasker:data-mode-change"));
 }
 
 async function call<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await api.request<ApiResponse<T>>(config);
-  setDataMode('live');
+  setDataMode("live");
   return response.data.data;
 }
 
@@ -82,191 +88,424 @@ export interface JobSkill {
 
 export const authApi = {
   login(payload: { email: string; password: string }) {
-    return call<SessionUser>({ method: 'POST', url: '/api/auth/login', data: payload });
+    return call<SessionUser>({
+      method: "POST",
+      url: "/api/auth/login",
+      data: payload,
+    });
+  },
+  me() {
+    return call<Partial<SessionUser>>({
+      method: "GET",
+      url: "/api/auth/me",
+    });
+  },
+  sendOtp(payload: { email: string }) {
+    //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });
+    return call<{ expiresIn: number }>({
+      method: "POST",
+      url: "/api/auth/email/send-otp",
+      data: payload,
+    });
+  },
+  verifyOtp(payload: { email: string; otp: string }) {
+    return call<void>({
+      method: "POST",
+      url: "/api/auth/email/verify-otp",
+      data: payload,
+    });
   },
   register(payload: {
     email: string;
     password: string;
     fullName: string;
     phone: string;
-    role: 'BUSINESS' | 'EXPERT';
+    role: "BUSINESS" | "EXPERT";
   }) {
-    return call<SessionUser>({ method: 'POST', url: '/api/auth/register', data: payload });
+    return call<SessionUser>({
+      method: "POST",
+      url: "/api/auth/register",
+      data: payload,
+    });
   },
   googleLogin(_credential: string) {
-    return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
-  },
-  googleRegister(_credential: string, _role: 'BUSINESS' | 'EXPERT') {
-    return Promise.reject(new Error('Backend Google OAuth endpoint is not available yet.'));
+    void _credential;
+    return Promise.reject(
+      new Error("Backend Google OAuth endpoint is not available yet."),
+    );
   },
 };
 
 export const profileApi = {
   upsertBusiness(payload: Partial<BusinessProfile>) {
-    return call<BusinessProfile>({ method: 'POST', url: '/api/v1/profiles/business', data: payload });
+    return call<BusinessProfile>({
+      method: "POST",
+      url: "/api/v1/profiles/business",
+      data: payload,
+    });
+  },
+  getMyBusiness() {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/business/me",
+    });
+  },
+  uploadBusinessLicense(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/business/license-file',
+      data: formData,
+    });
   },
   upsertExpert(payload: Partial<ExpertProfile>) {
-    return call<ExpertProfile>({ method: 'POST', url: '/api/v1/profiles/expert', data: payload });
+    return call<ExpertProfile>({
+      method: "POST",
+      url: "/api/v1/profiles/expert",
+      data: payload,
+    });
+  },
+  getMyExpert() {
+    return call<ExpertProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/expert/me",
+    });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
-    return call<Portfolio>({ method: 'POST', url: '/api/v1/profiles/portfolio', data: payload });
+    return call<Portfolio>({
+      method: "POST",
+      url: "/api/v1/profiles/portfolio",
+      data: payload,
+    });
+  },
+  getMyPortfolio() {
+    return call<Portfolio>({
+      method: "GET",
+      url: "/api/v1/profiles/portfolio/me",
+    });
+  },
+  uploadExpertCertificate(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return call<string>({
+      method: 'POST',
+      url: '/api/v1/profiles/portfolio/certificate-file',
+      data: formData,
+    });
   },
   listBusinesses() {
-    return call<BusinessProfile[]>({ method: 'GET', url: '/api/v1/profiles/business' });
+    return call<BusinessProfile[]>({
+      method: "GET",
+      url: "/api/v1/profiles/business",
+    });
+  },
+  getBusinessByJob(jobId: number) {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/business/by-job/${jobId}`,
+    });
   },
   listExperts() {
-    return call<ExpertProfile[]>({ method: 'GET', url: '/api/v1/profiles/expert' });
+    return call<ExpertProfile[]>({
+      method: "GET",
+      url: "/api/v1/profiles/expert",
+    });
   },
   listPortfolios() {
-    return call<Portfolio[]>({ method: 'GET', url: '/api/v1/profiles/portfolio' });
+    return call<Portfolio[]>({
+      method: "GET",
+      url: "/api/v1/profiles/portfolio",
+    });
   },
-  approve(type: 'BUSINESS' | 'EXPERT', profileId: number, status: 'Approved' | 'Rejected') {
+  getFileViewUrl(path: string) {
+    return call<string>({
+      method: "GET",
+      url: "/api/v1/profiles/files/view-url",
+      params: { path },
+    });
+  },
+  approve(
+    type: "BUSINESS" | "EXPERT",
+    profileId: number,
+    status: "Approved" | "Rejected",
+  ) {
     return call<BusinessProfile | ExpertProfile>({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/profiles/approve/${type}/${profileId}`,
       params: { status },
     });
+  },
+  async checkTaxCode(taxCode: string) {
+    const response = await api.request<
+      TaxCheckResponse | ApiResponse<TaxCheckResponse>
+    >({
+      method: "GET",
+      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,
+    });
+    const body = response.data;
+    setDataMode("live");
+    if (
+      body &&
+      typeof body === "object" &&
+      "data" in body &&
+      "success" in body
+    ) {
+      return (body as ApiResponse<TaxCheckResponse>).data;
+    }
+    return body as TaxCheckResponse;
   },
 };
 
 export const catalogApi = {
   listDomains(activeOnly = true) {
-    return call<Domain[]>({ method: 'GET', url: '/api/v1/domains', params: { activeOnly } });
+    return call<Domain[]>({
+      method: "GET",
+      url: "/api/v1/domains",
+      params: { activeOnly },
+    });
   },
   createDomain(payload: Partial<Domain>) {
-    return call<Domain>({ method: 'POST', url: '/api/v1/domains', data: payload });
+    return call<Domain>({
+      method: "POST",
+      url: "/api/v1/domains",
+      data: payload,
+    });
   },
   updateDomain(domainId: number, payload: Partial<Domain>) {
-    return call<Domain>({ method: 'PATCH', url: `/api/v1/domains/${domainId}`, data: payload });
+    return call<Domain>({
+      method: "PATCH",
+      url: `/api/v1/domains/${domainId}`,
+      data: payload,
+    });
   },
   listSkills(activeOnly = true) {
-    return call<Skill[]>({ method: 'GET', url: '/api/v1/skills', params: { activeOnly } });
+    return call<Skill[]>({
+      method: "GET",
+      url: "/api/v1/skills",
+      params: { activeOnly },
+    });
   },
   createSkill(payload: Partial<Skill>) {
-    return call<Skill>({ method: 'POST', url: '/api/v1/skills', data: payload });
+    return call<Skill>({
+      method: "POST",
+      url: "/api/v1/skills",
+      data: payload,
+    });
   },
   updateSkill(skillId: number, payload: Partial<Skill>) {
-    return call<Skill>({ method: 'PATCH', url: `/api/v1/skills/${skillId}`, data: payload });
+    return call<Skill>({
+      method: "PATCH",
+      url: `/api/v1/skills/${skillId}`,
+      data: payload,
+    });
   },
   listJobDomains(jobId: number) {
-    return call<JobDomain[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/domains` });
+    return call<JobDomain[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/domains`,
+    });
   },
   replaceJobDomains(jobId: number, domainIds: number[]) {
-    return call<JobDomain[]>({ method: 'PUT', url: `/api/v1/jobs/${jobId}/domains`, data: domainIds });
+    return call<JobDomain[]>({
+      method: "PUT",
+      url: `/api/v1/jobs/${jobId}/domains`,
+      data: domainIds,
+    });
   },
   listJobSkills(jobId: number) {
-    return call<JobSkill[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/skills` });
+    return call<JobSkill[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/skills`,
+    });
   },
   replaceJobSkills(
     jobId: number,
-    assignments: Array<{ skillId: number; requiredLevel?: string; isMandatory?: boolean; minYearsExperience?: number }>,
+    assignments: Array<{
+      skillId: number;
+      requiredLevel?: string;
+      isMandatory?: boolean;
+      minYearsExperience?: number;
+    }>,
   ) {
-    return call<JobSkill[]>({ method: 'PUT', url: `/api/v1/jobs/${jobId}/skills`, data: assignments });
+    return call<JobSkill[]>({
+      method: "PUT",
+      url: `/api/v1/jobs/${jobId}/skills`,
+      data: assignments,
+    });
   },
 };
 
 export const marketplaceApi = {
   listJobs() {
-    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs' });
+    return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });
+  },
+  listMyJobs() {
+    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs/my' });
   },
   getJob(jobId: number) {
-    return call<Job>({ method: 'GET', url: `/api/v1/jobs/${jobId}` });
+    return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` });
   },
   createJob(payload: Partial<Job>) {
-    return call<Job>({ method: 'POST', url: '/api/v1/jobs', data: payload });
+    return call<Job>({ method: "POST", url: "/api/v1/jobs", data: payload });
   },
   updateJobStatus(jobId: number, status: string) {
-    return call<Job>({ method: 'PATCH', url: `/api/v1/jobs/${jobId}/status`, params: { status } });
+    return call<Job>({
+      method: "PATCH",
+      url: `/api/v1/jobs/${jobId}/status`,
+      params: { status },
+    });
   },
   submitProposal(payload: Partial<Proposal>) {
-    return call<Proposal>({ method: 'POST', url: '/api/v1/proposals', data: payload });
+    return call<Proposal>({
+      method: "POST",
+      url: "/api/v1/proposals",
+      data: payload,
+    });
   },
   listProposals(jobId: number) {
-    return call<Proposal[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/proposals` });
+    return call<Proposal[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/proposals`,
+    });
+  },
+  listMyProposals() {
+    return call<Proposal[]>({ method: 'GET', url: '/api/v1/proposals/my' });
   },
   reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
     return call<Proposal>({
-      method: 'PATCH',
+      method: "PATCH",
       url: `/api/v1/proposals/${proposalId}/status`,
       params: { status },
     });
   },
   matching(jobId: number) {
-    return call<Proposal[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/matching` });
+    return call<Proposal[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/matching`,
+    });
   },
 };
 
 export const contractApi = {
   listContracts() {
-    return call<Contract[]>({ method: 'GET', url: '/api/v1/contracts' });
+    return call<Contract[]>({ method: "GET", url: "/api/v1/contracts" });
   },
   createFromProposal(proposalId: number, payload: Partial<Contract>) {
     return call<Contract>({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/contracts/from-proposals/${proposalId}`,
       data: payload,
     });
   },
   requestChange(payload: Partial<ContractChangeRequest>) {
-    return call<ContractChangeRequest>({ method: 'POST', url: '/api/v1/contracts/change-requests', data: payload });
+    return call<ContractChangeRequest>({
+      method: "POST",
+      url: "/api/v1/contracts/change-requests",
+      data: payload,
+    });
   },
   activate(contractId: number) {
-    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/activate` });
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/activate`,
+    });
   },
   signNda(contractId: number) {
-    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/nda-sign` });
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/nda-sign`,
+    });
   },
   terminate(contractId: number, reason: string) {
-    return call<Contract>({ method: 'POST', url: `/api/v1/contracts/${contractId}/terminate`, params: { reason } });
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/terminate`,
+      params: { reason },
+    });
   },
   createMilestone(payload: Partial<Milestone>) {
-    return call<Milestone>({ method: 'POST', url: '/api/v1/milestones', data: payload });
+    return call<Milestone>({
+      method: "POST",
+      url: "/api/v1/milestones",
+      data: payload,
+    });
   },
   listMilestones(contractId: number) {
-    return call<Milestone[]>({ method: 'GET', url: `/api/v1/contracts/${contractId}/milestones` });
+    return call<Milestone[]>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/milestones`,
+    });
   },
   listJobMilestones(jobId: number) {
-    return call<Milestone[]>({ method: 'GET', url: `/api/v1/jobs/${jobId}/milestones` });
+    return call<Milestone[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/milestones`,
+    });
   },
   createCriteria(payload: Partial<AcceptanceCriteria>) {
-    return call<AcceptanceCriteria>({ method: 'POST', url: '/api/v1/criteria', data: payload });
+    return call<AcceptanceCriteria>({
+      method: "POST",
+      url: "/api/v1/criteria",
+      data: payload,
+    });
   },
   listCriteria(milestoneId: number) {
-    return call<AcceptanceCriteria[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/criteria` });
+    return call<AcceptanceCriteria[]>({
+      method: "GET",
+      url: `/api/v1/milestones/${milestoneId}/criteria`,
+    });
   },
   submitDeliverable(payload: Partial<Deliverable>) {
-    return call<Deliverable>({ method: 'POST', url: '/api/v1/deliverables', data: payload });
+    return call<Deliverable>({
+      method: "POST",
+      url: "/api/v1/deliverables",
+      data: payload,
+    });
   },
   listDeliverables(milestoneId: number) {
-    return call<Deliverable[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/deliverables` });
+    return call<Deliverable[]>({
+      method: "GET",
+      url: `/api/v1/milestones/${milestoneId}/deliverables`,
+    });
   },
   runSlaAutoApprove() {
-    return call<Milestone[]>({ method: 'POST', url: '/api/v1/milestones/sla-auto-approve' });
+    return call<Milestone[]>({
+      method: "POST",
+      url: "/api/v1/milestones/sla-auto-approve",
+    });
   },
 };
 
 export const financeApi = {
   createTransaction(payload: Partial<Transaction>) {
-    return call<Transaction>({ method: 'POST', url: '/api/v1/transactions', data: payload });
+    return call<Transaction>({
+      method: "POST",
+      url: "/api/v1/transactions",
+      data: payload,
+    });
   },
   listTransactions(milestoneId: number) {
-    return call<Transaction[]>({ method: 'GET', url: `/api/v1/milestones/${milestoneId}/transactions` });
+    return call<Transaction[]>({
+      method: "GET",
+      url: `/api/v1/milestones/${milestoneId}/transactions`,
+    });
   },
   updateTransactionStatus(transactionId: number, status: string) {
     return call<Transaction>({
-      method: 'PATCH',
+      method: "PATCH",
       url: `/api/v1/transactions/${transactionId}/status`,
       params: { status },
     });
   },
   paymentWebhook(
     transactionId: number,
-    paymentStatus: 'Success' | 'Failed',
+    paymentStatus: "Success" | "Failed",
     bankTxCode?: string,
     receiptImgUrl?: string,
   ) {
     return call<Transaction>({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/transactions/${transactionId}/webhook`,
       params: { paymentStatus, bankTxCode, receiptImgUrl },
     });
@@ -275,36 +514,58 @@ export const financeApi = {
 
 export const walletApi = {
   current() {
-    return call<SystemWallet>({ method: 'GET', url: '/api/v1/wallet/me' });
+    return call<SystemWallet>({ method: "GET", url: "/api/v1/wallet/me" });
   },
 };
 
 export const disputeApi = {
   create(payload: Partial<Dispute>) {
-    return call<Dispute>({ method: 'POST', url: '/api/v1/disputes', data: payload });
+    return call<Dispute>({
+      method: "POST",
+      url: "/api/v1/disputes",
+      data: payload,
+    });
   },
   listByContract(contractId: number) {
-    return call<Dispute[]>({ method: 'GET', url: `/api/v1/contracts/${contractId}/disputes` });
+    return call<Dispute[]>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/disputes`,
+    });
   },
   get(disputeId: number) {
-    return call<Dispute>({ method: 'GET', url: `/api/v1/disputes/${disputeId}` });
+    return call<Dispute>({
+      method: "GET",
+      url: `/api/v1/disputes/${disputeId}`,
+    });
   },
   assign(disputeId: number, staffId: number) {
-    return call<Dispute>({ method: 'PATCH', url: `/api/v1/disputes/${disputeId}/assign`, params: { staffId } });
+    return call<Dispute>({
+      method: "PATCH",
+      url: `/api/v1/disputes/${disputeId}/assign`,
+      params: { staffId },
+    });
   },
   resolve(disputeId: number, proposedAction: string) {
-    return call<Dispute>({ method: 'PATCH', url: `/api/v1/disputes/${disputeId}/resolve`, params: { proposedAction } });
+    return call<Dispute>({
+      method: "PATCH",
+      url: `/api/v1/disputes/${disputeId}/resolve`,
+      params: { proposedAction },
+    });
   },
   demoTesting(disputeId: number, testResult: string) {
     return call<Dispute>({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/disputes/${disputeId}/demo-testing`,
       params: { testResult },
     });
   },
-  technicalReport(disputeId: number, reportContent: string, proposedAction?: string) {
+  technicalReport(
+    disputeId: number,
+    reportContent: string,
+    proposedAction?: string,
+  ) {
     return call<Dispute>({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/disputes/${disputeId}/technical-report`,
       params: { reportContent, proposedAction },
     });
@@ -313,55 +574,89 @@ export const disputeApi = {
 
 export const adminApi = {
   createReview(payload: Partial<Review>) {
-    return call<Review>({ method: 'POST', url: '/api/v1/admin/reviews', data: payload });
+    return call<Review>({
+      method: "POST",
+      url: "/api/v1/admin/reviews",
+      data: payload,
+    });
   },
   listReviews(contractId: number) {
-    return call<Review[]>({ method: 'GET', url: `/api/v1/admin/reviews/contracts/${contractId}` });
+    return call<Review[]>({
+      method: "GET",
+      url: `/api/v1/admin/reviews/contracts/${contractId}`,
+    });
   },
   listSettings() {
-    return call<SystemSetting[]>({ method: 'GET', url: '/api/v1/admin/settings' });
+    return call<SystemSetting[]>({
+      method: "GET",
+      url: "/api/v1/admin/settings",
+    });
   },
   updateSetting(settingKey: string, value?: string, isActive?: boolean) {
     return call<SystemSetting>({
-      method: 'PATCH',
+      method: "PATCH",
       url: `/api/v1/admin/settings/${settingKey}`,
       params: { value, isActive },
     });
   },
   listStaffs() {
-    return call<Staff[]>({ method: 'GET', url: '/api/v1/admin/staffs' });
+    return call<Staff[]>({ method: "GET", url: "/api/v1/admin/staffs" });
   },
   createStaff(payload: Partial<Staff>) {
-    return call<Staff>({ method: 'POST', url: '/api/v1/admin/staffs', data: payload });
+    return call<Staff>({
+      method: "POST",
+      url: "/api/v1/admin/staffs",
+      data: payload,
+    });
   },
   analyticsOverview() {
-    return call<AnalyticsOverview>({ method: 'GET', url: '/api/v1/admin/analytics/overview' });
+    return call<AnalyticsOverview>({
+      method: "GET",
+      url: "/api/v1/admin/analytics/overview",
+    });
   },
   getSystemWallet() {
-    return call<SystemWallet>({ method: 'GET', url: '/api/v1/admin/wallet' });
+    return call<SystemWallet>({ method: "GET", url: "/api/v1/admin/wallet" });
   },
   syncSystemWallet() {
-    return call<SystemWallet>({ method: 'POST', url: '/api/v1/admin/wallet/sync' });
+    return call<SystemWallet>({
+      method: "POST",
+      url: "/api/v1/admin/wallet/sync",
+    });
   },
   listAccounts() {
-    return call<AdminAccount[]>({ method: 'GET', url: '/api/v1/admin/accounts' });
+    return call<AdminAccount[]>({
+      method: "GET",
+      url: "/api/v1/admin/accounts",
+    });
   },
   createAccount(payload: Partial<AdminAccount> & { password?: string }) {
-    return call<AdminAccount>({ method: 'POST', url: '/api/v1/admin/accounts', data: payload });
-  },
-  updateAccount(accountId: number, payload: Partial<AdminAccount> & { password?: string }) {
-    return call<AdminAccount>({ method: 'PATCH', url: `/api/v1/admin/accounts/${accountId}`, data: payload });
-  },
-  setAccountStatus(accountId: number, status: AdminAccount['status']) {
     return call<AdminAccount>({
-      method: 'PATCH',
+      method: "POST",
+      url: "/api/v1/admin/accounts",
+      data: payload,
+    });
+  },
+  updateAccount(
+    accountId: number,
+    payload: Partial<AdminAccount> & { password?: string },
+  ) {
+    return call<AdminAccount>({
+      method: "PATCH",
+      url: `/api/v1/admin/accounts/${accountId}`,
+      data: payload,
+    });
+  },
+  setAccountStatus(accountId: number, status: AdminAccount["status"]) {
+    return call<AdminAccount>({
+      method: "PATCH",
       url: `/api/v1/admin/accounts/${accountId}/status`,
       params: { status },
     });
   },
   setAccountActive(accountId: number, active: boolean) {
     return call<AdminAccount>({
-      method: 'PATCH',
+      method: "PATCH",
       url: `/api/v1/admin/accounts/${accountId}/active`,
       params: { active },
     });

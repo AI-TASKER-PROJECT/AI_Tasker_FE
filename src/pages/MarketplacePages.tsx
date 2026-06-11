@@ -1,21 +1,17 @@
 import {
-  CalendarDays,
   CheckCircle2,
   Eye,
   FileCheck2,
-  Lightbulb,
   Plus,
   RefreshCw,
   Save,
   Sparkles,
-  Star,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import {
   catalogApi,
-  adminApi,
   contractApi,
   marketplaceApi,
   profileApi,
@@ -24,10 +20,11 @@ import {
 } from "../lib/api";
 import { formatCompactCurrency, formatCurrency } from "../lib/utils";
 import { useSession } from "../lib/session";
+import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import type {
-  AdminAccount,
   ExpertProfile,
   Job,
+  Milestone,
   Portfolio,
   Proposal,
 } from "../types";
@@ -46,7 +43,6 @@ import {
   SearchInput,
   SectionHeading,
   StatusBadge,
-  Tabs,
   Textarea,
 } from "../components/ui";
 import { JobCard } from "./PublicPages";
@@ -54,11 +50,43 @@ import { useNavigate } from "react-router-dom";
 
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [milestonesByJobId, setMilestonesByJobId] = useState<
+    Record<number, Milestone[]>
+  >({});
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    marketplaceApi.listJobs().then(setJobs);
+    marketplaceApi
+      .listMyJobs()
+      .then(setJobs)
+      .catch(() => setJobs([]));
   }, []);
+
+  useEffect(() => {
+    if (jobs.length === 0) {
+      setMilestonesByJobId({});
+      return;
+    }
+    let ignore = false;
+
+    async function loadMilestones() {
+      const results = await Promise.allSettled(
+        jobs.map((job) => contractApi.listJobMilestones(job.jobId)),
+      );
+      if (ignore) return;
+      const map: Record<number, Milestone[]> = {};
+      results.forEach((result, index) => {
+        map[jobs[index].jobId] =
+          result.status === "fulfilled" ? result.value : [];
+      });
+      setMilestonesByJobId(map);
+    }
+
+    loadMilestones();
+    return () => {
+      ignore = true;
+    };
+  }, [jobs]);
 
   const filtered = jobs.filter((job) =>
     `${job.title} ${job.aiTag}`.toLowerCase().includes(query.toLowerCase()),
@@ -76,7 +104,7 @@ export function MyJobsPage() {
       <PageHeader
         eyebrow="JOB-01 / MATCH-01"
         title="Dự án của doanh nghiệp"
-        description="Tạo job, mở/đóng job và đi vào màn hình dual-flow AI đề xuất / Proposals."
+        description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
         actions={
           <LinkButton to="/app/jobs/new">
             <Plus className="h-4 w-4" />
@@ -120,6 +148,7 @@ export function MyJobsPage() {
                 </p>
               </div>
             </div>
+            <MilestoneCount count={(milestonesByJobId[job.jobId] || []).length} />
             <div className="mt-5 flex flex-wrap gap-2">
               <LinkButton
                 to={`/app/jobs/${job.jobId}/manage`}
@@ -165,7 +194,6 @@ export function CreateJobPage() {
     budget: "180000000",
     plannedDurationValue: "10",
     plannedDurationUnit: "tuần",
-    status: "DRAFT",
   });
   const [milestones, setMilestones] = useState([
     {
@@ -181,6 +209,7 @@ export function CreateJobPage() {
   ]);
   const [loading, setLoading] = useState(false);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
+  const [createMessage, setCreateMessage] = useState("");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
@@ -213,14 +242,6 @@ export function CreateJobPage() {
     }));
   };
 
-  const toggleDomain = (domainId: number) => {
-    setSelectedDomainIds((items) =>
-      items.includes(domainId)
-        ? items.filter((id) => id !== domainId)
-        : [...items, domainId],
-    );
-  };
-
   const toggleSkill = (skillId: number) => {
     setSelectedSkillIds((items) =>
       items.includes(skillId)
@@ -232,6 +253,7 @@ export function CreateJobPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
+    setCreateMessage("");
     try {
       const aiTag = domains
         .filter((domain) => selectedDomainIds.includes(domain.domainId))
@@ -245,32 +267,53 @@ export function CreateJobPage() {
         budget: Number(form.budget),
         plannedDurationValue: Number(form.plannedDurationValue),
         plannedDurationUnit: form.plannedDurationUnit,
-        status: form.status,
       });
-      await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
-      await catalogApi.replaceJobSkills(
-        job.jobId,
-        selectedSkillIds.map((skillId) => ({
-          skillId,
-          requiredLevel: "Intermediate",
-          isMandatory: true,
-          minYearsExperience: 1,
-        })),
-      );
-      for (const milestone of milestones) {
-        if (!milestone.milestoneName.trim()) continue;
-        await contractApi.createMilestone({
-          jobId: job.jobId,
-          milestoneName: milestone.milestoneName,
-          fundsAllocated: Number(milestone.fundsAllocated || 0),
-          orderIndex: Number(milestone.orderIndex || 1),
-          status: "Pending",
-        });
-      }
       setSavedJob(job);
+      setCreateMessage(
+        "Job nháp đã được tạo. Bạn có thể kiểm tra, quản lý hoặc mở public job ngay bên dưới.",
+      );
+
+      try {
+        await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
+        await catalogApi.replaceJobSkills(
+          job.jobId,
+          selectedSkillIds.map((skillId) => ({
+            skillId,
+            requiredLevel: "Intermediate",
+            isMandatory: true,
+            minYearsExperience: 1,
+          })),
+        );
+        for (const milestone of milestones) {
+          if (!milestone.milestoneName.trim()) continue;
+          await contractApi.createMilestone({
+            jobId: job.jobId,
+            milestoneName: milestone.milestoneName,
+            fundsAllocated: Number(milestone.fundsAllocated || 0),
+            orderIndex: Number(milestone.orderIndex || 1),
+            status: "Pending",
+          });
+        }
+      } catch {
+        setCreateMessage(
+          "Job nháp đã được tạo, nhưng một phần domain/skill/milestone chưa lưu được. Bạn vẫn có thể vào quản lý job để kiểm tra.",
+        );
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const publishSavedJob = async () => {
+    if (!savedJob) return;
+    const updated = await marketplaceApi.updateJobStatus(
+      savedJob.jobId,
+      "OPEN",
+    );
+    setSavedJob(updated);
+    setCreateMessage(
+      "Job đã được mở public. Chuyên gia có thể nhìn thấy và gửi proposal.",
+    );
   };
 
   return (
@@ -292,7 +335,7 @@ export function CreateJobPage() {
                 required
               />
             </Field>
-            <Field label="Yêu cầu thô">
+            <Field label="Yêu cầu dự án">
               <Textarea
                 value={form.rawRequirements}
                 onChange={(event) =>
@@ -514,23 +557,83 @@ export function CreateJobPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  setForm((value) => ({ ...value, status: "OPEN" }))
-                }
-              >
-                Chuyển sang OPEN
-              </Button>
               <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
-                Lưu job
+                Lưu job nháp
               </Button>
             </div>
           </form>
         </Card>
         <div className="space-y-4">
+          {savedJob && (
+            <Card className="p-5">
+              <SectionHeading
+                title="Quản lý job nháp"
+                description={
+                  createMessage || "Job đã được lưu ở trạng thái nháp."
+                }
+              />
+              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-400">
+                      #{savedJob.jobId}
+                    </p>
+                    <p className="mt-1 break-words font-extrabold text-ink">
+                      {savedJob.title}
+                    </p>
+                  </div>
+                  <StatusBadge status={savedJob.status} />
+                </div>
+                <div className="mt-4 grid gap-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">Ngân sách</span>
+                    <span className="break-words text-right font-extrabold text-ink">
+                      {formatCurrency(savedJob.budget)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">AI tag</span>
+                    <span className="break-words text-right font-extrabold text-ink">
+                      {savedJob.aiTag || "General AI"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <CompactMilestones
+                milestones={milestones
+                  .filter((milestone) => milestone.milestoneName.trim())
+                  .map((milestone, index) => ({
+                    milestoneId: index + 1,
+                    jobId: savedJob.jobId,
+                    milestoneName: milestone.milestoneName,
+                    fundsAllocated: Number(milestone.fundsAllocated || 0),
+                    orderIndex: Number(milestone.orderIndex || index + 1),
+                    status: "Pending",
+                  }))}
+              />
+              <div className="mt-4 grid gap-2">
+                <LinkButton
+                  to={`/app/jobs/${savedJob.jobId}/manage`}
+                  variant="secondary"
+                >
+                  Quản lý job
+                </LinkButton>
+                {savedJob.status !== "OPEN" && (
+                  <Button
+                    type="button"
+                    variant="success"
+                    onClick={publishSavedJob}
+                  >
+                    Mở public job
+                  </Button>
+                )}
+                <LinkButton to="/app/jobs" variant="ghost">
+                  Xem tất cả job nháp
+                </LinkButton>
+              </div>
+            </Card>
+          )}
           <Card className="overflow-hidden p-5">
             <img
               src="/images/ai-job-assistant.png"
@@ -546,24 +649,58 @@ export function CreateJobPage() {
               thật mà không thay đổi layout.
             </Notice>
           </Card>
-          {savedJob && (
-            <Card className="p-5">
-              <SectionHeading title="Job đã lưu" />
-              <p className="mt-3 font-extrabold text-ink">
-                #{savedJob.jobId} - {savedJob.title}
-              </p>
-              <div className="mt-4">
-                <LinkButton
-                  to={`/app/jobs/${savedJob.jobId}/manage`}
-                  variant="secondary"
-                >
-                  Đi tới quản lý job
-                </LinkButton>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
+  if (milestones.length === 0) {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+        Chưa có milestone.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-2">
+      {milestones
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((milestone) => (
+          <div
+            key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+            className="grid gap-2 rounded-2xl border border-slate-100 bg-white p-3 text-sm md:grid-cols-[56px_1fr_auto]"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              Mốc {milestone.orderIndex}
+            </p>
+            <div className="min-w-0">
+              <p className="break-words font-extrabold text-ink">
+                {milestone.milestoneName}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                {milestone.status || "Pending"}
+              </p>
+            </div>
+            <p className="font-extrabold text-ink md:text-right">
+              {formatCompactCurrency(milestone.fundsAllocated)}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function MilestoneCount({ count }: { count: number }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+      <p className="text-xs font-bold text-slate-400">Milestone</p>
+      <p className="mt-1 text-sm font-extrabold text-ink">
+        {count} mốc
+      </p>
     </div>
   );
 }
@@ -575,36 +712,39 @@ export function SubmitProposalPage() {
   const numericJobId = Number(jobId);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [savedProposal, setSavedProposal] = useState<Proposal | null>(null);
   const [form, setForm] = useState({
-    bidAmount: '',
-    technicalSolution: '',
-    projectIntention: '',
+    bidAmount: "",
+    technicalSolution: "",
+    projectIntention: "",
   });
 
   useEffect(() => {
-    marketplaceApi.getJob(numericJobId).then(setJob).catch(() => setJob(null));
+    marketplaceApi
+      .getJob(numericJobId)
+      .then(setJob)
+      .catch(() => setJob(null));
   }, [numericJobId]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (session?.role !== 'EXPERT') {
-      setMessage('Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.');
+    if (session?.role !== "EXPERT") {
+      setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
       return;
     }
     const bidAmount = Number(form.bidAmount);
     if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
-      setMessage('bid_amount phải là số lớn hơn 0.');
+      setMessage("bid_amount phải là số lớn hơn 0.");
       return;
     }
     if (!form.technicalSolution.trim()) {
-      setMessage('technical_solution không được để trống.');
+      setMessage("technical_solution không được để trống.");
       return;
     }
 
     setLoading(true);
-    setMessage('');
+    setMessage("");
     try {
       const proposal = await marketplaceApi.submitProposal({
         jobId: numericJobId,
@@ -612,17 +752,29 @@ export function SubmitProposalPage() {
         technicalSolution: form.technicalSolution.trim(),
       });
       setSavedProposal(proposal);
-      setMessage('Đã gửi proposal thành công.');
+      setMessage("Đã gửi proposal thành công.");
     } catch (error) {
-      const apiError = error as { response?: { data?: { message?: string } }; message?: string };
-      setMessage(apiError.response?.data?.message || apiError.message || 'Không thể gửi proposal.');
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      setMessage(
+        apiError.response?.data?.message ||
+          apiError.message ||
+          "Không thể gửi proposal.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   if (!job) {
-    return <EmptyState title="Không tìm thấy dự án" description="Dữ liệu job được tải trực tiếp từ backend." />;
+    return (
+      <EmptyState
+        title="Không tìm thấy dự án"
+        description="Dữ liệu job được tải trực tiếp từ backend."
+      />
+    );
   }
 
   return (
@@ -631,16 +783,26 @@ export function SubmitProposalPage() {
         eyebrow="MATCH-02"
         title="Nộp báo giá dự thầu"
         description={job.title}
-        actions={<LinkButton to={`/jobs/${job.jobId}`} variant="secondary">Quay lại job</LinkButton>}
+        actions={
+          <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+            Quay lại job
+          </LinkButton>
+        }
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-5">
             {message && (
-              <Notice tone={savedProposal ? 'success' : 'warning'} title={message} />
+              <Notice
+                tone={savedProposal ? "success" : "warning"}
+                title={message}
+              />
             )}
-            {session?.role !== 'EXPERT' && (
-              <Notice tone="danger" title="Tài khoản hiện tại không phải Chuyên gia">
+            {session?.role !== "EXPERT" && (
+              <Notice
+                tone="danger"
+                title="Tài khoản hiện tại không phải Chuyên gia"
+              >
                 Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
               </Notice>
             )}
@@ -649,7 +811,12 @@ export function SubmitProposalPage() {
                 type="number"
                 min={1}
                 value={form.bidAmount}
-                onChange={(event) => setForm((value) => ({ ...value, bidAmount: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    bidAmount: event.target.value,
+                  }))
+                }
                 placeholder="Ví dụ: 165000000"
                 required
               />
@@ -657,7 +824,12 @@ export function SubmitProposalPage() {
             <Field label="technical_solution">
               <Textarea
                 value={form.technicalSolution}
-                onChange={(event) => setForm((value) => ({ ...value, technicalSolution: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    technicalSolution: event.target.value,
+                  }))
+                }
                 placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
                 required
               />
@@ -665,15 +837,28 @@ export function SubmitProposalPage() {
             <Field label="Mô tả dự định của chuyên gia đối với dự án">
               <Textarea
                 value={form.projectIntention}
-                onChange={(event) => setForm((value) => ({ ...value, projectIntention: event.target.value }))}
+                onChange={(event) =>
+                  setForm((value) => ({
+                    ...value,
+                    projectIntention: event.target.value,
+                  }))
+                }
                 placeholder="Bạn sẽ tiếp cận dự án như thế nào, ưu tiên rủi ro nào, kế hoạch phối hợp với doanh nghiệp ra sao."
               />
             </Field>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => navigate('/app/opportunities')}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigate("/app/opportunities")}
+              >
                 Hủy
               </Button>
-              <Button type="submit" loading={loading} disabled={session?.role !== 'EXPERT'}>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={session?.role !== "EXPERT"}
+              >
                 <Save className="h-4 w-4" />
                 Gửi proposal
               </Button>
@@ -687,20 +872,29 @@ export function SubmitProposalPage() {
             <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-500">Ngân sách</span>
-                <span className="font-extrabold text-ink">{formatCurrency(job.budget)}</span>
+                <span className="font-extrabold text-ink">
+                  {formatCurrency(job.budget)}
+                </span>
               </div>
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-500">AI tag</span>
-                <span className="font-extrabold text-ink">{job.aiTag || 'General AI'}</span>
+                <span className="font-extrabold text-ink">
+                  {job.aiTag || "General AI"}
+                </span>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">{job.structuredSow || job.rawRequirements}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              {job.structuredSow || job.rawRequirements}
+            </p>
           </Card>
           {savedProposal && (
             <Card className="p-5">
               <SectionHeading title="Proposal đã gửi" />
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <p><span className="font-bold text-ink">bid_amount:</span> {formatCurrency(savedProposal.bidAmount)}</p>
+                <p>
+                  <span className="font-bold text-ink">bid_amount:</span>{" "}
+                  {formatCurrency(savedProposal.bidAmount)}
+                </p>
               </div>
               <div className="mt-4">
                 <LinkButton to="/app/proposals" variant="secondary">
@@ -717,10 +911,10 @@ export function SubmitProposalPage() {
 
 export function ManageJobPage() {
   const { jobId } = useParams();
+  const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [matches, setMatches] = useState<Proposal[]>([]);
-  const [active, setActive] = useState("ai");
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
     technologyUsed: "Python, FastAPI, PostgreSQL",
@@ -732,7 +926,10 @@ export function ManageJobPage() {
     const id = Number(jobId);
     marketplaceApi.getJob(id).then(setJob);
     marketplaceApi.listProposals(id).then(setProposals);
-    marketplaceApi.matching(id).then(setMatches);
+    contractApi
+      .listJobMilestones(id)
+      .then(setMilestones)
+      .catch(() => setMilestones([]));
   }, [jobId]);
 
   if (!job) return <div>Đang tải job...</div>;
@@ -749,12 +946,18 @@ export function ManageJobPage() {
 
   const createContract = async () => {
     if (!contractModal) return;
-    await contractApi.createFromProposal(contractModal.proposalId, {
-      technologyUsed: contractForm.technologyUsed,
-      totalBudget: Number(contractForm.totalBudget || contractModal.bidAmount),
-      timelineDays: Number(contractForm.timelineDays),
-    });
+    const contract = await contractApi.createFromProposal(
+      contractModal.proposalId,
+      {
+        technologyUsed: contractForm.technologyUsed,
+        totalBudget: Number(
+          contractForm.totalBudget || contractModal.bidAmount,
+        ),
+        timelineDays: Number(contractForm.timelineDays),
+      },
+    );
     setContractModal(null);
+    navigate(`/app/contracts/${contract.contractId}`);
   };
 
   return (
@@ -762,7 +965,7 @@ export function ManageJobPage() {
       <PageHeader
         eyebrow="MATCH-01 / MATCH-02"
         title={job.title}
-        description="Màn hình dual-flow bắt buộc: AI đề xuất và proposal chuyên gia tự nộp nằm trong hai tab tách biệt."
+        description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
         actions={
           <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
             Xem public detail
@@ -771,20 +974,15 @@ export function ManageJobPage() {
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card className="p-6">
-          <Tabs
-            active={active}
-            onChange={setActive}
-            tabs={[
-              { id: "ai", label: "AI đề xuất", count: matches.length },
-              { id: "proposal", label: "Proposals", count: proposals.length },
-            ]}
+          <SectionHeading
+            title="Proposal của chuyên gia"
+            description="Danh sách proposal được chuyên gia gửi trực tiếp cho job này."
           />
           <div className="mt-6 grid gap-4">
-            {(active === "ai" ? matches : proposals).map((proposal) => (
+            {proposals.map((proposal) => (
               <ProposalCard
-                key={`${active}-${proposal.proposalId}`}
+                key={proposal.proposalId}
                 proposal={proposal}
-                mode={active as "ai" | "proposal"}
                 onAccept={() => review(proposal.proposalId, "Accepted")}
                 onReject={() => review(proposal.proposalId, "Rejected")}
                 onContract={() => {
@@ -796,43 +994,55 @@ export function ManageJobPage() {
                 }}
               />
             ))}
-            {(active === "ai" ? matches : proposals).length === 0 && (
+            {proposals.length === 0 && (
               <EmptyState
-                title="Chưa có dữ liệu"
-                description="Job này chưa có proposal hoặc chưa đủ dữ liệu matching."
+                title="Chưa có proposal"
+                description="Job này chưa có proposal từ chuyên gia."
               />
             )}
           </div>
         </Card>
         <Card className="p-6">
           <SectionHeading title="Tóm tắt SoW" />
-          <p className="mt-4 text-sm leading-7 text-slate-600">
-            {job.structuredSow}
+          <p className="mt-4 break-words text-sm leading-7 text-slate-600">
+            {job.structuredSow || job.rawRequirements}
           </p>
           <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
-            <div className="flex justify-between text-sm">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
               <span className="text-slate-500">Ngân sách</span>
-              <span className="font-extrabold text-ink">
+              <span className="min-w-0 break-words text-right font-extrabold text-ink">
                 {formatCurrency(job.budget)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
               <span className="text-slate-500">AI tag</span>
-              <span className="font-extrabold text-ink">{job.aiTag}</span>
+              <div className="flex min-w-0 flex-wrap justify-end gap-1">
+                {(job.aiTag || "General AI")
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean)
+                  .map((tag) => (
+                    <Badge key={tag} tone="brand">
+                      <span className="max-w-[180px] break-words text-xs">
+                        {tag}
+                      </span>
+                    </Badge>
+                  ))}
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Trạng thái</span>
               <StatusBadge status={job.status} />
             </div>
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="text-slate-500">Milestone</span>
+              <span className="font-extrabold text-ink">{milestones.length} mốc</span>
+            </div>
           </div>
-          <Notice
-            tone="warning"
-            title="Chờ AI matching nâng cấp"
-            className="mt-4"
-          >
-            Endpoint hiện match keyword “AI”. UI đã chuẩn bị score, skill và
-            rating để thay bằng model matching sau này.
-          </Notice>
+          <div className="mt-5">
+            <SectionHeading title="Milestone" />
+            <CompactMilestones milestones={milestones} />
+          </div>
         </Card>
       </div>
 
@@ -896,23 +1106,24 @@ export function ManageJobPage() {
 
 function ProposalCard({
   proposal,
-  mode,
   onAccept,
   onReject,
   onContract,
 }: {
   proposal: Proposal;
-  mode: "ai" | "proposal";
   onAccept: () => void;
   onReject: () => void;
   onContract: () => void;
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailMessage, setDetailMessage] = useState('');
-  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
-  const [expertAccount, setExpertAccount] = useState<AdminAccount | null>(null);
+  const [detailMessage, setDetailMessage] = useState("");
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
+    null,
+  );
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
     if (!expertOpen) return;
@@ -920,29 +1131,41 @@ function ProposalCard({
 
     async function loadExpertDetail() {
       setDetailLoading(true);
-      setDetailMessage('');
-      const [expertsResult, portfoliosResult, accountsResult] = await Promise.allSettled([
-        profileApi.listExperts(),
-        profileApi.listPortfolios(),
-        adminApi.listAccounts(),
+      setDetailMessage("");
+      const [expertsResult, portfoliosResult] =
+        await Promise.allSettled([
+          profileApi.listExperts(),
+          profileApi.listPortfolios(),
+        ]);
+      const [domainsResult, skillsResult] = await Promise.allSettled([
+        catalogApi.listDomains(true),
+        catalogApi.listSkills(true),
       ]);
 
       if (ignore) return;
 
-      const experts = expertsResult.status === 'fulfilled' ? expertsResult.value : [];
-      const portfolios = portfoliosResult.status === 'fulfilled' ? portfoliosResult.value : [];
-      const accounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
-      const profile = experts.find((item) => item.expertId === proposal.expertId) || null;
-      const matchedPortfolio = portfolios.find((item) => item.expertId === proposal.expertId) || null;
-      const account = profile ? accounts.find((item) => item.accountId === profile.accountId) || null : null;
+      const experts =
+        expertsResult.status === "fulfilled" ? expertsResult.value : [];
+      const portfolios =
+        portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
+      const profile =
+        experts.find((item) => item.expertId === proposal.expertId) || null;
+      const matchedPortfolio =
+        portfolios.find((item) => item.expertId === proposal.expertId) || null;
 
       setExpertProfile(profile);
       setPortfolio(matchedPortfolio);
-      setExpertAccount(account);
+      setDomains(
+        domainsResult.status === "fulfilled" ? domainsResult.value : [],
+      );
+      setSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
       setDetailLoading(false);
 
-      if (expertsResult.status === 'rejected' || portfoliosResult.status === 'rejected' || accountsResult.status === 'rejected') {
-        setDetailMessage('Một số thông tin chưa lấy được từ API hiện tại.');
+      if (
+        expertsResult.status === "rejected" ||
+        portfoliosResult.status === "rejected"
+      ) {
+        setDetailMessage("Một số thông tin chưa lấy được từ API hiện tại.");
       }
     }
 
@@ -952,8 +1175,23 @@ function ProposalCard({
     };
   }, [expertOpen, proposal.expertId]);
 
-  const expertName = expertAccount?.fullName || expertProfile?.fullName || proposal.expertName || `Expert #${proposal.expertId}`;
-  const expertPhone = expertAccount?.phone || 'Chưa có dữ liệu';
+  const expertName =
+    expertProfile?.fullName ||
+    proposal.expertName ||
+    `Expert #${proposal.expertId}`;
+  const domainNames = resolveCatalogNames(
+    portfolio?.domainIds,
+    domains,
+    "domainId",
+    "domainName",
+  );
+  const skillNames = resolveCatalogNames(
+    portfolio?.skillIds,
+    skills,
+    "skillId",
+    "skillName",
+  );
+  const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
 
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">
@@ -979,23 +1217,14 @@ function ProposalCard({
           <p className="font-display text-xl font-black text-ink">
             {formatCompactCurrency(proposal.bidAmount)}
           </p>
-          <p className="mt-1 text-xs font-bold text-slate-400">
-            {proposal.deliveryDays || 60} ngày
-          </p>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {mode === "ai" && (
-          <Badge tone="mint">
-            <Sparkles className="h-3.5 w-3.5" />
-            Match {proposal.matchScore || 90}%
-          </Badge>
-        )}
-        <Badge tone="amber">
-          <Star className="h-3.5 w-3.5" />
-          {proposal.rating || 4.8}
-        </Badge>
-        <Button variant="secondary" size="sm" onClick={() => setExpertOpen(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setExpertOpen(true)}
+        >
           <Eye className="h-4 w-4" />
           Xem chi tiết
         </Button>
@@ -1024,9 +1253,17 @@ function ProposalCard({
           <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
             <Avatar name={expertName} size="xl" />
             <div className="min-w-0">
-              <p className="font-display text-2xl font-black text-ink">{expertName}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{expertPhone}</p>
-              {detailLoading && <p className="mt-2 text-xs font-bold text-brand-600">Đang tải hồ sơ...</p>}
+              <p className="font-display text-2xl font-black text-ink">
+                {expertName}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {expertPhone}
+              </p>
+              {detailLoading && (
+                <p className="mt-2 text-xs font-bold text-brand-600">
+                  Đang tải hồ sơ...
+                </p>
+              )}
             </div>
           </div>
 
@@ -1035,13 +1272,41 @@ function ProposalCard({
             <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
           </div>
 
-          <SectionHeading title="Portfolio" description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng." />
+          <SectionHeading
+            title="Portfolio"
+            description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng."
+          />
           <div className="grid gap-3">
-            <ExpertInfoItem label="context" value={portfolio?.context || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="data_processing" value={portfolio?.dataProcessing || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="model_architecture" value={portfolio?.modelArchitecture || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="performance_metrics" value={portfolio?.performanceMetrics || 'Chưa có dữ liệu'} multiline />
-            <ExpertInfoItem label="poc_url" value={portfolio?.pocUrl || 'Chưa có dữ liệu'} />
+            <ExpertInfoItem
+              label="Lĩnh vực"
+              value={domainNames || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="Skill"
+              value={skillNames || "Chưa có dữ liệu"}
+              multiline
+            />
+            <ExpertInfoItem
+              label="Số năm kinh nghiệm"
+              value={
+                portfolio?.yearsExperience != null
+                  ? `${portfolio.yearsExperience} năm`
+                  : "Chưa có dữ liệu"
+              }
+            />
+            <ExpertInfoBlock label="Chứng chỉ">
+              <FirebaseFileLink
+                path={portfolio?.certificates}
+                emptyText="Chưa có chứng chỉ"
+                buttonText="Xem chứng chỉ"
+              />
+            </ExpertInfoBlock>
+            <ExpertInfoItem
+              label="Mô tả bản thân"
+              value={portfolio?.selfDescription || "Chưa có dữ liệu"}
+              multiline
+            />
           </div>
         </div>
       </Modal>
@@ -1049,13 +1314,68 @@ function ProposalCard({
   );
 }
 
-function ExpertInfoItem({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+function resolveCatalogNames(
+  ids: string | undefined,
+  items: Array<Domain | Skill>,
+  idKey: "domainId" | "skillId",
+  nameKey: "domainName" | "skillName",
+) {
+  if (!ids) return "";
+  const parsedIds = ids
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item));
+  if (parsedIds.length === 0) return ids;
+  const names = parsedIds.map((id) => {
+    const item = items.find(
+      (catalogItem) =>
+        Number(catalogItem[idKey as keyof typeof catalogItem]) === id,
+    );
+    return item ? String(item[nameKey as keyof typeof item]) : String(id);
+  });
+  return names.join(", ");
+}
+
+function ExpertInfoItem({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4">
-      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={multiline ? 'mt-2 text-sm leading-6 text-slate-700' : 'mt-2 break-words text-sm font-extrabold text-ink'}>
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p
+        className={
+          multiline
+            ? "mt-2 text-sm leading-6 text-slate-700"
+            : "mt-2 break-words text-sm font-extrabold text-ink"
+        }
+      >
         {value}
       </p>
+    </div>
+  );
+}
+
+function ExpertInfoBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
@@ -1108,6 +1428,49 @@ export function OpportunitiesPage() {
 }
 
 export function ProposalsPage() {
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [jobsById, setJobsById] = useState<Record<number, Job>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProposals() {
+      setLoading(true);
+      try {
+        const items = await marketplaceApi.listMyProposals();
+        if (ignore) return;
+        setProposals(items);
+        const uniqueJobIds = Array.from(
+          new Set(items.map((item) => item.jobId)),
+        );
+        const jobResults = await Promise.allSettled(
+          uniqueJobIds.map((id) => marketplaceApi.getJob(id)),
+        );
+        if (ignore) return;
+        const map: Record<number, Job> = {};
+        jobResults.forEach((result) => {
+          if (result.status === "fulfilled") {
+            map[result.value.jobId] = result.value;
+          }
+        });
+        setJobsById(map);
+      } catch {
+        if (!ignore) {
+          setProposals([]);
+          setJobsById({});
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadProposals();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -1120,11 +1483,10 @@ export function ProposalsPage() {
           </LinkButton>
         }
       />
+      {loading && <Notice tone="info" title="Đang tải proposal..." />}
       <div className="grid gap-4">
-        {([] as Proposal[]).map((proposal) => {
-          const job = ([] as Job[]).find(
-            (item) => item.jobId === proposal.jobId,
-          );
+        {proposals.map((proposal) => {
+          const job = jobsById[proposal.jobId];
           return (
             <Card key={proposal.proposalId} className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -1134,21 +1496,11 @@ export function ProposalsPage() {
                     <Badge tone="brand">{job?.aiTag || "AI"}</Badge>
                   </div>
                   <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
-                    {job?.title}
+                    {job?.title || `Job #${proposal.jobId}`}
                   </h3>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
                     {proposal.technicalSolution}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="h-4 w-4" />{" "}
-                      {proposal.deliveryDays || 60} ngày
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Lightbulb className="h-4 w-4" /> Score{" "}
-                      {proposal.matchScore || 88}%
-                    </span>
-                  </div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">Bid amount</p>
@@ -1161,6 +1513,12 @@ export function ProposalsPage() {
           );
         })}
       </div>
+      {!loading && proposals.length === 0 && (
+        <EmptyState
+          title="Chưa có proposal"
+          description="Khi chuyên gia gửi proposal cho job public, dữ liệu sẽ xuất hiện tại đây."
+        />
+      )}
     </div>
   );
 }
