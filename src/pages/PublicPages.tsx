@@ -11,19 +11,19 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { marketplaceApi } from '../lib/api';
-import { getSession } from '../lib/session';
+import { Link, useParams } from 'react-router-dom';
+import { contractApi, marketplaceApi, profileApi } from '../lib/api';
+import { getPublicExperience } from '../lib/roleExperience';
+import { useSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
-import type { Job } from '../types';
+import type { BusinessProfile, Job, Milestone } from '../types';
+import { FirebaseFileLink } from '../components/FirebaseFileLink';
 import {
   Avatar,
   Badge,
   Button,
   Card,
   EmptyState,
-  Field,
-  Input,
   LinkButton,
   Modal,
   Notice,
@@ -32,11 +32,12 @@ import {
   SearchInput,
   SectionHeading,
   StatusBadge,
-  Textarea,
 } from '../components/ui';
 
 export function LandingPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const session = useSession();
+  const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
     marketplaceApi.listJobs().then((data) => setJobs(data.slice(0, 3)));
@@ -51,20 +52,20 @@ export function LandingPage() {
           <div className="relative z-10">
             <Badge tone="brand">
               <Sparkles className="h-3.5 w-3.5" />
-              AI Project Marketplace
+              {publicExperience.badge}
             </Badge>
             <h1 className="mt-6 font-display text-4xl font-black tracking-[-0.055em] text-ink md:text-6xl">
-              Thuê chuyên gia AI, quản lý dự án và escrow trong một nền tảng sáng rõ.
+              {publicExperience.heroTitle}
             </h1>
             <p className="mt-6 max-w-xl text-base leading-8 text-slate-600">
-              AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận proposal, ký hợp đồng, chia milestone, nghiệm thu và xử lý dòng tiền minh bạch.
+              {publicExperience.heroDescription}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <LinkButton to="/register" size="lg">
-                Bắt đầu dự án <ArrowRight className="h-4 w-4" />
+              <LinkButton to={publicExperience.primaryPath} size="lg">
+                {publicExperience.primaryLabel} <ArrowRight className="h-4 w-4" />
               </LinkButton>
-              <LinkButton to="/jobs" size="lg" variant="secondary">
-                Xem cơ hội
+              <LinkButton to={publicExperience.secondaryPath} size="lg" variant="secondary">
+                {publicExperience.secondaryLabel}
               </LinkButton>
             </div>
             <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
@@ -199,6 +200,8 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('ALL');
+  const session = useSession();
+  const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
     marketplaceApi.listJobs().then(setJobs);
@@ -222,7 +225,7 @@ export function JobsPage() {
         eyebrow="Marketplace"
         title="Cơ hội dự án AI"
         description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
-        actions={<LinkButton to="/register">Đăng ký để nộp proposal</LinkButton>}
+        actions={<LinkButton to={publicExperience.primaryPath}>{publicExperience.primaryLabel}</LinkButton>}
       />
       <Card className="mt-8 p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_120px]">
@@ -259,6 +262,25 @@ export function JobsPage() {
 }
 
 export function JobCard({ job, manage = false }: { job: Job; manage?: boolean }) {
+  const [milestoneCount, setMilestoneCount] = useState(0);
+
+  useEffect(() => {
+    let ignore = false;
+
+    contractApi
+      .listJobMilestones(job.jobId)
+      .then((items) => {
+        if (!ignore) setMilestoneCount(items.length);
+      })
+      .catch(() => {
+        if (!ignore) setMilestoneCount(0);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [job.jobId]);
+
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
@@ -284,6 +306,10 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
           <p className="mt-1 text-sm font-extrabold text-ink">{job.proposalsCount || 0}</p>
         </div>
       </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Milestone</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">{milestoneCount} mốc</p>
+      </div>
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <span className="text-xs font-semibold text-slate-400">{job.companyName || 'Doanh nghiệp'}</span>
         <LinkButton to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`} size="sm" variant="secondary">
@@ -296,31 +322,51 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
 
 export function JobDetailPage() {
   const { jobId } = useParams();
-  const navigate = useNavigate();
+  const session = useSession();
   const [job, setJob] = useState<Job | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [proposal, setProposal] = useState({ bidAmount: '', technicalSolution: '' });
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [businessOpen, setBusinessOpen] = useState(false);
+  const [businessLoading, setBusinessLoading] = useState(false);
 
   useEffect(() => {
-    marketplaceApi.getJob(Number(jobId)).then(setJob);
+    const id = Number(jobId);
+    marketplaceApi.getJob(id).then(setJob);
+    contractApi
+      .listJobMilestones(id)
+      .then(setMilestones)
+      .catch(() => setMilestones([]));
   }, [jobId]);
+
+  useEffect(() => {
+    if (!job) return;
+    let ignore = false;
+    const currentJobId = job.jobId;
+
+    async function loadBusiness() {
+      setBusinessLoading(true);
+      try {
+        const profile = await profileApi.getBusinessByJob(currentJobId);
+        if (!ignore) setBusiness(profile);
+      } catch {
+        if (!ignore) setBusiness(null);
+      } finally {
+        if (!ignore) setBusinessLoading(false);
+      }
+    }
+
+    loadBusiness();
+    return () => {
+      ignore = true;
+    };
+  }, [job]);
 
   if (!job) {
     return <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">Đang tải job...</main>;
   }
 
-  const submitProposal = async () => {
-    setSubmitting(true);
-    await marketplaceApi.submitProposal({
-      jobId: job.jobId,
-      bidAmount: Number(proposal.bidAmount),
-      technicalSolution: proposal.technicalSolution,
-    });
-    setSubmitting(false);
-    setModalOpen(false);
-    navigate('/app/proposals');
-  };
+  const isOpenJob = job.status === 'OPEN';
+  const canSubmitProposal = session?.role === 'EXPERT' && isOpenJob;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
@@ -354,6 +400,13 @@ export function JobDetailPage() {
               ))}
             </div>
           </Card>
+          <Card className="mt-6 p-6">
+            <SectionHeading
+              title="Milestone dự án"
+              description="Các mốc công việc doanh nghiệp đã khai báo khi tạo job."
+            />
+            <MilestoneList milestones={milestones} />
+          </Card>
         </div>
         <aside className="space-y-4">
           <Card className="p-5">
@@ -361,60 +414,98 @@ export function JobDetailPage() {
             <div className="mt-5 grid gap-3">
               <InfoRow icon={<WalletCards className="h-4 w-4" />} label="Ngân sách" value={formatCurrency(job.budget)} />
               <InfoRow icon={<Clock3 className="h-4 w-4" />} label="Thời lượng" value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || 'tuần'}`} />
-              <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={job.companyName || 'Đang cập nhật'} />
+              <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={business?.companyName || job.companyName || 'Đang cập nhật'} />
+              <InfoRow icon={<ShieldCheck className="h-4 w-4" />} label="Mã số thuế" value={business?.taxCode || 'Đang cập nhật'} />
               <InfoRow icon={<Bot className="h-4 w-4" />} label="AI tag" value={job.aiTag || 'General AI'} />
+              <InfoRow icon={<CheckCircle2 className="h-4 w-4" />} label="Milestone" value={`${milestones.length} mốc`} />
             </div>
-            <Button className="mt-5 w-full" onClick={() => setModalOpen(true)} disabled={job.status === 'CLOSED'}>
-              Nộp báo giá dự thầu
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-5 w-full"
+              onClick={() => setBusinessOpen(true)}
+            >
+              Xem chi tiết doanh nghiệp
             </Button>
+            {canSubmitProposal && (
+              <LinkButton to={`/app/jobs/${job.jobId}/proposal`} className="mt-5 w-full">
+                Nộp báo giá dự thầu
+              </LinkButton>
+            )}
+            {!session && (
+              <LinkButton to="/login" className="mt-5 w-full">
+                Nộp báo giá dự thầu
+              </LinkButton>
+            )}
+            {session && session.role !== 'EXPERT' && (
+              <>
+                <Button className="mt-5 w-full" disabled>
+                  Nộp báo giá dự thầu
+                </Button>
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  Chỉ tài khoản Chuyên gia mới có thể nộp báo giá cho dự án.
+                </p>
+              </>
+            )}
+            {session?.role === 'EXPERT' && !isOpenJob && (
+              <>
+                <Button className="mt-5 w-full" disabled>
+                  Nộp báo giá dự thầu
+                </Button>
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  Dự án cần ở trạng thái OPEN để nhận proposal.
+                </p>
+              </>
+            )}
           </Card>
-          <Notice tone="info" title="Luồng dual-flow">
-            Doanh nghiệp sẽ thấy proposal của bạn trong tab Proposals, song song với tab AI đề xuất chuyên gia.
-          </Notice>
         </aside>
       </div>
-
       <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Nộp proposal"
-        description="Gửi mức giá và tóm tắt giải pháp sơ bộ cho doanh nghiệp."
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={submitProposal} loading={submitting}>
-              Gửi proposal
-            </Button>
-          </>
-        }
+        open={businessOpen}
+        onClose={() => setBusinessOpen(false)}
+        title="Thông tin doanh nghiệp"
+        description="Dữ liệu hồ sơ KYB của doanh nghiệp đăng job."
+        size="lg"
       >
-        {!getSession() && (
-          <Notice tone="warning" title="Bạn cần đăng nhập để gọi API thật">
-            Đăng nhập bằng tài khoản Expert thật hoặc đăng ký tài khoản mới trước khi nộp.
-          </Notice>
-        )}
-        <div className="mt-4 grid gap-4">
-          <Field label="Bid amount">
-            <Input
-              type="number"
-              value={proposal.bidAmount}
-              onChange={(event) => setProposal((value) => ({ ...value, bidAmount: event.target.value }))}
-              placeholder="Ví dụ: 165000000"
+        <div className="grid gap-4">
+          {businessLoading && <Notice tone="info" title="Đang tải hồ sơ doanh nghiệp..." />}
+          {!businessLoading && !business && (
+            <Notice tone="warning" title="Chưa lấy được hồ sơ doanh nghiệp từ API hiện tại." />
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            <BusinessInfoItem
+              label="Tên doanh nghiệp"
+              value={business?.companyName || job.companyName || "Chưa có dữ liệu"}
             />
-          </Field>
-          <Field label="Giải pháp kỹ thuật">
-            <Textarea
-              value={proposal.technicalSolution}
-              onChange={(event) =>
-                setProposal((value) => ({ ...value, technicalSolution: event.target.value }))
-              }
-              placeholder="Mô tả kiến trúc, cách triển khai, chỉ số cam kết..."
+            <BusinessInfoItem
+              label="Mã số thuế"
+              value={business?.taxCode || "Chưa có dữ liệu"}
             />
-          </Field>
+            <BusinessInfoItem
+              label="Trạng thái KYB"
+              value={business?.kybStatus || "Chưa có dữ liệu"}
+            />
+            <BusinessInfoItem
+              label="Địa chỉ"
+              value={business?.address || "Chưa có dữ liệu"}
+              multiline
+            />
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4">
+            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              Giấy phép kinh doanh
+            </p>
+            <div className="mt-2">
+              <FirebaseFileLink
+                path={business?.businessLicenseUrl}
+                emptyText="Chưa có giấy phép kinh doanh"
+                buttonText="Xem giấy phép"
+              />
+            </div>
+          </div>
         </div>
       </Modal>
+
     </main>
   );
 }
@@ -427,6 +518,73 @@ function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value
         <p className="text-xs font-bold text-slate-400">{label}</p>
         <p className="text-sm font-extrabold text-ink">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function MilestoneList({ milestones }: { milestones: Milestone[] }) {
+  if (milestones.length === 0) {
+    return (
+      <EmptyState
+        title="Chưa có milestone"
+        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại đây."
+      />
+    );
+  }
+
+  return (
+    <div className="mt-5 grid gap-3">
+      {milestones
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((milestone) => (
+          <div
+            key={milestone.milestoneId}
+            className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-[64px_1fr_160px]"
+          >
+            <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              Mốc {milestone.orderIndex}
+            </p>
+            <div className="min-w-0">
+              <p className="break-words text-sm font-extrabold text-ink">
+                {milestone.milestoneName}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                {milestone.status || "Pending"}
+              </p>
+            </div>
+            <p className="text-sm font-extrabold text-ink md:text-right">
+              {formatCompactCurrency(milestone.fundsAllocated)}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function BusinessInfoItem({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p
+        className={
+          multiline
+            ? "mt-2 text-sm leading-6 text-slate-700"
+            : "mt-2 break-words text-sm font-extrabold text-ink"
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }

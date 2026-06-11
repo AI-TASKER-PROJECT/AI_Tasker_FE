@@ -24,7 +24,8 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../types';
-import { clearSession, roleLabel, useSession } from '../lib/session';
+import { authApi } from '../lib/api';
+import { clearSession, roleLabel, saveSession, useSession } from '../lib/session';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
 import { Avatar, Badge, Button } from './ui';
@@ -79,20 +80,42 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
 
+  const role = session?.role;
   const accountStatus = session?.accountStatus || 'Approved';
   const needsVerification = !!session && (session.role === 'BUSINESS' || session.role === 'EXPERT') && accountStatus !== 'Approved';
   const verificationPath = session?.role === 'BUSINESS' ? '/app/business/profile' : '/app/expert/profile';
   const navItems = useMemo(() => {
-    if (!session) return [];
+    if (!role) return [];
     if (needsVerification) {
-      return roleNav[session.role].filter((item) => item.to === verificationPath);
+      return roleNav[role].filter((item) => item.to === verificationPath);
     }
-    return [...commonNav, ...roleNav[session.role]].filter((item) => {
-      if (session.role === 'STAFF') return !item.to.startsWith('/app/admin');
-      if (session.role === 'ADMIN') return item.to !== '/app/verifications';
+    return [...commonNav, ...roleNav[role]].filter((item) => {
+      if (role === 'STAFF') return !item.to.startsWith('/app/admin');
+      if (role === 'ADMIN') return item.to !== '/app/verifications';
       return true;
     });
-  }, [needsVerification, session?.role, verificationPath]);
+  }, [needsVerification, role, verificationPath]);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    let ignore = false;
+
+    authApi.me()
+      .then((freshSession) => {
+        if (ignore) return;
+        saveSession({
+          ...session,
+          ...freshSession,
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      ignore = true;
+    };
+  }, [location.pathname, session?.accessToken]);
 
   useEffect(() => {
     if (!session) return;
@@ -107,6 +130,12 @@ export function AppShell() {
     clearSession();
     navigate('/login');
   };
+
+  const isNavItemActive = (item: NavItem, isActive: boolean) =>
+    isActive ||
+    (session.role === 'EXPERT' &&
+      item.to === '/app/opportunities' &&
+      /^\/app\/jobs\/[^/]+\/proposal$/.test(location.pathname));
 
   return (
     <div className="min-h-screen bg-[#f7faff] text-ink">
@@ -132,7 +161,7 @@ export function AppShell() {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all',
-                  isActive
+                  isNavItemActive(item, isActive)
                     ? 'bg-brand-50 text-brand-700 shadow-sm'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-ink',
                 )
@@ -258,7 +287,7 @@ export function AppShell() {
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold',
-                      isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-500',
+                      isNavItemActive(item, isActive) ? 'bg-brand-50 text-brand-700' : 'text-slate-500',
                     )
                   }
                 >

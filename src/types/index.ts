@@ -163,6 +163,14 @@ export interface BusinessProfile {
   updatedAt?: string;
 }
 
+export interface TaxCheckResponse {
+  taxCode: string;
+  companyName?: string;
+  address?: string;
+  representative?: string;
+  status?: string;
+}
+
 export interface ExpertProfile {
   expertId: number;
   accountId: number;
@@ -174,6 +182,7 @@ export interface ExpertProfile {
   createdAt?: string;
   updatedAt?: string;
   fullName?: string;
+  phone?: string;
   title?: string;
   rating?: number;
   completedProjects?: number;
@@ -183,11 +192,11 @@ export interface ExpertProfile {
 export interface Portfolio {
   portfolioId: number;
   expertId: number;
-  context: string;
-  dataProcessing: string;
-  modelArchitecture: string;
-  performanceMetrics: string;
-  pocUrl?: string;
+  domainIds: string;
+  skillIds: string;
+  yearsExperience: number;
+  certificates?: string;
+  selfDescription: string;
   createdAt?: string;
   updatedAt?: string;
 }
