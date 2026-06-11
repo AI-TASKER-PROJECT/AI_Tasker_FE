@@ -85,6 +85,18 @@ export interface JobSkill {
   minYearsExperience?: number;
   createdAt?: string;
 }
+export interface ChatbotResponse {
+  answer: string;
+  sources: string[];
+}
+
+export const chatbotApi = {
+  ask(question: string) {
+    return api
+      .post<ChatbotResponse>('/api/chatbot/ask', { question })
+      .then((response) => response.data);
+  },
+};
 
 export const authApi = {
   login(payload: { email: string; password: string }) {
@@ -99,6 +111,11 @@ export const authApi = {
       method: "GET",
       url: "/api/auth/me",
     });
+  },
+  checkEmail(email: string) {
+    return api
+      .get<boolean>("/api/auth/check-email", { params: { email } })
+      .then((response) => response.data);
   },
   sendOtp(payload: { email: string }) {
     //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });
@@ -128,12 +145,18 @@ export const authApi = {
       data: payload,
     });
   },
-  googleLogin(_credential: string) {
-    void _credential;
-    return Promise.reject(
-      new Error("Backend Google OAuth endpoint is not available yet."),
-    );
-  },
+  googleSignup(payload: {
+  credential: string;
+  fullName?: string;
+  phone: string;
+  role: "BUSINESS" | "EXPERT";
+}) {
+  return call<SessionUser>({
+    method: "POST",
+    url: "/api/auth/google/register",
+    data: payload,
+  });
+},
 };
 
 export const profileApi = {
