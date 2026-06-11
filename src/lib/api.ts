@@ -609,6 +609,9 @@ export const adminApi = {
       data: payload,
     });
   },
+  updateStaff(staffId: number, payload: Partial<Staff>) {
+    return call<Staff>({ method: 'PATCH', url: `/api/v1/admin/staffs/${staffId}`, data: payload });
+  },
   analyticsOverview() {
     return call<AnalyticsOverview>({
       method: "GET",

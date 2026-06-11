@@ -13,6 +13,11 @@ import {
   TrendingUp,
   Users,
   WalletCards,
+} from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { adminApi, catalogApi, contractApi, marketplaceApi, profileApi, type Domain } from '../lib/api';
+import { formatCompactCurrency, formatDate } from '../lib/utils';
+import type { AccountStatus, AdminAccount, AnalyticsOverview, Role, Staff, SystemSetting, SystemWallet } from '../types';
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { adminApi, contractApi, marketplaceApi, profileApi } from "../lib/api";
@@ -331,6 +336,45 @@ function WalletFact({
   );
 }
 
+const accountStatuses: AccountStatus[] = ['Pending', 'Approved', 'Rejected', 'Lock'];
+const internalRoles: Role[] = ['ADMIN', 'STAFF'];
+const externalRoles: Role[] = ['BUSINESS', 'EXPERT'];
+
+function specializationFromDomains(domainIds: number[], domains: Domain[]) {
+  return domains
+    .filter((domain) => domainIds.includes(domain.domainId))
+    .map((domain) => domain.domainName)
+    .join(', ');
+}
+
+function selectedDomainIdsFromSpecialization(specialization: string | undefined, domains: Domain[]) {
+  const tokens = (specialization || '').split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
+  return domains
+    .filter((domain) => tokens.includes(domain.domainName.toLowerCase()) || tokens.includes(domain.domainCode.toLowerCase()))
+    .map((domain) => domain.domainId);
+}
+
+function SpecializationSelector({ domains, selectedIds, onChange }: { domains: Domain[]; selectedIds: number[]; onChange: (ids: number[]) => void }) {
+  const toggle = (domainId: number) => {
+    onChange(selectedIds.includes(domainId) ? selectedIds.filter((id) => id !== domainId) : [...selectedIds, domainId]);
+  };
+
+  return (
+    <div className="grid max-h-56 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-2">
+      {domains.map((domain) => (
+        <label key={domain.domainId} className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(domain.domainId)}
+            onChange={() => toggle(domain.domainId)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
+          />
+          <span>{domain.domainName}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
 const accountRoles: Role[] = ["BUSINESS", "EXPERT", "STAFF", "ADMIN"];
 const accountStatuses: AccountStatus[] = [
   "Pending",
@@ -341,9 +385,18 @@ const accountStatuses: AccountStatus[] = [
 
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [accountTab, setAccountTab] = useState<'internal' | 'external'>('internal');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AdminAccount | null>(null);
   const [form, setForm] = useState({
+    email: '',
+    password: '',
+    phone: '',
+    fullName: '',
+    role: 'STAFF' as Role,
+    status: 'Approved' as AccountStatus,
+    domainIds: [] as number[],
     email: "",
     password: "",
     phone: "",
@@ -355,11 +408,19 @@ export function AccountsPage() {
   const load = async () => setAccounts(await adminApi.listAccounts());
 
   useEffect(() => {
+    load();
+    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
     void Promise.resolve().then(() => load());
   }, []);
 
+  const visibleAccounts = accounts.filter((account) => (
+    accountTab === 'internal' ? internalRoles.includes(account.role) : externalRoles.includes(account.role)
+  ));
+
   const beginCreate = () => {
     setEditing(null);
+    const role = accountTab === 'internal' ? 'STAFF' : 'BUSINESS';
+    setForm({ email: '', password: '', phone: '', fullName: '', role, status: role === 'STAFF' ? 'Approved' : 'Pending', domainIds: [] });
     setForm({
       email: "",
       password: "",
@@ -380,6 +441,7 @@ export function AccountsPage() {
       fullName: account.fullName,
       role: account.role,
       status: account.status,
+      domainIds: selectedDomainIdsFromSpecialization(account.specialization, domains),
     });
     setOpen(true);
   };
@@ -392,10 +454,20 @@ export function AccountsPage() {
       fullName: form.fullName,
       role: form.role,
       status: form.status,
+      specialization: form.role === 'STAFF' ? specializationFromDomains(form.domainIds, domains) : undefined,
     };
     const saved = editing
       ? await adminApi.updateAccount(editing.accountId, payload)
       : await adminApi.createAccount(payload);
+    if (saved.role === 'STAFF') {
+      await adminApi.createStaff({
+        accountId: saved.accountId,
+        specialization: payload.specialization,
+      });
+    }
+    setAccounts((items) => editing
+      ? items.map((item) => (item.accountId === saved.accountId ? saved : item))
+      : [...items, saved]);
     setAccounts((items) =>
       editing
         ? items.map((item) =>
@@ -428,6 +500,10 @@ export function AccountsPage() {
         }
       />
       <Card className="overflow-hidden">
+        <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
+          <Button variant={accountTab === 'internal' ? 'primary' : 'secondary'} onClick={() => setAccountTab('internal')}>Internal roles</Button>
+          <Button variant={accountTab === 'external' ? 'primary' : 'secondary'} onClick={() => setAccountTab('external')}>Business & Expert</Button>
+        </div>
         <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[80px_1fr_150px_130px_180px]">
           <span>ID</span>
           <span>Account</span>
@@ -435,6 +511,9 @@ export function AccountsPage() {
           <span>Status</span>
           <span>Actions</span>
         </div>
+        {visibleAccounts.map((account) => (
+          <div key={account.accountId} className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[80px_1fr_150px_130px_180px] md:items-center">
+            <span className="font-extrabold text-slate-500">#{account.accountId}</span>
         {accounts.map((account) => (
           <div
             key={account.accountId}
@@ -542,6 +621,13 @@ export function AccountsPage() {
           <Field label="Role">
             <select
               value={form.role}
+              onChange={(event) => {
+                const role = event.target.value as Role;
+                setForm((value) => ({ ...value, role, status: role === 'STAFF' || role === 'ADMIN' ? 'Approved' : value.status }));
+              }}
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
+            >
+              {(accountTab === 'internal' ? internalRoles : externalRoles).map((role) => <option key={role} value={role}>{role}</option>)}
               onChange={(event) =>
                 setForm((value) => ({
                   ...value,
@@ -575,6 +661,13 @@ export function AccountsPage() {
               ))}
             </select>
           </Field>
+          {form.role === 'STAFF' && (
+            <div className="md:col-span-2">
+              <Field label="Staff specialization">
+                <SpecializationSelector domains={domains} selectedIds={form.domainIds} onChange={(ids) => setForm((value) => ({ ...value, domainIds: ids }))} />
+              </Field>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
@@ -583,13 +676,27 @@ export function AccountsPage() {
 
 export function StaffPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [editing, setEditing] = useState<Staff | null>(null);
+  const [domainIds, setDomainIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ accountId: "", specialization: "NLP" });
 
   useEffect(() => {
     adminApi.listStaffs().then(setStaffs);
+    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
   }, []);
 
+  const beginEditStaff = (staff: Staff) => {
+    setEditing(staff);
+    setDomainIds(selectedDomainIdsFromSpecialization(staff.specialization, domains));
+  };
+
+  const saveStaff = async () => {
+    if (!editing) return;
+    const updated = await adminApi.updateStaff(editing.staffId, { specialization: specializationFromDomains(domainIds, domains) });
+    setStaffs((items) => items.map((item) => (item.staffId === updated.staffId ? updated : item)));
+    setEditing(null);
   const create = async () => {
     const staff = await adminApi.createStaff({
       accountId: Number(form.accountId),
@@ -603,6 +710,8 @@ export function StaffPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="STF-01"
+        title="Staff Management"
+        description="Admin reviews existing internal staff and adjusts specialization when needed."
         title="Quản lý Staff"
         description="Admin tạo hồ sơ staff nội bộ và khai báo specialization để auto-routing dispute."
         actions={
@@ -628,12 +737,23 @@ export function StaffPage() {
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
+              {(staff.specialization || 'General').split(',').map((item) => (
+                <Badge key={item.trim()} tone="brand">{item.trim()}</Badge>
+              ))}
               <Badge tone="brand">{staff.specialization || "General"}</Badge>
               <Badge tone="amber">{staff.activeTickets || 0} ticket</Badge>
             </div>
+            <Button variant="secondary" className="mt-5 w-full" onClick={() => beginEditStaff(staff)}>
+              <Settings2 className="h-4 w-4" /> Edit specialization
+            </Button>
           </Card>
         ))}
       </div>
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Edit staff specialization" footer={<><Button variant="secondary" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={saveStaff}><Save className="h-4 w-4" /> Save</Button></>}>
+        <div className="grid gap-4">
+          <Field label="Staff"><Input value={editing?.email || `Account #${editing?.accountId || ''}`} readOnly /></Field>
+          <Field label="Specialization">
+            <SpecializationSelector domains={domains} selectedIds={domainIds} onChange={setDomainIds} />
       <Modal
         open={open}
         onClose={() => setOpen(false)}

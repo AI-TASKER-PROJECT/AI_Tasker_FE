@@ -261,6 +261,7 @@ export interface AdminAccount {
   fullName: string;
   role: Role;
   status: AccountStatus;
+  specialization?: string;
   createdAt?: string;
   updatedAt?: string;
 }
