@@ -6,15 +6,17 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { contractApi, disputeApi, profileApi } from "../lib/api";
 import type {
   BusinessProfile,
   Dispute,
   ExpertProfile,
+  Portfolio,
   TaxCheckResponse,
 } from "../types";
+import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import {
   Avatar,
   Badge,
@@ -413,6 +415,7 @@ export function VerificationDetailPage() {
   const [profile, setProfile] = useState<
     BusinessProfile | ExpertProfile | null
   >(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [taxCheckResult, setTaxCheckResult] = useState<{
     provided: Pick<BusinessProfile, "companyName" | "taxCode" | "address">;
     lookup: Pick<TaxCheckResponse, "companyName" | "taxCode" | "address">;
@@ -422,6 +425,7 @@ export function VerificationDetailPage() {
 
   useEffect(() => {
     if (isBusiness) {
+      setPortfolio(null);
       profileApi
         .listBusinesses()
         .then((items) => {
@@ -433,15 +437,18 @@ export function VerificationDetailPage() {
           setProfile(null);
         });
     } else {
-      profileApi
-        .listExperts()
-        .then((items) => {
-          setProfile(
-            items.find((item) => item.expertId === Number(id)) || null,
+      Promise.all([profileApi.listExperts(), profileApi.listPortfolios()])
+        .then(([items, portfolios]) => {
+          const matchedProfile =
+            items.find((item) => item.expertId === Number(id)) || null;
+          setProfile(matchedProfile);
+          setPortfolio(
+            portfolios.find((item) => item.expertId === Number(id)) || null,
           );
         })
         .catch(() => {
           setProfile(null);
+          setPortfolio(null);
         });
     }
   }, [id, isBusiness]);
@@ -539,12 +546,13 @@ export function VerificationDetailPage() {
                   label="Địa chỉ"
                   value={(profile as BusinessProfile).address || "Chưa có"}
                 />
-                <Info
-                  label="License URL"
-                  value={
-                    (profile as BusinessProfile).businessLicenseUrl || "Chưa có"
-                  }
-                />
+                <FileInfo label="Giấy phép kinh doanh">
+                  <FirebaseFileLink
+                    path={(profile as BusinessProfile).businessLicenseUrl}
+                    emptyText="Chưa có giấy phép"
+                    buttonText="Xem giấy phép"
+                  />
+                </FileInfo>
               </>
             ) : (
               <>
@@ -564,6 +572,13 @@ export function VerificationDetailPage() {
                       : String((profile as ExpertProfile).yearsOfExperience)
                   }
                 />
+                <FileInfo label="Chứng chỉ">
+                  <FirebaseFileLink
+                    path={portfolio?.certificates}
+                    emptyText="Chưa có chứng chỉ"
+                    buttonText="Xem chứng chỉ"
+                  />
+                </FileInfo>
               </>
             )}
           </div>
@@ -656,6 +671,17 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="mt-2 break-words text-sm font-extrabold text-ink">
         {value}
       </p>
+    </div>
+  );
+}
+
+function FileInfo({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }

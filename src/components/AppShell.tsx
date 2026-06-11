@@ -25,7 +25,8 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../types';
-import { clearSession, roleLabel, useSession } from '../lib/session';
+import { authApi } from '../lib/api';
+import { clearSession, roleLabel, saveSession, useSession } from '../lib/session';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
 import { Avatar, Badge, Button } from './ui';
@@ -97,6 +98,27 @@ export function AppShell() {
       return true;
     });
   }, [needsVerification, role, verificationPath]);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    let ignore = false;
+
+    authApi.me()
+      .then((freshSession) => {
+        if (ignore) return;
+        saveSession({
+          ...session,
+          ...freshSession,
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      ignore = true;
+    };
+  }, [location.pathname, session?.accessToken]);
 
   useEffect(() => {
     if (!session) return;

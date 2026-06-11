@@ -182,6 +182,7 @@ export interface ExpertProfile {
   createdAt?: string;
   updatedAt?: string;
   fullName?: string;
+  phone?: string;
   title?: string;
   rating?: number;
   completedProjects?: number;

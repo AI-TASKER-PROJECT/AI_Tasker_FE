@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GOOGLE_CLIENT_ID } from '../lib/googleAuth';
 import { Notice } from './ui';
 
@@ -31,12 +31,22 @@ declare global {
 }
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
+let googleScriptPromise: Promise<void> | null = null;
 
 function loadGoogleScript() {
-  const existing = document.getElementById(GOOGLE_SCRIPT_ID);
-  if (existing) return Promise.resolve();
+  if (window.google) return Promise.resolve();
+  if (googleScriptPromise) return googleScriptPromise;
 
-  return new Promise<void>((resolve, reject) => {
+  const existing = document.getElementById(GOOGLE_SCRIPT_ID);
+  if (existing) {
+    googleScriptPromise = new Promise<void>((resolve, reject) => {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Không tải được Google Identity Services')), { once: true });
+    });
+    return googleScriptPromise;
+  }
+
+  googleScriptPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
     script.id = GOOGLE_SCRIPT_ID;
     script.src = 'https://accounts.google.com/gsi/client';
@@ -46,6 +56,7 @@ function loadGoogleScript() {
     script.onerror = () => reject(new Error('Không tải được Google Identity Services'));
     document.head.appendChild(script);
   });
+  return googleScriptPromise;
 }
 
 export function GoogleAuthButton({
@@ -58,7 +69,6 @@ export function GoogleAuthButton({
   onError?: (message: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const uniqueId = useId();
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -66,7 +76,8 @@ export function GoogleAuthButton({
 
     loadGoogleScript()
       .then(() => {
-        if (cancelled || !containerRef.current || !window.google) return;
+        if (cancelled || !containerRef.current) return;
+        if (!window.google) throw new Error('Google Identity Services chưa sẵn sàng.');
         containerRef.current.innerHTML = '';
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
@@ -99,7 +110,7 @@ export function GoogleAuthButton({
     return () => {
       cancelled = true;
     };
-  }, [mode, onCredential, onError, uniqueId]);
+  }, [mode, onCredential, onError]);
 
   return (
     <div>

@@ -33,6 +33,11 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  } else if (!config.headers["Content-Type"]) {
+    config.headers["Content-Type"] = "application/json";
+  }
   return config;
 });
 
@@ -88,7 +93,7 @@ export interface ChatbotResponse {
 export const chatbotApi = {
   ask(question: string) {
     return api
-      .post<ChatbotResponse>('/api/chatbot/ask', { question })
+      .post<ChatbotResponse>("/api/chatbot/ask", { question })
       .then((response) => response.data);
   },
 };
@@ -102,10 +107,16 @@ export const authApi = {
     });
   },
   checkEmail(email: string) {
-    return call<boolean>({ 
-      method: 'GET', 
-      url: '/api/auth/check-email', 
-      params: { email } 
+    return call<boolean>({
+      method: "GET",
+      url: "/api/auth/check-email",
+      params: { email },
+    });
+  },
+  me() {
+    return call<Partial<SessionUser>>({
+      method: "GET",
+      url: "/api/auth/me",
     });
   },
   sendOtp(payload: { email: string }) {
@@ -152,11 +163,32 @@ export const profileApi = {
       data: payload,
     });
   },
+  getMyBusiness() {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/business/me",
+    });
+  },
+  uploadBusinessLicense(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/profiles/business/license-file",
+      data: formData,
+    });
+  },
   upsertExpert(payload: Partial<ExpertProfile>) {
     return call<ExpertProfile>({
       method: "POST",
       url: "/api/v1/profiles/expert",
       data: payload,
+    });
+  },
+  getMyExpert() {
+    return call<ExpertProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/expert/me",
     });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
@@ -166,10 +198,31 @@ export const profileApi = {
       data: payload,
     });
   },
+  getMyPortfolio() {
+    return call<Portfolio>({
+      method: "GET",
+      url: "/api/v1/profiles/portfolio/me",
+    });
+  },
+  uploadExpertCertificate(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/profiles/portfolio/certificate-file",
+      data: formData,
+    });
+  },
   listBusinesses() {
     return call<BusinessProfile[]>({
       method: "GET",
       url: "/api/v1/profiles/business",
+    });
+  },
+  getBusinessByJob(jobId: number) {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/business/by-job/${jobId}`,
     });
   },
   listExperts() {
@@ -182,6 +235,13 @@ export const profileApi = {
     return call<Portfolio[]>({
       method: "GET",
       url: "/api/v1/profiles/portfolio",
+    });
+  },
+  getFileViewUrl(path: string) {
+    return call<string>({
+      method: "GET",
+      url: "/api/v1/profiles/files/view-url",
+      params: { path },
     });
   },
   approve(
@@ -300,7 +360,7 @@ export const marketplaceApi = {
     return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });
   },
   listMyJobs() {
-    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs/my' });
+    return call<Job[]>({ method: "GET", url: "/api/v1/jobs/my" });
   },
   getJob(jobId: number) {
     return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` });
@@ -329,9 +389,9 @@ export const marketplaceApi = {
     });
   },
   listMyProposals() {
-    return call<Proposal[]>({ method: 'GET', url: '/api/v1/proposals/my' });
+    return call<Proposal[]>({ method: "GET", url: "/api/v1/proposals/my" });
   },
-  reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
+  reviewProposal(proposalId: number, status: "Accepted" | "Rejected") {
     return call<Proposal>({
       method: "PATCH",
       url: `/api/v1/proposals/${proposalId}/status`,
