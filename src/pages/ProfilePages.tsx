@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Building2, ClipboardCheck, IdCard, Link2, Save, ShieldCheck } from 'lucide-react';
+import { Building2, ClipboardCheck, IdCard, Save, ShieldCheck } from 'lucide-react';
 import { catalogApi, profileApi, type Domain, type Skill } from '../lib/api';
 import { getSession, saveSession } from '../lib/session';
+import { FirebaseFileLink } from '../components/FirebaseFileLink';
 import {
   Badge,
   Button,
@@ -27,6 +28,20 @@ export function BusinessProfilePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    profileApi.getMyBusiness()
+      .then((profile) => {
+        setForm({
+          taxCode: profile.taxCode || '',
+          companyName: profile.companyName || '',
+          address: profile.address || '',
+          businessLicenseUrl: profile.businessLicenseUrl || '',
+        });
+        setStatus(profile.kybStatus || 'Chưa gửi');
+      })
+      .catch(() => undefined);
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -101,6 +116,10 @@ export function BusinessProfilePage() {
           <Notice tone="warning" title="Điều kiện mở khóa giao dịch" className="mt-4">
             Back-end kiểm tra role và trạng thái Approved cho các nghiệp vụ chính. Hồ sơ cập nhật sẽ quay về Pending để staff duyệt lại.
           </Notice>
+          <div className="mt-4">
+            <SectionHeading title="Giấy phép kinh doanh" />
+            <FirebaseFileLink path={form.businessLicenseUrl} className="mt-3" />
+          </div>
         </Card>
       </div>
     </div>
@@ -115,6 +134,19 @@ export function ExpertProfilePage() {
   });
   const [status, setStatus] = useState('Chưa gửi');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    profileApi.getMyExpert()
+      .then((profile) => {
+        setForm({
+          nationalId: profile.nationalId || '',
+          portfolioUrl: profile.portfolioUrl || '',
+          yearsOfExperience: String(profile.yearsOfExperience ?? 1),
+        });
+        setStatus(profile.kycStatus || 'Chưa gửi');
+      })
+      .catch(() => undefined);
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -197,11 +229,25 @@ export function ExpertPortfolioPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([catalogApi.listDomains(true), catalogApi.listSkills(true)]).then(([domainItems, skillItems]) => {
+    Promise.all([
+      catalogApi.listDomains(true),
+      catalogApi.listSkills(true),
+      profileApi.getMyPortfolio().catch(() => null),
+    ]).then(([domainItems, skillItems, portfolio]) => {
       setDomains(domainItems);
       setSkills(skillItems);
-      setSelectedDomainIds(domainItems.slice(0, 2).map((item) => item.domainId));
-      setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
+      if (portfolio) {
+        setForm({
+          yearsExperience: String(portfolio.yearsExperience ?? 1),
+          certificates: portfolio.certificates || '',
+          selfDescription: portfolio.selfDescription || '',
+        });
+        setSelectedDomainIds(parseCatalogIds(portfolio.domainIds));
+        setSelectedSkillIds(parseCatalogIds(portfolio.skillIds));
+      } else {
+        setSelectedDomainIds(domainItems.slice(0, 2).map((item) => item.domainId));
+        setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
+      }
     });
   }, []);
 
@@ -307,10 +353,7 @@ export function ExpertPortfolioPage() {
               Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
             </Notice>
           )}
-          <div className="mt-5 flex items-center gap-2 rounded-2xl bg-brand-50 p-3 text-sm font-semibold text-brand-700">
-            <Link2 className="h-4 w-4" />
-            {form.certificates || 'Chưa có chứng chỉ'}
-          </div>
+          <FirebaseFileLink path={form.certificates} emptyText="Chưa có chứng chỉ" buttonText="Xem chứng chỉ" className="mt-5" />
         </Card>
       </div>
     </div>
@@ -320,4 +363,12 @@ export function ExpertPortfolioPage() {
 function readApiError(error: unknown, fallback: string) {
   const apiError = error as { response?: { data?: { message?: string } }; message?: string };
   return apiError.response?.data?.message || apiError.message || fallback;
+}
+
+function parseCatalogIds(ids?: string) {
+  if (!ids) return [];
+  return ids
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item));
 }

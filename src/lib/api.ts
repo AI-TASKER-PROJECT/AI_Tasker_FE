@@ -94,6 +94,12 @@ export const authApi = {
       data: payload,
     });
   },
+  me() {
+    return call<Partial<SessionUser>>({
+      method: "GET",
+      url: "/api/auth/me",
+    });
+  },
   sendOtp(payload: { email: string }) {
     //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });
     return call<{ expiresIn: number }>({
@@ -138,6 +144,12 @@ export const profileApi = {
       data: payload,
     });
   },
+  getMyBusiness() {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/business/me",
+    });
+  },
   uploadBusinessLicense(file: File) {
     const formData = new FormData();
     formData.append('file', file);
@@ -154,11 +166,23 @@ export const profileApi = {
       data: payload,
     });
   },
+  getMyExpert() {
+    return call<ExpertProfile>({
+      method: "GET",
+      url: "/api/v1/profiles/expert/me",
+    });
+  },
   upsertPortfolio(payload: Partial<Portfolio>) {
     return call<Portfolio>({
       method: "POST",
       url: "/api/v1/profiles/portfolio",
       data: payload,
+    });
+  },
+  getMyPortfolio() {
+    return call<Portfolio>({
+      method: "GET",
+      url: "/api/v1/profiles/portfolio/me",
     });
   },
   uploadExpertCertificate(file: File) {
@@ -176,6 +200,12 @@ export const profileApi = {
       url: "/api/v1/profiles/business",
     });
   },
+  getBusinessByJob(jobId: number) {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/business/by-job/${jobId}`,
+    });
+  },
   listExperts() {
     return call<ExpertProfile[]>({
       method: "GET",
@@ -186,6 +216,13 @@ export const profileApi = {
     return call<Portfolio[]>({
       method: "GET",
       url: "/api/v1/profiles/portfolio",
+    });
+  },
+  getFileViewUrl(path: string) {
+    return call<string>({
+      method: "GET",
+      url: "/api/v1/profiles/files/view-url",
+      params: { path },
     });
   },
   approve(
