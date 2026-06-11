@@ -32,20 +32,27 @@ declare global {
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
 
-function loadGoogleScript() {
-  const existing = document.getElementById(GOOGLE_SCRIPT_ID);
-  if (existing) return Promise.resolve();
+let googleScriptPromise: Promise<void> | null = null;
 
-  return new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
+function loadGoogleScript() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  if (googleScriptPromise) return googleScriptPromise;
+
+  googleScriptPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(GOOGLE_SCRIPT_ID) as HTMLScriptElement | null;
+
+    const script = existing ?? document.createElement('script');
     script.id = GOOGLE_SCRIPT_ID;
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Không tải được Google Identity Services'));
-    document.head.appendChild(script);
+
+    if (!existing) document.head.appendChild(script);
   });
+
+  return googleScriptPromise;
 }
 
 export function GoogleAuthButton({
