@@ -15,12 +15,20 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { adminApi, contractApi, marketplaceApi, profileApi } from "../lib/api";
+import {
+  adminApi,
+  catalogApi,
+  contractApi,
+  marketplaceApi,
+  profileApi,
+  type Domain,
+} from "../lib/api";
 import { formatCompactCurrency, formatDate } from "../lib/utils";
 import type {
   AccountStatus,
   AdminAccount,
   AnalyticsOverview,
+  AuditLog,
   Role,
   Staff,
   SystemSetting,
@@ -331,7 +339,8 @@ function WalletFact({
   );
 }
 
-const accountRoles: Role[] = ["BUSINESS", "EXPERT", "STAFF", "ADMIN"];
+const internalRoles: Role[] = ["ADMIN", "STAFF"];
+const externalRoles: Role[] = ["BUSINESS", "EXPERT"];
 const accountStatuses: AccountStatus[] = [
   "Pending",
   "Approved",
@@ -339,8 +348,90 @@ const accountStatuses: AccountStatus[] = [
   "Lock",
 ];
 
+function specializationFromDomains(domainIds: number[], domains: Domain[]) {
+  return domains
+    .filter((domain) => domainIds.includes(domain.domainId))
+    .map((domain) => domain.domainName)
+    .join(", ");
+}
+
+function selectedDomainIdsFromSpecialization(
+  specialization: string | undefined,
+  domains: Domain[],
+) {
+  const tokens = (specialization || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return domains
+    .filter(
+      (domain) =>
+        tokens.includes(domain.domainName.toLowerCase()) ||
+        tokens.includes(domain.domainCode.toLowerCase()),
+    )
+    .map((domain) => domain.domainId);
+}
+
+function formatAuditTimestamp(value?: string) {
+  if (!value) return { date: "Chưa cập nhật", time: "" };
+  const date = new Date(value);
+  return {
+    date: new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(date),
+  };
+}
+
+function SpecializationSelector({
+  domains,
+  selectedIds,
+  onChange,
+}: {
+  domains: Domain[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const toggle = (domainId: number) => {
+    onChange(
+      selectedIds.includes(domainId)
+        ? selectedIds.filter((id) => id !== domainId)
+        : [...selectedIds, domainId],
+    );
+  };
+
+  return (
+    <div className="grid max-h-56 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-2">
+      {domains.map((domain) => (
+        <label
+          key={domain.domainId}
+          className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(domain.domainId)}
+            onChange={() => toggle(domain.domainId)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
+          />
+          <span>{domain.domainName}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [accountTab, setAccountTab] = useState<"internal" | "external">(
+    "internal",
+  );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AdminAccount | null>(null);
   const [form, setForm] = useState({
@@ -348,25 +439,35 @@ export function AccountsPage() {
     password: "",
     phone: "",
     fullName: "",
-    role: "BUSINESS" as Role,
-    status: "Pending" as AccountStatus,
+    role: "STAFF" as Role,
+    status: "Approved" as AccountStatus,
+    domainIds: [] as number[],
   });
 
   const load = async () => setAccounts(await adminApi.listAccounts());
 
   useEffect(() => {
     void Promise.resolve().then(() => load());
+    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
   }, []);
+
+  const visibleAccounts = accounts.filter((account) =>
+    accountTab === "internal"
+      ? internalRoles.includes(account.role)
+      : externalRoles.includes(account.role),
+  );
 
   const beginCreate = () => {
     setEditing(null);
+    const role: Role = accountTab === "internal" ? "STAFF" : "BUSINESS";
     setForm({
       email: "",
       password: "",
       phone: "",
       fullName: "",
-      role: "BUSINESS",
-      status: "Pending",
+      role,
+      status: role === "STAFF" ? "Approved" : "Pending",
+      domainIds: [],
     });
     setOpen(true);
   };
@@ -380,6 +481,10 @@ export function AccountsPage() {
       fullName: account.fullName,
       role: account.role,
       status: account.status,
+      domainIds: selectedDomainIdsFromSpecialization(
+        account.specialization,
+        domains,
+      ),
     });
     setOpen(true);
   };
@@ -392,10 +497,20 @@ export function AccountsPage() {
       fullName: form.fullName,
       role: form.role,
       status: form.status,
+      specialization:
+        form.role === "STAFF"
+          ? specializationFromDomains(form.domainIds, domains)
+          : undefined,
     };
     const saved = editing
       ? await adminApi.updateAccount(editing.accountId, payload)
       : await adminApi.createAccount(payload);
+    if (!editing && saved.role === "STAFF") {
+      await adminApi.createStaff({
+        accountId: saved.accountId,
+        specialization: payload.specialization,
+      });
+    }
     setAccounts((items) =>
       editing
         ? items.map((item) =>
@@ -428,6 +543,20 @@ export function AccountsPage() {
         }
       />
       <Card className="overflow-hidden">
+        <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
+          <Button
+            variant={accountTab === "internal" ? "primary" : "secondary"}
+            onClick={() => setAccountTab("internal")}
+          >
+            Nội bộ
+          </Button>
+          <Button
+            variant={accountTab === "external" ? "primary" : "secondary"}
+            onClick={() => setAccountTab("external")}
+          >
+            Bên ngoài
+          </Button>
+        </div>
         <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[80px_1fr_150px_130px_180px]">
           <span>ID</span>
           <span>Account</span>
@@ -435,7 +564,7 @@ export function AccountsPage() {
           <span>Status</span>
           <span>Actions</span>
         </div>
-        {accounts.map((account) => (
+        {visibleAccounts.map((account) => (
           <div
             key={account.accountId}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[80px_1fr_150px_130px_180px] md:items-center"
@@ -542,15 +671,20 @@ export function AccountsPage() {
           <Field label="Role">
             <select
               value={form.role}
-              onChange={(event) =>
+              onChange={(event) => {
+                const role = event.target.value as Role;
                 setForm((value) => ({
                   ...value,
-                  role: event.target.value as Role,
-                }))
-              }
+                  role,
+                  status:
+                    role === "STAFF" || role === "ADMIN"
+                      ? "Approved"
+                      : value.status,
+                }));
+              }}
               className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
             >
-              {accountRoles.map((role) => (
+              {(accountTab === "internal" ? internalRoles : externalRoles).map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>
@@ -575,6 +709,19 @@ export function AccountsPage() {
               ))}
             </select>
           </Field>
+          {form.role === "STAFF" && (
+            <div className="md:col-span-2">
+              <Field label="Staff specialization">
+                <SpecializationSelector
+                  domains={domains}
+                  selectedIds={form.domainIds}
+                  onChange={(ids) =>
+                    setForm((value) => ({ ...value, domainIds: ids }))
+                  }
+                />
+              </Field>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
@@ -583,12 +730,32 @@ export function AccountsPage() {
 
 export function StaffPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [editing, setEditing] = useState<Staff | null>(null);
+  const [domainIds, setDomainIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ accountId: "", specialization: "NLP" });
 
   useEffect(() => {
     adminApi.listStaffs().then(setStaffs);
+    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
   }, []);
+
+  const beginEditStaff = (staff: Staff) => {
+    setEditing(staff);
+    setDomainIds(selectedDomainIdsFromSpecialization(staff.specialization, domains));
+  };
+
+  const saveStaff = async () => {
+    if (!editing) return;
+    const updated = await adminApi.updateStaff(editing.staffId, {
+      specialization: specializationFromDomains(domainIds, domains),
+    });
+    setStaffs((items) =>
+      items.map((item) => (item.staffId === updated.staffId ? updated : item)),
+    );
+    setEditing(null);
+  };
 
   const create = async () => {
     const staff = await adminApi.createStaff({
@@ -628,9 +795,20 @@ export function StaffPage() {
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Badge tone="brand">{staff.specialization || "General"}</Badge>
+              {(staff.specialization || "General").split(",").map((item) => (
+                <Badge key={item.trim()} tone="brand">
+                  {item.trim()}
+                </Badge>
+              ))}
               <Badge tone="amber">{staff.activeTickets || 0} ticket</Badge>
             </div>
+            <Button
+              variant="secondary"
+              className="mt-5 w-full"
+              onClick={() => beginEditStaff(staff)}
+            >
+              <Settings2 className="h-4 w-4" /> Edit specialization
+            </Button>
           </Card>
         ))}
       </div>
@@ -668,6 +846,37 @@ export function StaffPage() {
                   specialization: event.target.value,
                 }))
               }
+            />
+          </Field>
+        </div>
+      </Modal>
+      <Modal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title="Edit staff specialization"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveStaff}>
+              <Save className="h-4 w-4" /> Save
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <Field label="Staff">
+            <Input
+              value={editing?.email || `Account #${editing?.accountId || ""}`}
+              readOnly
+            />
+          </Field>
+          <Field label="Specialization">
+            <SpecializationSelector
+              domains={domains}
+              selectedIds={domainIds}
+              onChange={setDomainIds}
             />
           </Field>
         </div>
@@ -901,35 +1110,115 @@ export function MasterDataPage() {
 }
 
 export function AuditLogsPage() {
+  const [tab, setTab] = useState<NonNullable<AuditLog["actorGroup"]>>("EXTERNAL");
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = async (actorGroup = tab) => {
+    setLoading(true);
+    setError("");
+    try {
+      setLogs(await adminApi.auditLogs(actorGroup));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không tải được audit log.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load(tab);
+  }, [tab]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="ADM-01"
-        title="Audit Logs"
-        description="Back-end hiện ghi audit khi duyệt hồ sơ, nhưng chưa có endpoint list audit log. UI đã chuẩn bị bảng theo schema."
+        title="Nhật ký audit"
+        description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
       />
       <Card className="overflow-hidden">
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[130px_1fr_170px_120px_150px]">
-          <span>Time</span>
-          <span>Action</span>
-          <span>Entity</span>
-          <span>Actor</span>
-          <span>IP</span>
-        </div>
-        {([] as import("../types").AuditLog[]).map((log) => (
-          <div
-            key={log.logId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[130px_1fr_170px_120px_150px]"
+        <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
+          <Button
+            variant={tab === "INTERNAL" ? "primary" : "secondary"}
+            onClick={() => setTab("INTERNAL")}
           >
-            <span className="text-slate-500">{formatDate(log.createdAt)}</span>
-            <span className="font-extrabold text-ink">{log.action}</span>
-            <span>
-              {log.entityName} #{log.entityId}
-            </span>
-            <span>{log.actor}</span>
-            <span>{log.ipAddress}</span>
+            Nội bộ
+          </Button>
+          <Button
+            variant={tab === "EXTERNAL" ? "primary" : "secondary"}
+            onClick={() => setTab("EXTERNAL")}
+          >
+            Bên ngoài
+          </Button>
+          <Button variant="ghost" onClick={() => load()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+        </div>
+        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[150px_1.1fr_1.2fr_1fr]">
+          <span>Thời gian</span>
+          <span>Hành động</span>
+          <span>Đối tượng</span>
+          <span>Người thực hiện</span>
+        </div>
+        {error && (
+          <div className="px-5 py-4">
+            <Notice tone="danger" title="Không tải được audit log">
+              {error}
+            </Notice>
           </div>
-        ))}
+        )}
+        {loading && (
+          <div className="px-5 py-6 text-sm font-bold text-slate-500">
+            Đang tải audit log...
+          </div>
+        )}
+        {!loading && !error && logs.length === 0 && (
+          <div className="px-5 py-8 text-sm font-bold text-slate-500">
+            Chưa có audit log cho nhóm này.
+          </div>
+        )}
+        {!loading && !error && logs.map((log) => {
+          const timestamp = formatAuditTimestamp(log.createdAt);
+          return (
+            <div
+              key={log.logId}
+              className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[150px_1.1fr_1.2fr_1fr] md:items-center"
+            >
+              <div className="space-y-1">
+                <p className="font-bold text-slate-600">{timestamp.date}</p>
+                <p className="text-xs font-semibold text-slate-400">{timestamp.time}</p>
+              </div>
+              <span className="font-extrabold text-ink">{log.action}</span>
+              <div className="space-y-1">
+                <p className="font-extrabold text-ink">{log.entityDisplayName || `${log.entityName} ${log.entityId ? `#${log.entityId}` : ""}`}</p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
+                </p>
+                <div className="space-y-1 pt-1">
+                  <p className="font-bold text-slate-700">{log.entityOwner || "Chưa xác định tài khoản"}</p>
+                  <p className="break-all text-xs text-slate-500">{log.entityOwnerEmail || "Không có email"}</p>
+                  {log.entityOwnerRole ? (
+                    <Badge tone={log.entityOwnerRole === "ADMIN" ? "rose" : log.entityOwnerRole === "STAFF" ? "amber" : "brand"}>{log.entityOwnerRole}</Badge>
+                  ) : (
+                    <Badge tone="slate">Không có role</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="font-extrabold text-ink">{log.actor}</p>
+                <p className="break-all text-xs text-slate-500">{log.actorEmail || "Không có email"}</p>
+                {log.actorRole && (
+                  <Badge tone={log.actorRole === "ADMIN" ? "rose" : log.actorRole === "STAFF" ? "amber" : "brand"}>
+                    {log.actorRole}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </Card>
     </div>
   );

@@ -4,6 +4,7 @@ import type {
   AdminAccount,
   AnalyticsOverview,
   ApiResponse,
+  AuditLog,
   BusinessProfile,
   Contract,
   ContractChangeRequest,
@@ -80,9 +81,7 @@ export interface JobDomain {
 
 export interface JobSkill {
   id: { jobId: number; skillId: number };
-  requiredLevel?: string;
   isMandatory: boolean;
-  minYearsExperience?: number;
   createdAt?: string;
 }
 export interface ChatbotResponse {
@@ -93,7 +92,11 @@ export interface ChatbotResponse {
 export const chatbotApi = {
   ask(question: string) {
     return api
+<<<<<<< HEAD
       .post<ChatbotResponse>("/api/chatbot/ask", { question })
+=======
+      .post<ChatbotResponse>('/api/chatbot/ask', { question })
+>>>>>>> 0a622f79eceee269fa24a32a4f92d6cb837ff119
       .then((response) => response.data);
   },
 };
@@ -118,6 +121,11 @@ export const authApi = {
       method: "GET",
       url: "/api/auth/me",
     });
+  },
+  checkEmail(email: string) {
+    return api
+      .get<boolean>("/api/auth/check-email", { params: { email } })
+      .then((response) => response.data);
   },
   sendOtp(payload: { email: string }) {
     //return call<void>({ method: 'POST', url: '/api/auth/email/send-otp', data: payload });
@@ -147,12 +155,18 @@ export const authApi = {
       data: payload,
     });
   },
-  googleLogin(_credential: string) {
-    void _credential;
-    return Promise.reject(
-      new Error("Backend Google OAuth endpoint is not available yet."),
-    );
-  },
+  googleSignup(payload: {
+  credential: string;
+  fullName?: string;
+  phone: string;
+  role: "BUSINESS" | "EXPERT";
+}) {
+  return call<SessionUser>({
+    method: "POST",
+    url: "/api/auth/google/register",
+    data: payload,
+  });
+},
 };
 
 export const profileApi = {
@@ -342,9 +356,7 @@ export const catalogApi = {
     jobId: number,
     assignments: Array<{
       skillId: number;
-      requiredLevel?: string;
       isMandatory?: boolean;
-      minYearsExperience?: number;
     }>,
   ) {
     return call<JobSkill[]>({
@@ -628,6 +640,9 @@ export const adminApi = {
       data: payload,
     });
   },
+  updateStaff(staffId: number, payload: Partial<Staff>) {
+    return call<Staff>({ method: 'PATCH', url: `/api/v1/admin/staffs/${staffId}`, data: payload });
+  },
   analyticsOverview() {
     return call<AnalyticsOverview>({
       method: "GET",
@@ -678,6 +693,13 @@ export const adminApi = {
       method: "PATCH",
       url: `/api/v1/admin/accounts/${accountId}/active`,
       params: { active },
+    });
+  },
+  auditLogs(actorGroup?: AuditLog["actorGroup"]) {
+    return call<AuditLog[]>({
+      method: "GET",
+      url: "/api/v1/admin/audit-logs",
+      params: { actorGroup },
     });
   },
 };
