@@ -331,11 +331,11 @@ export function RegisterPage() {
     try {
       // 1. Gọi API kiểm tra email trước
       // LƯU Ý: Đảm bảo authApi.checkEmail trả về đúng giá trị data từ axios
-      const isEmailAvailable = await authApi.checkEmail(normalizedEmail);
+      const emailExists = await authApi.checkEmail(normalizedEmail);
       
       // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
       // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
-      if (!isEmailAvailable /* hoặc !isEmailAvailable.data */) {
+      if (emailExists) {
         setMessageTone("danger");
         setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
         setLoading(false);

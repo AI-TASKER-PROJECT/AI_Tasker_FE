@@ -148,7 +148,9 @@ export function MyJobsPage() {
                 </p>
               </div>
             </div>
-            <MilestoneCount count={(milestonesByJobId[job.jobId] || []).length} />
+            <MilestoneCount
+              count={(milestonesByJobId[job.jobId] || []).length}
+            />
             <div className="mt-5 flex flex-wrap gap-2">
               <LinkButton
                 to={`/app/jobs/${job.jobId}/manage`}
@@ -698,9 +700,7 @@ function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
       <p className="text-xs font-bold text-slate-400">Milestone</p>
-      <p className="mt-1 text-sm font-extrabold text-ink">
-        {count} mốc
-      </p>
+      <p className="mt-1 text-sm font-extrabold text-ink">{count} mốc</p>
     </div>
   );
 }
@@ -1036,7 +1036,9 @@ export function ManageJobPage() {
             </div>
             <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Milestone</span>
-              <span className="font-extrabold text-ink">{milestones.length} mốc</span>
+              <span className="font-extrabold text-ink">
+                {milestones.length} mốc
+              </span>
             </div>
           </div>
           <div className="mt-5">
@@ -1132,11 +1134,10 @@ function ProposalCard({
     async function loadExpertDetail() {
       setDetailLoading(true);
       setDetailMessage("");
-      const [expertsResult, portfoliosResult] =
-        await Promise.allSettled([
-          profileApi.listExperts(),
-          profileApi.listPortfolios(),
-        ]);
+      const [expertsResult, portfoliosResult] = await Promise.allSettled([
+        profileApi.listExperts(),
+        profileApi.listPortfolios(),
+      ]);
       const [domainsResult, skillsResult] = await Promise.allSettled([
         catalogApi.listDomains(true),
         catalogApi.listSkills(true),
