@@ -28,6 +28,7 @@ import type {
   AccountStatus,
   AdminAccount,
   AnalyticsOverview,
+  AuditLog,
   Role,
   Staff,
   SystemSetting,
@@ -371,6 +372,23 @@ function selectedDomainIdsFromSpecialization(
     .map((domain) => domain.domainId);
 }
 
+function formatAuditTimestamp(value?: string) {
+  if (!value) return { date: "Chưa cập nhật", time: "" };
+  const date = new Date(value);
+  return {
+    date: new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(date),
+  };
+}
+
 function SpecializationSelector({
   domains,
   selectedIds,
@@ -530,13 +548,13 @@ export function AccountsPage() {
             variant={accountTab === "internal" ? "primary" : "secondary"}
             onClick={() => setAccountTab("internal")}
           >
-            Internal roles
+            Nội bộ
           </Button>
           <Button
             variant={accountTab === "external" ? "primary" : "secondary"}
             onClick={() => setAccountTab("external")}
           >
-            Business & Expert
+            Bên ngoài
           </Button>
         </div>
         <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[80px_1fr_150px_130px_180px]">
@@ -1092,35 +1110,115 @@ export function MasterDataPage() {
 }
 
 export function AuditLogsPage() {
+  const [tab, setTab] = useState<NonNullable<AuditLog["actorGroup"]>>("EXTERNAL");
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = async (actorGroup = tab) => {
+    setLoading(true);
+    setError("");
+    try {
+      setLogs(await adminApi.auditLogs(actorGroup));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không tải được audit log.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load(tab);
+  }, [tab]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="ADM-01"
-        title="Audit Logs"
-        description="Back-end hiện ghi audit khi duyệt hồ sơ, nhưng chưa có endpoint list audit log. UI đã chuẩn bị bảng theo schema."
+        title="Nhật ký audit"
+        description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
       />
       <Card className="overflow-hidden">
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[130px_1fr_170px_120px_150px]">
-          <span>Time</span>
-          <span>Action</span>
-          <span>Entity</span>
-          <span>Actor</span>
-          <span>IP</span>
-        </div>
-        {([] as import("../types").AuditLog[]).map((log) => (
-          <div
-            key={log.logId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[130px_1fr_170px_120px_150px]"
+        <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
+          <Button
+            variant={tab === "INTERNAL" ? "primary" : "secondary"}
+            onClick={() => setTab("INTERNAL")}
           >
-            <span className="text-slate-500">{formatDate(log.createdAt)}</span>
-            <span className="font-extrabold text-ink">{log.action}</span>
-            <span>
-              {log.entityName} #{log.entityId}
-            </span>
-            <span>{log.actor}</span>
-            <span>{log.ipAddress}</span>
+            Nội bộ
+          </Button>
+          <Button
+            variant={tab === "EXTERNAL" ? "primary" : "secondary"}
+            onClick={() => setTab("EXTERNAL")}
+          >
+            Bên ngoài
+          </Button>
+          <Button variant="ghost" onClick={() => load()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+        </div>
+        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[150px_1.1fr_1.2fr_1fr]">
+          <span>Thời gian</span>
+          <span>Hành động</span>
+          <span>Đối tượng</span>
+          <span>Người thực hiện</span>
+        </div>
+        {error && (
+          <div className="px-5 py-4">
+            <Notice tone="danger" title="Không tải được audit log">
+              {error}
+            </Notice>
           </div>
-        ))}
+        )}
+        {loading && (
+          <div className="px-5 py-6 text-sm font-bold text-slate-500">
+            Đang tải audit log...
+          </div>
+        )}
+        {!loading && !error && logs.length === 0 && (
+          <div className="px-5 py-8 text-sm font-bold text-slate-500">
+            Chưa có audit log cho nhóm này.
+          </div>
+        )}
+        {!loading && !error && logs.map((log) => {
+          const timestamp = formatAuditTimestamp(log.createdAt);
+          return (
+            <div
+              key={log.logId}
+              className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[150px_1.1fr_1.2fr_1fr] md:items-center"
+            >
+              <div className="space-y-1">
+                <p className="font-bold text-slate-600">{timestamp.date}</p>
+                <p className="text-xs font-semibold text-slate-400">{timestamp.time}</p>
+              </div>
+              <span className="font-extrabold text-ink">{log.action}</span>
+              <div className="space-y-1">
+                <p className="font-extrabold text-ink">{log.entityDisplayName || `${log.entityName} ${log.entityId ? `#${log.entityId}` : ""}`}</p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
+                </p>
+                <div className="space-y-1 pt-1">
+                  <p className="font-bold text-slate-700">{log.entityOwner || "Chưa xác định tài khoản"}</p>
+                  <p className="break-all text-xs text-slate-500">{log.entityOwnerEmail || "Không có email"}</p>
+                  {log.entityOwnerRole ? (
+                    <Badge tone={log.entityOwnerRole === "ADMIN" ? "rose" : log.entityOwnerRole === "STAFF" ? "amber" : "brand"}>{log.entityOwnerRole}</Badge>
+                  ) : (
+                    <Badge tone="slate">Không có role</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="font-extrabold text-ink">{log.actor}</p>
+                <p className="break-all text-xs text-slate-500">{log.actorEmail || "Không có email"}</p>
+                {log.actorRole && (
+                  <Badge tone={log.actorRole === "ADMIN" ? "rose" : log.actorRole === "STAFF" ? "amber" : "brand"}>
+                    {log.actorRole}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </Card>
     </div>
   );
