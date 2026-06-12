@@ -4,6 +4,7 @@ import type {
   AdminAccount,
   AnalyticsOverview,
   ApiResponse,
+  AuditLog,
   BusinessProfile,
   Contract,
   ContractChangeRequest,
@@ -80,9 +81,7 @@ export interface JobDomain {
 
 export interface JobSkill {
   id: { jobId: number; skillId: number };
-  requiredLevel?: string;
   isMandatory: boolean;
-  minYearsExperience?: number;
   createdAt?: string;
 }
 export interface ChatbotResponse {
@@ -346,9 +345,7 @@ export const catalogApi = {
     jobId: number,
     assignments: Array<{
       skillId: number;
-      requiredLevel?: string;
       isMandatory?: boolean;
-      minYearsExperience?: number;
     }>,
   ) {
     return call<JobSkill[]>({
@@ -632,6 +629,9 @@ export const adminApi = {
       data: payload,
     });
   },
+  updateStaff(staffId: number, payload: Partial<Staff>) {
+    return call<Staff>({ method: 'PATCH', url: `/api/v1/admin/staffs/${staffId}`, data: payload });
+  },
   analyticsOverview() {
     return call<AnalyticsOverview>({
       method: "GET",
@@ -682,6 +682,13 @@ export const adminApi = {
       method: "PATCH",
       url: `/api/v1/admin/accounts/${accountId}/active`,
       params: { active },
+    });
+  },
+  auditLogs(actorGroup?: AuditLog["actorGroup"]) {
+    return call<AuditLog[]>({
+      method: "GET",
+      url: "/api/v1/admin/audit-logs",
+      params: { actorGroup },
     });
   },
 };

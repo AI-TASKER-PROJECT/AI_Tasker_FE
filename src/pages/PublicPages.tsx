@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { contractApi, marketplaceApi, profileApi } from '../lib/api';
+import { catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type JobSkill, type Skill } from '../lib/api';
 import { getPublicExperience } from '../lib/roleExperience';
 import { useSession } from '../lib/session';
 import { formatCompactCurrency, formatCurrency } from '../lib/utils';
@@ -33,6 +33,18 @@ import {
   SectionHeading,
   StatusBadge,
 } from '../components/ui';
+
+function skillCountLabel(count: number) {
+  return `${count} kỹ năng`;
+}
+
+function resolveSkillName(skillId: number, skills: Skill[]) {
+  return skills.find((skill) => skill.skillId === skillId)?.skillName || `Skill #${skillId}`;
+}
+
+function resolveDomainName(domainId: number, domains: Domain[]) {
+  return domains.find((domain) => domain.domainId === domainId)?.domainName || `Lĩnh vực #${domainId}`;
+}
 
 export function LandingPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -156,7 +168,6 @@ export function LandingPage() {
                   <StatusBadge status={job.status} />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge tone="brand">{job.aiTag}</Badge>
                   <Badge tone="mint">{formatCompactCurrency(job.budget)}</Badge>
                   <Badge tone="slate">{job.proposalsCount || 0} proposal</Badge>
                 </div>
@@ -173,7 +184,7 @@ export function LandingPage() {
               Giao diện đã có sẵn cho AI service dù back-end chưa tích hợp thật.
             </h2>
             <p className="mt-4 text-sm leading-7 text-blue-50">
-              Form tạo job có khu vực mô tả thô, SoW gợi ý, AI tag, kỹ năng, ngân sách và thời lượng để giữ đúng JOB-01.
+              Form tạo job có khu vực mô tả thô, SoW gợi ý, lĩnh vực, kỹ năng, ngân sách và thời lượng để giữ đúng JOB-01.
             </p>
             <div className="mt-6">
               <LinkButton to="/app/jobs/new" variant="secondary">
@@ -210,7 +221,7 @@ export function JobsPage() {
   const filtered = useMemo(
     () =>
       jobs.filter((job) => {
-        const matchesQuery = `${job.title} ${job.rawRequirements} ${job.aiTag}`
+        const matchesQuery = `${job.title} ${job.rawRequirements} ${job.structuredSow || ''}`
           .toLowerCase()
           .includes(query.toLowerCase());
         const matchesStatus = status === 'ALL' || job.status === status;
@@ -229,7 +240,7 @@ export function JobsPage() {
       />
       <Card className="mt-8 p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_120px]">
-          <SearchInput value={query} onChange={setQuery} placeholder="Tìm theo tiêu đề, kỹ năng, AI tag..." />
+          <SearchInput value={query} onChange={setQuery} placeholder="Tìm theo tiêu đề, kỹ năng, lĩnh vực..." />
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value)}
@@ -263,6 +274,7 @@ export function JobsPage() {
 
 export function JobCard({ job, manage = false }: { job: Job; manage?: boolean }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
+  const [skillCount, setSkillCount] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -276,6 +288,15 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
         if (!ignore) setMilestoneCount(0);
       });
 
+    catalogApi
+      .listJobSkills(job.jobId)
+      .then((items) => {
+        if (!ignore) setSkillCount(items.length);
+      })
+      .catch(() => {
+        if (!ignore) setSkillCount(0);
+      });
+
     return () => {
       ignore = true;
     };
@@ -284,7 +305,7 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
-        <Badge tone={job.isHot ? 'coral' : 'brand'}>{job.aiTag || 'AI Project'}</Badge>
+        {job.isHot && <Badge tone="coral">Hot project</Badge>}
         <StatusBadge status={job.status} />
       </div>
       <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">{job.title}</h3>
@@ -307,6 +328,10 @@ export function JobCard({ job, manage = false }: { job: Job; manage?: boolean })
         </div>
       </div>
       <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">{skillCountLabel(skillCount)}</p>
+      </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-bold text-slate-400">Milestone</p>
         <p className="mt-1 text-sm font-extrabold text-ink">{milestoneCount} mốc</p>
       </div>
@@ -325,6 +350,10 @@ export function JobDetailPage() {
   const session = useSession();
   const [job, setJob] = useState<Job | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
+  const [jobSkills, setJobSkills] = useState<JobSkill[]>([]);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [businessOpen, setBusinessOpen] = useState(false);
   const [businessLoading, setBusinessLoading] = useState(false);
@@ -332,6 +361,24 @@ export function JobDetailPage() {
   useEffect(() => {
     const id = Number(jobId);
     marketplaceApi.getJob(id).then(setJob);
+    Promise.all([
+      catalogApi.listDomains(true),
+      catalogApi.listSkills(true),
+      catalogApi.listJobDomains(id),
+      catalogApi.listJobSkills(id),
+    ])
+      .then(([domainItems, skillItems, jobDomainItems, jobSkillItems]) => {
+        setDomains(domainItems);
+        setSkills(skillItems);
+        setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
+        setJobSkills(jobSkillItems);
+      })
+      .catch(() => {
+        setDomains([]);
+        setSkills([]);
+        setJobDomainIds([]);
+        setJobSkills([]);
+      });
     contractApi
       .listJobMilestones(id)
       .then(setMilestones)
@@ -376,7 +423,11 @@ export function JobDetailPage() {
             ← Quay lại marketplace
           </Link>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Badge tone="brand">{job.aiTag}</Badge>
+            {jobDomainIds.map((domainId) => (
+              <Badge key={domainId} tone="brand">
+                {resolveDomainName(domainId, domains)}
+              </Badge>
+            ))}
             {job.isHot && <Badge tone="coral">Hot project</Badge>}
             <StatusBadge status={job.status} />
           </div>
@@ -392,11 +443,19 @@ export function JobDetailPage() {
             <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5 text-sm leading-7 text-slate-700">
               {job.structuredSow || 'Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant.'}
             </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {(job.skills || []).map((skill) => (
-                <Badge key={skill} tone="slate">
-                  {skill}
-                </Badge>
+            <div className="mt-5 grid gap-3">
+              {jobSkills.map((item) => (
+                <div
+                  key={item.id.skillId}
+                  className="rounded-2xl border border-slate-100 bg-white p-3 text-sm"
+                >
+                  <p className="font-extrabold text-ink">
+                    {resolveSkillName(item.id.skillId, skills)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {item.isMandatory ? "Bắt buộc" : "Optional"}
+                  </p>
+                </div>
               ))}
             </div>
           </Card>
@@ -416,7 +475,7 @@ export function JobDetailPage() {
               <InfoRow icon={<Clock3 className="h-4 w-4" />} label="Thời lượng" value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || 'tuần'}`} />
               <InfoRow icon={<BriefcaseBusiness className="h-4 w-4" />} label="Doanh nghiệp" value={business?.companyName || job.companyName || 'Đang cập nhật'} />
               <InfoRow icon={<ShieldCheck className="h-4 w-4" />} label="Mã số thuế" value={business?.taxCode || 'Đang cập nhật'} />
-              <InfoRow icon={<Bot className="h-4 w-4" />} label="AI tag" value={job.aiTag || 'General AI'} />
+              <InfoRow icon={<Bot className="h-4 w-4" />} label="Kỹ năng" value={skillCountLabel(jobSkills.length)} />
               <InfoRow icon={<CheckCircle2 className="h-4 w-4" />} label="Milestone" value={`${milestones.length} mốc`} />
             </div>
             <Button
