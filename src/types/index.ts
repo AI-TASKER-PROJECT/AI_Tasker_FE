@@ -26,6 +26,8 @@ export interface Job {
   title: string;
   rawRequirements: string;
   structuredSow?: string;
+  sow?: Sow;
+  milestones?: Array<Partial<Milestone>>;
   budget: number;
   status: string;
   plannedDurationValue?: number;
@@ -38,6 +40,21 @@ export interface Job {
   companyName?: string;
   proposalsCount?: number;
   skills?: string[];
+}
+
+export interface Sow {
+  sowId?: number;
+  jobId?: number;
+  title: string;
+  overview?: string;
+  objectives?: string[] | string;
+  scopeOfWork?: string[] | string;
+  deliverable?: string[] | string;
+  deliverables?: string[] | string;
+  assumptions?: string[] | string;
+  outOfScope?: string[] | string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Proposal {
@@ -95,9 +112,12 @@ export interface Milestone {
   jobId: number;
   contractId?: number;
   milestoneName: string;
+  description?: string;
   fundsAllocated: number;
   orderIndex: number;
   status: string;
+  criteriaIds?: number[];
+  criteria?: AcceptanceCriteria[];
   createdAt?: string;
   updatedAt?: string;
   slaDaysLeft?: number;
@@ -105,9 +125,13 @@ export interface Milestone {
 
 export interface AcceptanceCriteria {
   criteriaId: number;
-  milestoneId: number;
+  milestoneId?: number;
+  criteriaCode?: string;
+  category?: string;
   description: string;
-  isPassed: boolean;
+  isPassed?: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;
 }

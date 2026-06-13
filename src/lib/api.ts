@@ -53,6 +53,51 @@ async function call<T>(config: AxiosRequestConfig): Promise<T> {
   return response.data.data;
 }
 
+export function getApiErrorMessage(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return "Đã có lỗi không xác định.";
+  }
+
+  if (error.code === "ECONNABORTED") {
+    return "Request bị quá thời gian chờ. Generate SoW có thể mất lâu hơn bình thường do backend đang gọi AI.";
+  }
+
+  const status = error.response?.status;
+  const responseData = error.response?.data as
+    | Partial<ApiResponse<unknown>>
+    | { error?: string }
+    | string
+    | undefined;
+
+  if (typeof responseData === "string" && responseData.trim()) {
+    return responseData;
+  }
+
+  if (responseData && typeof responseData === "object") {
+    if ("message" in responseData && responseData.message) {
+      return String(responseData.message);
+    }
+    if ("error" in responseData && responseData.error) {
+      return String(responseData.error);
+    }
+  }
+
+  if (status === 401) {
+    return "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.";
+  }
+  if (status === 403) {
+    return "Tài khoản hiện tại không có quyền gọi chức năng này.";
+  }
+  if (status === 502) {
+    return "Backend không gọi được AI API hoặc OPENAI_API_KEY chưa được cấu hình đúng.";
+  }
+  if (status) {
+    return `Backend trả lỗi HTTP ${status}.`;
+  }
+
+  return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
+}
+
 export interface Domain {
   domainId: number;
   domainCode: string;
@@ -84,6 +129,42 @@ export interface JobSkill {
   isMandatory: boolean;
   createdAt?: string;
 }
+
+export interface GenerateSowRequest {
+  projectTitle: string;
+  rawRequirement: string;
+  budget: number;
+  duration: number;
+  durationUnit: string;
+  supportFields?: string[];
+  requiredSkills?: string[];
+}
+
+export interface GeneratedSow {
+  title?: string;
+  overview?: string;
+  objectives?: string[];
+  scopeOfWork?: string[];
+  deliverables?: string[];
+  assumptions?: string[];
+  outOfScope?: string[];
+}
+
+export interface GeneratedSowMilestone {
+  name?: string;
+  description?: string;
+  duration?: number;
+  durationUnit?: string;
+  budget?: number;
+}
+
+export interface GenerateSowResponse {
+  needMoreInfo?: boolean;
+  questions?: string[];
+  sow?: GeneratedSow;
+  milestones?: GeneratedSowMilestone[];
+}
+
 export interface ChatbotResponse {
   answer: string;
   sources: string[];
@@ -92,12 +173,21 @@ export interface ChatbotResponse {
 export const chatbotApi = {
   ask(question: string) {
     return api
-<<<<<<< HEAD
       .post<ChatbotResponse>("/api/chatbot/ask", { question })
-=======
-      .post<ChatbotResponse>('/api/chatbot/ask', { question })
->>>>>>> 0a622f79eceee269fa24a32a4f92d6cb837ff119
       .then((response) => response.data);
+  },
+};
+
+export const sowApi = {
+  generate(payload: GenerateSowRequest) {
+    return api
+      .post<GenerateSowResponse>("/api/jobs/generate-sow", payload, {
+        timeout: 60000,
+      })
+      .then((response) => {
+        setDataMode("live");
+        return response.data;
+      });
   },
 };
 
@@ -107,13 +197,6 @@ export const authApi = {
       method: "POST",
       url: "/api/auth/login",
       data: payload,
-    });
-  },
-  checkEmail(email: string) {
-    return call<boolean>({
-      method: "GET",
-      url: "/api/auth/check-email",
-      params: { email },
     });
   },
   me() {
@@ -156,17 +239,17 @@ export const authApi = {
     });
   },
   googleSignup(payload: {
-  credential: string;
-  fullName?: string;
-  phone: string;
-  role: "BUSINESS" | "EXPERT";
-}) {
-  return call<SessionUser>({
-    method: "POST",
-    url: "/api/auth/google/register",
-    data: payload,
-  });
-},
+    credential: string;
+    fullName?: string;
+    phone: string;
+    role: "BUSINESS" | "EXPERT";
+  }) {
+    return call<SessionUser>({
+      method: "POST",
+      url: "/api/auth/google/register",
+      data: payload,
+    });
+  },
 };
 
 export const profileApi = {
@@ -331,6 +414,13 @@ export const catalogApi = {
       method: "PATCH",
       url: `/api/v1/skills/${skillId}`,
       data: payload,
+    });
+  },
+  listAcceptanceCriteria(activeOnly = true) {
+    return call<AcceptanceCriteria[]>({
+      method: "GET",
+      url: "/api/v1/acceptance-criteria",
+      params: { activeOnly },
     });
   },
   listJobDomains(jobId: number) {
@@ -641,7 +731,11 @@ export const adminApi = {
     });
   },
   updateStaff(staffId: number, payload: Partial<Staff>) {
-    return call<Staff>({ method: 'PATCH', url: `/api/v1/admin/staffs/${staffId}`, data: payload });
+    return call<Staff>({
+      method: "PATCH",
+      url: `/api/v1/admin/staffs/${staffId}`,
+      data: payload,
+    });
   },
   analyticsOverview() {
     return call<AnalyticsOverview>({
