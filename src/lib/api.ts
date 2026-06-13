@@ -173,7 +173,7 @@ export interface ChatbotResponse {
 export const chatbotApi = {
   ask(question: string) {
     return api
-      .post<ChatbotResponse>("/api/chatbot/ask", { question })
+      .post<ChatbotResponse>('/api/chatbot/ask', { question })
       .then((response) => response.data);
   },
 };
@@ -288,6 +288,15 @@ export const profileApi = {
       url: "/api/v1/profiles/expert/me",
     });
   },
+  uploadExpertPortfolio(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/profiles/expert/portfolio-file",
+      data: formData,
+    });
+  },
   upsertPortfolio(payload: Partial<Portfolio>) {
     return call<Portfolio>({
       method: "POST",
@@ -345,11 +354,12 @@ export const profileApi = {
     type: "BUSINESS" | "EXPERT",
     profileId: number,
     status: "Approved" | "Rejected",
+    reason?: string,
   ) {
     return call<BusinessProfile | ExpertProfile>({
       method: "POST",
       url: `/api/v1/profiles/approve/${type}/${profileId}`,
-      params: { status },
+      params: { status, reason },
     });
   },
   async checkTaxCode(taxCode: string) {
