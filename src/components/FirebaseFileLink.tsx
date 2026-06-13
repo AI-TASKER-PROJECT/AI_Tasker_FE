@@ -8,6 +8,7 @@ type FirebaseFileLinkProps = {
   emptyText?: string;
   buttonText?: string;
   className?: string;
+  showPath?: boolean;
 };
 
 export function FirebaseFileLink({
@@ -15,10 +16,10 @@ export function FirebaseFileLink({
   emptyText = 'Chưa có file',
   buttonText = 'Xem file',
   className,
+  showPath = true,
 }: FirebaseFileLinkProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const openFile = async () => {
     if (!path) return;
     setLoading(true);
@@ -45,8 +46,10 @@ export function FirebaseFileLink({
           <FileText className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="break-all text-xs font-semibold leading-5 text-slate-500">{path}</p>
-          <div className="mt-2">
+          {showPath && (
+            <p className="break-all text-xs font-semibold leading-5 text-slate-500">{path}</p>
+          )}
+          <div className={showPath ? 'mt-2' : ''}>
             <Button type="button" variant="secondary" size="sm" loading={loading} onClick={openFile}>
               <ExternalLink className="h-4 w-4" />
               {buttonText}
@@ -54,9 +57,7 @@ export function FirebaseFileLink({
           </div>
         </div>
       </div>
-      {error && (
-        <Notice tone="danger" title={error} className="mt-2" />
-      )}
+      {error && <Notice tone="danger" title={error} className="mt-2" />}
     </div>
   );
 }

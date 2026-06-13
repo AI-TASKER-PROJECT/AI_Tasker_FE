@@ -35,9 +35,9 @@ api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
-  } else if (!config.headers['Content-Type']) {
-    config.headers['Content-Type'] = 'application/json';
+    delete config.headers["Content-Type"];
+  } else if (!config.headers["Content-Type"]) {
+    config.headers["Content-Type"] = "application/json";
   }
   return config;
 });
@@ -103,6 +103,13 @@ export const authApi = {
       method: "POST",
       url: "/api/auth/login",
       data: payload,
+    });
+  },
+  checkEmail(email: string) {
+    return call<boolean>({
+      method: "GET",
+      url: "/api/auth/check-email",
+      params: { email },
     });
   },
   me() {
@@ -174,10 +181,10 @@ export const profileApi = {
   },
   uploadBusinessLicense(file: File) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     return call<string>({
-      method: 'POST',
-      url: '/api/v1/profiles/business/license-file',
+      method: "POST",
+      url: "/api/v1/profiles/business/license-file",
       data: formData,
     });
   },
@@ -192,6 +199,15 @@ export const profileApi = {
     return call<ExpertProfile>({
       method: "GET",
       url: "/api/v1/profiles/expert/me",
+    });
+  },
+  uploadExpertPortfolio(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/profiles/expert/portfolio-file",
+      data: formData,
     });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
@@ -209,10 +225,10 @@ export const profileApi = {
   },
   uploadExpertCertificate(file: File) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     return call<string>({
-      method: 'POST',
-      url: '/api/v1/profiles/portfolio/certificate-file',
+      method: "POST",
+      url: "/api/v1/profiles/portfolio/certificate-file",
       data: formData,
     });
   },
@@ -251,11 +267,12 @@ export const profileApi = {
     type: "BUSINESS" | "EXPERT",
     profileId: number,
     status: "Approved" | "Rejected",
+    reason?: string,
   ) {
     return call<BusinessProfile | ExpertProfile>({
       method: "POST",
       url: `/api/v1/profiles/approve/${type}/${profileId}`,
-      params: { status },
+      params: { status, reason },
     });
   },
   async checkTaxCode(taxCode: string) {
@@ -361,7 +378,7 @@ export const marketplaceApi = {
     return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });
   },
   listMyJobs() {
-    return call<Job[]>({ method: 'GET', url: '/api/v1/jobs/my' });
+    return call<Job[]>({ method: "GET", url: "/api/v1/jobs/my" });
   },
   getJob(jobId: number) {
     return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` });
@@ -390,9 +407,9 @@ export const marketplaceApi = {
     });
   },
   listMyProposals() {
-    return call<Proposal[]>({ method: 'GET', url: '/api/v1/proposals/my' });
+    return call<Proposal[]>({ method: "GET", url: "/api/v1/proposals/my" });
   },
-  reviewProposal(proposalId: number, status: 'Accepted' | 'Rejected') {
+  reviewProposal(proposalId: number, status: "Accepted" | "Rejected") {
     return call<Proposal>({
       method: "PATCH",
       url: `/api/v1/proposals/${proposalId}/status`,
