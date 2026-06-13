@@ -26,7 +26,6 @@ export interface Job {
   title: string;
   rawRequirements: string;
   structuredSow?: string;
-  aiTag?: string;
   budget: number;
   status: string;
   plannedDurationValue?: number;
@@ -52,6 +51,8 @@ export interface Proposal {
   updatedAt?: string;
   expertName?: string;
   expertTitle?: string;
+  domainId?: number;
+  skillId?: number;
   rating?: number;
   matchScore?: number;
   deliveryDays?: number;
@@ -263,6 +264,7 @@ export interface AdminAccount {
   fullName: string;
   role: Role;
   status: AccountStatus;
+  specialization?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -290,10 +292,19 @@ export interface NotificationItem {
 
 export interface AuditLog {
   logId: number;
+  actorAccountId?: number;
   actor: string;
+  actorEmail?: string;
+  actorRole?: Role;
+  actorGroup?: 'INTERNAL' | 'EXTERNAL';
   action: string;
   entityName: string;
   entityId: string;
+  entityDisplayName?: string;
+  entityOwner?: string;
+  entityOwnerEmail?: string;
+  entityOwnerRole?: Role;
   createdAt: string;
-  ipAddress?: string;
+  oldValueJson?: unknown;
+  newValueJson?: unknown;
 }

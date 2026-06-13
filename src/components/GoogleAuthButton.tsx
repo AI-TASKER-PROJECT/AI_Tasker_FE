@@ -33,6 +33,7 @@ declare global {
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
 let googleScriptPromise: Promise<void> | null = null;
 
+
 function loadGoogleScript() {
   if (window.google) return Promise.resolve();
   if (googleScriptPromise) return googleScriptPromise;
@@ -54,8 +55,10 @@ function loadGoogleScript() {
     script.defer = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Không tải được Google Identity Services'));
-    document.head.appendChild(script);
+
+    if (!existing) document.head.appendChild(script);
   });
+
   return googleScriptPromise;
 }
 
