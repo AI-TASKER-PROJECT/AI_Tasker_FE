@@ -36,6 +36,15 @@ function nameFromEmail(email?: string) {
     .replace(/[._-]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
+type GoogleSignupDraft = {
+  credential: string;
+  email?: string;
+  fullName: string;
+  phone: string;
+  role: "BUSINESS" | "EXPERT";
+};
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -63,13 +72,7 @@ export function LoginPage() {
     }
   };
 
-  const [googleSignup, setGoogleSignup] = useState<{
-  credential: string;
-  email?: string;
-  fullName: string;
-  phone: string;
-  role: "BUSINESS" | "EXPERT";
-} | null>(null);
+  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(null);
 
   const loginWithGoogle = useCallback(
   async (credential: string) => {
@@ -251,7 +254,7 @@ const submitGoogleSignup = async (event: FormEvent) => {
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"FORM" | "OTP">("FORM");
+  const [step, setStep] = useState<"FORM" | "OTP" | "GOOGLE_PROFILE">("FORM");
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -265,6 +268,7 @@ export function RegisterPage() {
   const [messageTone, setMessageTone] = useState<"danger" | "success">(
     "danger",
   );
+  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(null);
 
   // State lưu thời gian đếm ngược
   const [countdown, setCountdown] = useState(0);
@@ -279,21 +283,27 @@ export function RegisterPage() {
         const payload = decodeGoogleCredential(credential);
         const email = payload.email.trim().toLowerCase();
         const emailExists = await authApi.checkEmail(email);
-        const session = await authApi.googleSignup({
+
+        if (emailExists) {
+          const session = await authApi.googleSignup({
+            credential,
+            fullName: payload.name || nameFromEmail(email),
+            phone: "",
+            role: "BUSINESS",
+          });
+          saveSession(session);
+          navigate("/app");
+          return;
+        }
+
+        setGoogleSignup({
           credential,
+          email,
           fullName: form.fullName.trim() || payload.name || nameFromEmail(email),
           phone: form.phone.trim(),
           role: form.role,
         });
-
-        saveSession(session);
-        navigate(
-          emailExists
-            ? "/app"
-            : form.role === "BUSINESS"
-              ? "/app/business/profile"
-              : "/app/expert/profile",
-        );
+        setStep("GOOGLE_PROFILE");
       } catch {
         setMessageTone("danger");
         setMessage("KhÃ´ng thá»ƒ Ä‘Äƒng kÃ½ báº±ng Google. Vui lÃ²ng thá»­ láº¡i.");
@@ -303,6 +313,37 @@ export function RegisterPage() {
     },
     [form.fullName, form.phone, form.role, navigate],
   );
+
+  const submitGoogleSignup = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!googleSignup) return;
+
+    setLoading(true);
+    setMessage("");
+    setMessageTone("danger");
+
+    try {
+      const session = await authApi.googleSignup({
+        credential: googleSignup.credential,
+        fullName:
+          googleSignup.fullName.trim() || nameFromEmail(googleSignup.email),
+        phone: googleSignup.phone.trim(),
+        role: googleSignup.role,
+      });
+
+      saveSession(session);
+      navigate(
+        googleSignup.role === "BUSINESS"
+          ? "/app/business/profile"
+          : "/app/expert/profile",
+      );
+    } catch {
+      setMessageTone("danger");
+      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // =========================================================================
   // BỘ ĐẾM THỜI GIAN (Giảm 1s mỗi 1 giây khi ở bước OTP)
@@ -440,11 +481,19 @@ export function RegisterPage() {
 
   return (
     <AuthFrame
-      title={step === "FORM" ? "Tạo tài khoản theo vai trò" : "Xác thực Email"}
+      title={
+        step === "FORM"
+          ? "Tạo tài khoản theo vai trò"
+          : step === "GOOGLE_PROFILE"
+            ? "Hoàn tất thông tin Google"
+            : "Xác thực Email"
+      }
       description={
         step === "FORM"
           ? "REG-01 yêu cầu khóa chặt email với một vai trò đã chọn."
-          : "Vui lòng nhập mã gồm 6 chữ số vừa được gửi tới email của bạn."
+          : step === "GOOGLE_PROFILE"
+            ? "Bổ sung thông tin liên hệ và vai trò để tiếp tục với Google."
+            : "Vui lòng nhập mã gồm 6 chữ số vừa được gửi tới email của bạn."
       }
     >
       {message && (
@@ -567,6 +616,63 @@ export function RegisterPage() {
             </Link>
           </p>
         </>
+      ) : step === "GOOGLE_PROFILE" ? (
+        <form onSubmit={submitGoogleSignup} className="grid gap-4">
+          <Field label="Họ tên" hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google.">
+            <Input
+              value={googleSignup?.fullName || ""}
+              onChange={(event) =>
+                setGoogleSignup((value) =>
+                  value ? { ...value, fullName: event.target.value } : value,
+                )
+              }
+            />
+          </Field>
+          <Field label="Số điện thoại">
+            <Input
+              value={googleSignup?.phone || ""}
+              onChange={(event) =>
+                setGoogleSignup((value) =>
+                  value ? { ...value, phone: event.target.value } : value,
+                )
+              }
+              required
+            />
+          </Field>
+          <Field label="Vai trò">
+            <Select
+              value={googleSignup?.role || "BUSINESS"}
+              onChange={(event) =>
+                setGoogleSignup((value) =>
+                  value
+                    ? {
+                        ...value,
+                        role: event.target.value as "BUSINESS" | "EXPERT",
+                      }
+                    : value,
+                )
+              }
+            >
+              <option value="BUSINESS">Doanh nghiệp</option>
+              <option value="EXPERT">Chuyên gia</option>
+            </Select>
+          </Field>
+          <Button type="submit" size="lg" loading={loading}>
+            Tiếp tục với Google <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setGoogleSignup(null);
+              setStep("FORM");
+              setMessage("");
+            }}
+            disabled={loading}
+          >
+            Quay lại tạo tài khoản
+          </Button>
+        </form>
       ) : (
         // ---------------------------------------------------------------------
         // GIAO DIỆN BƯỚC 2: NHẬP OTP (CÓ ĐỒNG HỒ & NÚT GỬI LẠI)
@@ -734,3 +840,4 @@ function RoleCard({
     </button>
   );
 }
+

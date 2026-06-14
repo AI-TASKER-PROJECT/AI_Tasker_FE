@@ -8,15 +8,17 @@ import {
   Gavel,
   WalletCards,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { contractApi, disputeApi, marketplaceApi } from "../lib/api";
+import { contractApi, disputeApi, marketplaceApi, notificationApi } from "../lib/api";
 import { roleLabel, useSession } from "../lib/session";
-import { formatCompactCurrency } from "../lib/utils";
+import { formatNotificationTime, notificationHref, notificationTone } from "../lib/notifications";
 import type { Contract, Dispute, Job, NotificationItem } from "../types";
 import {
   Badge,
+  Button,
   Card,
+  EmptyState,
   LinkButton,
   ListLink,
   MetricCard,
@@ -25,13 +27,13 @@ import {
   SectionHeading,
   StatusBadge,
 } from "../components/ui";
-
+import { cn, formatCompactCurrency } from "../lib/utils";
 export function DashboardPage() {
   const session = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const notifications: NotificationItem[] = [];
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
     marketplaceApi
@@ -53,6 +55,10 @@ export function DashboardPage() {
         setContracts([]);
         setDisputes([]);
       });
+    notificationApi
+      .list()
+      .then(setNotifications)
+      .catch(() => setNotifications([]));
   }, []);
 
   if (!session) return null;
@@ -237,10 +243,10 @@ export function DashboardPage() {
           <div className="mt-5 grid gap-3">
             {notifications.slice(0, 3).map((item) => (
               <ListLink
-                key={item.id}
-                to={item.href || "/app/notifications"}
+                key={item.notificationId}
+                to="/app/notifications"
                 title={item.title}
-                description={`${item.time} • ${item.description}`}
+                description={`${formatNotificationTime(item.createdAt)} - ${item.message}`}
                 leading={
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 text-brand-600">
                     <Bell className="h-4 w-4" />
@@ -248,6 +254,11 @@ export function DashboardPage() {
                 }
               />
             ))}
+            {notifications.length === 0 && (
+              <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-400">
+                Chua co thong bao moi.
+              </p>
+            )}
           </div>
         </Card>
       </div>
@@ -256,6 +267,197 @@ export function DashboardPage() {
 }
 
 export function NotificationsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+  const selectedNotificationId = new URLSearchParams(location.search).get("notificationId");
+
+  const refresh = () => {
+    setLoading(true);
+    notificationApi
+      .list()
+      .then(setNotifications)
+      .catch(() => setNotifications([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedNotificationId || notifications.length === 0) return;
+    const notification = notifications.find(
+      (item) => String(item.notificationId) === selectedNotificationId,
+    );
+    if (notification) {
+      setSelectedNotification(notification);
+    }
+  }, [notifications, selectedNotificationId]);
+
+  const openNotification = (notification: NotificationItem) => {
+    setSelectedNotification(notification);
+    navigate(`/app/notifications?notificationId=${notification.notificationId}`, { replace: true });
+    if (!notification.isRead) {
+      const readAt = new Date().toISOString();
+      setNotifications((items) =>
+        items.map((item) =>
+          item.notificationId === notification.notificationId
+            ? { ...item, isRead: true, readAt }
+            : item,
+        ),
+      );
+      notificationApi.markRead(notification.notificationId).catch(refresh);
+    }
+  };
+
+  const markAllRead = () => {
+    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    notificationApi.markAllRead().then(setNotifications).catch(refresh);
+  };
+
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Realtime Center"
+        title="Trung tâm thông báo"
+        description="Theo dõi tất cả thông báo hệ thống, trạng thái đã đọc và đường dẫn xử lý liên quan."
+        actions={
+          unreadCount > 0 ? (
+            <Button variant="secondary" onClick={markAllRead}>
+              Đọc tất cả
+            </Button>
+          ) : undefined
+        }
+      />
+      <div className="grid gap-4">
+        {loading ? (
+          <Card className="p-8 text-center text-sm font-semibold text-slate-400">
+            Đang tải thông báo...
+          </Card>
+        ) : notifications.length === 0 ? (
+          <EmptyState
+            title="Chưa có thông báo"
+            description="Khi backend tạo thông báo mới, danh sách sẽ hiển thị tại đây."
+          />
+        ) : (
+          notifications.map((item) => {
+            const tone = notificationTone(item);
+            const isSelected = selectedNotification?.notificationId === item.notificationId;
+
+            return (
+              <Card 
+                key={item.notificationId} 
+                className={cn(
+                  "p-5 transition-all duration-200", 
+                  isSelected && "border-brand-200 bg-brand-50/30 shadow-sm"
+                )}
+              >
+                <div className="flex w-full items-start gap-4">
+                  {/* Khối Icon bên trái */}
+                  <span
+                    className={cn(
+                      "grid h-12 w-12 shrink-0 place-items-center rounded-2xl",
+                      tone === "success"
+                        ? "bg-mint-50 text-mint-600"
+                        : tone === "warning"
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-brand-50 text-brand-600"
+                    )}
+                  >
+                    {tone === "success" ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : tone === "warning" ? (
+                      <Clock3 className="h-5 w-5" />
+                    ) : (
+                      <Bell className="h-5 w-5" />
+                    )}
+                  </span>
+
+                  {/* Khối Nội dung ở giữa */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-display text-lg font-extrabold text-ink">
+                        {item.title}
+                      </h3>
+                      {!item.isRead && <Badge tone="coral">Mới</Badge>}
+                    </div>
+                    
+                    {/* Đoạn tin nhắn tự động chuyển đổi cấu trúc khi được chọn */}
+                    <p className={cn(
+                      "mt-1 text-sm text-slate-500 leading-6 transition-all",
+                      isSelected ? "whitespace-pre-line text-slate-700 leading-7 font-medium" : "line-clamp-2"
+                    )}>
+                      {item.message}
+                    </p>
+
+                    {/* HIỂN THỊ CHI TIẾT INLINE KHI ĐƯỢC CLICK CHỌN */}
+                    {isSelected && (
+                      <div className="mt-4 pt-4 border-t border-slate-200/60 space-y-4 animate-in fade-in duration-200">
+                        
+                        {/* THÊM KHỐI LÝ DO XUỐNG HÀNG Ở ĐÂY */}
+                        {item.metadata?.reason && (
+                           <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
+                             <p className="text-sm font-semibold text-rose-800 mb-1">Lý do từ chối:</p>
+                             <p className="text-sm text-rose-700">{item.metadata.reason}</p>
+                           </div>
+                        )}
+
+                        <div className="grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-2">
+                          <span>Loại: {item.type}</span>
+                          <span>
+                            Trạng thái: {item.isRead ? "Đã đọc" : "Chưa đọc"}
+                          </span>
+                        </div>
+                        
+                        {/* Thanh công cụ hành động phía dưới - Chỉ giữ nút Đóng */}
+                        <div className="flex justify-end pt-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNotification(null);
+                              navigate("/app/notifications", { replace: true });
+                            }}
+                          >
+                            Đóng chi tiết
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="mt-2 text-xs font-bold text-slate-400">
+                      {formatNotificationTime(item.createdAt)}
+                    </p>
+                  </div>
+
+                  {/* Nút Xem chi tiết bên phải (Ẩn đi nếu mục đó đang được mở rộng) */}
+                  {!isSelected && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="shrink-0 project-detail-btn"
+                      onClick={() => openNotification(item)}
+                    >
+                      Chi tiết
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LegacyNotificationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
@@ -264,7 +466,7 @@ export function NotificationsPage() {
         description="Giao diện phục vụ WebSocket/notification service trong các rule CON-01, EXEC-02, REV-01 và STF-04."
       />
       <div className="grid gap-4">
-        {([] as NotificationItem[]).map((item) => (
+        {([] as any[]).map((item) => (
           <Card key={item.id} className="p-5">
             <div className="flex items-start gap-4">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">

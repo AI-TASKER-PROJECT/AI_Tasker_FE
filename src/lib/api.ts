@@ -13,6 +13,7 @@ import type {
   ExpertProfile,
   Job,
   Milestone,
+  NotificationItem,
   Portfolio,
   Proposal,
   Review,
@@ -22,6 +23,7 @@ import type {
   SystemWallet,
   TaxCheckResponse,
   Transaction,
+  UnreadNotificationCount,
 } from "../types";
 import { getSession } from "./session";
 
@@ -103,13 +105,6 @@ export const authApi = {
       method: "POST",
       url: "/api/auth/login",
       data: payload,
-    });
-  },
-  checkEmail(email: string) {
-    return call<boolean>({
-      method: "GET",
-      url: "/api/auth/check-email",
-      params: { email },
     });
   },
   me() {
@@ -322,6 +317,13 @@ export const catalogApi = {
     return call<Skill[]>({
       method: "GET",
       url: "/api/v1/skills",
+      params: { activeOnly },
+    });
+  },
+  listAcceptanceCriteria(activeOnly = true) {
+    return call<AcceptanceCriteria[]>({
+      method: "GET",
+      url: "/api/v1/acceptance-criteria",
       params: { activeOnly },
     });
   },
@@ -552,6 +554,33 @@ export const financeApi = {
 export const walletApi = {
   current() {
     return call<SystemWallet>({ method: "GET", url: "/api/v1/wallet/me" });
+  },
+};
+
+export const notificationApi = {
+  list() {
+    return call<NotificationItem[]>({
+      method: "GET",
+      url: "/api/v1/notifications",
+    });
+  },
+  unreadCount() {
+    return call<UnreadNotificationCount>({
+      method: "GET",
+      url: "/api/v1/notifications/unread-count",
+    });
+  },
+  markRead(notificationId: number) {
+    return call<NotificationItem>({
+      method: "PATCH",
+      url: `/api/v1/notifications/${notificationId}/read`,
+    });
+  },
+  markAllRead() {
+    return call<NotificationItem[]>({
+      method: "PATCH",
+      url: "/api/v1/notifications/read-all",
+    });
   },
 };
 

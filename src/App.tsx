@@ -76,16 +76,16 @@ export default function App() {
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
 
+
       <Route path="app" element={<ProtectedRoute />}>
         <Route index element={<PageTransition><DashboardPage /></PageTransition>} />
-        <Route path="notifications" element={<PageTransition><NotificationsPage /></PageTransition>} />
 
         <Route path="jobs" element={<PageTransition><MyJobsPage /></PageTransition>} />
         <Route path="jobs/new" element={<PageTransition><CreateJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/manage" element={<PageTransition><ManageJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/proposal" element={<PageTransition><SubmitProposalPage /></PageTransition>} />
         <Route path="business/profile" element={<PageTransition><BusinessProfilePage /></PageTransition>} />
-
+        <Route path="notifications" element={<PageTransition><NotificationsPage /></PageTransition>} />
         <Route path="opportunities" element={<PageTransition><OpportunitiesPage /></PageTransition>} />
         <Route path="proposals" element={<PageTransition><ProposalsPage /></PageTransition>} />
         <Route path="expert/profile" element={<PageTransition><ExpertProfilePage /></PageTransition>} />
@@ -120,6 +120,7 @@ export default function App() {
     </Routes>
   );
 }
+
 
 function NotFoundPage() {
   return (

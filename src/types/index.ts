@@ -105,9 +105,13 @@ export interface Milestone {
 
 export interface AcceptanceCriteria {
   criteriaId: number;
-  milestoneId: number;
+  milestoneId?: number;
+  criteriaCode?: string;
+  category?: string;
   description: string;
-  isPassed: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
+  isPassed?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -281,13 +285,22 @@ export interface AnalyticsOverview {
 }
 
 export interface NotificationItem {
-  id: number;
+  notificationId: number;
+  type: string;
   title: string;
-  description: string;
-  time: string;
-  type: 'info' | 'success' | 'warning';
-  read: boolean;
-  href?: string;
+  message: string;
+  targetUrl?: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string;
+  metadata?: {
+    reason?: string;
+    [key: string]: any; 
+  };
+}
+
+export interface UnreadNotificationCount {
+  unreadCount: number;
 }
 
 export interface AuditLog {
