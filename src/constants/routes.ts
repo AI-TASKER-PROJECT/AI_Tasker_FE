@@ -1,0 +1,16 @@
+export const route = {
+  home: '/',
+  login: '/login',
+  register: '/register',
+  app: '/app',
+  notifications: 'notifications',
+  jobs: 'jobs',
+  experts: 'experts',
+  contracts: 'contracts',
+  finance: 'finance',
+  reviews: 'reviews',
+  disputes: 'disputes',
+  tickets: 'tickets',
+  verifications: 'verifications',
+  admin: 'admin',
+};

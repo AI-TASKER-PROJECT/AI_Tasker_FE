@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { MessageCircle, Minimize2, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useSession } from '../lib/session';
-import { chatbotApi } from '../lib/api';
+import { useSession } from '../context/sessionContext';
+import { chatbotApi } from '../services';
 import { cn } from '../lib/utils';
 import { Avatar, Button, Input } from './ui';
 

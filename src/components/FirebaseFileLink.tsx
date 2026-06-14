@@ -1,6 +1,6 @@
 import { ExternalLink, FileText } from 'lucide-react';
 import { useState } from 'react';
-import { profileApi } from '../lib/api';
+import { profileApi } from '../services';
 import { Button, Notice } from './ui';
 
 type FirebaseFileLinkProps = {
