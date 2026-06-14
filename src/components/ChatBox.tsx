@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { MessageCircle, Minimize2, Send, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from '../lib/session';
 import { chatbotApi } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -26,6 +26,13 @@ export function ChatBox() {
   const [minimized, setMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(starterMessages);
+  const [isThinking, setIsThinking] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open || minimized) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isThinking, open, minimized]);
 
   const sendMessage = async () => {
   const trimmed = message.trim();
@@ -36,6 +43,7 @@ export function ChatBox() {
     { id: Date.now(), sender: 'user', text: trimmed },
   ]);
   setMessage('');
+  setIsThinking(true);
 
   try {
     const result = await chatbotApi.ask(trimmed);
@@ -57,6 +65,8 @@ export function ChatBox() {
         text: 'Không thể kết nối chatbot lúc này.',
       },
     ]);
+  } finally {
+    setIsThinking(false);
   }
 };
   if (!open) {
@@ -76,7 +86,7 @@ export function ChatBox() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-sm">
+    <div className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-xl">
       <AnimatePresence>
         {!minimized && (
           <motion.section
@@ -111,7 +121,7 @@ export function ChatBox() {
               </button>
             </header>
 
-            <div className="max-h-80 space-y-3 overflow-y-auto bg-slate-50/70 p-4">
+            <div className="h-[min(30rem,calc(100vh-12rem))] space-y-3 overflow-y-auto bg-slate-50/70 p-4">
               {messages.map((item) => {
                 const isUser = item.sender === 'user';
 
@@ -135,6 +145,19 @@ export function ChatBox() {
                   </div>
                 );
               })}
+              {isThinking && (
+                <div className="flex items-end gap-2">
+                  <Avatar name="AI" size="sm" />
+                  <div className="rounded-2xl border border-slate-100 bg-white px-3.5 py-2.5 text-sm leading-6 text-slate-500 shadow-sm">
+                    <div className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
 
             <form
