@@ -22,6 +22,8 @@ import type {
   SystemWallet,
   TaxCheckResponse,
   Transaction,
+  NotificationItem,
+  UnreadNotificationCount,
 } from "../types";
 import { getSession } from "../context/sessionContext";
 
@@ -804,6 +806,33 @@ export const adminApi = {
       method: "GET",
       url: "/api/v1/admin/audit-logs",
       params: { actorGroup },
+    });
+  },
+};
+
+export const notificationApi = {
+  list() {
+    return call<NotificationItem[]>({
+      method: "GET",
+      url: "/api/v1/notifications",
+    });
+  },
+  unreadCount() {
+    return call<UnreadNotificationCount>({
+      method: "GET",
+      url: "/api/v1/notifications/unread-count",
+    });
+  },
+  markRead(notificationId: number) {
+    return call<NotificationItem>({
+      method: "PATCH",
+      url: `/api/v1/notifications/${notificationId}/read`,
+    });
+  },
+  markAllRead() {
+    return call<NotificationItem[]>({
+      method: "PATCH",
+      url: "/api/v1/notifications/read-all",
     });
   },
 };

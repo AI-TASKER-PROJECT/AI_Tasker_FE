@@ -3,8 +3,10 @@ import {
   Bell,
   BriefcaseBusiness,
   Building2,
+  CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  Clock3,
   FileCheck2,
   FileText,
   Gavel,
@@ -24,10 +26,12 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import type { Role } from '../../types';
-import { authApi } from '../../services';
+import type { NotificationItem, Role } from '../../types';
+import { authApi, notificationApi } from '../../services';
+import { connectNotificationSocket } from '../../lib/notificationSocket';
+import { formatNotificationTime, mergeNotification, notificationTone } from '../../lib/notifications';
 import { clearSession, roleLabel, saveSession, useSession } from '../../context/sessionContext';
 import { cn } from '../../lib/utils';
 import { Logo } from '../../components/Logo';
@@ -85,6 +89,11 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const role = session?.role;
   const accountStatus = session?.accountStatus || 'Approved';
@@ -125,10 +134,52 @@ export function AppShell() {
 
   useEffect(() => {
     if (!session) return;
-    if (needsVerification && location.pathname !== verificationPath) {
+    const isNotificationPage = location.pathname.startsWith('/app/notifications');
+    if (needsVerification && location.pathname !== verificationPath && !isNotificationPage) {
       navigate(verificationPath, { replace: true });
     }
   }, [location.pathname, navigate, needsVerification, session, verificationPath]);
+
+  const refreshNotifications = useCallback(async () => {
+    setNotificationLoading(true);
+    try {
+      const [items, unread] = await Promise.all([
+        notificationApi.list(),
+        notificationApi.unreadCount(),
+      ]);
+      setNotifications(items);
+      setUnreadCount(unread.unreadCount);
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    refreshNotifications();
+    const stream = connectNotificationSocket({
+      token: session.accessToken,
+      onStatus: setRealtimeConnected,
+      onNotification: (notification) => {
+        setNotifications((items) => mergeNotification(items, notification));
+        if (!notification.isRead) {
+          setUnreadCount((count) => count + 1);
+        }
+      },
+    });
+
+    return () => {
+      stream.close();
+    };
+  }, [refreshNotifications, session?.accessToken]);
+
+  useEffect(() => {
+    setNotificationOpen(false);
+  }, [location.pathname]);
 
   if (!session) return null;
 
@@ -142,6 +193,44 @@ export function AppShell() {
     (session.role === 'EXPERT' &&
       item.to === '/app/opportunities' &&
       /^\/app\/jobs\/[^/]+\/proposal$/.test(location.pathname));
+
+  const openNotificationPanel = () => {
+    setNotificationOpen((open) => {
+      const next = !open;
+      if (next) refreshNotifications();
+      return next;
+    });
+  };
+
+  const openNotificationInCenter = async (notification: NotificationItem) => {
+    if (!notification.isRead) {
+      const readAt = new Date().toISOString();
+      setNotifications((items) =>
+        items.map((item) =>
+          item.notificationId === notification.notificationId
+            ? { ...item, isRead: true, readAt }
+            : item,
+        ),
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
+      notificationApi.markRead(notification.notificationId).catch(() => refreshNotifications());
+    }
+    setNotificationOpen(false);
+    navigate(`/app/notifications?notificationId=${notification.notificationId}`);
+  };
+
+  const markAllNotificationsRead = async () => {
+    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    setUnreadCount(0);
+    notificationApi.markAllRead().then(setNotifications).catch(() => refreshNotifications());
+  };
+
+  const renderNotificationIcon = (notification: NotificationItem) => {
+    const tone = notificationTone(notification);
+    if (tone === 'success') return <CheckCircle2 className="h-4 w-4" />;
+    if (tone === 'warning') return <Clock3 className="h-4 w-4" />;
+    return <Bell className="h-4 w-4" />;
+  };
 
   return (
     <div className="min-h-screen bg-[#f7faff] text-ink">
@@ -233,13 +322,107 @@ export function AppShell() {
                 <span className="h-1.5 w-1.5 rounded-full bg-mint-500" />
                 API trực tiếp
               </Badge>
-              <NavLink
-                to="/app/notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-2xl bg-slate-50 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600"
-              >
-                <Bell className="h-4 w-4" />
-                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-coral-500 ring-2 ring-white" />
-              </NavLink>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Thông báo"
+                  onClick={openNotificationPanel}
+                  className={cn(
+                    'relative grid h-10 w-10 place-items-center rounded-2xl bg-slate-50 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600',
+                    notificationOpen && 'bg-brand-50 text-brand-600',
+                  )}
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral-500 px-1 text-[10px] font-black text-white ring-2 ring-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notificationOpen && (
+                  <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-soft">
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-extrabold text-ink">Thông báo</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                          <span
+                            className={cn(
+                              'h-1.5 w-1.5 rounded-full',
+                              realtimeConnected ? 'bg-mint-500' : 'bg-slate-300',
+                            )}
+                          />
+                          {realtimeConnected ? 'Realtime đang bật' : 'Đang kết nối realtime'}
+                        </p>
+                      </div>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotificationsRead}
+                          className="text-xs font-bold text-brand-600 hover:text-brand-700"
+                        >
+                          Đọc tất cả
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-96 overflow-y-auto p-2">
+                      {notificationLoading && notifications.length === 0 ? (
+                        <div className="px-3 py-8 text-center text-sm font-semibold text-slate-400">
+                          Đang tải thông báo...
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-3 py-8 text-center text-sm font-semibold text-slate-400">
+                          Chưa có thông báo nào.
+                        </div>
+                      ) : (
+                        notifications.slice(0, 5).map((notification) => (
+                          <button
+                            key={notification.notificationId}
+                            type="button"
+                            onClick={() => openNotificationInCenter(notification)}
+                            className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
+                          >
+                            <span
+                              className={cn(
+                                'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl',
+                                notification.isRead
+                                  ? 'bg-slate-50 text-slate-400'
+                                  : 'bg-brand-50 text-brand-600',
+                              )}
+                            >
+                              {renderNotificationIcon(notification)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-start gap-2">
+                                <span className="line-clamp-1 flex-1 text-sm font-extrabold text-ink">
+                                  {notification.title}
+                                </span>
+                                {!notification.isRead && (
+                                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-coral-500" />
+                                )}
+                              </span>
+                              <span className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                                {notification.message}
+                              </span>
+                              <span className="mt-1 block text-[11px] font-bold text-slate-400">
+                                {formatNotificationTime(notification.createdAt)}
+                              </span>
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="border-t border-slate-100 p-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/app/notifications')}
+                        className="flex h-10 w-full items-center justify-center rounded-2xl text-sm font-extrabold text-brand-600 transition hover:bg-brand-50"
+                      >
+                        Xem tất cả thông báo
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="relative">
                 <button
                   type="button"
