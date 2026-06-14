@@ -269,6 +269,41 @@ export function RegisterPage() {
   // State lưu thời gian đếm ngược
   const [countdown, setCountdown] = useState(0);
 
+  const registerWithGoogle = useCallback(
+    async (credential: string) => {
+      setLoading(true);
+      setMessage("");
+      setMessageTone("danger");
+
+      try {
+        const payload = decodeGoogleCredential(credential);
+        const email = payload.email.trim().toLowerCase();
+        const emailExists = await authApi.checkEmail(email);
+        const session = await authApi.googleSignup({
+          credential,
+          fullName: form.fullName.trim() || payload.name || nameFromEmail(email),
+          phone: form.phone.trim(),
+          role: form.role,
+        });
+
+        saveSession(session);
+        navigate(
+          emailExists
+            ? "/app"
+            : form.role === "BUSINESS"
+              ? "/app/business/profile"
+              : "/app/expert/profile",
+        );
+      } catch {
+        setMessageTone("danger");
+        setMessage("KhÃ´ng thá»ƒ Ä‘Äƒng kÃ½ báº±ng Google. Vui lÃ²ng thá»­ láº¡i.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [form.fullName, form.phone, form.role, navigate],
+  );
+
   // =========================================================================
   // BỘ ĐẾM THỜI GIAN (Giảm 1s mỗi 1 giây khi ở bước OTP)
   // =========================================================================
@@ -296,11 +331,11 @@ export function RegisterPage() {
     try {
       // 1. Gọi API kiểm tra email trước
       // LƯU Ý: Đảm bảo authApi.checkEmail trả về đúng giá trị data từ axios
-      const isEmailAvailable = await authApi.checkEmail(normalizedEmail);
+      const emailExists = await authApi.checkEmail(normalizedEmail);
       
       // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
       // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
-      if (!isEmailAvailable /* hoặc !isEmailAvailable.data */) {
+      if (emailExists) {
         setMessageTone("danger");
         setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
         setLoading(false);
@@ -514,6 +549,16 @@ export function RegisterPage() {
               Tạo tài khoản <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+
+          <AuthDivider />
+          <GoogleAuthButton
+            mode="register"
+            onCredential={registerWithGoogle}
+            onError={(errorMessage) => {
+              setMessageTone("danger");
+              setMessage(errorMessage);
+            }}
+          />
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Đã có tài khoản?{" "}

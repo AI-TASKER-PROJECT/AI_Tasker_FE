@@ -9,7 +9,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   catalogApi,
   contractApi,
@@ -23,7 +23,7 @@ import {
   type JobSkill,
   type Skill,
 } from "../lib/api";
-import { formatCompactCurrency, formatCurrency } from "../lib/utils";
+import { cn, formatCompactCurrency, formatCurrency } from "../lib/utils";
 import { useSession } from "../lib/session";
 import { FirebaseFileLink } from "../components/FirebaseFileLink";
 import type {
@@ -51,7 +51,7 @@ import {
   StatusBadge,
   Textarea,
 } from "../components/ui";
-import { JobCard } from "./PublicPages";
+import { JobCard, JobDomainBadge, jobDomainLabel } from "./PublicPages";
 import { useNavigate } from "react-router-dom";
 
 type SkillAssignment = {
@@ -116,41 +116,59 @@ function parseCatalogIdList(value?: string) {
 
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
   const [milestonesByJobId, setMilestonesByJobId] = useState<
     Record<number, Milestone[]>
   >({});
   const [jobSkillsByJobId, setJobSkillsByJobId] = useState<
     Record<number, JobSkill[]>
   >({});
+  const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
+    Record<number, number[]>
+  >({});
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "DRAFT" | "OPEN" | "CLOSED"
+  >("ALL");
 
   useEffect(() => {
     marketplaceApi
       .listMyJobs()
       .then(setJobs)
       .catch(() => setJobs([]));
+    catalogApi
+      .listDomains(true)
+      .then(setDomains)
+      .catch(() => setDomains([]));
   }, []);
 
   useEffect(() => {
     if (jobs.length === 0) {
       setMilestonesByJobId({});
       setJobSkillsByJobId({});
+      setJobDomainIdsByJobId({});
       return;
     }
     let ignore = false;
 
     async function loadJobCounts() {
-      const [milestoneResults, skillResults] = await Promise.all([
-        Promise.allSettled(
-          jobs.map((job) => contractApi.listJobMilestones(job.jobId)),
-        ),
-        Promise.allSettled(
-          jobs.map((job) => catalogApi.listJobSkills(job.jobId)),
-        ),
-      ]);
+      const [milestoneResults, skillResults, domainResults] = await Promise.all(
+        [
+          Promise.allSettled(
+            jobs.map((job) => contractApi.listJobMilestones(job.jobId)),
+          ),
+          Promise.allSettled(
+            jobs.map((job) => catalogApi.listJobSkills(job.jobId)),
+          ),
+          Promise.allSettled(
+            jobs.map((job) => catalogApi.listJobDomains(job.jobId)),
+          ),
+        ],
+      );
       if (ignore) return;
       const milestoneMap: Record<number, Milestone[]> = {};
       const skillMap: Record<number, JobSkill[]> = {};
+      const domainMap: Record<number, number[]> = {};
       milestoneResults.forEach((result, index) => {
         milestoneMap[jobs[index].jobId] =
           result.status === "fulfilled" ? result.value : [];
@@ -159,8 +177,15 @@ export function MyJobsPage() {
         skillMap[jobs[index].jobId] =
           result.status === "fulfilled" ? result.value : [];
       });
+      domainResults.forEach((result, index) => {
+        domainMap[jobs[index].jobId] =
+          result.status === "fulfilled"
+            ? result.value.map((item) => item.id.domainId)
+            : [];
+      });
       setMilestonesByJobId(milestoneMap);
       setJobSkillsByJobId(skillMap);
+      setJobDomainIdsByJobId(domainMap);
     }
 
     loadJobCounts();
@@ -169,11 +194,32 @@ export function MyJobsPage() {
     };
   }, [jobs]);
 
-  const filtered = jobs.filter((job) =>
-    `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
+  const statusTabs = [
+    { value: "ALL", label: "All" },
+    { value: "DRAFT", label: "Draft" },
+    { value: "OPEN", label: "Open" },
+    { value: "CLOSED", label: "Close" },
+  ] as const;
+
+  const statusCounts = statusTabs.reduce(
+    (counts, tab) => ({
+      ...counts,
+      [tab.value]:
+        tab.value === "ALL"
+          ? jobs.length
+          : jobs.filter((job) => job.status === tab.value).length,
+    }),
+    {} as Record<(typeof statusTabs)[number]["value"], number>,
   );
+
+  const filtered = jobs.filter((job) => {
+    const matchesQuery =
+      `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+    const matchesStatus = statusFilter === "ALL" || job.status === statusFilter;
+    return matchesQuery && matchesStatus;
+  });
 
   const updateStatus = async (jobId: number, status: string) => {
     const updated = await marketplaceApi.updateJobStatus(jobId, status);
@@ -195,6 +241,38 @@ export function MyJobsPage() {
           </LinkButton>
         }
       />
+      <Card className="p-3">
+        <div className="flex flex-wrap gap-2">
+          {statusTabs.map((tab) => {
+            const isActive = statusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setStatusFilter(tab.value)}
+                className={cn(
+                  "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
+                  isActive
+                    ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
+                    : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
+                )}
+              >
+                {tab.label}
+                <span
+                  className={cn(
+                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                    isActive
+                      ? "bg-mint-50 text-mint-600"
+                      : "bg-slate-100 text-slate-500",
+                  )}
+                >
+                  {statusCounts[tab.value]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
       <Card className="p-4">
         <SearchInput
           value={query}
@@ -204,13 +282,21 @@ export function MyJobsPage() {
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
         {filtered.map((job) => (
-          <Card key={job.jobId} className="p-5">
-            <div className="flex items-start justify-end">
+          <Card key={job.jobId} className="group p-5">
+            <div className="flex items-start justify-between gap-3">
+              <JobDomainBadge
+                label={jobDomainLabel(
+                  jobDomainIdsByJobId[job.jobId] || [],
+                  domains,
+                )}
+              />
               <StatusBadge status={job.status} />
             </div>
-            <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">
-              {job.title}
-            </h3>
+            <Link to={`/jobs/${job.jobId}`} className="group">
+              <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+                {job.title}
+              </h3>
+            </Link>
             <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
               {job.structuredSow}
             </p>
@@ -304,7 +390,7 @@ export function CreateJobPage() {
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<
     AcceptanceCriteria[]
   >([]);
-  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
+  const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
   const [skillAssignments, setSkillAssignments] = useState<SkillAssignment[]>(
     [],
   );
@@ -318,9 +404,7 @@ export function CreateJobPage() {
       setDomains(domainItems);
       setSkills(skillItems);
       setAcceptanceCriteria(criteriaItems);
-      setSelectedDomainIds(
-        domainItems.slice(0, 2).map((item) => item.domainId),
-      );
+      setSelectedDomainId(domainItems[0]?.domainId ?? null);
       setSkillAssignments(
         skillItems.slice(0, 3).map((item) => ({
           skillId: item.skillId,
@@ -329,6 +413,9 @@ export function CreateJobPage() {
       );
     });
   }, []);
+
+  const selectedDomainIdList =
+    selectedDomainId !== null ? [selectedDomainId] : [];
 
   const mapGeneratedMilestone = (
     milestone: GeneratedSowMilestone,
@@ -358,7 +445,7 @@ export function CreateJobPage() {
         budget: Number(form.budgetAmount),
         duration: Number(form.plannedDurationValue),
         durationUnit: "tuần",
-        supportFields: selectedDomainIds.map((id) =>
+        supportFields: selectedDomainIdList.map((id) =>
           resolveDomainName(id, domains),
         ),
         requiredSkills: skillAssignments.map((assignment) =>
@@ -378,7 +465,8 @@ export function CreateJobPage() {
       }
 
       const hasGeneratedContent = Boolean(
-        structuredSow || (response.milestones && response.milestones.length > 0),
+        structuredSow ||
+        (response.milestones && response.milestones.length > 0),
       );
       setSowGeneratedLocked(hasGeneratedContent);
 
@@ -499,7 +587,7 @@ export function CreateJobPage() {
     setLoading(true);
     setCreateMessage("");
     try {
-      if (selectedDomainIds.length === 0) {
+      if (selectedDomainId === null) {
         setCreateMessage("Vui lòng chọn ít nhất một lĩnh vực cho job.");
         return;
       }
@@ -523,7 +611,7 @@ export function CreateJobPage() {
       );
 
       try {
-        await catalogApi.replaceJobDomains(job.jobId, selectedDomainIds);
+        await catalogApi.replaceJobDomains(job.jobId, selectedDomainIdList);
         await catalogApi.replaceJobSkills(
           job.jobId,
           skillAssignments.map((assignment) => ({
@@ -591,9 +679,7 @@ export function CreateJobPage() {
                 <div className="max-h-56 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
                   <div className="grid gap-2 md:grid-cols-2">
                     {domains.map((domain) => {
-                      const isSelected = selectedDomainIds.includes(
-                        domain.domainId,
-                      );
+                      const isSelected = selectedDomainId === domain.domainId;
                       return (
                         <label
                           key={domain.domainId}
@@ -609,7 +695,7 @@ export function CreateJobPage() {
                             className="h-4 w-4 cursor-pointer text-primary focus:ring-primary"
                             checked={isSelected}
                             onChange={() =>
-                              setSelectedDomainIds([domain.domainId])
+                              setSelectedDomainId(domain.domainId)
                             }
                           />
                           <span className="min-w-0 break-words">
@@ -796,13 +882,13 @@ export function CreateJobPage() {
                         aria-label={`Thời gian ${index + 1}`}
                         type="number"
                         min={1}
-                      value={milestone.durationValue}
-                      placeholder="TL"
-                      className="h-full border-0 px-0 shadow-none focus:ring-0"
-                      disabled={sowGeneratedLocked}
-                      onChange={(event) =>
-                        updateMilestone(index, {
-                          durationValue: event.target.value,
+                        value={milestone.durationValue}
+                        placeholder="TL"
+                        className="h-full border-0 px-0 shadow-none focus:ring-0"
+                        disabled={sowGeneratedLocked}
+                        onChange={(event) =>
+                          updateMilestone(index, {
+                            durationValue: event.target.value,
                           })
                         }
                       />
@@ -869,6 +955,10 @@ export function CreateJobPage() {
             <div className="mt-4 rounded-2xl bg-slate-50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
+                  <JobDomainBadge
+                    label={jobDomainLabel(selectedDomainIdList, domains)}
+                    className="mb-2"
+                  />
                   <p className="text-xs font-bold text-slate-400">
                     #{savedJob.jobId}
                   </p>
@@ -888,7 +978,7 @@ export function CreateJobPage() {
                 <div className="flex justify-between gap-3">
                   <span className="text-slate-500">Lĩnh vực</span>
                   <span className="break-words text-right font-extrabold text-ink">
-                    {selectedDomainIds
+                    {selectedDomainIdList
                       .map((id) => resolveDomainName(id, domains))
                       .join(", ")}
                   </span>
@@ -1292,7 +1382,10 @@ export function SubmitProposalPage() {
 
         <aside className="space-y-4">
           <Card className="p-5">
-            <SectionHeading title="Tóm tắt dự án" />
+            <div className="grid justify-items-start gap-3">
+              <JobDomainBadge label={jobDomainLabel(jobDomainIds, domains)} />
+              <SectionHeading title="Tóm tắt dự án" />
+            </div>
             <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-slate-500">Ngân sách</span>
@@ -1526,7 +1619,10 @@ export function ManageJobPage() {
           </div>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Tóm tắt SoW" />
+          <div className="grid justify-items-start gap-3">
+            <JobDomainBadge label={jobDomainLabel(jobDomains, domains)} />
+            <SectionHeading title="Tóm tắt SoW" />
+          </div>
           <p className="mt-4 break-words text-sm leading-7 text-slate-600">
             {job.structuredSow || job.rawRequirements}
           </p>
@@ -1981,7 +2077,14 @@ export function OpportunitiesPage() {
 export function ProposalsPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [jobsById, setJobsById] = useState<Record<number, Job>>({});
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
+    Record<number, number[]>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [proposalStatusFilter, setProposalStatusFilter] = useState<
+    "ALL" | "ACCEPTED" | "PENDING" | "REJECTED"
+  >("ALL");
 
   useEffect(() => {
     let ignore = false;
@@ -1998,6 +2101,12 @@ export function ProposalsPage() {
         const jobResults = await Promise.allSettled(
           uniqueJobIds.map((id) => marketplaceApi.getJob(id)),
         );
+        const [domainItems, jobDomainResults] = await Promise.all([
+          catalogApi.listDomains(true).catch(() => []),
+          Promise.allSettled(
+            uniqueJobIds.map((id) => catalogApi.listJobDomains(id)),
+          ),
+        ]);
         if (ignore) return;
         const map: Record<number, Job> = {};
         jobResults.forEach((result) => {
@@ -2005,11 +2114,22 @@ export function ProposalsPage() {
             map[result.value.jobId] = result.value;
           }
         });
+        const domainMap: Record<number, number[]> = {};
+        jobDomainResults.forEach((result, index) => {
+          domainMap[uniqueJobIds[index]] =
+            result.status === "fulfilled"
+              ? result.value.map((item) => item.id.domainId)
+              : [];
+        });
         setJobsById(map);
+        setDomains(domainItems);
+        setJobDomainIdsByJobId(domainMap);
       } catch {
         if (!ignore) {
           setProposals([]);
           setJobsById({});
+          setDomains([]);
+          setJobDomainIdsByJobId({});
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -2021,6 +2141,36 @@ export function ProposalsPage() {
       ignore = true;
     };
   }, []);
+
+  const proposalStatusTabs = [
+    { value: "ALL", label: "All" },
+    { value: "ACCEPTED", label: "Accepted" },
+    { value: "PENDING", label: "Pending" },
+    { value: "REJECTED", label: "Rejected" },
+  ] as const;
+
+  const normalizedProposalStatus = (status?: string) =>
+    (status || "").trim().toUpperCase();
+
+  const proposalStatusCounts = proposalStatusTabs.reduce(
+    (counts, tab) => ({
+      ...counts,
+      [tab.value]:
+        tab.value === "ALL"
+          ? proposals.length
+          : proposals.filter(
+              (proposal) =>
+                normalizedProposalStatus(proposal.status) === tab.value,
+            ).length,
+    }),
+    {} as Record<(typeof proposalStatusTabs)[number]["value"], number>,
+  );
+
+  const filteredProposals = proposals.filter(
+    (proposal) =>
+      proposalStatusFilter === "ALL" ||
+      normalizedProposalStatus(proposal.status) === proposalStatusFilter,
+  );
 
   return (
     <div className="space-y-6">
@@ -2034,15 +2184,53 @@ export function ProposalsPage() {
           </LinkButton>
         }
       />
+      <Card className="p-3">
+        <div className="flex flex-wrap gap-2">
+          {proposalStatusTabs.map((tab) => {
+            const isActive = proposalStatusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setProposalStatusFilter(tab.value)}
+                className={cn(
+                  "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
+                  isActive
+                    ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
+                    : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
+                )}
+              >
+                {tab.label}
+                <span
+                  className={cn(
+                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                    isActive
+                      ? "bg-mint-50 text-mint-600"
+                      : "bg-slate-100 text-slate-500",
+                  )}
+                >
+                  {proposalStatusCounts[tab.value]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
       {loading && <Notice tone="info" title="Đang tải proposal..." />}
       <div className="grid gap-4">
-        {proposals.map((proposal) => {
+        {filteredProposals.map((proposal) => {
           const job = jobsById[proposal.jobId];
           return (
             <Card key={proposal.proposalId} className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <JobDomainBadge
+                      label={jobDomainLabel(
+                        jobDomainIdsByJobId[proposal.jobId] || [],
+                        domains,
+                      )}
+                    />
                     <StatusBadge status={proposal.status} />
                   </div>
                   <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
@@ -2063,10 +2251,10 @@ export function ProposalsPage() {
           );
         })}
       </div>
-      {!loading && proposals.length === 0 && (
+      {!loading && filteredProposals.length === 0 && (
         <EmptyState
           title="Chưa có proposal"
-          description="Khi chuyên gia gửi proposal cho job public, dữ liệu sẽ xuất hiện tại đây."
+          description="Không có proposal phù hợp với trạng thái đang lọc."
         />
       )}
     </div>
