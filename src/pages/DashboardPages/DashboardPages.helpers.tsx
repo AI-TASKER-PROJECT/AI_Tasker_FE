@@ -12,8 +12,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { contractApi, disputeApi, marketplaceApi, notificationApi } from "../../services";
 import { roleLabel, useSession } from "../../context/sessionContext";
+import { connectNotificationSocket } from "../../lib/notificationSocket";
 import { cn, formatCompactCurrency } from "../../lib/utils";
-import { formatNotificationTime, notificationTone } from "../../lib/notifications";
+import { formatNotificationTime, mergeNotification, notificationTone } from "../../lib/notifications";
 import type { Contract, Dispute, Job, NotificationItem } from "../../types";
 import {
   Badge,
@@ -268,6 +269,7 @@ export function DashboardPage() {
 }
 
 export function NotificationsPage() {
+  const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -289,6 +291,21 @@ export function NotificationsPage() {
   }, []);
 
   useEffect(() => {
+    if (!session?.accessToken) return;
+
+    const stream = connectNotificationSocket({
+      token: session.accessToken,
+      onNotification: (notification) => {
+        setNotifications((items) => mergeNotification(items, notification));
+      },
+    });
+
+    return () => {
+      stream.close();
+    };
+  }, [session?.accessToken]);
+
+  useEffect(() => {
     if (!selectedNotificationId || notifications.length === 0) return;
     const notification = notifications.find(
       (item) => String(item.notificationId) === selectedNotificationId,
@@ -297,6 +314,16 @@ export function NotificationsPage() {
       setSelectedNotification(notification);
     }
   }, [notifications, selectedNotificationId]);
+
+  useEffect(() => {
+    if (!selectedNotification) return;
+    const latestNotification = notifications.find(
+      (item) => item.notificationId === selectedNotification.notificationId,
+    );
+    if (latestNotification) {
+      setSelectedNotification(latestNotification);
+    }
+  }, [notifications, selectedNotification]);
 
   const openNotification = (notification: NotificationItem) => {
     setSelectedNotification(notification);
