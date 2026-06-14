@@ -132,6 +132,7 @@ export function AppShell() {
     };
   }, [location.pathname, session]);
 
+  // Thay thế đoạn useEffect cũ bằng đoạn này:
   useEffect(() => {
     if (!session) return;
     const isNotificationPage = location.pathname.startsWith('/app/notifications');

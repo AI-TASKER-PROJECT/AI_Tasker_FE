@@ -27,6 +27,25 @@ export function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
+export function formatDateTime(value?: string) {
+  if (!value) return 'ChÆ°a cáº­p nháº­t';
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+export function formatTime(value?: string) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
 export function initials(name?: string) {
   if (!name) return 'AI';
   return name
