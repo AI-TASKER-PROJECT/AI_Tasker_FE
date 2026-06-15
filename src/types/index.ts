@@ -40,6 +40,7 @@ export interface Job {
   companyName?: string;
   proposalsCount?: number;
   skills?: string[];
+  technologyIds?: number[];
 }
 
 export interface Sow {

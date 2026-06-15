@@ -70,6 +70,9 @@ export function ProposalsPage() {
   const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
     Record<number, number[]>
   >({});
+  const [milestonesByJobId, setMilestonesByJobId] = useState<
+    Record<number, Milestone[]>
+  >({});
   const [loading, setLoading] = useState(true);
   const [proposalStatusFilter, setProposalStatusFilter] = useState<
     "ALL" | "ACCEPTED" | "PENDING" | "REJECTED"
@@ -90,10 +93,14 @@ export function ProposalsPage() {
         const jobResults = await Promise.allSettled(
           uniqueJobIds.map((id) => marketplaceApi.getJob(id)),
         );
-        const [domainItems, jobDomainResults] = await Promise.all([
+        const [domainItems, jobDomainResults, milestoneResults] =
+          await Promise.all([
           catalogApi.listDomains(true).catch(() => []),
           Promise.allSettled(
             uniqueJobIds.map((id) => catalogApi.listJobDomains(id)),
+          ),
+          Promise.allSettled(
+            uniqueJobIds.map((id) => contractApi.listJobMilestones(id)),
           ),
         ]);
         if (ignore) return;
@@ -110,15 +117,22 @@ export function ProposalsPage() {
               ? result.value.map((item) => item.id.domainId)
               : [];
         });
+        const milestoneMap: Record<number, Milestone[]> = {};
+        milestoneResults.forEach((result, index) => {
+          milestoneMap[uniqueJobIds[index]] =
+            result.status === "fulfilled" ? result.value : [];
+        });
         setJobsById(map);
         setDomains(domainItems);
         setJobDomainIdsByJobId(domainMap);
+        setMilestonesByJobId(milestoneMap);
       } catch {
         if (!ignore) {
           setProposals([]);
           setJobsById({});
           setDomains([]);
           setJobDomainIdsByJobId({});
+          setMilestonesByJobId({});
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -209,6 +223,7 @@ export function ProposalsPage() {
       <div className="grid gap-4">
         {filteredProposals.map((proposal) => {
           const job = jobsById[proposal.jobId];
+          const milestones = milestonesByJobId[proposal.jobId] || [];
           const proposalMilestones = parseProposalMilestones(
             proposal.proposalMilestone,
           );
@@ -263,10 +278,25 @@ export function ProposalsPage() {
                         {proposalMilestones.map((item) => (
                           <div
                             key={item.milestoneId}
-                            className="flex justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                            className="grid gap-3 rounded-xl bg-white px-3 py-3 text-sm md:grid-cols-[82px_1fr_auto] md:items-center"
                           >
+                            <span className="font-extrabold text-brand-600">
+                              {formatProposalMilestoneOrder(
+                                item.milestoneId,
+                                milestones,
+                              )}
+                            </span>
                             <span className="font-bold text-slate-600">
-                              Milestone #{item.milestoneId}
+                              {formatProposalMilestoneTitle(
+                                item.milestoneId,
+                                milestones,
+                              )}
+                              <span className="mt-1 block text-xs font-semibold text-slate-400">
+                                {formatProposalMilestoneStatus(
+                                  item.milestoneId,
+                                  milestones,
+                                )}
+                              </span>
                             </span>
                             <span className="font-extrabold text-ink">
                               {formatCompactCurrency(item.proposedBudget)}
@@ -358,4 +388,31 @@ function parseProposalMilestones(value: unknown) {
   } catch {
     return [];
   }
+}
+
+function formatProposalMilestoneTitle(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
+  if (!milestone) return `Milestone #${milestoneId}`;
+  return milestone.milestoneName;
+}
+
+function formatProposalMilestoneOrder(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
+  return milestone ? `Mốc ${milestone.orderIndex}` : "Milestone";
+}
+
+function formatProposalMilestoneStatus(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  return (
+    milestones.find((item) => item.milestoneId === milestoneId)?.status ||
+    "Pending"
+  );
 }
