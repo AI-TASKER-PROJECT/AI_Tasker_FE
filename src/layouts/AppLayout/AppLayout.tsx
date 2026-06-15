@@ -31,7 +31,12 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { NotificationItem, Role } from '../../types';
 import { authApi, notificationApi } from '../../services';
 import { connectNotificationSocket } from '../../lib/notificationSocket';
-import { formatNotificationTime, mergeNotification, notificationTone } from '../../lib/notifications';
+import {
+  formatNotificationTime,
+  mergeNotification,
+  notificationHref,
+  notificationTone,
+} from '../../lib/notifications';
 import { clearSession, roleLabel, saveSession, useSession } from '../../context/sessionContext';
 import { cn } from '../../lib/utils';
 import { Logo } from '../../components/Logo';
@@ -217,7 +222,7 @@ export function AppShell() {
       notificationApi.markRead(notification.notificationId).catch(() => refreshNotifications());
     }
     setNotificationOpen(false);
-    navigate(`/app/notifications?notificationId=${notification.notificationId}`);
+    navigate(notificationHref(notification.targetUrl));
   };
 
   const markAllNotificationsRead = async () => {

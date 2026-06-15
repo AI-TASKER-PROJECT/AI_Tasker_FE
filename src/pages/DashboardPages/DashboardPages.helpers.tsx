@@ -14,7 +14,12 @@ import { contractApi, disputeApi, marketplaceApi, notificationApi } from "../../
 import { roleLabel, useSession } from "../../context/sessionContext";
 import { connectNotificationSocket } from "../../lib/notificationSocket";
 import { cn, formatCompactCurrency } from "../../lib/utils";
-import { formatNotificationTime, mergeNotification, notificationTone } from "../../lib/notifications";
+import {
+  formatNotificationTime,
+  mergeNotification,
+  notificationHref,
+  notificationTone,
+} from "../../lib/notifications";
 import type { Contract, Dispute, Job, NotificationItem } from "../../types";
 import {
   Badge,
@@ -377,6 +382,7 @@ export function NotificationsPage() {
           notifications.map((item) => {
             const tone = notificationTone(item);
             const isSelected = selectedNotification?.notificationId === item.notificationId;
+            const targetHref = item.targetUrl ? notificationHref(item.targetUrl) : null;
 
             return (
               <Card
@@ -434,7 +440,19 @@ export function NotificationsPage() {
                           <span>Loai: {item.type}</span>
                           <span>Trang thai: {item.isRead ? "Da doc" : "Chua doc"}</span>
                         </div>
-                        <div className="flex justify-end pt-1">
+                        <div className="flex flex-wrap justify-end gap-2 pt-1">
+                          {targetHref && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(targetHref);
+                              }}
+                            >
+                              Mo lien ket
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
