@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   BriefcaseBusiness,
   Download,
   FileText,
@@ -14,7 +13,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   adminApi,
   catalogApi,
@@ -1061,7 +1060,7 @@ export function MasterDataPage() {
   };
 
   useEffect(() => {
-    void loadCatalog();
+    void Promise.resolve().then(loadCatalog);
   }, []);
 
   const filteredDomains = domains.filter((domain) =>

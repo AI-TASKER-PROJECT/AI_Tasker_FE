@@ -11,16 +11,23 @@ type NotificationSocket = {
 };
 
 function resolveSocketUrl() {
-  const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  const base = apiBase || window.location.origin;
-  const url = new URL(base);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  const serverId = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
-  const sessionId = Math.random().toString(36).slice(2, 12);
-  url.pathname = `/ws/${serverId}/${sessionId}/websocket`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  const rawBase =
+    (import.meta.env.VITE_NOTIFICATION_WS_URL as string | undefined) ||
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+    window.location.origin;
+
+  try {
+    const url = new URL(rawBase);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    const serverId = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    const sessionId = Math.random().toString(36).slice(2, 12);
+    url.pathname = `/ws/${serverId}/${sessionId}/websocket`;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function stompFrame(command: string, headers: Record<string, string> = {}, body = "") {
@@ -45,9 +52,21 @@ export function connectNotificationSocket({
   let closedByClient = false;
   let socket: WebSocket | null = null;
   let reconnectTimer: number | undefined;
+  let hasConnectedOnce = false;
 
   const connect = () => {
-    socket = new WebSocket(resolveSocketUrl());
+    const socketUrl = resolveSocketUrl();
+    if (!socketUrl) {
+      onStatus?.(false);
+      return;
+    }
+
+    try {
+      socket = new WebSocket(socketUrl);
+    } catch {
+      onStatus?.(false);
+      return;
+    }
 
     const sendStomp = (frame: string) => {
       socket?.send(JSON.stringify([frame]));
@@ -81,6 +100,7 @@ export function connectNotificationSocket({
       for (const chunk of frames) {
         const frame = parseFrame(`${chunk}\0`);
         if (frame.command === "CONNECTED") {
+          hasConnectedOnce = true;
           onStatus?.(true);
           sendStomp(
             stompFrame("SUBSCRIBE", {
@@ -104,13 +124,17 @@ export function connectNotificationSocket({
 
     socket.addEventListener("close", () => {
       onStatus?.(false);
-      if (!closedByClient) {
+      if (!closedByClient && hasConnectedOnce) {
         reconnectTimer = window.setTimeout(connect, 3000);
       }
     });
 
     socket.addEventListener("error", () => {
       onStatus?.(false);
+      if (!hasConnectedOnce) {
+        closedByClient = true;
+        if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      }
     });
   };
 
@@ -120,7 +144,14 @@ export function connectNotificationSocket({
     close() {
       closedByClient = true;
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
-      socket?.close();
+      if (!socket) return;
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.addEventListener("open", () => socket?.close(), { once: true });
+        return;
+      }
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
     },
   };
 }

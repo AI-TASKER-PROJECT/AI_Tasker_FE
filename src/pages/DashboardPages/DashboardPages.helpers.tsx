@@ -9,7 +9,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { contractApi, disputeApi, marketplaceApi, notificationApi } from "../../services";
 import { roleLabel, useSession } from "../../context/sessionContext";
 import { connectNotificationSocket } from "../../lib/notificationSocket";
@@ -274,7 +274,6 @@ export function NotificationsPage() {
   const location = useLocation();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const selectedNotificationId = new URLSearchParams(location.search).get("notificationId");
 
   const refresh = () => {
@@ -287,7 +286,7 @@ export function NotificationsPage() {
   };
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
   }, []);
 
   useEffect(() => {
@@ -305,32 +304,20 @@ export function NotificationsPage() {
     };
   }, [session?.accessToken]);
 
-  useEffect(() => {
-    if (!selectedNotificationId || notifications.length === 0) return;
-    const notification = notifications.find(
-      (item) => String(item.notificationId) === selectedNotificationId,
-    );
-    if (notification) {
-      setSelectedNotification(notification);
-    }
-  }, [notifications, selectedNotificationId]);
-
-  useEffect(() => {
-    if (!selectedNotification) return;
-    const latestNotification = notifications.find(
-      (item) => item.notificationId === selectedNotification.notificationId,
-    );
-    if (latestNotification) {
-      setSelectedNotification(latestNotification);
-    }
-  }, [notifications, selectedNotification]);
+  const selectedNotification = useMemo(
+    () =>
+      selectedNotificationId
+        ? notifications.find(
+            (item) => String(item.notificationId) === selectedNotificationId,
+          ) ?? null
+        : null,
+    [notifications, selectedNotificationId],
+  );
 
   const openNotification = (notification: NotificationItem) => {
-    setSelectedNotification(notification);
     navigate(`/app/notifications?notificationId=${notification.notificationId}`, { replace: true });
     if (!notification.isRead) {
       const readAt = new Date().toISOString();
-      setSelectedNotification({ ...notification, isRead: true, readAt });
       setNotifications((items) =>
         items.map((item) =>
           item.notificationId === notification.notificationId
@@ -440,7 +427,6 @@ export function NotificationsPage() {
                             size="sm"
                             onClick={(event) => {
                               event.stopPropagation();
-                              setSelectedNotification(null);
                               navigate("/app/notifications", { replace: true });
                             }}
                           >

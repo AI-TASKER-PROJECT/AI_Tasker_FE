@@ -654,6 +654,10 @@ export function JobCard({
     };
   }, [job.jobId]);
 
+  const skillLabels = (job.skills || []).map((skill, index) =>
+    formatJobSkillLabel(skill, index),
+  );
+
   return (
     <Card hover className="flex h-full flex-col p-5">
         <div className="flex items-start justify-between gap-3">
@@ -670,9 +674,9 @@ export function JobCard({
           {job.structuredSow || job.rawRequirements}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {(job.skills || []).slice(0, 3).map((skill) => (
-            <Badge key={skill} tone="slate">
-              {skill}
+          {skillLabels.slice(0, 3).map((skillLabel, index) => (
+            <Badge key={`${skillLabel}-${index}`} tone="slate">
+              {skillLabel}
             </Badge>
           ))}
         </div>
@@ -716,6 +720,16 @@ export function JobCard({
         </div>
     </Card>
   );
+}
+
+function formatJobSkillLabel(
+  skill: string | { skillId?: number; skillName?: string },
+  index: number,
+) {
+  if (typeof skill === "string") return skill;
+  if (skill.skillName) return skill.skillName;
+  if (typeof skill.skillId === "number") return `Skill #${skill.skillId}`;
+  return `Skill ${index + 1}`;
 }
 
 export function JobDetailPage() {

@@ -40,22 +40,32 @@ import QRCode from "qrcode";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import type {
   CreatePayOSPaymentResponse,
+  NotificationItem,
   Role,
   SystemWallet,
 } from "../../types";
 import {
   authApi,
   getApiErrorMessage,
+  notificationApi,
   paymentApi,
   walletApi,
 } from "../../services";
 import {
   clearSession,
+  getSession,
   roleLabel,
   saveSession,
   useSession,
 } from "../../context/sessionContext";
 import { cn, formatCurrency } from "../../lib/utils";
+import { connectNotificationSocket } from "../../lib/notificationSocket";
+import {
+  formatNotificationTime,
+  mergeNotification,
+  notificationTone,
+} from "../../lib/notifications";
+import { notifyProfileReviewSync } from "../../lib/profileReviewSync";
 import { Logo } from "../../components/Logo";
 import {
   Avatar,
@@ -243,6 +253,11 @@ export function AppShell() {
   const [topupPayment, setTopupPayment] =
     useState<CreatePayOSPaymentResponse | null>(null);
   const [topupQrDataUrl, setTopupQrDataUrl] = useState("");
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.role;
@@ -273,14 +288,6 @@ export function AppShell() {
   }, [session?.fullName]);
 
   useEffect(() => {
-    if (!topupOpen || topupForm.description.trim()) return;
-    setTopupForm((value) => ({
-      ...value,
-      description: defaultTopupDescription,
-    }));
-  }, [defaultTopupDescription, topupForm.description, topupOpen]);
-
-  useEffect(() => {
     if (!topupPayment || !topupQrDataUrl) return;
     window.setTimeout(() => {
       topupQrBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -300,11 +307,12 @@ export function AppShell() {
   }, [session?.accessToken]);
 
   useEffect(() => {
-    loadWallet();
+    void Promise.resolve().then(loadWallet);
   }, [loadWallet]);
 
   useEffect(() => {
-    if (roleOpen) loadWallet();
+    if (!roleOpen) return;
+    void Promise.resolve().then(loadWallet);
   }, [loadWallet, roleOpen]);
 
   const logout = () => {
@@ -437,27 +445,33 @@ export function AppShell() {
     }
   };
 
+  const refreshSession = useCallback(async () => {
+    const currentSession = getSession();
+    if (!currentSession?.accessToken) return;
+
+    const freshSession = await authApi.me();
+    saveSession({
+      ...currentSession,
+      ...freshSession,
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+    });
+  }, []);
+
   useEffect(() => {
     if (!session?.accessToken) return;
     let ignore = false;
 
-    authApi
-      .me()
-      .then((freshSession) => {
+    refreshSession()
+      .then(() => {
         if (ignore) return;
-        saveSession({
-          ...session,
-          ...freshSession,
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-        });
       })
       .catch(() => undefined);
 
     return () => {
       ignore = true;
     };
-  }, [location.pathname, session]);
+  }, [location.pathname, refreshSession, session?.accessToken]);
 
   // Thay thế đoạn useEffect cũ bằng đoạn này:
   useEffect(() => {
@@ -494,7 +508,7 @@ export function AppShell() {
   useEffect(() => {
     if (!session?.accessToken) return;
 
-    refreshNotifications();
+    void Promise.resolve().then(refreshNotifications);
     const stream = connectNotificationSocket({
       token: session.accessToken,
       onStatus: setRealtimeConnected,
@@ -503,16 +517,20 @@ export function AppShell() {
         if (!notification.isRead) {
           setUnreadCount((count) => count + 1);
         }
+        if (notification.type === "PROFILE_REVIEWED") {
+          refreshSession().catch(() => undefined);
+          notifyProfileReviewSync();
+        }
       },
     });
 
     return () => {
       stream.close();
     };
-  }, [refreshNotifications, session?.accessToken]);
+  }, [refreshNotifications, refreshSession, session?.accessToken]);
 
   useEffect(() => {
-    setNotificationOpen(false);
+    void Promise.resolve().then(() => setNotificationOpen(false));
   }, [location.pathname]);
 
   if (!session) return null;
