@@ -317,13 +317,22 @@ export interface AnalyticsOverview {
 }
 
 export interface NotificationItem {
-  id: number;
+  notificationId: number;
+  type: string;
   title: string;
-  description: string;
-  time: string;
-  type: 'info' | 'success' | 'warning';
-  read: boolean;
-  href?: string;
+  message: string;
+  targetUrl?: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string;
+  metadata?: {
+    reason?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface UnreadNotificationCount {
+  unreadCount: number;
 }
 
 export interface AuditLog {
