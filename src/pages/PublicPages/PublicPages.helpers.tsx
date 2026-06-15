@@ -621,9 +621,11 @@ export function JobsPage() {
 export function JobCard({
   job,
   manage = false,
+  detailTo,
 }: {
   job: Job;
   manage?: boolean;
+  detailTo?: string;
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
@@ -707,7 +709,10 @@ export function JobCard({
             {job.companyName || "Doanh nghiệp"}
           </span>
           <LinkButton
-            to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`}
+            to={
+              detailTo ||
+              (manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`)
+            }
             size="sm"
             variant="secondary"
           >
