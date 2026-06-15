@@ -629,6 +629,15 @@ export function JobCard({
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
+  const visibleSkills = (job.skills || []).slice(0, 3).map((skill, index) => {
+    if (typeof skill === "string") {
+      return { key: `${skill}-${index}`, label: skill };
+    }
+    return {
+      key: `${skill.skillId}-${index}`,
+      label: skill.skillName || `Skill #${skill.skillId}`,
+    };
+  });
 
   useEffect(() => {
     let ignore = false;
@@ -672,9 +681,9 @@ export function JobCard({
           {job.structuredSow || job.rawRequirements}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {(job.skills || []).slice(0, 3).map((skill) => (
-            <Badge key={skill} tone="slate">
-              {skill}
+          {visibleSkills.map((skill) => (
+            <Badge key={skill.key} tone="slate">
+              {skill.label}
             </Badge>
           ))}
         </div>

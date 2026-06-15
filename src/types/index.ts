@@ -39,7 +39,7 @@ export interface Job {
   updatedAt?: string;
   companyName?: string;
   proposalsCount?: number;
-  skills?: string[];
+  skills?: Array<string | { skillId: number; isMandatory?: boolean; skillName?: string }>;
 }
 
 export interface Sow {
