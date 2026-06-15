@@ -166,7 +166,7 @@ export function ProposalsPage() {
       <PageHeader
         eyebrow="MATCH-02"
         title="Proposal của tôi"
-        description="Back-end chưa có API list proposal theo expert, UI giữ màn hình để nối khi endpoint bổ sung."
+        description="Theo dõi proposal đã gửi, trạng thái xét duyệt, bid amount và nội dung giải pháp đã nộp."
         actions={
           <LinkButton to="/app/opportunities" variant="secondary">
             <RefreshCw className="h-4 w-4" /> Tìm job mới
@@ -209,11 +209,14 @@ export function ProposalsPage() {
       <div className="grid gap-4">
         {filteredProposals.map((proposal) => {
           const job = jobsById[proposal.jobId];
+          const proposalMilestones = parseProposalMilestones(
+            proposal.proposalMilestone,
+          );
           return (
-            <Card key={proposal.proposalId} className="p-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <Card key={proposal.proposalId} className="overflow-hidden">
+              <div className="grid gap-4 bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5 lg:grid-cols-[1fr_240px]">
                 <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <JobDomainBadge
                       label={jobDomainLabel(
                         jobDomainIdsByJobId[proposal.jobId] || [],
@@ -222,18 +225,86 @@ export function ProposalsPage() {
                     />
                     <StatusBadge status={proposal.status} />
                   </div>
-                  <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
+                  <h3 className="mt-3 font-display text-xl font-black text-ink">
                     {job?.title || `Job #${proposal.jobId}`}
                   </h3>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                    {proposal.technicalSolution}
+                  <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
+                    {proposal.proposalDescription || proposal.technicalSolution}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
-                  <p className="text-xs font-bold text-slate-400">Bid amount</p>
-                  <p className="font-display text-xl font-black text-brand-700">
+                <div className="rounded-3xl bg-white/85 px-5 py-4 text-left shadow-sm lg:text-right">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                    Bid amount
+                  </p>
+                  <p className="font-display text-2xl font-black text-brand-700">
                     {formatCompactCurrency(proposal.bidAmount)}
                   </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">
+                    Proposal #{proposal.proposalId}
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-4 p-5">
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <ProposalSnapshot title="Giải pháp công nghệ">
+                    {proposal.technicalSolution}
+                  </ProposalSnapshot>
+                  <ProposalSnapshot title="Proposal description">
+                    {proposal.proposalDescription || "Chưa có mô tả proposal."}
+                  </ProposalSnapshot>
+                </div>
+                <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                      Proposal milestone
+                    </p>
+                    {proposalMilestones.length > 0 ? (
+                      <div className="mt-3 grid gap-2">
+                        {proposalMilestones.map((item) => (
+                          <div
+                            key={item.milestoneId}
+                            className="flex justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                          >
+                            <span className="font-bold text-slate-600">
+                              Milestone #{item.milestoneId}
+                            </span>
+                            <span className="font-extrabold text-ink">
+                              {formatCompactCurrency(item.proposedBudget)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm font-semibold text-slate-400">
+                        Chưa gửi ngân sách milestone riêng.
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                    <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                      File đính kèm
+                    </p>
+                    <FirebaseFileLink
+                      path={proposal.proposalFileUrl}
+                      emptyText="Chưa có file proposal"
+                      buttonText="Xem file"
+                      showPath={false}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                  <p className="text-xs font-bold text-slate-400">
+                    Gửi lúc: {proposal.createdAt || "Chưa có dữ liệu"}
+                  </p>
+                  {job && (
+                    <LinkButton
+                      to={`/jobs/${job.jobId}`}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Xem job
+                    </LinkButton>
+                  )}
                 </div>
               </div>
             </Card>
@@ -248,4 +319,43 @@ export function ProposalsPage() {
       )}
     </div>
   );
+}
+
+function ProposalSnapshot({
+  title,
+  children,
+}: {
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {title}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-700">
+        {children || "Chưa có dữ liệu."}
+      </p>
+    </div>
+  );
+}
+
+function parseProposalMilestones(value: unknown) {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        milestoneId: Number(item.milestoneId),
+        proposedBudget: Number(item.proposedBudget),
+      }))
+      .filter(
+        (item) =>
+          Number.isFinite(item.milestoneId) &&
+          Number.isFinite(item.proposedBudget),
+      );
+  } catch {
+    return [];
+  }
 }

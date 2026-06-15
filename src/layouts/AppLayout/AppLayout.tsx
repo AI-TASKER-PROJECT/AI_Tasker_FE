@@ -44,15 +44,14 @@ import {
   notificationHref,
   notificationTone,
 } from '../../lib/notifications';
-import { clearSession, roleLabel, saveSession, useSession } from '../../context/sessionContext';
 import { Logo } from '../../components/Logo';
 import { ChatBox } from '../../components/ChatBox';
 import QRCode from "qrcode";
 import type {
   CreatePayOSPaymentResponse,
+  NotificationItem,
   Role,
   SystemWallet,
-  NotificationItem,
 } from "../../types";
 import {
   authApi,
@@ -63,6 +62,14 @@ import {
 } from "../../services";
 import { cn, formatCurrency } from "../../lib/utils";
 
+import {
+  clearSession,
+  getSession,
+  roleLabel,
+  saveSession,
+  useSession,
+} from "../../context/sessionContext";
+import { notifyProfileReviewSync } from "../../lib/profileReviewSync";
 import {
   Avatar,
   Badge,
@@ -253,6 +260,7 @@ export function AppShell() {
   const [topupPayment, setTopupPayment] =
     useState<CreatePayOSPaymentResponse | null>(null);
   const [topupQrDataUrl, setTopupQrDataUrl] = useState("");
+
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.role;
@@ -292,14 +300,6 @@ export function AppShell() {
   }, [session?.fullName]);
 
   useEffect(() => {
-    if (!topupOpen || topupForm.description.trim()) return;
-    setTopupForm((value) => ({
-      ...value,
-      description: defaultTopupDescription,
-    }));
-  }, [defaultTopupDescription, topupForm.description, topupOpen]);
-
-  useEffect(() => {
     if (!topupPayment || !topupQrDataUrl) return;
     window.setTimeout(() => {
       topupQrBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -319,11 +319,12 @@ export function AppShell() {
   }, [session?.accessToken]);
 
   useEffect(() => {
-    loadWallet();
+    void Promise.resolve().then(loadWallet);
   }, [loadWallet]);
 
   useEffect(() => {
-    if (roleOpen) loadWallet();
+    if (!roleOpen) return;
+    void Promise.resolve().then(loadWallet);
   }, [loadWallet, roleOpen]);
 
   const logout = () => {
@@ -456,27 +457,33 @@ export function AppShell() {
     }
   };
 
+  const refreshSession = useCallback(async () => {
+    const currentSession = getSession();
+    if (!currentSession?.accessToken) return;
+
+    const freshSession = await authApi.me();
+    saveSession({
+      ...currentSession,
+      ...freshSession,
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+    });
+  }, []);
+
   useEffect(() => {
     if (!session?.accessToken) return;
     let ignore = false;
 
-    authApi
-      .me()
-      .then((freshSession) => {
+    refreshSession()
+      .then(() => {
         if (ignore) return;
-        saveSession({
-          ...session,
-          ...freshSession,
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-        });
       })
       .catch(() => undefined);
 
     return () => {
       ignore = true;
     };
-  }, [location.pathname, session]);
+  }, [location.pathname, refreshSession, session?.accessToken]);
 
   // Thay thế đoạn useEffect cũ bằng đoạn này:
   useEffect(() => {
@@ -516,7 +523,7 @@ export function AppShell() {
   useEffect(() => {
     if (!session?.accessToken) return;
 
-    refreshNotifications();
+    void Promise.resolve().then(refreshNotifications);
     const stream = connectNotificationSocket({
       token: session.accessToken,
       onStatus: setRealtimeConnected,
@@ -525,16 +532,20 @@ export function AppShell() {
         if (!notification.isRead) {
           setUnreadCount((count) => count + 1);
         }
+        if (notification.type === "PROFILE_REVIEWED") {
+          refreshSession().catch(() => undefined);
+          notifyProfileReviewSync();
+        }
       },
     });
 
     return () => {
       stream.close();
     };
-  }, [refreshNotifications, session?.accessToken]);
+  }, [refreshNotifications, refreshSession, session?.accessToken]);
 
   useEffect(() => {
-    setNotificationOpen(false);
+    void Promise.resolve().then(() => setNotificationOpen(false));
   }, [location.pathname]);
 
   if (!session) return null;

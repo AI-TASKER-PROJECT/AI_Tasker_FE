@@ -227,17 +227,25 @@ export function ContractDetailPage() {
     contract.ndaSigned ||
       (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
   );
+  const businessAccepted = Boolean(contract.businessAcceptedAt);
+  const expertAccepted = Boolean(contract.expertAcceptedAt);
+  const businessNdaSigned = Boolean(contract.businessNdaSignedAt);
+  const expertNdaSigned = Boolean(contract.expertNdaSignedAt);
+  const readyToActivate =
+    businessAccepted && expertAccepted && businessNdaSigned && expertNdaSigned;
+  const canCurrentPartyAct =
+    session?.role === "BUSINESS" || session?.role === "EXPERT";
   const currentPartyAccepted =
     session?.role === "BUSINESS"
-      ? Boolean(contract.businessAcceptedAt)
+      ? businessAccepted
       : session?.role === "EXPERT"
-        ? Boolean(contract.expertAcceptedAt)
+        ? expertAccepted
         : false;
   const currentPartyNdaSigned =
     session?.role === "BUSINESS"
-      ? Boolean(contract.businessNdaSignedAt)
+      ? businessNdaSigned
       : session?.role === "EXPERT"
-        ? Boolean(contract.expertNdaSignedAt)
+        ? expertNdaSigned
         : false;
 
   return (
@@ -300,6 +308,47 @@ export function ContractDetailPage() {
           </div>
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
+              title="Điều kiện kích hoạt hợp đồng"
+              description="BE chỉ chuyển contract sang Active khi đủ 4 bước: business accept, expert accept, business ký NDA, expert ký NDA."
+            />
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <ContractFlowStep
+                label="Business chấp nhận contract"
+                done={businessAccepted}
+                value={contract.businessAcceptedAt}
+              />
+              <ContractFlowStep
+                label="Expert chấp nhận contract"
+                done={expertAccepted}
+                value={contract.expertAcceptedAt}
+              />
+              <ContractFlowStep
+                label="Business ký NDA"
+                done={businessNdaSigned}
+                value={contract.businessNdaSignedAt}
+              />
+              <ContractFlowStep
+                label="Expert ký NDA"
+                done={expertNdaSigned}
+                value={contract.expertNdaSignedAt}
+              />
+            </div>
+            <Notice
+              tone={
+                readyToActivate || contract.status === "Active"
+                  ? "success"
+                  : "info"
+              }
+              title={
+                contract.status === "Active"
+                  ? "Contract đã Active, milestone budget và job status đã được backend cập nhật."
+                  : "Contract sẽ Active sau khi đủ 2 chữ ký contract và 2 chữ ký NDA."
+              }
+              className="mt-4"
+            />
+          </div>
+          <div className="mt-6 rounded-3xl border border-slate-100 p-5">
+            <SectionHeading
               title="Milestone trong draft"
               description="Các ngân sách final được backend tạo từ job và proposal đã accepted."
             />
@@ -341,7 +390,12 @@ export function ContractDetailPage() {
           <div className="mt-6 flex flex-wrap gap-2">
             <Button
               onClick={signContract}
-              disabled={currentPartyAccepted || contract.status === "Terminated"}
+              disabled={
+                !canCurrentPartyAct ||
+                currentPartyAccepted ||
+                contract.status === "Active" ||
+                contract.status === "Terminated"
+              }
             >
               <CheckCircle2 className="h-4 w-4" />
               Chấp nhận contract
@@ -349,7 +403,13 @@ export function ContractDetailPage() {
             <Button
               variant="secondary"
               onClick={signNda}
-              disabled={currentPartyNdaSigned || contract.status === "Terminated"}
+              disabled={
+                !canCurrentPartyAct ||
+                !currentPartyAccepted ||
+                currentPartyNdaSigned ||
+                contract.status === "Active" ||
+                contract.status === "Terminated"
+              }
             >
               <ShieldCheck className="h-4 w-4" />
               Ký NDA
@@ -500,6 +560,40 @@ function ContractMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-3xl border border-slate-100 p-4">
       <p className="text-xs font-bold text-slate-400">{label}</p>
       <p className="mt-2 font-display text-lg font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function ContractFlowStep({
+  label,
+  done,
+  value,
+}: {
+  label: string;
+  done: boolean;
+  value?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+      <span
+        className={
+          done
+            ? "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-mint-50 text-mint-600"
+            : "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-700"
+        }
+      >
+        {done ? (
+          <CheckCircle2 className="h-4 w-4" />
+        ) : (
+          <LockKeyhole className="h-4 w-4" />
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="font-extrabold text-ink">{label}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">
+          {done ? value || "Đã hoàn tất" : "Đang chờ"}
+        </p>
+      </div>
     </div>
   );
 }
