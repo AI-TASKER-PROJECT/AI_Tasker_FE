@@ -3,10 +3,15 @@ import {
   CheckCircle2,
   Eye,
   FileCheck2,
+  ListChecks,
+  Paperclip,
   Plus,
   RefreshCw,
   Save,
   Sparkles,
+  Target,
+  UploadCloud,
+  WalletCards,
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -57,9 +62,7 @@ import { JobCard, JobDomainBadge } from "../../PublicPages";
 import {
   formatGeneratedSow,
   jobDomainLabel,
-  parseCatalogIdList,
   resolveDomainName,
-  resolveSkillName,
   skillCountLabel,
   type MilestoneDraft,
   type SkillAssignment,
@@ -133,14 +136,20 @@ export function SubmitProposalPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
   const [jobSkillIds, setJobSkillIds] = useState<number[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [proposalFile, setProposalFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [savedProposal, setSavedProposal] = useState<Proposal | null>(null);
+  const [requestBudgetChange, setRequestBudgetChange] = useState(false);
+  const [milestoneBudgets, setMilestoneBudgets] = useState<
+    Record<number, string>
+  >({});
   const [form, setForm] = useState({
-    bidAmount: "",
     technicalSolution: "",
-    projectIntention: "",
+    proposalDescription: "",
+    proposalFileUrl: "",
     domainId: "",
     skillId: "",
   });
@@ -156,6 +165,7 @@ export function SubmitProposalPage() {
           skillItems,
           jobDomainItems,
           jobSkillItems,
+          milestoneItems,
           portfolioResult,
         ] = await Promise.all([
           marketplaceApi.getJob(numericJobId),
@@ -163,6 +173,7 @@ export function SubmitProposalPage() {
           catalogApi.listSkills(true),
           catalogApi.listJobDomains(numericJobId),
           catalogApi.listJobSkills(numericJobId),
+          contractApi.listJobMilestones(numericJobId).catch(() => []),
           profileApi.getMyPortfolio().catch(() => null),
         ]);
         if (ignore) return;
@@ -171,6 +182,15 @@ export function SubmitProposalPage() {
         setSkills(skillItems);
         setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
         setJobSkillIds(jobSkillItems.map((item) => item.id.skillId));
+        setMilestones(milestoneItems);
+        setMilestoneBudgets(
+          Object.fromEntries(
+            milestoneItems.map((item) => [
+              item.milestoneId,
+              String(item.fundsAllocated || ""),
+            ]),
+          ),
+        );
         setPortfolio(portfolioResult);
       } catch {
         if (!ignore) setJob(null);
@@ -183,35 +203,40 @@ export function SubmitProposalPage() {
     };
   }, [numericJobId]);
 
-  const allowedDomainIds = useMemo(() => {
-    const portfolioDomainIds = parseCatalogIdList(portfolio?.domainIds);
-    return jobDomainIds.filter((id) => portfolioDomainIds.includes(id));
-  }, [jobDomainIds, portfolio?.domainIds]);
-
-  const allowedSkillIds = useMemo(() => {
-    const portfolioSkillIds = parseCatalogIdList(portfolio?.skillIds);
-    return jobSkillIds.filter((id) => portfolioSkillIds.includes(id));
-  }, [jobSkillIds, portfolio?.skillIds]);
-
   useEffect(() => {
     queueMicrotask(() => {
       setForm((value) => ({
         ...value,
         domainId:
-          value.domainId && allowedDomainIds.includes(Number(value.domainId))
+          value.domainId && jobDomainIds.includes(Number(value.domainId))
             ? value.domainId
-            : allowedDomainIds[0]
-              ? String(allowedDomainIds[0])
+            : jobDomainIds[0]
+              ? String(jobDomainIds[0])
               : "",
         skillId:
-          value.skillId && allowedSkillIds.includes(Number(value.skillId))
+          value.skillId && jobSkillIds.includes(Number(value.skillId))
             ? value.skillId
-            : allowedSkillIds[0]
-              ? String(allowedSkillIds[0])
+            : jobSkillIds[0]
+              ? String(jobSkillIds[0])
               : "",
       }));
     });
-  }, [allowedDomainIds, allowedSkillIds]);
+  }, [jobDomainIds, jobSkillIds]);
+
+  const proposalMilestoneTotal = useMemo(
+    () =>
+      milestones.reduce(
+        (total, milestone) =>
+          total + Number(milestoneBudgets[milestone.milestoneId] || 0),
+        0,
+      ),
+    [milestoneBudgets, milestones],
+  );
+
+  const bidAmount = requestBudgetChange
+    ? proposalMilestoneTotal
+    : job?.budget || 0;
+  const bidAmountDisplay = bidAmount > 0 ? String(bidAmount) : "";
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -219,7 +244,6 @@ export function SubmitProposalPage() {
       setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
       return;
     }
-    const bidAmount = Number(form.bidAmount);
     if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
       setMessage("bid_amount phải là số lớn hơn 0.");
       return;
@@ -228,23 +252,61 @@ export function SubmitProposalPage() {
       setMessage("technical_solution không được để trống.");
       return;
     }
+    if (!form.proposalDescription.trim()) {
+      setMessage("proposalDescription không được để trống.");
+      return;
+    }
     if (!form.domainId || !form.skillId) {
       setMessage(
         "Vui lòng chọn lĩnh vực và kỹ năng phù hợp với portfolio của bạn.",
       );
       return;
     }
+    if (
+      requestBudgetChange &&
+      milestones.length > 0 &&
+      proposalMilestoneTotal <= 0
+    ) {
+      setMessage("Vui lòng nhập ngân sách cho từng milestone trước khi gửi.");
+      return;
+    }
+    if (
+      requestBudgetChange &&
+      milestones.length > 0 &&
+      proposalMilestoneTotal > 0 &&
+      proposalMilestoneTotal !== bidAmount
+    ) {
+      setMessage("Tổng ngân sách milestone đề xuất phải bằng bid_amount.");
+      return;
+    }
 
     setLoading(true);
     setMessage("");
     try {
+      let proposalFileUrl = form.proposalFileUrl;
+      if (proposalFile) {
+        proposalFileUrl = await profileApi.uploadProposalFile(proposalFile);
+      }
+      const proposalMilestone =
+        requestBudgetChange &&
+        milestones.length > 0 &&
+        proposalMilestoneTotal > 0
+          ? milestones.map((milestone) => ({
+              milestoneId: milestone.milestoneId,
+              proposedBudget: Number(milestoneBudgets[milestone.milestoneId]),
+            }))
+          : undefined;
       const proposal = await marketplaceApi.submitProposal({
         jobId: numericJobId,
         domainId: Number(form.domainId),
         skillId: Number(form.skillId),
         bidAmount,
         technicalSolution: form.technicalSolution.trim(),
+        proposalDescription: form.proposalDescription.trim(),
+        proposalFileUrl,
+        proposalMilestone,
       });
+      setForm((value) => ({ ...value, proposalFileUrl }));
       setSavedProposal(proposal);
       setMessage("Đã gửi proposal thành công.");
     } catch (error) {
@@ -284,136 +346,264 @@ export function SubmitProposalPage() {
         }
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-5">
-            {message && (
-              <Notice
-                tone={savedProposal ? "success" : "warning"}
-                title={message}
-              />
-            )}
-            {session?.role !== "EXPERT" && (
-              <Notice
-                tone="danger"
-                title="Tài khoản hiện tại không phải Chuyên gia"
-              >
-                Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
-              </Notice>
-            )}
-            {session?.role === "EXPERT" &&
-              (allowedDomainIds.length === 0 ||
-                allowedSkillIds.length === 0) && (
+        <form onSubmit={submit} className="grid gap-5">
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#eef7ff,#effcf7)] p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <Badge tone="brand">Proposal packet</Badge>
+                  <h2 className="mt-3 font-display text-2xl font-black text-ink">
+                    Bản đề xuất
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Nhập đầy đủ yêu cầu giải pháp công nghệ, mô tả đề xuất và
+                    mong muốn ngân sách, bạn có thể đề xuất lại ngân sách theo
+                    từng mốc.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-6 p-6">
+              {message && (
                 <Notice
-                  tone="warning"
-                  title="Portfolio chưa khớp domain/skill của job"
+                  tone={savedProposal ? "success" : "warning"}
+                  title={message}
+                />
+              )}
+              {session?.role !== "EXPERT" && (
+                <Notice
+                  tone="danger"
+                  title="Tài khoản hiện tại không phải Chuyên gia"
                 >
-                  Hãy cập nhật Portfolio AI để có lĩnh vực và kỹ năng trùng với
-                  yêu cầu job trước khi gửi proposal.
+                  Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
                 </Notice>
               )}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Lĩnh vực dùng để nộp proposal">
-                <select
-                  value={form.domainId}
+              <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
+                    <Target className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="font-display text-lg font-extrabold text-ink">
+                      Lĩnh vực dự án và kĩ năng yêu cầu
+                    </h3>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Lĩnh vực">
+                    <div className="flex h-11 items-center rounded-2xl border border-slate-300 bg-slate-100 px-3 text-sm font-semibold text-slate-800 shadow-sm">
+                      <span className="truncate">
+                        {form.domainId
+                          ? resolveDomainName(Number(form.domainId), domains)
+                          : "Chưa chọn lĩnh vực"}
+                      </span>
+                    </div>
+                  </Field>
+                  <Field label="Kỹ năng">
+                    <div className="rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
+                      <div className="flex flex-wrap gap-2">
+                        {jobSkillIds.map((skillId) => (
+                          <span
+                            key={skillId}
+                            className="inline-flex items-center rounded-full border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
+                          >
+                            {skills.find((skill) => skill.skillId === skillId)
+                              ?.skillName || `Skill #${skillId}`}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Field>
+                </div>
+              </section>
+
+              <section className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-mint-50 text-mint-600">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="font-display text-lg font-extrabold text-ink">
+                      Giải pháp công nghệ
+                    </h3>
+                  </div>
+                </div>
+                <Field label="Giải pháp">
+                  <Textarea
+                    value={form.technicalSolution}
+                    onChange={(event) =>
+                      setForm((value) => ({
+                        ...value,
+                        technicalSolution: event.target.value,
+                      }))
+                    }
+                    placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
+                    className="min-h-36"
+                    required
+                  />
+                </Field>
+                <Field label="Đề xuất">
+                  <Textarea
+                    value={form.proposalDescription}
+                    onChange={(event) =>
+                      setForm((value) => ({
+                        ...value,
+                        proposalDescription: event.target.value,
+                      }))
+                    }
+                    placeholder="Bạn sẽ tiếp cận dự án như thế nào, ưu tiên rủi ro nào, kế hoạch phối hợp với doanh nghiệp ra sao."
+                    className="min-h-32"
+                    required
+                  />
+                </Field>
+              </section>
+
+              <section className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-coral-50 text-coral-600">
+                    <WalletCards className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="font-display text-lg font-extrabold text-ink">
+                      Ngân sách & tài liệu
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      Đính kèm proposal file và chốt ngân sách tổng trước khi
+                      gửi.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Ngân sách">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={bidAmountDisplay}
+                      readOnly
+                      placeholder="Ví dụ: 165000000"
+                      required
+                    />
+                  </Field>
+                  <Field
+                    label="Proposal file"
+                    hint={
+                      proposalFile?.name ||
+                      form.proposalFileUrl ||
+                      "PDF, DOC/DOCX hoặc ảnh minh chứng."
+                    }
+                  >
+                    <Input
+                      type="file"
+                      accept="image/png,image/jpeg,application/pdf,.doc,.docx"
+                      onChange={(event) =>
+                        setProposalFile(event.target.files?.[0] || null)
+                      }
+                    />
+                  </Field>
+                </div>
+              </section>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  checked={requestBudgetChange}
                   onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      domainId: event.target.value,
-                    }))
+                    setRequestBudgetChange(event.target.checked)
                   }
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none"
-                  required
+                />
+                <span>Chọn nếu muốn đề xuất thay đổi ngân sách dự án</span>
+              </label>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-600">
+                <span className="font-semibold text-ink">
+                  Ngân sách hiện tại:{" "}
+                </span>
+                {formatCurrency(job.budget)}
+                {requestBudgetChange && (
+                  <span className="ml-2 text-brand-600">
+                    · Hãy nhập số tiền đề xuất từng milestone và ngân sách sẽ
+                    cập nhật theo tổng milestone
+                  </span>
+                )}
+              </div>
+
+              {requestBudgetChange && milestones.length > 0 && (
+                <section className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+                        <ListChecks className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <h3 className="font-display text-lg font-extrabold text-ink">
+                          Proposal milestone
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          Tổng milestone đề xuất phải bằng ngân sách đề xuất nếu
+                          bạn muốn thay đổi.
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      tone={
+                        bidAmount === proposalMilestoneTotal ? "mint" : "amber"
+                      }
+                    >
+                      {formatCompactCurrency(proposalMilestoneTotal)}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-3">
+                    {milestones.map((milestone) => (
+                      <div
+                        key={milestone.milestoneId}
+                        className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-[1fr_180px]"
+                      >
+                        <div>
+                          <p className="font-extrabold text-ink">
+                            {milestone.milestoneName}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            Mốc {milestone.orderIndex} · gốc{" "}
+                            {formatCompactCurrency(milestone.fundsAllocated)}
+                          </p>
+                        </div>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={milestoneBudgets[milestone.milestoneId] || ""}
+                          onChange={(event) =>
+                            setMilestoneBudgets((value) => ({
+                              ...value,
+                              [milestone.milestoneId]: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate("/app/opportunities")}
                 >
-                  {allowedDomainIds.map((domainId) => (
-                    <option key={domainId} value={domainId}>
-                      {resolveDomainName(domainId, domains)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Kỹ năng dùng để nộp proposal">
-                <select
-                  value={form.skillId}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      skillId: event.target.value,
-                    }))
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none"
-                  required
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={session?.role !== "EXPERT"}
                 >
-                  {allowedSkillIds.map((skillId) => (
-                    <option key={skillId} value={skillId}>
-                      {resolveSkillName(skillId, skills)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                  <Save className="h-4 w-4" />
+                  Gửi proposal
+                </Button>
+              </div>
             </div>
-            <Field label="bid_amount">
-              <Input
-                type="number"
-                min={1}
-                value={form.bidAmount}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    bidAmount: event.target.value,
-                  }))
-                }
-                placeholder="Ví dụ: 165000000"
-                required
-              />
-            </Field>
-            <Field label="technical_solution">
-              <Textarea
-                value={form.technicalSolution}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    technicalSolution: event.target.value,
-                  }))
-                }
-                placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
-                required
-              />
-            </Field>
-            <Field label="Mô tả dự định của chuyên gia đối với dự án">
-              <Textarea
-                value={form.projectIntention}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    projectIntention: event.target.value,
-                  }))
-                }
-                placeholder="Bạn sẽ tiếp cận dự án như thế nào, ưu tiên rủi ro nào, kế hoạch phối hợp với doanh nghiệp ra sao."
-              />
-            </Field>
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => navigate("/app/opportunities")}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="submit"
-                loading={loading}
-                disabled={
-                  session?.role !== "EXPERT" ||
-                  allowedDomainIds.length === 0 ||
-                  allowedSkillIds.length === 0
-                }
-              >
-                <Save className="h-4 w-4" />
-                Gửi proposal
-              </Button>
-            </div>
-          </form>
-        </Card>
+          </Card>
+        </form>
 
         <aside className="space-y-4">
           <Card className="p-5">

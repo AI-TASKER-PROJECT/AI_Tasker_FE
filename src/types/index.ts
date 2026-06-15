@@ -62,6 +62,9 @@ export interface Proposal {
   jobId: number;
   expertId: number;
   technicalSolution: string;
+  proposalDescription?: string;
+  proposalFileUrl?: string;
+  proposalMilestone?: unknown;
   bidAmount: number;
   status: string;
   createdAt?: string;
@@ -221,6 +224,7 @@ export interface Portfolio {
   expertId: number;
   domainIds: string;
   skillIds: string;
+  technologyIds: string;
   yearsExperience: number;
   certificates?: string;
   selfDescription: string;

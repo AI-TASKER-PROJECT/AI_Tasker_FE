@@ -1,12 +1,24 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  Award,
+  BrainCircuit,
   Building2,
   ClipboardCheck,
+  Cpu,
+  FileText,
   IdCard,
+  Layers3,
   Save,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { catalogApi, profileApi, type Domain, type Skill } from "../../lib/api";
+import {
+  catalogApi,
+  profileApi,
+  type Domain,
+  type Skill,
+  type Technology,
+} from "../../lib/api";
 import { getSession, saveSession } from "../../lib/session";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
 import {
@@ -385,8 +397,12 @@ export function ExpertPortfolioPage() {
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
+    [],
+  );
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -395,10 +411,12 @@ export function ExpertPortfolioPage() {
     Promise.all([
       catalogApi.listDomains(true),
       catalogApi.listSkills(true),
+      catalogApi.listTechnologies(true),
       profileApi.getMyPortfolio().catch(() => null),
-    ]).then(([domainItems, skillItems, portfolio]) => {
+    ]).then(([domainItems, skillItems, technologyItems, portfolio]) => {
       setDomains(domainItems);
       setSkills(skillItems);
+      setTechnologies(technologyItems);
       if (portfolio) {
         setForm({
           yearsExperience: String(portfolio.yearsExperience ?? 1),
@@ -407,14 +425,36 @@ export function ExpertPortfolioPage() {
         });
         setSelectedDomainIds(parseCatalogIds(portfolio.domainIds));
         setSelectedSkillIds(parseCatalogIds(portfolio.skillIds));
+        setSelectedTechnologyIds(parseCatalogIds(portfolio.technologyIds));
       } else {
         setSelectedDomainIds(
           domainItems.slice(0, 2).map((item) => item.domainId),
         );
         setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
+        setSelectedTechnologyIds(
+          technologyItems.slice(0, 4).map((item) => item.technologyId),
+        );
       }
     });
   }, []);
+
+  const selectedDomains = useMemo(
+    () => domains.filter((domain) => selectedDomainIds.includes(domain.domainId)),
+    [domains, selectedDomainIds],
+  );
+
+  const selectedSkills = useMemo(
+    () => skills.filter((skill) => selectedSkillIds.includes(skill.skillId)),
+    [skills, selectedSkillIds],
+  );
+
+  const selectedTechnologies = useMemo(
+    () =>
+      technologies.filter((technology) =>
+        selectedTechnologyIds.includes(technology.technologyId),
+      ),
+    [technologies, selectedTechnologyIds],
+  );
 
   const toggleDomain = (domainId: number) => {
     setSelectedDomainIds((items) =>
@@ -432,8 +472,24 @@ export function ExpertPortfolioPage() {
     );
   };
 
+  const toggleTechnology = (technologyId: number) => {
+    setSelectedTechnologyIds((items) =>
+      items.includes(technologyId)
+        ? items.filter((id) => id !== technologyId)
+        : [...items, technologyId],
+    );
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (
+      selectedDomainIds.length === 0 ||
+      selectedSkillIds.length === 0 ||
+      selectedTechnologyIds.length === 0
+    ) {
+      setError("Vui lòng chọn ít nhất 1 lĩnh vực, 1 kỹ năng và 1 công nghệ.");
+      return;
+    }
     setLoading(true);
     setSaved(false);
     setError("");
@@ -446,6 +502,7 @@ export function ExpertPortfolioPage() {
       await profileApi.upsertPortfolio({
         domainIds: selectedDomainIds.join(","),
         skillIds: selectedSkillIds.join(","),
+        technologyIds: selectedTechnologyIds.join(","),
         yearsExperience: Number(form.yearsExperience),
         certificates,
         selfDescription: form.selfDescription,
@@ -460,57 +517,112 @@ export function ExpertPortfolioPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="PRF-01"
-        title="Portfolio năng lực AI"
-        description="Khai báo lĩnh vực, skill, kinh nghiệm và mô tả bản thân để doanh nghiệp xem khi review proposal."
-      />
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-4">
-            {error && <Notice tone="danger" title={error} />}
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Lĩnh vực">
-                <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
-                  <div className="grid gap-2">
-                    {domains.map((domain) => (
-                      <label
-                        key={domain.domainId}
-                        className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedDomainIds.includes(domain.domainId)}
-                          onChange={() => toggleDomain(domain.domainId)}
-                        />
-                        {domain.domainName}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </Field>
-              <Field label="Skill">
-                <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-3">
-                  <div className="grid gap-2">
-                    {skills.map((skill) => (
-                      <label
-                        key={skill.skillId}
-                        className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedSkillIds.includes(skill.skillId)}
-                          onChange={() => toggleSkill(skill.skillId)}
-                        />
-                        {skill.skillName}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </Field>
+    <div className="space-y-7">
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#effcf7,transparent_34%),linear-gradient(135deg,#ffffff_0%,#eef7ff_52%,#fff4f1_100%)] p-6 shadow-card md:p-8">
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <PageHeader
+            eyebrow="PRF-01 / Expert portfolio"
+            title="Portfolio năng lực AI"
+            description="Biến hồ sơ chuyên gia thành một bản giới thiệu đủ rõ để doanh nghiệp nhìn thấy lĩnh vực mạnh, stack công nghệ, chứng chỉ và cách bạn giải quyết dự án."
+          />
+          <div className="grid grid-cols-3 gap-3">
+            <PortfolioMetric
+              icon={<Layers3 className="h-4 w-4" />}
+              label="Lĩnh vực"
+              value={selectedDomainIds.length}
+            />
+            <PortfolioMetric
+              icon={<BrainCircuit className="h-4 w-4" />}
+              label="Kỹ năng"
+              value={selectedSkillIds.length}
+            />
+            <PortfolioMetric
+              icon={<Cpu className="h-4 w-4" />}
+              label="Công nghệ"
+              value={selectedTechnologyIds.length}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <form onSubmit={submit} className="space-y-6">
+          {error && <Notice tone="danger" title={error} />}
+          {saved && (
+            <Notice tone="success" title="Đã lưu portfolio">
+              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
+            </Notice>
+          )}
+
+          <Card className="p-6">
+            <SectionHeading
+              title="Vùng chuyên môn"
+              description="Chọn các mảng AI mà bạn tự tin nhận dự án."
+            />
+            <div className="mt-5">
+              <p className="mb-3 text-sm font-extrabold text-ink">Lĩnh vực</p>
+              <div className="grid max-h-80 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                {domains.map((domain) => (
+                  <TogglePill
+                    key={domain.domainId}
+                    checked={selectedDomainIds.includes(domain.domainId)}
+                    label={domain.domainName}
+                    description={domain.description}
+                    onChange={() => toggleDomain(domain.domainId)}
+                    compact
+                  />
+                ))}
+              </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+          </Card>
+
+          <Card className="p-6">
+            <SectionHeading
+              title="Kỹ năng & công nghệ"
+              description="Ghép skill nghiệp vụ với stack triển khai để matching tốt hơn."
+            />
+            <div className="mt-5 grid gap-6 lg:grid-cols-2">
+              <div>
+                <p className="mb-3 text-sm font-extrabold text-ink">Kỹ năng</p>
+                <div className="grid max-h-80 gap-2 overflow-y-auto pr-1">
+                  {skills.map((skill) => (
+                    <TogglePill
+                      key={skill.skillId}
+                      checked={selectedSkillIds.includes(skill.skillId)}
+                      label={skill.skillName}
+                      description={skill.description}
+                      onChange={() => toggleSkill(skill.skillId)}
+                      compact
+                    />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-3 text-sm font-extrabold text-ink">Công nghệ</p>
+                <div className="grid max-h-80 gap-2 overflow-y-auto pr-1">
+                  {technologies.map((technology) => (
+                    <TogglePill
+                      key={technology.technologyId}
+                      checked={selectedTechnologyIds.includes(
+                        technology.technologyId,
+                      )}
+                      label={technology.technologyName}
+                      description={technology.description}
+                      onChange={() => toggleTechnology(technology.technologyId)}
+                      compact
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <SectionHeading
+              title="Bằng chứng năng lực"
+              description="Kinh nghiệm, chứng chỉ và đoạn tự giới thiệu sẽ là phần doanh nghiệp đọc kỹ nhất."
+            />
+            <div className="mt-5 grid gap-4 md:grid-cols-[180px_1fr]">
               <Field label="Số năm kinh nghiệm">
                 <Input
                   type="number"
@@ -541,7 +653,7 @@ export function ExpertPortfolioPage() {
                 />
               </Field>
             </div>
-            <Field label="Mô tả bản thân">
+            <Field label="Mô tả bản thân" className="mt-4">
               <Textarea
                 value={form.selfDescription}
                 onChange={(event) =>
@@ -550,45 +662,197 @@ export function ExpertPortfolioPage() {
                     selfDescription: event.target.value,
                   }))
                 }
+                placeholder="Ví dụ: Tôi chuyên xây dựng RAG, chatbot CSKH và pipeline dữ liệu từ PoC đến production..."
+                className="min-h-40"
                 required
               />
             </Field>
-            <div className="flex justify-end">
+            <div className="mt-5 flex justify-end">
               <Button type="submit" loading={loading}>
                 <ClipboardCheck className="h-4 w-4" />
                 Lưu portfolio
               </Button>
             </div>
-          </form>
-        </Card>
-        <Card className="p-6">
-          <SectionHeading
-            title="Preview matching"
-            description="Dữ liệu này sẽ hiển thị trong khung chi tiết chuyên gia của doanh nghiệp."
-          />
-          <div className="mt-5 flex flex-wrap gap-2">
-            {skills
-              .filter((skill) => selectedSkillIds.includes(skill.skillId))
-              .map((skill) => (
-                <Badge key={skill.skillId} tone="brand">
-                  {skill.skillName}
-                </Badge>
-              ))}
-          </div>
-          {saved && (
-            <Notice tone="success" title="Đã lưu portfolio" className="mt-4">
-              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
-            </Notice>
-          )}
-          <FirebaseFileLink
-            path={form.certificates}
-            emptyText="Chưa có chứng chỉ"
-            buttonText="Xem chứng chỉ"
-            className="mt-5"
-            showPath={false}
-          />
-        </Card>
+          </Card>
+        </form>
+
+        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+          <Card className="overflow-hidden">
+            <div className="bg-ink p-6 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-mint-100 ring-1 ring-white/15">
+                  <Sparkles className="h-6 w-6" />
+                </span>
+                <Badge tone="mint">{form.yearsExperience || 0} năm kinh nghiệm</Badge>
+              </div>
+              <h2 className="mt-5 font-display text-2xl font-extrabold">
+                Hồ sơ chuyên gia AI
+              </h2>
+              <p className="mt-3 line-clamp-4 text-sm leading-6 text-white/75">
+                {form.selfDescription ||
+                  "Thêm mô tả bản thân để doanh nghiệp hiểu thế mạnh, cách làm việc và loại dự án bạn phù hợp."}
+              </p>
+            </div>
+            <div className="space-y-5 p-6">
+              <PreviewGroup
+                icon={<Layers3 className="h-4 w-4" />}
+                title="Lĩnh vực"
+                emptyText="Chưa chọn lĩnh vực"
+                items={selectedDomains.map((item) => item.domainName)}
+                tone="mint"
+              />
+              <PreviewGroup
+                icon={<BrainCircuit className="h-4 w-4" />}
+                title="Kỹ năng nổi bật"
+                emptyText="Chưa chọn kỹ năng"
+                items={selectedSkills.map((item) => item.skillName)}
+                tone="brand"
+              />
+              <PreviewGroup
+                icon={<Cpu className="h-4 w-4" />}
+                title="Stack công nghệ"
+                emptyText="Chưa chọn công nghệ"
+                items={selectedTechnologies.map((item) => item.technologyName)}
+                tone="coral"
+              />
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink">
+                  <Award className="h-4 w-4 text-amber-600" />
+                  Chứng chỉ
+                </div>
+                <FirebaseFileLink
+                  path={form.certificates}
+                  emptyText="Chưa có chứng chỉ"
+                  buttonText="Xem chứng chỉ"
+                  showPath={false}
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+                <FileText className="h-4 w-4" />
+              </span>
+              <div>
+                <h3 className="font-display text-base font-extrabold text-ink">
+                  Gợi ý để matching tốt
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Chọn đúng công nghệ đang dùng trong dự án thật và viết mô tả
+                  theo kết quả đã bàn giao. Điều này giúp doanh nghiệp đọc hồ sơ
+                  nhanh hơn khi so sánh proposal.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </aside>
       </div>
+    </div>
+  );
+}
+
+function PortfolioMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/70 bg-white/75 p-4 shadow-sm backdrop-blur">
+      <div className="mb-3 grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">
+        {icon}
+      </div>
+      <p className="font-display text-2xl font-extrabold text-ink">{value}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function TogglePill({
+  checked,
+  label,
+  description,
+  onChange,
+  compact = false,
+}: {
+  checked: boolean;
+  label: string;
+  description?: string;
+  onChange: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className={`group flex min-h-[72px] w-full items-start gap-3 rounded-2xl border p-3 text-left transition ${
+        checked
+          ? "border-brand-200 bg-brand-50 shadow-glow"
+          : "border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50"
+      } ${compact ? "min-h-[60px]" : ""}`}
+    >
+      <span
+        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border text-[10px] font-black ${
+          checked
+            ? "border-brand-600 bg-brand-600 text-white"
+            : "border-slate-200 bg-white text-transparent"
+        }`}
+      >
+        ✓
+      </span>
+      <span className="min-w-0">
+        <span className="block break-words text-sm font-extrabold text-ink">
+          {label}
+        </span>
+        {description && (
+          <span className="mt-1 line-clamp-2 block text-xs leading-5 text-slate-500">
+            {description}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function PreviewGroup({
+  icon,
+  title,
+  items,
+  emptyText,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  items: string[];
+  emptyText: string;
+  tone: "brand" | "mint" | "coral";
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink">
+        {icon}
+        {title}
+      </div>
+      {items.length ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <Badge key={item} tone={tone}>
+              {item}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-400">
+          {emptyText}
+        </p>
+      )}
     </div>
   );
 }

@@ -122,6 +122,17 @@ export interface Skill {
   updatedAt?: string;
 }
 
+export interface Technology {
+  technologyId: number;
+  technologyCode: string;
+  technologyName: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface JobDomain {
   id: { jobId: number; domainId: number };
   createdAt?: string;
@@ -322,6 +333,15 @@ export const profileApi = {
       data: formData,
     });
   },
+  uploadProposalFile(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: "/api/v1/proposals/file",
+      data: formData,
+    });
+  },
   listBusinesses() {
     return call<BusinessProfile[]>({
       method: "GET",
@@ -427,6 +447,13 @@ export const catalogApi = {
       method: "PATCH",
       url: `/api/v1/skills/${skillId}`,
       data: payload,
+    });
+  },
+  listTechnologies(activeOnly = true) {
+    return call<Technology[]>({
+      method: "GET",
+      url: "/api/v1/technologies",
+      params: { activeOnly },
     });
   },
   listAcceptanceCriteria(activeOnly = true) {
