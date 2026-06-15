@@ -420,10 +420,10 @@ export function Modal({
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
   if (!open) return null;
-  const sizes = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl' };
+  const sizes = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl' };
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <motion.button

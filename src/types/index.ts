@@ -281,6 +281,18 @@ export interface SystemWallet {
   updatedAt?: string;
 }
 
+export interface CreatePayOSPaymentResponse {
+  checkoutUrl: string;
+  qrCode?: string;
+  bin?: string;
+  accountNumber?: string;
+  accountName?: string;
+  currency?: string;
+  orderCode: number;
+  amount: number;
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
+}
+
 export interface AdminAccount {
   accountId: number;
   email: string;
