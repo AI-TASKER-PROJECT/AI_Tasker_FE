@@ -78,8 +78,7 @@ export function ManageJobPage() {
   const [proposalTab, setProposalTab] = useState<"ai" | "proposal">("proposal");
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
-    technologyUsed: "Python, FastAPI, PostgreSQL",
-    totalBudget: "",
+    contractTitle: "",
     timelineDays: "60",
   });
 
@@ -128,10 +127,8 @@ export function ManageJobPage() {
     const contract = await contractApi.createFromProposal(
       contractModal.proposalId,
       {
-        technologyUsed: contractForm.technologyUsed,
-        totalBudget: Number(
-          contractForm.totalBudget || contractModal.bidAmount,
-        ),
+        contractTitle:
+          contractForm.contractTitle.trim() || `Contract - ${job.title}`,
         timelineDays: Number(contractForm.timelineDays),
       },
     );
@@ -237,7 +234,8 @@ export function ManageJobPage() {
                     setContractModal(proposal);
                     setContractForm((value) => ({
                       ...value,
-                      totalBudget: String(proposal.bidAmount),
+                      contractTitle: `Contract - ${job.title}`,
+                      timelineDays: String(proposal.deliveryDays || 60),
                     }));
                   }}
                 />
@@ -340,30 +338,29 @@ export function ManageJobPage() {
         }
       >
         <div className="grid gap-4">
-          <Field label="Công nghệ sử dụng">
+          <Field label="Tiêu đề contract">
             <Input
-              value={contractForm.technologyUsed}
+              value={contractForm.contractTitle}
               onChange={(event) =>
                 setContractForm((value) => ({
                   ...value,
-                  technologyUsed: event.target.value,
+                  contractTitle: event.target.value,
                 }))
               }
             />
           </Field>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Tổng ngân sách">
-              <Input
-                type="number"
-                value={contractForm.totalBudget}
-                onChange={(event) =>
-                  setContractForm((value) => ({
-                    ...value,
-                    totalBudget: event.target.value,
-                  }))
-                }
-              />
-            </Field>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-400">
+                Ngân sách proposal
+              </p>
+              <p className="mt-1 font-display text-xl font-black text-ink">
+                {formatCurrency(contractModal?.bidAmount || 0)}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                Backend sẽ tạo milestone budget từ job/proposal.
+              </p>
+            </div>
             <Field label="Timeline days">
               <Input
                 type="number"
@@ -470,6 +467,7 @@ function ProposalCard({
     "skillName",
   );
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
+  const canCreateContract = proposal.status === "Accepted";
 
   return (
     <div className="rounded-3xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/30">
@@ -514,7 +512,16 @@ function ProposalCard({
           <XCircle className="h-4 w-4" />
           Reject
         </Button>
-        <Button size="sm" onClick={onContract}>
+        <Button
+          size="sm"
+          onClick={onContract}
+          disabled={!canCreateContract}
+          title={
+            canCreateContract
+              ? "Tạo contract draft"
+              : "Chỉ tạo contract sau khi proposal được Accepted"
+          }
+        >
           <FileCheck2 className="h-4 w-4" />
           Tạo contract
         </Button>

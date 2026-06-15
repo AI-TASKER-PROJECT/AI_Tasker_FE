@@ -524,6 +524,12 @@ export const contractApi = {
   listContracts() {
     return call<Contract[]>({ method: "GET", url: "/api/v1/contracts" });
   },
+  getContract(contractId: number) {
+    return call<Contract>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}`,
+    });
+  },
   createFromProposal(proposalId: number, payload: Partial<Contract>) {
     return call<Contract>({
       method: "POST",
@@ -542,6 +548,12 @@ export const contractApi = {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/activate`,
+    });
+  },
+  sign(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/sign`,
     });
   },
   signNda(contractId: number) {

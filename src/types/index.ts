@@ -62,6 +62,8 @@ export interface Proposal {
   jobId: number;
   expertId: number;
   technicalSolution: string;
+  proposalDescription?: string;
+  proposalFileUrl?: string;
   bidAmount: number;
   status: string;
   createdAt?: string;
@@ -75,22 +77,44 @@ export interface Proposal {
   deliveryDays?: number;
 }
 
+export interface ContractMilestone {
+  contractMilestoneId: number;
+  contractId: number;
+  jobMilestoneId: number;
+  milestoneName: string;
+  description?: string;
+  originalBudget: number;
+  finalBudget: number;
+  orderIndex: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Contract {
   contractId: number;
   jobId: number;
+  proposalId?: number;
   businessId: number;
   expertId: number;
+  contractTitle?: string;
   technologyUsed?: string;
   totalBudget: number;
   timelineDays: number;
-  ndaSigned: boolean;
+  ndaSigned?: boolean;
   status: string;
+  businessAcceptedAt?: string;
+  expertAcceptedAt?: string;
+  businessNdaSignedAt?: string;
+  expertNdaSignedAt?: string;
+  activatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   title?: string;
   businessName?: string;
   expertName?: string;
   progress?: number;
+  contractMilestones?: ContractMilestone[];
 }
 
 export interface ContractChangeRequest {

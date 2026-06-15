@@ -116,7 +116,9 @@ export function ContractsPage() {
               <StatusBadge status={contract.status} />
             </div>
             <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">
-              {contract.title || `Hợp đồng nháp #${contract.contractId}`}
+              {contract.contractTitle ||
+                contract.title ||
+                `Hợp đồng nháp #${contract.contractId}`}
             </h3>
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
               <div>
@@ -173,6 +175,7 @@ export function ContractsPage() {
 
 export function ContractDetailPage() {
   const { contractId } = useParams();
+  const session = useSession();
   const [contract, setContract] = useState<Contract | null>(null);
   const [changeOpen, setChangeOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
@@ -186,12 +189,8 @@ export function ContractDetailPage() {
 
   useEffect(() => {
     contractApi
-      .listContracts()
-      .then((items) =>
-        setContract(
-          items.find((item) => item.contractId === Number(contractId)) || null,
-        ),
-      )
+      .getContract(Number(contractId))
+      .then(setContract)
       .catch(() => setContract(null));
   }, [contractId]);
 
@@ -203,8 +202,8 @@ export function ContractDetailPage() {
       />
     );
 
-  const activate = async () =>
-    setContract(await contractApi.activate(contract.contractId));
+  const signContract = async () =>
+    setContract(await contractApi.sign(contract.contractId));
   const signNda = async () =>
     setContract(await contractApi.signNda(contract.contractId));
   const terminate = async () => {
@@ -222,12 +221,30 @@ export function ContractDetailPage() {
     });
     setChangeOpen(false);
   };
+  const contractTitle =
+    contract.contractTitle || contract.title || `Contract #${contract.contractId}`;
+  const ndaSigned = Boolean(
+    contract.ndaSigned ||
+      (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
+  );
+  const currentPartyAccepted =
+    session?.role === "BUSINESS"
+      ? Boolean(contract.businessAcceptedAt)
+      : session?.role === "EXPERT"
+        ? Boolean(contract.expertAcceptedAt)
+        : false;
+  const currentPartyNdaSigned =
+    session?.role === "BUSINESS"
+      ? Boolean(contract.businessNdaSignedAt)
+      : session?.role === "EXPERT"
+        ? Boolean(contract.expertNdaSignedAt)
+        : false;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="CONTRACT DETAIL"
-        title={contract.title || `Contract #${contract.contractId}`}
+        title={contractTitle}
         description="Điểm điều phối cho đàm phán, activate, NDA, termination và các luồng con."
         actions={
           <>
@@ -247,9 +264,9 @@ export function ContractDetailPage() {
         <Card className="p-6">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={contract.status} />
-            <Badge tone={contract.ndaSigned ? "mint" : "amber"}>
+            <Badge tone={ndaSigned ? "mint" : "amber"}>
               <LockKeyhole className="h-3.5 w-3.5" />
-              NDA {contract.ndaSigned ? "đã ký" : "chưa ký"}
+              NDA {ndaSigned ? "đã ký" : "chưa ký"}
             </Badge>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -262,8 +279,8 @@ export function ContractDetailPage() {
               value={`${contract.timelineDays} ngày`}
             />
             <ContractMetric
-              label="Công nghệ"
-              value={contract.technologyUsed || "Chưa chốt"}
+              label="Milestone draft"
+              value={`${contract.contractMilestones?.length || 0} mốc`}
             />
           </div>
           <div className="mt-6 rounded-3xl bg-slate-50 p-5">
@@ -281,15 +298,58 @@ export function ContractDetailPage() {
               />
             </div>
           </div>
+          <div className="mt-6 rounded-3xl border border-slate-100 p-5">
+            <SectionHeading
+              title="Milestone trong draft"
+              description="Các ngân sách final được backend tạo từ job và proposal đã accepted."
+            />
+            <div className="mt-4 grid gap-3">
+              {(contract.contractMilestones || []).map((milestone) => (
+                <div
+                  key={milestone.contractMilestoneId}
+                  className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
+                >
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-ink">
+                      {milestone.orderIndex}. {milestone.milestoneName}
+                    </p>
+                    {milestone.description && (
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        {milestone.description}
+                      </p>
+                    )}
+                  </div>
+                  <ContractMetric
+                    label="Ngân sách gốc"
+                    value={formatCurrency(milestone.originalBudget)}
+                  />
+                  <ContractMetric
+                    label="Ngân sách final"
+                    value={formatCurrency(milestone.finalBudget)}
+                  />
+                </div>
+              ))}
+              {(!contract.contractMilestones ||
+                contract.contractMilestones.length === 0) && (
+                <EmptyState
+                  title="Chưa có milestone draft"
+                  description="Backend chưa trả contractMilestones cho contract này."
+                />
+              )}
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={activate} disabled={contract.status === "Active"}>
+            <Button
+              onClick={signContract}
+              disabled={currentPartyAccepted || contract.status === "Terminated"}
+            >
               <CheckCircle2 className="h-4 w-4" />
-              Activate
+              Chấp nhận contract
             </Button>
             <Button
               variant="secondary"
               onClick={signNda}
-              disabled={contract.ndaSigned || contract.status !== "Active"}
+              disabled={currentPartyNdaSigned || contract.status === "Terminated"}
             >
               <ShieldCheck className="h-4 w-4" />
               Ký NDA
@@ -579,7 +639,11 @@ export function WorkspacePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="EXEC-01 / EXEC-02"
-        title={`Workspace: ${contract.title}`}
+        title={`Workspace: ${
+          contract.contractTitle ||
+          contract.title ||
+          `Contract #${contract.contractId}`
+        }`}
         description="Quản lý milestone, acceptance criteria, deliverable và SLA auto approve."
         actions={
           <>
