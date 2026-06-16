@@ -29,6 +29,7 @@ import {
   type Domain,
   type JobSkill,
   type Skill,
+  type Technology,
 } from "../../../services";
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
@@ -134,8 +135,10 @@ export function SubmitProposalPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
   const [jobSkillIds, setJobSkillIds] = useState<number[]>([]);
+  const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [proposalFile, setProposalFile] = useState<File | null>(null);
@@ -163,16 +166,20 @@ export function SubmitProposalPage() {
           jobItem,
           domainItems,
           skillItems,
+          technologyItems,
           jobDomainItems,
           jobSkillItems,
+          jobTechnologyItems,
           milestoneItems,
           portfolioResult,
         ] = await Promise.all([
           marketplaceApi.getJob(numericJobId),
           catalogApi.listDomains(true),
           catalogApi.listSkills(true),
+          catalogApi.listTechnologies(true),
           catalogApi.listJobDomains(numericJobId),
           catalogApi.listJobSkills(numericJobId),
+          catalogApi.listJobTechnologies(numericJobId).catch(() => []),
           contractApi.listJobMilestones(numericJobId).catch(() => []),
           profileApi.getMyPortfolio().catch(() => null),
         ]);
@@ -180,8 +187,12 @@ export function SubmitProposalPage() {
         setJob(jobItem);
         setDomains(domainItems);
         setSkills(skillItems);
+        setTechnologies(technologyItems);
         setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
         setJobSkillIds(jobSkillItems.map((item) => item.id.skillId));
+        setJobTechnologyIds(
+          jobTechnologyItems.map((item) => item.id.technologyId),
+        );
         setMilestones(milestoneItems);
         setMilestoneBudgets(
           Object.fromEntries(
@@ -385,7 +396,7 @@ export function SubmitProposalPage() {
                   </span>
                   <div>
                     <h3 className="font-display text-lg font-extrabold text-ink">
-                      Lĩnh vực dự án và kĩ năng yêu cầu
+                      Yêu cầu công việc
                     </h3>
                   </div>
                 </div>
@@ -399,7 +410,31 @@ export function SubmitProposalPage() {
                       </span>
                     </div>
                   </Field>
-                  <Field label="Kỹ năng">
+                  <Field label="Công nghệ">
+                    <div className="rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
+                      <div className="flex flex-wrap gap-2">
+                        {jobTechnologyIds.length > 0 ? (
+                          jobTechnologyIds.map((technologyId) => (
+                            <span
+                              key={technologyId}
+                              className="inline-flex items-center rounded-full border border-mint-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
+                            >
+                              {technologies.find(
+                                (technology) =>
+                                  technology.technologyId === technologyId,
+                              )?.technologyName ||
+                                `Technology #${technologyId}`}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm font-semibold text-slate-400">
+                            Chưa có công nghệ
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Field>
+                  <Field label="Kỹ năng" className="md:col-span-2">
                     <div className="rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
                       <div className="flex flex-wrap gap-2">
                         {jobSkillIds.map((skillId) => (

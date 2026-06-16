@@ -64,7 +64,9 @@ import {
   type MilestoneDraft,
   type SkillAssignment,
 } from "../marketplacePages.utils";
-import { CompactMilestones } from "../marketplacePages.helpers";
+import {
+  CompactMilestones,
+} from "../marketplacePages.helpers";
 export function ManageJobPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -246,6 +248,7 @@ export function ManageJobPage() {
                 <ProposalCard
                   key={proposal.proposalId}
                   proposal={proposal}
+                  milestones={milestones}
                   onAccept={() => review(proposal.proposalId, "Accepted")}
                   onReject={() => review(proposal.proposalId, "Rejected")}
                   onContract={() => {
@@ -428,11 +431,13 @@ export function ManageJobPage() {
 
 function ProposalCard({
   proposal,
+  milestones,
   onAccept,
   onReject,
   onContract,
 }: {
   proposal: Proposal;
+  milestones: Milestone[];
   onAccept: () => void;
   onReject: () => void;
   onContract: () => void;
@@ -569,10 +574,25 @@ function ProposalCard({
                 {proposalMilestones.map((item) => (
                   <div
                     key={item.milestoneId}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                    className="grid gap-3 rounded-xl bg-white px-3 py-3 text-sm md:grid-cols-[82px_1fr_auto] md:items-center"
                   >
+                    <span className="font-extrabold text-brand-600">
+                      {formatProposalMilestoneOrder(
+                        item.milestoneId,
+                        milestones,
+                      )}
+                    </span>
                     <span className="font-bold text-slate-600">
-                      Milestone #{item.milestoneId}
+                      {formatProposalMilestoneTitle(
+                        item.milestoneId,
+                        milestones,
+                      )}
+                      <span className="mt-1 block text-xs font-semibold text-slate-400">
+                        {formatProposalMilestoneStatus(
+                          item.milestoneId,
+                          milestones,
+                        )}
+                      </span>
                     </span>
                     <span className="font-extrabold text-ink">
                       {formatCompactCurrency(item.proposedBudget)}
@@ -743,6 +763,33 @@ function parseProposalMilestones(value: unknown) {
   } catch {
     return [];
   }
+}
+
+function formatProposalMilestoneTitle(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
+  if (!milestone) return `Milestone #${milestoneId}`;
+  return milestone.milestoneName;
+}
+
+function formatProposalMilestoneOrder(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
+  return milestone ? `Mốc ${milestone.orderIndex}` : "Milestone";
+}
+
+function formatProposalMilestoneStatus(
+  milestoneId: number,
+  milestones: Milestone[],
+) {
+  return (
+    milestones.find((item) => item.milestoneId === milestoneId)?.status ||
+    "Pending"
+  );
 }
 
 function resolveCatalogNames(

@@ -23,6 +23,7 @@ import {
   type Domain,
   type JobSkill,
   type Skill,
+  type Technology,
 } from "../../../services";
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
@@ -100,10 +101,14 @@ export function CreateJobPage() {
   const [createMessage, setCreateMessage] = useState("");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<
     AcceptanceCriteria[]
   >([]);
   const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
+  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
+    [],
+  );
   const [skillAssignments, setSkillAssignments] = useState<SkillAssignment[]>(
     [],
   );
@@ -112,12 +117,17 @@ export function CreateJobPage() {
     Promise.all([
       catalogApi.listDomains(true),
       catalogApi.listSkills(true),
+      catalogApi.listTechnologies(true),
       catalogApi.listAcceptanceCriteria(true).catch(() => []),
-    ]).then(([domainItems, skillItems, criteriaItems]) => {
+    ]).then(([domainItems, skillItems, technologyItems, criteriaItems]) => {
       setDomains(domainItems);
       setSkills(skillItems);
+      setTechnologies(technologyItems);
       setAcceptanceCriteria(criteriaItems);
       setSelectedDomainId(domainItems[0]?.domainId ?? null);
+      setSelectedTechnologyIds(
+        technologyItems.slice(0, 3).map((item) => item.technologyId),
+      );
       setSkillAssignments(
         skillItems.slice(0, 3).map((item) => ({
           skillId: item.skillId,
@@ -209,6 +219,14 @@ export function CreateJobPage() {
       items.some((item) => item.skillId === skillId)
         ? items.filter((item) => item.skillId !== skillId)
         : [...items, { skillId, isMandatory: true }],
+    );
+  };
+
+  const toggleTechnology = (technologyId: number) => {
+    setSelectedTechnologyIds((items) =>
+      items.includes(technologyId)
+        ? items.filter((id) => id !== technologyId)
+        : [...items, technologyId],
     );
   };
 
@@ -304,6 +322,10 @@ export function CreateJobPage() {
         setCreateMessage("Vui lòng chọn ít nhất một lĩnh vực cho job.");
         return;
       }
+      if (selectedTechnologyIds.length === 0) {
+        setCreateMessage("Vui lòng chọn ít nhất một công nghệ cho job.");
+        return;
+      }
       if (skillAssignments.length === 0) {
         setCreateMessage("Vui lòng chọn ít nhất một kỹ năng cho job.");
         return;
@@ -316,6 +338,7 @@ export function CreateJobPage() {
         milestones: buildMilestonePayload(),
         budget: Number(form.budgetAmount),
         plannedDurationValue: Number(form.plannedDurationValue),
+        technologyIds: selectedTechnologyIds,
         plannedDurationUnit: "tuần",
       });
       setSavedJob(job);
@@ -415,6 +438,42 @@ export function CreateJobPage() {
                             {domain.domainName}
                           </span>
                         </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Field>
+
+              <Field label="Công nghệ nền tảng">
+                <div className="max-h-72 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
+                  <div className="grid gap-3">
+                    {technologies.map((technology) => {
+                      const isSelected = selectedTechnologyIds.includes(
+                        technology.technologyId,
+                      );
+                      return (
+                        <div
+                          key={technology.technologyId}
+                          className={`rounded-xl border px-3 py-3 transition-colors ${
+                            isSelected
+                              ? "border-brand-100 bg-brand-50/50"
+                              : "border-slate-100 bg-white"
+                          }`}
+                        >
+                          <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleTechnology(technology.technologyId)
+                              }
+                            />
+                            <span className="min-w-0 break-words">
+                              {technology.technologyName}
+                            </span>
+                          </label>
+                        </div>
                       );
                     })}
                   </div>
@@ -694,6 +753,19 @@ export function CreateJobPage() {
                     {selectedDomainIdList
                       .map((id) => resolveDomainName(id, domains))
                       .join(", ")}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">Công nghệ</span>
+                  <span className="break-words text-right font-extrabold text-ink">
+                    {technologies
+                      .filter((technology) =>
+                        selectedTechnologyIds.includes(
+                          technology.technologyId,
+                        ),
+                      )
+                      .map((technology) => technology.technologyName)
+                      .join(", ") || "Chưa chọn"}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">

@@ -26,7 +26,9 @@ import {
   profileApi,
   type Domain,
   type JobSkill,
+  type JobTechnology,
   type Skill,
+  type Technology,
 } from "../../lib/api";
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
@@ -58,6 +60,13 @@ function resolveSkillName(skillId: number, skills: Skill[]) {
   return (
     skills.find((skill) => skill.skillId === skillId)?.skillName ||
     `Skill #${skillId}`
+  );
+}
+
+function resolveTechnologyName(technologyId: number, technologies: Technology[]) {
+  return (
+    technologies.find((technology) => technology.technologyId === technologyId)
+      ?.technologyName || `Technology #${technologyId}`
   );
 }
 
@@ -665,10 +674,6 @@ export function JobCard({
     };
   }, [job.jobId]);
 
-  const skillLabels = (job.skills || []).map((skill, index) =>
-    formatJobSkillLabel(skill, index),
-  );
-
   return (
     <Card hover className="flex h-full flex-col p-5">
         <div className="flex items-start justify-between gap-3">
@@ -684,13 +689,6 @@ export function JobCard({
         <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
           {job.structuredSow || job.rawRequirements}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {skillLabels.slice(0, 3).map((skillLabel, index) => (
-            <Badge key={`${skillLabel}-${index}`} tone="slate">
-              {skillLabel}
-            </Badge>
-          ))}
-        </div>
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
           <div>
             <p className="text-xs font-bold text-slate-400">Ngân sách</p>
@@ -736,16 +734,6 @@ export function JobCard({
   );
 }
 
-function formatJobSkillLabel(
-  skill: string | { skillId?: number; skillName?: string },
-  index: number,
-) {
-  if (typeof skill === "string") return skill;
-  if (skill.skillName) return skill.skillName;
-  if (typeof skill.skillId === "number") return `Skill #${skill.skillId}`;
-  return `Skill ${index + 1}`;
-}
-
 export function JobDetailPage() {
   const { jobId } = useParams();
   const session = useSession();
@@ -753,8 +741,10 @@ export function JobDetailPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
   const [jobSkills, setJobSkills] = useState<JobSkill[]>([]);
+  const [jobTechnologies, setJobTechnologies] = useState<JobTechnology[]>([]);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [businessOpen, setBusinessOpen] = useState(false);
   const [businessLoading, setBusinessLoading] = useState(false);
@@ -765,20 +755,35 @@ export function JobDetailPage() {
     Promise.all([
       catalogApi.listDomains(true),
       catalogApi.listSkills(true),
+      catalogApi.listTechnologies(true),
       catalogApi.listJobDomains(id),
       catalogApi.listJobSkills(id),
+      catalogApi.listJobTechnologies(id).catch(() => []),
     ])
-      .then(([domainItems, skillItems, jobDomainItems, jobSkillItems]) => {
+      .then(
+        ([
+          domainItems,
+          skillItems,
+          technologyItems,
+          jobDomainItems,
+          jobSkillItems,
+          jobTechnologyItems,
+        ]) => {
         setDomains(domainItems);
         setSkills(skillItems);
+        setTechnologies(technologyItems);
         setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
         setJobSkills(jobSkillItems);
-      })
+        setJobTechnologies(jobTechnologyItems);
+      },
+      )
       .catch(() => {
         setDomains([]);
         setSkills([]);
+        setTechnologies([]);
         setJobDomainIds([]);
         setJobSkills([]);
+        setJobTechnologies([]);
       });
     contractApi
       .listJobMilestones(id)
@@ -851,20 +856,19 @@ export function JobDetailPage() {
               {job.structuredSow ||
                 "Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."}
             </div>
-            <div className="mt-5 grid gap-3">
-              {jobSkills.map((item) => (
-                <div
-                  key={item.id.skillId}
-                  className="rounded-2xl border border-slate-100 bg-white p-3 text-sm"
-                >
-                  <p className="font-extrabold text-ink">
-                    {resolveSkillName(item.id.skillId, skills)}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {item.isMandatory ? "Bắt buộc" : "Optional"}
-                  </p>
-                </div>
-              ))}
+            <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5">
+              <ChipRow
+                label="Kĩ năng:"
+                items={jobSkills.map((item) =>
+                  resolveSkillName(item.id.skillId, skills),
+                )}
+              />
+              <ChipRow
+                label="Công nghệ:"
+                items={jobTechnologies.map((item) =>
+                  resolveTechnologyName(item.id.technologyId, technologies),
+                )}
+              />
             </div>
           </Card>
           <Card className="mt-6 p-6">
@@ -1029,6 +1033,30 @@ function InfoRow({
       <div>
         <p className="text-xs font-bold text-slate-400">{label}</p>
         <p className="text-sm font-extrabold text-ink">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChipRow({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-[150px_1fr] sm:items-start">
+      <p className="text-lg font-extrabold text-slate-700">{label}</p>
+      <div className="flex flex-wrap gap-3">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <span
+              key={item}
+              className="inline-flex min-h-10 items-center rounded-full border border-slate-200 bg-white px-5 py-2 text-base font-semibold text-ink shadow-sm"
+            >
+              {item}
+            </span>
+          ))
+        ) : (
+          <span className="inline-flex min-h-10 items-center rounded-full border border-dashed border-slate-200 bg-white px-5 py-2 text-base font-semibold text-slate-400">
+            Chưa có dữ liệu
+          </span>
+        )}
       </div>
     </div>
   );

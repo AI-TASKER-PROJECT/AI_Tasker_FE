@@ -764,11 +764,15 @@ function PortfolioMetric({
 }) {
   return (
     <div className="rounded-2xl border border-white/70 bg-white/75 p-4 shadow-sm backdrop-blur">
-      <div className="mb-3 grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">
-        {icon}
+      <div className="mb-3 flex items-center justify-center gap-3">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">
+          {icon}
+        </div>
+        <p className="font-display text-2xl font-extrabold text-ink">
+          {value}
+        </p>
       </div>
-      <p className="font-display text-2xl font-extrabold text-ink">{value}</p>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+      <p className="text-center text-xs font-bold uppercase tracking-wide text-slate-400">
         {label}
       </p>
     </div>

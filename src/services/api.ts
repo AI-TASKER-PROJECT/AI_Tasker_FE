@@ -144,6 +144,11 @@ export interface JobSkill {
   createdAt?: string;
 }
 
+export interface JobTechnology {
+  id: { jobId: number; technologyId: number };
+  createdAt?: string;
+}
+
 export interface GenerateSowRequest {
   projectTitle: string;
   rawRequirement: string;
@@ -493,6 +498,12 @@ export const catalogApi = {
       method: "PUT",
       url: `/api/v1/jobs/${jobId}/skills`,
       data: assignments,
+    });
+  },
+  listJobTechnologies(jobId: number) {
+    return call<JobTechnology[]>({
+      method: "GET",
+      url: `/api/v1/jobs/${jobId}/technologies`,
     });
   },
 };
