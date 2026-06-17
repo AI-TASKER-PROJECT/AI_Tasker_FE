@@ -38,7 +38,7 @@ function nameFromEmail(email?: string) {
 }
 
 type GoogleSignupDraft = {
-  credential: string;
+  credential: string; //mã nhận từ gg
   email?: string;
   fullName: string;
   phone: string;
@@ -52,7 +52,7 @@ export function LoginPage() {
   const [message, setMessage] = useState("");
   const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">("LOGIN");
 
-  const login = async (event: FormEvent) => {
+  const login = async (event: FormEvent) => { //login bth
     event.preventDefault();
     setLoading(true);
     setMessage("");
@@ -61,8 +61,8 @@ export function LoginPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      saveSession(session);
-      navigate("/app");
+      saveSession(session); //lưu session user
+      navigate("/app"); // chuyển qua trang app
     } catch {
       setMessage(
         "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
@@ -74,7 +74,7 @@ export function LoginPage() {
 
   const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(null);
 
-  const loginWithGoogle = useCallback(
+  const loginWithGoogle = useCallback( //login bằng google
   async (credential: string) => {
     setLoading(true);
     setMessage("");
@@ -83,15 +83,15 @@ export function LoginPage() {
       const email = payload.email.trim().toLowerCase();
       const emailExists = await authApi.checkEmail(email);
 
-      if (emailExists) {
+      if (emailExists) { //check email có tồn tại không
         const session = await authApi.googleSignup({
           credential,
           fullName: payload.name || nameFromEmail(email),
           phone: "",
           role: "BUSINESS",
         });
-        saveSession(session);
-        navigate("/app");
+        saveSession(session); // có thì lưu session
+        navigate("/app"); //chuyển hướng qua giao diện app
         return;
       }
 
@@ -111,7 +111,7 @@ export function LoginPage() {
   },
   [navigate],
 );
-const submitGoogleSignup = async (event: FormEvent) => {
+const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đki
   event.preventDefault();
   if (!googleSignup) return;
 
@@ -411,7 +411,7 @@ export function RegisterPage() {
     }
   };
   // =========================================================================
-  // X? L� G?I L?I M� OTP
+  // X? L� G?I L?I M� OTP
   // =========================================================================
   const handleResendOtp = async () => {
     setLoading(true);

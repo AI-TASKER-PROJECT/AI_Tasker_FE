@@ -35,6 +35,7 @@ import {
 } from "../../components/ui";
 import type { AccountStatus } from "../../types";
 
+//Định danh business
 export function BusinessProfilePage() {
   const [form, setForm] = useState({
     taxCode: "",
@@ -49,9 +50,9 @@ export function BusinessProfilePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    profileApi
-      .getMyBusiness()
+  useEffect(() => { 
+    profileApi //api Business profile
+      .getMyBusiness() //lấy info business
       .then((profile) => {
         setForm({
           taxCode: profile.taxCode || "",
@@ -65,7 +66,7 @@ export function BusinessProfilePage() {
       .catch(() => undefined);
   }, []);
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent) => { //khi submit
     event.preventDefault();
     setLoading(true);
     setMessage("");
@@ -74,9 +75,9 @@ export function BusinessProfilePage() {
       let businessLicenseUrl = form.businessLicenseUrl;
       if (licenseFile) {
         businessLicenseUrl =
-          await profileApi.uploadBusinessLicense(licenseFile);
+          await profileApi.uploadBusinessLicense(licenseFile); //upload lên firebase trước để lấy URL
       }
-      const profile = await profileApi.upsertBusiness({
+      const profile = await profileApi.upsertBusiness({ //lưu daata
         ...form,
         businessLicenseUrl,
       });
@@ -88,12 +89,12 @@ export function BusinessProfilePage() {
       });
       setStatus(profile.kybStatus);
       setRejectionReason(profile.rejectionReason || "");
-      setMessage("Đã lưu hồ sơ doanh nghiệp và đường dẫn file Firebase.");
+      setMessage("Đã lưu hồ sơ doanh nghiệp.");
       const session = getSession();
       if (session) {
-        saveSession({
+        saveSession({ //cập nhật session
           ...session,
-          accountStatus: normalizeAccountStatus(profile.kybStatus),
+          accountStatus: normalizeAccountStatus(profile.kybStatus),//cập nhật status
         });
       }
     } catch (submitError) {
@@ -216,6 +217,7 @@ export function BusinessProfilePage() {
   );
 }
 
+//Định danh chuyên gia
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
     nationalId: "",
@@ -231,7 +233,7 @@ export function ExpertProfilePage() {
 
   useEffect(() => {
     profileApi
-      .getMyExpert()
+      .getMyExpert() //lấy info expert
       .then((profile) => {
         setForm({
           nationalId: profile.nationalId || "",
@@ -244,7 +246,7 @@ export function ExpertProfilePage() {
       .catch(() => undefined);
   }, []);
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent) => { // bấm submit
     event.preventDefault();
     setLoading(true);
     setMessage("");
@@ -252,7 +254,7 @@ export function ExpertProfilePage() {
     try {
       let portfolioUrl = form.portfolioUrl;
       if (portfolioFile) {
-        portfolioUrl = await profileApi.uploadExpertPortfolio(portfolioFile);
+        portfolioUrl = await profileApi.uploadExpertPortfolio(portfolioFile); //lấy info hsnl
       }
       const profile = await profileApi.upsertExpert({
         nationalId: form.nationalId,
@@ -267,7 +269,7 @@ export function ExpertProfilePage() {
       setStatus(profile.kycStatus);
       setRejectionReason(profile.rejectionReason || "");
 
-      const session = getSession();
+      const session = getSession(); //lưu session
       setMessage("Đã lưu thành công hồ sơ");
       if (session) {
         saveSession({
@@ -388,6 +390,7 @@ export function ExpertProfilePage() {
   );
 }
 
+//Portfolio
 export function ExpertPortfolioPage() {
   const [form, setForm] = useState({
     yearsExperience: "1",
@@ -480,7 +483,7 @@ export function ExpertPortfolioPage() {
     );
   };
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent) => { //bấm submit
     event.preventDefault();
     if (
       selectedDomainIds.length === 0 ||
@@ -508,7 +511,7 @@ export function ExpertPortfolioPage() {
         selfDescription: form.selfDescription,
       });
       setForm((value) => ({ ...value, certificates }));
-      setSaved(true);
+      setSaved(true);//lưu
     } catch (submitError) {
       setError(readApiError(submitError, "Không thể lưu portfolio."));
     } finally {

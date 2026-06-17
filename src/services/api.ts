@@ -214,19 +214,19 @@ export const authApi = {
   login(payload: { email: string; password: string }) {
     return call<SessionUser>({
       method: "POST",
-      url: "/api/auth/login",
+      url: "/api/auth/login", //login
       data: payload,
     });
   },
   me() {
     return call<Partial<SessionUser>>({
       method: "GET",
-      url: "/api/auth/me",
+      url: "/api/auth/me",//Check access token
     });
   },
   checkEmail(email: string) {
     return api
-      .get<boolean>("/api/auth/check-email", { params: { email } })
+      .get<boolean>("/api/auth/check-email", { params: { email } }) //Check email
       .then((response) => response.data);
   },
   sendOtp(payload: { email: string }) {
@@ -275,14 +275,14 @@ export const profileApi = {
   upsertBusiness(payload: Partial<BusinessProfile>) {
     return call<BusinessProfile>({
       method: "POST",
-      url: "/api/v1/profiles/business",
+      url: "/api/v1/profiles/business",//Cập nhật hô sơ DN
       data: payload,
     });
   },
   getMyBusiness() {
     return call<BusinessProfile>({
       method: "GET",
-      url: "/api/v1/profiles/business/me",
+      url: "/api/v1/profiles/business/me", //lấy thông tin business hiện tại dựa trên access token
     });
   },
   uploadBusinessLicense(file: File) {
@@ -290,21 +290,21 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/profiles/business/license-file",
+      url: "/api/v1/profiles/business/license-file", //cập nhật GPKD
       data: formData,
     });
   },
   upsertExpert(payload: Partial<ExpertProfile>) {
     return call<ExpertProfile>({
       method: "POST",
-      url: "/api/v1/profiles/expert",
+      url: "/api/v1/profiles/expert",//cập nhật hồ sơ CG
       data: payload,
     });
   },
   getMyExpert() {
     return call<ExpertProfile>({
       method: "GET",
-      url: "/api/v1/profiles/expert/me",
+      url: "/api/v1/profiles/expert/me", //lấy thông tin expert dựa trên access token
     });
   },
   uploadExpertPortfolio(file: File) {
@@ -312,21 +312,21 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/profiles/expert/portfolio-file",
+      url: "/api/v1/profiles/expert/portfolio-file", //cập nhật hồ sơ năng lực
       data: formData,
     });
   },
   upsertPortfolio(payload: Partial<Portfolio>) {
     return call<Portfolio>({
       method: "POST",
-      url: "/api/v1/profiles/portfolio",
+      url: "/api/v1/profiles/portfolio", //cập nhật thêm hồ sơ năng lực trên nền tảng
       data: payload,
     });
   },
   getMyPortfolio() {
     return call<Portfolio>({
       method: "GET",
-      url: "/api/v1/profiles/portfolio/me",
+      url: "/api/v1/profiles/portfolio/me",//lấy thông tin portfolio
     });
   },
   uploadExpertCertificate(file: File) {
@@ -334,7 +334,7 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/profiles/portfolio/certificate-file",
+      url: "/api/v1/profiles/portfolio/certificate-file",//cập nhật chứng chỉ
       data: formData,
     });
   },
@@ -343,38 +343,38 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/proposals/file",
+      url: "/api/v1/proposals/file",//cập nhật file đề xuất
       data: formData,
     });
   },
   listBusinesses() {
     return call<BusinessProfile[]>({
       method: "GET",
-      url: "/api/v1/profiles/business",
+      url: "/api/v1/profiles/business",//lấy ra danh sách DN
     });
   },
   getBusinessByJob(jobId: number) {
     return call<BusinessProfile>({
       method: "GET",
-      url: `/api/v1/profiles/business/by-job/${jobId}`,
+      url: `/api/v1/profiles/business/by-job/${jobId}`,//Lấy ra DN dựa trên jobId
     });
   },
   listExperts() {
     return call<ExpertProfile[]>({
       method: "GET",
-      url: "/api/v1/profiles/expert",
+      url: "/api/v1/profiles/expert", //lấy ra danh sách hồ sơ
     });
   },
   listPortfolios() {
     return call<Portfolio[]>({
       method: "GET",
-      url: "/api/v1/profiles/portfolio",
+      url: "/api/v1/profiles/portfolio",//lấy ra ds portfolio
     });
   },
   getFileViewUrl(path: string) {
     return call<string>({
       method: "GET",
-      url: "/api/v1/profiles/files/view-url",
+      url: "/api/v1/profiles/files/view-url",//lấy ra file 
       params: { path },
     });
   },
@@ -386,7 +386,7 @@ export const profileApi = {
   ) {
     return call<BusinessProfile | ExpertProfile>({
       method: "POST",
-      url: `/api/v1/profiles/approve/${type}/${profileId}`,
+      url: `/api/v1/profiles/approve/${type}/${profileId}`,//cập nhật trạng thái cho user
       params: { status, reason },
     });
   },
@@ -395,7 +395,7 @@ export const profileApi = {
       TaxCheckResponse | ApiResponse<TaxCheckResponse>
     >({
       method: "GET",
-      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,
+      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,//lấy mã số thuế để check
     });
     const body = response.data;
     setDataMode("live");
@@ -415,76 +415,76 @@ export const catalogApi = {
   listDomains(activeOnly = true) {
     return call<Domain[]>({
       method: "GET",
-      url: "/api/v1/domains",
+      url: "/api/v1/domains", //lấy list lĩnh vực
       params: { activeOnly },
     });
   },
   createDomain(payload: Partial<Domain>) {
     return call<Domain>({
       method: "POST",
-      url: "/api/v1/domains",
+      url: "/api/v1/domains",//cập nhật list lĩnh vực
       data: payload,
     });
   },
   updateDomain(domainId: number, payload: Partial<Domain>) {
     return call<Domain>({
       method: "PATCH",
-      url: `/api/v1/domains/${domainId}`,
+      url: `/api/v1/domains/${domainId}`, //chỉ cập nhật 1 domain
       data: payload,
     });
   },
   listSkills(activeOnly = true) {
     return call<Skill[]>({
       method: "GET",
-      url: "/api/v1/skills",
+      url: "/api/v1/skills", //lấy list skill
       params: { activeOnly },
     });
   },
   createSkill(payload: Partial<Skill>) {
     return call<Skill>({
       method: "POST",
-      url: "/api/v1/skills",
+      url: "/api/v1/skills", //cập nhật list slill
       data: payload,
     });
   },
   updateSkill(skillId: number, payload: Partial<Skill>) {
     return call<Skill>({
       method: "PATCH",
-      url: `/api/v1/skills/${skillId}`,
+      url: `/api/v1/skills/${skillId}`, //cập nhật 1 skill
       data: payload,
     });
   },
   listTechnologies(activeOnly = true) {
     return call<Technology[]>({
       method: "GET",
-      url: "/api/v1/technologies",
+      url: "/api/v1/technologies",//lấy ds CN
       params: { activeOnly },
     });
   },
   listAcceptanceCriteria(activeOnly = true) {
     return call<AcceptanceCriteria[]>({
       method: "GET",
-      url: "/api/v1/acceptance-criteria",
+      url: "/api/v1/acceptance-criteria",//lấy ds nghiệm thu
       params: { activeOnly },
     });
   },
   listJobDomains(jobId: number) {
     return call<JobDomain[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/domains`,
+      url: `/api/v1/jobs/${jobId}/domains`, //lấy ds JobDomain dựa trên jobId
     });
   },
   replaceJobDomains(jobId: number, domainIds: number[]) {
     return call<JobDomain[]>({
       method: "PUT",
-      url: `/api/v1/jobs/${jobId}/domains`,
+      url: `/api/v1/jobs/${jobId}/domains`,//cập nhật 1 JobDomains dựa trên jobId
       data: domainIds,
     });
   },
   listJobSkills(jobId: number) {
     return call<JobSkill[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/skills`,
+      url: `/api/v1/jobs/${jobId}/skills`,//lấy ra ds JobSkill dựa trên JobId
     });
   },
   replaceJobSkills(
@@ -496,65 +496,65 @@ export const catalogApi = {
   ) {
     return call<JobSkill[]>({
       method: "PUT",
-      url: `/api/v1/jobs/${jobId}/skills`,
+      url: `/api/v1/jobs/${jobId}/skills`,//cập nhật 1 JobSkill dựa trên jobId
       data: assignments,
     });
   },
   listJobTechnologies(jobId: number) {
     return call<JobTechnology[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/technologies`,
+      url: `/api/v1/jobs/${jobId}/technologies`,//lấy ra ds tech dựa trên jobId
     });
   },
 };
 
 export const marketplaceApi = {
   listJobs() {
-    return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });
+    return call<Job[]>({ method: "GET", url: "/api/v1/jobs" });//lấy ra ds jobs
   },
   listMyJobs() {
-    return call<Job[]>({ method: "GET", url: "/api/v1/jobs/my" });
+    return call<Job[]>({ method: "GET", url: "/api/v1/jobs/my" });//lấy ra ds Job của user tương ứng
   },
   getJob(jobId: number) {
-    return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` });
+    return call<Job>({ method: "GET", url: `/api/v1/jobs/${jobId}` }); //lấy info Job dựa trên id tương ứng
   },
   createJob(payload: Partial<Job>) {
-    return call<Job>({ method: "POST", url: "/api/v1/jobs", data: payload });
+    return call<Job>({ method: "POST", url: "/api/v1/jobs", data: payload });//cập nhật ds Job
   },
   updateJobStatus(jobId: number, status: string) {
     return call<Job>({
       method: "PATCH",
-      url: `/api/v1/jobs/${jobId}/status`,
+      url: `/api/v1/jobs/${jobId}/status`,//cập nhật status dựa trên JobId
       params: { status },
     });
   },
   submitProposal(payload: Partial<Proposal>) {
     return call<Proposal>({
       method: "POST",
-      url: "/api/v1/proposals",
+      url: "/api/v1/proposals",//cập nhật toàn bộ info proposal để gửi lại backend
       data: payload,
     });
   },
   listProposals(jobId: number) {
     return call<Proposal[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/proposals`,
+      url: `/api/v1/jobs/${jobId}/proposals`,//lấy ra toàn bồ ds proposal của jobId tương ứng
     });
   },
   listMyProposals() {
-    return call<Proposal[]>({ method: "GET", url: "/api/v1/proposals/my" });
+    return call<Proposal[]>({ method: "GET", url: "/api/v1/proposals/my" });//lấy ds proposal của user hiện có
   },
   reviewProposal(proposalId: number, status: "Accepted" | "Rejected") {
     return call<Proposal>({
       method: "PATCH",
-      url: `/api/v1/proposals/${proposalId}/status`,
+      url: `/api/v1/proposals/${proposalId}/status`, ///cập nhật status proposal dựa trên proposalId
       params: { status },
     });
   },
   matching(jobId: number) {
     return call<Proposal[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/matching`,
+      url: `/api/v1/jobs/${jobId}/matching`,//matching dựa trên jobId
     });
   },
 };
@@ -612,7 +612,7 @@ export const contractApi = {
   listJobMilestones(jobId: number) {
     return call<Milestone[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/milestones`,
+      url: `/api/v1/jobs/${jobId}/milestones`, //Lấy danh sách tất cả các mốc tiến độ
     });
   },
   createCriteria(payload: Partial<AcceptanceCriteria>) {
@@ -686,7 +686,7 @@ export const financeApi = {
 
 export const walletApi = {
   current() {
-    return call<SystemWallet>({ method: "GET", url: "/api/v1/wallet/me" });
+    return call<SystemWallet>({ method: "GET", url: "/api/v1/wallet/me" });//lấy ra số dư ví
   },
 };
 
@@ -694,14 +694,14 @@ export const paymentApi = {
   createWalletTopup(payload: { amount: number; description: string }) {
     return call<CreatePayOSPaymentResponse>({
       method: "POST",
-      url: "/api/payments/payos/create",
+      url: "/api/payments/payos/create",//cập nhât số dư ví
       data: payload,
     });
   },
   syncWalletTopup(orderCode: number) {
     return call<CreatePayOSPaymentResponse>({
       method: "POST",
-      url: `/api/payments/payos/${orderCode}/sync`,
+      url: `/api/payments/payos/${orderCode}/sync`,//đồng bộ 
     });
   },
 };

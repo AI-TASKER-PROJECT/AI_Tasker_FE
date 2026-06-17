@@ -84,25 +84,25 @@ export function ProposalsPage() {
     async function loadProposals() {
       setLoading(true);
       try {
-        const items = await marketplaceApi.listMyProposals();
+        const items = await marketplaceApi.listMyProposals(); //api lấy về toàn bộ danh sách của expert tương ứng
         if (ignore) return;
         setProposals(items);
         const uniqueJobIds = Array.from(
           new Set(items.map((item) => item.jobId)),
         );
         const jobResults = await Promise.allSettled(
-          uniqueJobIds.map((id) => marketplaceApi.getJob(id)),
+          uniqueJobIds.map((id) => marketplaceApi.getJob(id)), //api Lấy thông tin chi tiết của từng công việc
         );
         const [domainItems, jobDomainResults, milestoneResults] =
           await Promise.all([
-          catalogApi.listDomains(true).catch(() => []),
-          Promise.allSettled(
-            uniqueJobIds.map((id) => catalogApi.listJobDomains(id)),
-          ),
-          Promise.allSettled(
-            uniqueJobIds.map((id) => contractApi.listJobMilestones(id)),
-          ),
-        ]);
+            catalogApi.listDomains(true).catch(() => []), // api lấy toàn bộ danh sách Lĩnh vực
+            Promise.allSettled(
+              uniqueJobIds.map((id) => catalogApi.listJobDomains(id)), //api Lấy danh sách các Lĩnh vực dựa trên JobId
+            ),
+            Promise.allSettled(
+              uniqueJobIds.map((id) => contractApi.listJobMilestones(id)), //api Lấy danh sách tất cả các mốc tiến độ dựa trên id
+            ),
+          ]);
         if (ignore) return;
         const map: Record<number, Job> = {};
         jobResults.forEach((result) => {
