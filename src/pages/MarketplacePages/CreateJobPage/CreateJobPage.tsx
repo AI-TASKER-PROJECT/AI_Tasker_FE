@@ -582,6 +582,7 @@ export function CreateJobPage() {
               <Textarea
                 value={form.structuredSow}
                 disabled={sowGeneratedLocked}
+                autoResize
                 onChange={(event) =>
                   setForm((value) => ({
                     ...value,

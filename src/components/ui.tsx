@@ -10,6 +10,9 @@ import {
 import { motion } from 'framer-motion';
 import {
   forwardRef,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
@@ -327,17 +330,48 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 );
 Input.displayName = 'Input';
 
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  ({ className, ...props }, ref) => (
-    <textarea
-      ref={ref}
-      className={cn(
-        'min-h-28 w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
-        className,
-      )}
-      {...props}
-    />
-  ),
+type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  autoResize?: boolean;
+};
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ autoResize = false, className, defaultValue, onInput, value, ...props }, ref) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const resizeToContent = () => {
+      const textarea = textareaRef.current;
+      if (!textarea || !autoResize) {
+        return;
+      }
+
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    };
+
+    useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
+
+    useLayoutEffect(() => {
+      resizeToContent();
+    }, [autoResize, defaultValue, value]);
+
+    return (
+      <textarea
+        ref={textareaRef}
+        className={cn(
+          'min-h-28 w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
+          autoResize && 'resize-none overflow-hidden',
+          className,
+        )}
+        defaultValue={defaultValue}
+        value={value}
+        onInput={(event) => {
+          resizeToContent();
+          onInput?.(event);
+        }}
+        {...props}
+      />
+    );
+  },
 );
 Textarea.displayName = 'Textarea';
 

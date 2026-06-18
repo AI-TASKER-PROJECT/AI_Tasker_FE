@@ -1390,7 +1390,6 @@ function BusinessInfoItem({
 
 function FilterAccordion({
   title,
-  count,
   open,
   onToggle,
   children,
