@@ -1,4 +1,4 @@
-import { formatCompactCurrency } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import type { Milestone } from "../../types";
 import { skillCountLabel } from "./marketplacePages.utils";
 
@@ -33,7 +33,7 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
               </p>
             </div>
             <p className="font-extrabold text-ink md:text-right">
-              {formatCompactCurrency(milestone.fundsAllocated)}
+              {formatCurrency(milestone.fundsAllocated)}
             </p>
           </div>
         ))}

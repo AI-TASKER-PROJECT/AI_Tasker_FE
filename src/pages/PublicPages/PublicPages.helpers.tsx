@@ -1353,7 +1353,7 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
               </p>
             </div>
             <p className="text-sm font-extrabold text-ink md:text-right">
-              {formatCompactCurrency(milestone.fundsAllocated)}
+              {formatCurrency(milestone.fundsAllocated)}
             </p>
           </div>
         ))}
