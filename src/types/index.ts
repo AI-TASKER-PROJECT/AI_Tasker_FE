@@ -133,6 +133,36 @@ export interface ContractChangeRequest {
   createdAt?: string;
 }
 
+export interface ContractDeposit {
+  depositId: number;
+  contractId: number;
+  businessId: number;
+  depositAmount: number;
+  heldAmount: number;
+  refundedAmount: number;
+  resolvedAmount: number;
+  status: string;
+  holdTransactionId?: number;
+  refundTransactionId?: number;
+  adminId?: number;
+  adminNote?: string;
+  paidAt?: string;
+  refundedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentActionResponse<T> {
+  completed: boolean;
+  needTopup: boolean;
+  currentBalance?: number;
+  requiredAmount?: number;
+  missingAmount?: number;
+  redirectUrl?: string;
+  message?: string;
+  data?: T;
+}
+
 export interface Milestone {
   milestoneId: number;
   jobId: number;

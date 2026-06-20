@@ -21,13 +21,19 @@ import {
   contractApi,
   disputeApi,
   financeApi,
+  profileApi,
   walletApi,
 } from "../../lib/api";
 import { useSession } from "../../lib/session";
-import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
+import {
+  formatCompactCurrency,
+  formatCurrency,
+  formatDateTime,
+} from "../../lib/utils";
 import type {
   AcceptanceCriteria,
   Contract,
+  Dispute,
   Deliverable,
   Milestone,
   Review,
@@ -177,6 +183,18 @@ export function ContractDetailPage() {
   const { contractId } = useParams();
   const session = useSession();
   const [contract, setContract] = useState<Contract | null>(null);
+  const [jobMilestones, setJobMilestones] = useState<Milestone[]>([]);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [participantNames, setParticipantNames] = useState({
+    businessName: "",
+    expertName: "",
+  });
+  const [contractNotice, setContractNotice] = useState<{
+    tone: "success" | "danger" | "info";
+    title: string;
+    message?: string;
+  } | null>(null);
+  const [depositLoading, setDepositLoading] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [changeForm, setChangeForm] = useState({
@@ -194,6 +212,69 @@ export function ContractDetailPage() {
       .catch(() => setContract(null));
   }, [contractId]);
 
+  useEffect(() => {
+    if (!contract) return;
+    let ignore = false;
+    const jobId = contract.jobId;
+    const activeContractId = contract.contractId;
+
+    async function loadOperationalData() {
+      try {
+        const [milestoneItems, disputeItems] = await Promise.all([
+          contractApi.listJobMilestones(jobId).catch(() => []),
+          disputeApi.listByContract(activeContractId).catch(() => []),
+        ]);
+        if (ignore) return;
+        setJobMilestones(milestoneItems);
+        setDisputes(disputeItems);
+      } catch {
+        if (!ignore) {
+          setJobMilestones([]);
+          setDisputes([]);
+        }
+      }
+    }
+
+    void loadOperationalData();
+    return () => {
+      ignore = true;
+    };
+  }, [contract?.contractId, contract?.jobId]);
+
+  useEffect(() => {
+    if (!contract) return;
+    let ignore = false;
+    const businessId = contract.businessId;
+    const expertId = contract.expertId;
+
+    async function loadParticipantNames() {
+      try {
+        const [businesses, experts] = await Promise.all([
+          profileApi.listBusinesses(),
+          profileApi.listExperts(),
+        ]);
+        if (ignore) return;
+        setParticipantNames({
+          businessName:
+            businesses.find((item) => item.businessId === businessId)
+              ?.companyName || "",
+          expertName:
+            experts.find((item) => item.expertId === expertId)
+              ?.fullName || "",
+        });
+      } catch {
+        if (!ignore) {
+          setParticipantNames({ businessName: "", expertName: "" });
+        }
+      }
+    }
+
+    void loadParticipantNames();
+    return () => {
+      ignore = true;
+    };
+  }, [contract?.businessId, contract?.expertId]);
+
   if (!contract)
     return (
       <EmptyState
@@ -206,6 +287,46 @@ export function ContractDetailPage() {
     setContract(await contractApi.sign(contract.contractId));
   const signNda = async () =>
     setContract(await contractApi.signNda(contract.contractId));
+  const refreshContract = async () => {
+    const updated = await contractApi.getContract(contract.contractId);
+    setContract(updated);
+    setJobMilestones(await contractApi.listJobMilestones(updated.jobId).catch(() => []));
+    return updated;
+  };
+  const payDeposit = async () => {
+    setDepositLoading(true);
+    setContractNotice(null);
+    try {
+      const result = await contractApi.payDeposit(contract.contractId);
+      if (result.redirectUrl) {
+        window.location.assign(result.redirectUrl);
+        return;
+      }
+      if (result.needTopup) {
+        setContractNotice({
+          tone: "danger",
+          title: "Ví chưa đủ để ký quỹ contract.",
+          message: result.missingAmount
+            ? `Cần nạp thêm ${formatCurrency(result.missingAmount)}.`
+            : result.message,
+        });
+        return;
+      }
+      await refreshContract();
+      setContractNotice({
+        tone: "success",
+        title: "Đã ký quỹ và kích hoạt contract.",
+        message: "Backend đã chuyển contract sang Active và gắn budget vào milestone thật.",
+      });
+    } catch (err) {
+      setContractNotice({
+        tone: "danger",
+        title: err instanceof Error ? err.message : "Không thể ký quỹ contract.",
+      });
+    } finally {
+      setDepositLoading(false);
+    }
+  };
   const terminate = async () => {
     setContract(await contractApi.terminate(contract.contractId, reason));
     setTerminateOpen(false);
@@ -247,6 +368,31 @@ export function ContractDetailPage() {
       : session?.role === "EXPERT"
         ? expertNdaSigned
         : false;
+  const activeDisputes = disputes.filter(
+    (item) => !["Resolved", "Closed"].includes(item.status),
+  );
+  const underReviewCount = jobMilestones.filter(
+    (item) => item.status === "Under Review",
+  ).length;
+  const completedMilestoneCount = jobMilestones.filter(
+    (item) => ["Completed", "Released"].includes(item.status),
+  ).length;
+  const nextAction = getContractNextAction({
+    contract,
+    role: session?.role,
+    businessAccepted,
+    expertAccepted,
+    businessNdaSigned,
+    expertNdaSigned,
+    underReviewCount,
+    activeDisputeCount: activeDisputes.length,
+  });
+  const canPayDeposit =
+    session?.role === "BUSINESS" && contract.status === "PendingDeposit";
+  const canRequestChange = ["Draft", "Negotiating"].includes(contract.status);
+  const canTerminate =
+    (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
+    !["Completed", "Terminated", "Cancelled"].includes(contract.status);
 
   return (
     <div className="space-y-6">
@@ -268,8 +414,27 @@ export function ContractDetailPage() {
           </>
         }
       />
+      {contractNotice && (
+        <Notice tone={contractNotice.tone} title={contractNotice.title}>
+          {contractNotice.message}
+        </Notice>
+      )}
+      <Card className="p-4">
+        <SectionHeading
+          title="Vòng đời contract"
+          description="Các bước này khớp với status backend đang lưu."
+        />
+        <ContractLifecycle status={contract.status} />
+      </Card>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <Card className="p-6">
+          <Notice
+            tone={nextAction.tone}
+            title={nextAction.title}
+            className="mb-5"
+          >
+            {nextAction.description}
+          </Notice>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={contract.status} />
             <Badge tone={ndaSigned ? "mint" : "amber"}>
@@ -291,18 +456,38 @@ export function ContractDetailPage() {
               value={`${contract.contractMilestones?.length || 0} mốc`}
             />
           </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <ContractMetric
+              label="Milestone thực thi"
+              value={`${jobMilestones.length} mốc`}
+            />
+            <ContractMetric
+              label="Chờ nghiệm thu"
+              value={`${underReviewCount} mốc`}
+            />
+            <ContractMetric
+              label="Tranh chấp mở"
+              value={`${activeDisputes.length} vụ`}
+            />
+          </div>
           <div className="mt-6 rounded-3xl bg-slate-50 p-5">
             <SectionHeading title="Hai bên tham gia" />
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Participant
                 label="Doanh nghiệp"
                 value={
-                  contract.businessName || `Business #${contract.businessId}`
+                  contract.businessName ||
+                  participantNames.businessName ||
+                  `Business #${contract.businessId}`
                 }
               />
               <Participant
                 label="Chuyên gia"
-                value={contract.expertName || `Expert #${contract.expertId}`}
+                value={
+                  contract.expertName ||
+                  participantNames.expertName ||
+                  `Expert #${contract.expertId}`
+                }
               />
             </div>
           </div>
@@ -388,72 +573,87 @@ export function ContractDetailPage() {
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button
-              onClick={signContract}
-              disabled={
-                !canCurrentPartyAct ||
-                currentPartyAccepted ||
-                contract.status === "Active" ||
-                contract.status === "Terminated"
-              }
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Chấp nhận contract
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={signNda}
-              disabled={
-                !canCurrentPartyAct ||
-                !currentPartyAccepted ||
-                currentPartyNdaSigned ||
-                contract.status === "Active" ||
-                contract.status === "Terminated"
-              }
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Ký NDA
-            </Button>
-            <Button variant="secondary" onClick={() => setChangeOpen(true)}>
-              <MessageSquareText className="h-4 w-4" />
-              Request change
-            </Button>
-            <Button variant="danger" onClick={() => setTerminateOpen(true)}>
-              <XCircle className="h-4 w-4" />
-              Terminate
-            </Button>
+            {canCurrentPartyAct && ["Draft", "Negotiating"].includes(contract.status) && (
+              <Button onClick={signContract} disabled={currentPartyAccepted}>
+                <CheckCircle2 className="h-4 w-4" />
+                Chấp nhận contract
+              </Button>
+            )}
+            {canCurrentPartyAct && ["Draft", "Negotiating"].includes(contract.status) && (
+              <Button
+                variant="secondary"
+                onClick={signNda}
+                disabled={!currentPartyAccepted || currentPartyNdaSigned}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Ký NDA
+              </Button>
+            )}
+            {canPayDeposit && (
+              <Button onClick={payDeposit} loading={depositLoading}>
+                <WalletCards className="h-4 w-4" />
+                Thanh toán ký quỹ
+              </Button>
+            )}
+            {canRequestChange && (
+              <Button variant="secondary" onClick={() => setChangeOpen(true)}>
+                <MessageSquareText className="h-4 w-4" />
+                Request change
+              </Button>
+            )}
+            {canTerminate && (
+              <Button variant="danger" onClick={() => setTerminateOpen(true)}>
+                <XCircle className="h-4 w-4" />
+                Terminate
+              </Button>
+            )}
           </div>
         </Card>
         <Card className="p-6">
           <SectionHeading
-            title="Timeline đàm phán"
-            description="API hiện có create change request, chưa có list endpoint."
+            title="Vận hành thực tế"
+            description="Dữ liệu lấy từ milestone, deliverable, transaction và dispute endpoints hiện có."
           />
           <div className="mt-5 grid gap-3">
-            {([] as import("../../types").ContractChangeRequest[])
-              .filter((item) => item.contractId === contract.contractId)
-              .map((item) => (
-                <div
-                  key={item.requestId}
-                  className="rounded-2xl border border-slate-100 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <Badge tone="brand">{item.changeType}</Badge>
-                    <StatusBadge status={item.status} />
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    {item.changeSummary}
-                  </p>
-                </div>
-              ))}
-            <EmptyState
-              title="Chưa có request change"
-              description="Hai bên có thể tạo yêu cầu sửa scope, ngân sách hoặc timeline."
+            <OperationStat
+              label="Milestone completed/released"
+              value={`${completedMilestoneCount}/${jobMilestones.length}`}
             />
+            <OperationStat
+              label="Milestone chờ business nghiệm thu"
+              value={`${underReviewCount}`}
+            />
+            <OperationStat
+              label="Dispute chưa xử lý xong"
+              value={`${activeDisputes.length}`}
+            />
+            {jobMilestones.slice(0, 4).map((milestone) => (
+              <div
+                key={milestone.milestoneId}
+                className="rounded-2xl border border-slate-100 p-3.5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="min-w-0 truncate font-extrabold text-ink">
+                    {milestone.orderIndex}. {milestone.milestoneName}
+                  </p>
+                  <StatusBadge status={milestone.status} />
+                </div>
+                <p className="mt-2 text-sm font-semibold text-slate-500">
+                  {formatCurrency(milestone.fundsAllocated)}
+                </p>
+              </div>
+            ))}
+            {jobMilestones.length > 4 && (
+              <LinkButton
+                to={`/app/contracts/${contract.contractId}/workspace`}
+                variant="secondary"
+              >
+                Xem tất cả milestone trong workspace
+              </LinkButton>
+            )}
           </div>
-          <Notice tone="info" title="NDA PDF" className="mt-4">
-            UI có trạng thái ký NDA. Chức năng sinh PDF/Firebase Storage đang là
-            phần chờ tích hợp.
+          <Notice tone="info" title="Request change" className="mt-4">
+            Backend hiện có API tạo request change, chưa có API list lịch sử request change nên UI không hiển thị timeline giả.
           </Notice>
         </Card>
       </div>
@@ -555,11 +755,186 @@ export function ContractDetailPage() {
   );
 }
 
+function ContractLifecycle({ status }: { status: string }) {
+  const steps = ["Draft", "Negotiating", "PendingDeposit", "Active", "Completed"];
+  const currentIndex = steps.indexOf(status);
+  const terminal = ["Terminated", "Cancelled"].includes(status);
+
+  return (
+    <div className="mt-3 grid gap-2 md:grid-cols-5">
+      {steps.map((step, index) => {
+        const reached = !terminal && currentIndex >= index;
+        const current = status === step;
+        return (
+          <div
+            key={step}
+            className={
+              current
+                ? "rounded-2xl border border-brand-100 bg-brand-50 p-3"
+                : reached
+                  ? "rounded-2xl border border-mint-100 bg-mint-50 p-3"
+                  : "rounded-2xl border border-slate-100 bg-white p-3"
+            }
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={
+                  reached || current
+                    ? "grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-white text-mint-600"
+                    : "grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-slate-50 text-slate-400"
+                }
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <p className="min-w-0 truncate text-xs font-extrabold text-ink">
+                {step}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+      {terminal && (
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 md:col-span-5">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-rose-600" />
+            <p className="text-sm font-extrabold text-rose-700">
+              Contract đã dừng ở trạng thái {status}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getContractNextAction({
+  contract,
+  role,
+  businessAccepted,
+  expertAccepted,
+  businessNdaSigned,
+  expertNdaSigned,
+  underReviewCount,
+  activeDisputeCount,
+}: {
+  contract: Contract;
+  role?: string;
+  businessAccepted: boolean;
+  expertAccepted: boolean;
+  businessNdaSigned: boolean;
+  expertNdaSigned: boolean;
+  underReviewCount: number;
+  activeDisputeCount: number;
+}): { tone: "info" | "success" | "warning" | "danger"; title: string; description: string } {
+  if (activeDisputeCount > 0) {
+    return {
+      tone: "warning",
+      title: "Contract đang có tranh chấp cần theo dõi.",
+      description: `${activeDisputeCount} dispute chưa xử lý xong. Hai bên nên ưu tiên xử lý trước khi tiếp tục nghiệm thu/thanh toán.`,
+    };
+  }
+  if (contract.status === "Completed") {
+    return {
+      tone: "success",
+      title: "Contract đã hoàn tất.",
+      description: "Tất cả milestone đã hoàn thành theo logic backend.",
+    };
+  }
+  if (["Terminated", "Cancelled"].includes(contract.status)) {
+    return {
+      tone: "danger",
+      title: "Contract không còn tiếp tục thực hiện.",
+      description: `Trạng thái hiện tại là ${contract.status}.`,
+    };
+  }
+  if (contract.status === "PendingDeposit") {
+    return {
+      tone: role === "BUSINESS" ? "warning" : "info",
+      title:
+        role === "BUSINESS"
+          ? "Bạn cần thanh toán ký quỹ để kích hoạt contract."
+          : "Đang chờ doanh nghiệp thanh toán ký quỹ.",
+      description: "BE chỉ cho ký quỹ khi contract ở trạng thái PendingDeposit.",
+    };
+  }
+  if (!businessAccepted) {
+    return {
+      tone: role === "BUSINESS" ? "warning" : "info",
+      title:
+        role === "BUSINESS"
+          ? "Bạn cần chấp nhận contract."
+          : "Đang chờ doanh nghiệp chấp nhận contract.",
+      description: "Một trong 4 điều kiện kích hoạt contract vẫn chưa hoàn tất.",
+    };
+  }
+  if (!expertAccepted) {
+    return {
+      tone: role === "EXPERT" ? "warning" : "info",
+      title:
+        role === "EXPERT"
+          ? "Bạn cần chấp nhận contract."
+          : "Đang chờ chuyên gia chấp nhận contract.",
+      description: "Một trong 4 điều kiện kích hoạt contract vẫn chưa hoàn tất.",
+    };
+  }
+  if (!businessNdaSigned) {
+    return {
+      tone: role === "BUSINESS" ? "warning" : "info",
+      title:
+        role === "BUSINESS"
+          ? "Bạn cần ký NDA."
+          : "Đang chờ doanh nghiệp ký NDA.",
+      description: "BE lưu thời điểm ký NDA riêng cho từng bên.",
+    };
+  }
+  if (!expertNdaSigned) {
+    return {
+      tone: role === "EXPERT" ? "warning" : "info",
+      title:
+        role === "EXPERT"
+          ? "Bạn cần ký NDA."
+          : "Đang chờ chuyên gia ký NDA.",
+      description: "BE lưu thời điểm ký NDA riêng cho từng bên.",
+    };
+  }
+  if (contract.status === "Active") {
+    return {
+      tone: underReviewCount > 0 && role === "BUSINESS" ? "warning" : "success",
+      title:
+        underReviewCount > 0 && role === "BUSINESS"
+          ? "Có milestone đang chờ nghiệm thu."
+          : "Contract đang Active.",
+      description:
+        underReviewCount > 0
+          ? `${underReviewCount} milestone đã có deliverable và đang Under Review.`
+          : "Expert có thể submit deliverable trong workspace, business nghiệm thu milestone khi có submission.",
+    };
+  }
+  return {
+    tone: "info",
+    title: "Contract đang trong giai đoạn chuẩn bị.",
+    description: "Theo dõi các điều kiện kích hoạt và action theo role ở bên dưới.",
+  };
+}
+
 function ContractMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-3xl border border-slate-100 p-4">
       <p className="text-xs font-bold text-slate-400">{label}</p>
       <p className="mt-2 font-display text-lg font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function OperationStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3.5">
+      <p className="min-w-0 text-sm font-bold leading-5 text-slate-500">
+        {label}
+      </p>
+      <p className="shrink-0 font-display text-lg font-black text-ink">
+        {value}
+      </p>
     </div>
   );
 }
@@ -591,7 +966,11 @@ function ContractFlowStep({
       <div className="min-w-0">
         <p className="font-extrabold text-ink">{label}</p>
         <p className="mt-1 text-xs font-semibold text-slate-500">
-          {done ? value || "Đã hoàn tất" : "Đang chờ"}
+          {done && value
+            ? formatDateTime(value)
+            : done
+              ? "Đã hoàn tất"
+              : "Đang chờ"}
         </p>
       </div>
     </div>

@@ -398,30 +398,49 @@ export function ManageJobPage() {
               }
             />
           </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold text-slate-400">
-                Ngân sách proposal
-              </p>
-              <p className="mt-1 font-display text-xl font-black text-ink">
-                {formatCurrency(contractModal?.bidAmount || 0)}
-              </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Backend sẽ tạo milestone budget từ job/proposal.
-              </p>
+          <Field label="Timeline days">
+            <Input
+              type="number"
+              value={contractForm.timelineDays}
+              onChange={(event) =>
+                setContractForm((value) => ({
+                  ...value,
+                  timelineDays: event.target.value,
+                }))
+              }
+            />
+          </Field>
+          <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+            <SectionHeading
+              title="Milestone từ đề bài"
+              description="Dữ liệu này được lấy từ milestone thật của job, backend sẽ dùng để tạo milestone budget cho contract."
+            />
+            <div className="mt-4 grid gap-2">
+              {milestones
+                .slice()
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((milestone) => (
+                  <div
+                    key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+                    className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm md:grid-cols-[72px_1fr_auto] md:items-center"
+                  >
+                    <Badge tone="brand">Mốc {milestone.orderIndex}</Badge>
+                    <div className="min-w-0">
+                      <p className="break-words font-extrabold text-ink">
+                        {milestone.milestoneName}
+                      </p>
+                      {milestone.description && (
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {milestone.description}
+                        </p>
+                      )}
+                    </div>
+                    <p className="font-extrabold text-ink md:text-right">
+                      {formatCurrency(milestone.fundsAllocated)}
+                    </p>
+                  </div>
+                ))}
             </div>
-            <Field label="Timeline days">
-              <Input
-                type="number"
-                value={contractForm.timelineDays}
-                onChange={(event) =>
-                  setContractForm((value) => ({
-                    ...value,
-                    timelineDays: event.target.value,
-                  }))
-                }
-              />
-            </Field>
           </div>
         </div>
       </Modal>
