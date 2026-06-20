@@ -338,14 +338,15 @@ export function DisputeDetailPage({
   );
 }
 
+//Trang xác thực định danh
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
 
   useEffect(() => {
-    profileApi.listBusinesses().then(setBusinesses);
-    profileApi.listExperts().then(setExperts);
+    profileApi.listBusinesses().then(setBusinesses);//api lấy ds DN
+    profileApi.listExperts().then(setExperts);// api lấy ds CG
   }, []);
 
   const list = tab === "business" ? businesses : experts;
@@ -420,6 +421,7 @@ export function VerificationsPage() {
   );
 }
 
+//Detail
 export function VerificationDetailPage() {
   const { type, id } = useParams();
   const isBusiness = type === "business";
@@ -499,7 +501,7 @@ export function VerificationDetailPage() {
     setTaxCheckError("");
     try {
       const business = profile as BusinessProfile;
-      const lookup = await profileApi.checkTaxCode(business.taxCode);
+      const lookup = await profileApi.checkTaxCode(business.taxCode);//api check mã số thuế
       setTaxCheckResult({
         provided: {
           companyName: business.companyName,

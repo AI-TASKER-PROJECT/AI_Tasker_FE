@@ -1,63 +1,46 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
   FileCheck2,
-  Plus,
-  RefreshCw,
+  HelpCircle,
   Save,
+  Search,
   Sparkles,
+  Target,
+  Unlock,
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
 import {
   catalogApi,
-  contractApi,
   getApiErrorMessage,
   marketplaceApi,
-  profileApi,
   sowApi,
   type GeneratedSow,
   type GeneratedSowMilestone,
   type Domain,
-  type JobSkill,
   type Skill,
   type Technology,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
-import { useSession } from "../../../context/sessionContext";
-import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
-import type {
-  AcceptanceCriteria,
-  ExpertProfile,
-  Job,
-  Milestone,
-  Portfolio,
-  Proposal,
-} from "../../../types";
+import { cn, formatCurrency } from "../../../lib/utils";
+import type { AcceptanceCriteria, Job } from "../../../types";
 import {
-  Avatar,
   Badge,
   Button,
   Card,
-  EmptyState,
   Field,
   Input,
   LinkButton,
-  Modal,
   Notice,
   PageHeader,
-  SearchInput,
   SectionHeading,
   StatusBadge,
   Textarea,
 } from "../../../components/ui";
-import { JobCard, JobDomainBadge } from "../../PublicPages";
+import { JobDomainBadge } from "../../PublicPages";
 import {
   formatGeneratedSow,
   jobDomainLabel,
-  parseCatalogIdList,
   resolveDomainName,
   resolveSkillName,
   skillCountLabel,
@@ -65,31 +48,203 @@ import {
   type SkillAssignment,
 } from "../marketplacePages.utils";
 import { CompactMilestones } from "../marketplacePages.helpers";
+
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+type WizardStep = 1 | 2 | 3 | 4;
+
+function StepIndicator({ current }: { current: WizardStep }) {
+  const steps: { id: WizardStep; label: string; icon: ReactNode }[] = [
+    {
+      id: 1,
+      label: "Thông tin dự án",
+      icon: <FileCheck2 className="h-4 w-4" />,
+    },
+    { id: 2, label: "AI sinh SoW", icon: <Sparkles className="h-4 w-4" /> },
+    {
+      id: 3,
+      label: "Kiểm tra & điều chỉnh",
+      icon: <Eye className="h-4 w-4" />,
+    },
+    { id: 4, label: "Lưu job", icon: <Save className="h-4 w-4" /> },
+  ];
+
+  return (
+    <div className="mb-6 flex items-center gap-0">
+      {steps.map((step, index) => {
+        const isDone = current > step.id;
+        const isActive = current === step.id;
+        return (
+          <div key={step.id} className="flex flex-1 items-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={cn(
+                  "grid h-9 w-9 place-items-center rounded-full text-xs font-bold transition-all duration-300",
+                  isDone
+                    ? "bg-brand-600 text-white shadow-[0_4px_12px_rgba(23,103,242,.3)]"
+                    : isActive
+                      ? "bg-brand-100 text-brand-700 ring-2 ring-brand-300"
+                      : "bg-slate-100 text-slate-400",
+                )}
+              >
+                {isDone ? <CheckCircle2 className="h-4 w-4" /> : step.icon}
+              </div>
+              <span
+                className={cn(
+                  "hidden text-[10px] font-bold md:block",
+                  isActive
+                    ? "text-brand-700"
+                    : isDone
+                      ? "text-brand-500"
+                      : "text-slate-400",
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={cn(
+                  "mb-5 h-0.5 flex-1 transition-all duration-500",
+                  isDone ? "bg-brand-400" : "bg-slate-200",
+                )}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── SoW Section Card ─────────────────────────────────────────────────────────
+function SowSectionCard({
+  label,
+  icon,
+  items,
+  tone = "brand",
+}: {
+  label: string;
+  icon: ReactNode;
+  items?: string[];
+  tone?: "brand" | "mint" | "amber" | "violet" | "coral";
+}) {
+  if (!items || items.length === 0) return null;
+  const tones = {
+    brand: "bg-brand-50 border-brand-100 text-brand-700",
+    mint: "bg-mint-50 border-mint-100 text-mint-700",
+    amber: "bg-amber-50 border-amber-100 text-amber-700",
+    violet: "bg-violet-50 border-violet-100 text-violet-700",
+    coral: "bg-coral-50 border-coral-100 text-coral-700",
+  };
+  const dotColors = {
+    brand: "bg-brand-400",
+    mint: "bg-mint-500",
+    amber: "bg-amber-400",
+    violet: "bg-violet-400",
+    coral: "bg-coral-400",
+  };
+  return (
+    <div className={cn("rounded-2xl border p-4", tones[tone])}>
+      <div className="mb-3 flex items-center gap-2">
+        <span className="opacity-80">{icon}</span>
+        <p className="text-xs font-extrabold uppercase tracking-wide opacity-80">
+          {label}
+        </p>
+      </div>
+      <ul className="grid gap-1.5">
+        {items.map((item, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-2 text-sm font-medium leading-6 opacity-90"
+          >
+            <span
+              className={cn(
+                "mt-2 h-1.5 w-1.5 shrink-0 rounded-full",
+                dotColors[tone],
+              )}
+            />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── SoW Preview Panel ────────────────────────────────────────────────────────
+function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
+  return (
+    <div className="grid gap-3">
+      {sow.overview && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-500">
+            Tổng quan
+          </p>
+          <p className="text-sm leading-7 text-slate-700">{sow.overview}</p>
+        </div>
+      )}
+      <div className="grid gap-3 md:grid-cols-2">
+        <SowSectionCard
+          label="Mục tiêu"
+          icon={<Target className="h-4 w-4" />}
+          items={sow.objectives}
+          tone="brand"
+        />
+        <SowSectionCard
+          label="Phạm vi công việc"
+          icon={<FileCheck2 className="h-4 w-4" />}
+          items={sow.scopeOfWork}
+          tone="mint"
+        />
+        <SowSectionCard
+          label="Sản phẩm bàn giao"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          items={sow.deliverables}
+          tone="violet"
+        />
+        <SowSectionCard
+          label="Giả định"
+          icon={<HelpCircle className="h-4 w-4" />}
+          items={sow.assumptions}
+          tone="amber"
+        />
+      </div>
+      {sow.outOfScope && sow.outOfScope.length > 0 && (
+        <SowSectionCard
+          label="Ngoài phạm vi"
+          icon={<XCircle className="h-4 w-4" />}
+          items={sow.outOfScope}
+          tone="coral"
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export function CreateJobPage() {
   const [form, setForm] = useState({
-    title: "Xây dựng trợ lý AI chăm sóc khách hàng đa kênh",
-    rawRequirements:
-      "Cần chatbot trả lời sản phẩm, tra cứu đơn hàng và chuyển tiếp nhân viên khi cần.",
-    structuredSow:
-      "Thiết kế trợ lý hội thoại RAG hỗ trợ tiếng Việt, tích hợp dữ liệu sản phẩm và lịch sử đơn hàng, có cơ chế hand-off cho nhân viên.",
-    budgetAmount: "180000000",
-    plannedDurationValue: "10",
+    title: "",
+    rawRequirements: "",
+    structuredSow: "",
+    budgetAmount: "",
+    plannedDurationValue: "",
   });
   const [milestones, setMilestones] = useState<MilestoneDraft[]>([
     {
-      milestoneName: "Discovery va solution design",
-      description: "Discovery va solution design",
-      fundsAllocated: "30000000",
+      milestoneName: "",
+      description: "",
+      fundsAllocated: "",
       orderIndex: "1",
-      durationValue: "2",
+      durationValue: "",
       criteriaIds: [],
     },
     {
-      milestoneName: "MVP delivery",
-      description: "MVP delivery",
-      fundsAllocated: "90000000",
+      milestoneName: "",
+      description: "",
+      fundsAllocated: "",
       orderIndex: "2",
-      durationValue: "8",
+      durationValue: "",
       criteriaIds: [],
     },
   ]);
@@ -99,6 +254,9 @@ export function CreateJobPage() {
   const [generatedSow, setGeneratedSow] = useState<GeneratedSow | null>(null);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
   const [createMessage, setCreateMessage] = useState("");
+  const [createMessageTone, setCreateMessageTone] = useState<
+    "info" | "success" | "warning" | "danger"
+  >("info");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
@@ -113,6 +271,17 @@ export function CreateJobPage() {
     [],
   );
 
+  // ── AI NeedMoreInfo flow ──────────────────────────────────────────────────
+  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
+  const [aiAdditionalInfo, setAiAdditionalInfo] = useState("");
+  const [showAiReplyBox, setShowAiReplyBox] = useState(false);
+
+  // ── Criteria search filter ────────────────────────────────────────────────
+  const [criteriaSearch, setCriteriaSearch] = useState("");
+
+  // ── Step state (derives from form progress) ───────────────────────────────
+  const wizardStep: WizardStep = savedJob ? 4 : generatedSow ? 3 : 1;
+
   useEffect(() => {
     Promise.all([
       catalogApi.listDomains(true),
@@ -124,21 +293,21 @@ export function CreateJobPage() {
       setSkills(skillItems);
       setTechnologies(technologyItems);
       setAcceptanceCriteria(criteriaItems);
-      setSelectedDomainId(domainItems[0]?.domainId ?? null);
-      setSelectedTechnologyIds(
-        technologyItems.slice(0, 3).map((item) => item.technologyId),
-      );
-      setSkillAssignments(
-        skillItems.slice(0, 3).map((item) => ({
-          skillId: item.skillId,
-          isMandatory: true,
-        })),
-      );
     });
   }, []);
 
   const selectedDomainIdList =
     selectedDomainId !== null ? [selectedDomainId] : [];
+
+  const filteredCriteria = useMemo(
+    () =>
+      criteriaSearch.trim()
+        ? acceptanceCriteria.filter((c) =>
+            c.description.toLowerCase().includes(criteriaSearch.toLowerCase()),
+          )
+        : acceptanceCriteria,
+    [acceptanceCriteria, criteriaSearch],
+  );
 
   const mapGeneratedMilestone = (
     milestone: GeneratedSowMilestone,
@@ -158,23 +327,41 @@ export function CreateJobPage() {
     criteriaIds: milestones[index]?.criteriaIds || [],
   });
 
+  // ── Build AI payload — includes technology names ──────────────────────────
+  const buildAiPayload = () => {
+    const technologyNames = technologies
+      .filter((t) => selectedTechnologyIds.includes(t.technologyId))
+      .map((t) => t.technologyName);
+
+    const rawRequirementWithExtra = aiAdditionalInfo.trim()
+      ? `${form.rawRequirements}\n\nBổ sung thêm: ${aiAdditionalInfo.trim()}`
+      : form.rawRequirements;
+
+    return {
+      projectTitle: form.title,
+      rawRequirement: rawRequirementWithExtra,
+      budget: Number(form.budgetAmount),
+      duration: Number(form.plannedDurationValue),
+      durationUnit: "tuần",
+      supportFields: selectedDomainIdList.map((id) =>
+        resolveDomainName(id, domains),
+      ),
+      requiredSkills: [
+        ...skillAssignments.map((assignment) =>
+          resolveSkillName(assignment.skillId, skills),
+        ),
+        ...technologyNames,
+      ],
+    };
+  };
+
   const generateSow = async () => {
     setAiLoading(true);
     setCreateMessage("");
+    setAiQuestions([]);
+    setShowAiReplyBox(false);
     try {
-      const response = await sowApi.generate({
-        projectTitle: form.title,
-        rawRequirement: form.rawRequirements,
-        budget: Number(form.budgetAmount),
-        duration: Number(form.plannedDurationValue),
-        durationUnit: "tuần",
-        supportFields: selectedDomainIdList.map((id) =>
-          resolveDomainName(id, domains),
-        ),
-        requiredSkills: skillAssignments.map((assignment) =>
-          resolveSkillName(assignment.skillId, skills),
-        ),
-      });
+      const response = await sowApi.generate(buildAiPayload());
 
       const structuredSow = formatGeneratedSow(response.sow);
       setGeneratedSow(response.sow || null);
@@ -187,31 +374,50 @@ export function CreateJobPage() {
         setMilestones(response.milestones.map(mapGeneratedMilestone));
       }
 
+      if (response.needMoreInfo) {
+        const questions =
+          response.questions && response.questions.length > 0
+            ? response.questions
+            : ["AI cần thêm thông tin để sinh SoW chính xác hơn."];
+        setAiQuestions(questions);
+        setShowAiReplyBox(true);
+        setCreateMessage(
+          "AI cần bổ sung thêm thông tin trước khi sinh SoW đầy đủ.",
+        );
+        setCreateMessageTone("warning");
+        setSowGeneratedLocked(false);
+        return;
+      }
+
       const hasGeneratedContent = Boolean(
         structuredSow ||
         (response.milestones && response.milestones.length > 0),
       );
       setSowGeneratedLocked(hasGeneratedContent);
-
-      if (response.needMoreInfo) {
-        setCreateMessage(
-          response.questions && response.questions.length > 0
-            ? `AI đã chuẩn hóa SoW nháp và cần bổ sung thông tin: ${response.questions.join(" ")}`
-            : "AI đã chuẩn hóa SoW nháp nhưng cần bổ sung thêm thông tin.",
-        );
-        return;
-      }
-
-      setCreateMessage("AI đã chuẩn hóa SoW và cập nhật Project milestones.");
+      setCreateMessage(
+        "✓ AI đã sinh SoW và cập nhật Project milestones thành công.",
+      );
+      setCreateMessageTone("success");
     } catch (error) {
       setSowGeneratedLocked(false);
       setGeneratedSow(null);
       setCreateMessage(
-        `Không gọi được AI chuẩn hóa SoW: ${getApiErrorMessage(error)}`,
+        `Không gọi được AI sinh SoW: ${getApiErrorMessage(error)}`,
       );
+      setCreateMessageTone("danger");
     } finally {
       setAiLoading(false);
     }
+  };
+
+  // ── Unlock form to allow re-editing after AI generate ─────────────────────
+  const unlockForm = () => {
+    setSowGeneratedLocked(false);
+    setGeneratedSow(null);
+    setAiQuestions([]);
+    setShowAiReplyBox(false);
+    setAiAdditionalInfo("");
+    setCreateMessage("");
   };
 
   const toggleSkill = (skillId: number) => {
@@ -294,19 +500,12 @@ export function CreateJobPage() {
     };
   };
 
-  const buildMilestoneDescription = (milestone: MilestoneDraft) => {
-    const timeText = `Thời gian: ${milestone.durationValue || 0} tuần`;
-    return milestone.description
-      ? `${milestone.description}\n${timeText}`
-      : timeText;
-  };
-
   const buildMilestonePayload = () =>
     milestones
       .filter((milestone) => milestone.milestoneName.trim())
       .map((milestone, index) => ({
         milestoneName: milestone.milestoneName,
-        description: buildMilestoneDescription(milestone),
+        description: milestone.description || "",
         fundsAllocated: Number(milestone.fundsAllocated || 0),
         orderIndex: Number(milestone.orderIndex || index + 1),
         status: "Pending",
@@ -320,14 +519,17 @@ export function CreateJobPage() {
     try {
       if (selectedDomainId === null) {
         setCreateMessage("Vui lòng chọn ít nhất một lĩnh vực cho job.");
+        setCreateMessageTone("warning");
         return;
       }
       if (selectedTechnologyIds.length === 0) {
         setCreateMessage("Vui lòng chọn ít nhất một công nghệ cho job.");
+        setCreateMessageTone("warning");
         return;
       }
       if (skillAssignments.length === 0) {
         setCreateMessage("Vui lòng chọn ít nhất một kỹ năng cho job.");
+        setCreateMessageTone("warning");
         return;
       }
       const job = await marketplaceApi.createJob({
@@ -345,6 +547,7 @@ export function CreateJobPage() {
       setCreateMessage(
         "Job nháp đã được tạo. Bạn có thể kiểm tra, quản lý hoặc mở public job ngay bên dưới.",
       );
+      setCreateMessageTone("success");
 
       try {
         await catalogApi.replaceJobDomains(job.jobId, selectedDomainIdList);
@@ -359,9 +562,11 @@ export function CreateJobPage() {
         setCreateMessage(
           "Job nháp đã được tạo, nhưng một phần domain/skill chưa lưu được. Bạn vẫn có thể vào quản lý job để kiểm tra.",
         );
+        setCreateMessageTone("warning");
       }
     } catch (error) {
       setCreateMessage(`Không lưu được job nháp: ${getApiErrorMessage(error)}`);
+      setCreateMessageTone("danger");
     } finally {
       setLoading(false);
     }
@@ -377,337 +582,537 @@ export function CreateJobPage() {
     setCreateMessage(
       "Job đã được mở public. Chuyên gia có thể nhìn thấy và gửi proposal.",
     );
+    setCreateMessageTone("success");
   };
+
+  // ─── Derived helpers ───────────────────────────────────────────────────────
+  const totalMilestoneBudget = milestones.reduce(
+    (acc, m) => acc + Number(m.fundsAllocated || 0),
+    0,
+  );
+  const budgetDiff = Number(form.budgetAmount || 0) - totalMilestoneBudget;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="JOB-01"
         title="AI Job Assistant"
-        description="Giao diện có đủ bước cho AI NLP service dù back-end hiện mới lưu structured_sow và ai_tag."
+        description="Nhập thông tin dự án, để AI sinh Statement of Work và milestone, sau đó lưu job."
       />
+
+      {/* Wizard Step Indicator */}
+      <StepIndicator current={wizardStep} />
+
       <div className="grid gap-6">
         <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-4">
-            <Field label="Tiêu đề dự án">
-              <Input
-                value={form.title}
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, title: event.target.value }))
-                }
-                required
+          <form onSubmit={submit} className="grid gap-6">
+            {/* ── STEP 1: Project info ── */}
+            <div className="grid gap-4">
+              <SectionHeading
+                title="Bước 1 — Thông tin dự án"
+                description="Điền đầy đủ thông tin để AI có thể sinh SoW chính xác nhất."
               />
-            </Field>
-            <Field label="Yêu cầu dự án">
-              <Textarea
-                value={form.rawRequirements}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    rawRequirements: event.target.value,
-                  }))
-                }
-                required
-              />
-            </Field>
-            <div className="grid gap-6">
-              <Field label="Lĩnh vực nền tảng (chọn 1)">
-                <div className="max-h-56 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {domains.map((domain) => {
-                      const isSelected = selectedDomainId === domain.domainId;
-                      return (
-                        <label
-                          key={domain.domainId}
-                          className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
-                            isSelected
-                              ? "bg-primary-container/20 text-primary"
-                              : "text-on-surface-variant hover:bg-surface-container-high"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="domain-select"
-                            className="h-4 w-4 cursor-pointer text-primary focus:ring-primary"
-                            checked={isSelected}
-                            onChange={() =>
-                              setSelectedDomainId(domain.domainId)
-                            }
-                          />
-                          <span className="min-w-0 break-words">
-                            {domain.domainName}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Field>
 
-              <Field label="Công nghệ nền tảng">
-                <div className="max-h-72 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
-                  <div className="grid gap-3">
-                    {technologies.map((technology) => {
-                      const isSelected = selectedTechnologyIds.includes(
-                        technology.technologyId,
-                      );
-                      return (
-                        <div
-                          key={technology.technologyId}
-                          className={`rounded-xl border px-3 py-3 transition-colors ${
-                            isSelected
-                              ? "border-brand-100 bg-brand-50/50"
-                              : "border-slate-100 bg-white"
-                          }`}
-                        >
-                          <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
-                              checked={isSelected}
-                              onChange={() =>
-                                toggleTechnology(technology.technologyId)
-                              }
-                            />
-                            <span className="min-w-0 break-words">
-                              {technology.technologyName}
-                            </span>
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Field>
-
-              <Field label="Kỹ năng yêu cầu">
-                <div className="max-h-72 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
-                  <div className="grid gap-3">
-                    {skills.map((skill) => {
-                      const assignment = skillAssignments.find(
-                        (item) => item.skillId === skill.skillId,
-                      );
-                      const isSelected = Boolean(assignment);
-                      return (
-                        <div
-                          key={skill.skillId}
-                          className={`grid gap-3 rounded-xl border px-3 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_120px] md:items-center ${
-                            isSelected
-                              ? "border-brand-100 bg-brand-50/50"
-                              : "border-slate-100 bg-white"
-                          }`}
-                        >
-                          <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
-                              checked={isSelected}
-                              onChange={() => toggleSkill(skill.skillId)}
-                            />
-                            <span className="min-w-0 break-words">
-                              {skill.skillName}
-                            </span>
-                          </label>
-                          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                            <input
-                              type="checkbox"
-                              checked={
-                                assignment ? !assignment.isMandatory : false
-                              }
-                              disabled={!isSelected}
-                              onChange={(event) =>
-                                updateSkillAssignment(skill.skillId, {
-                                  isMandatory: !event.target.checked,
-                                })
-                              }
-                            />
-                            Optional
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Field>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Ngân sách">
+              <Field label="Tiêu đề dự án">
                 <Input
-                  type="number"
-                  min={0}
-                  step="1"
-                  value={form.budgetAmount}
+                  value={form.title}
                   onChange={(event) =>
-                    updateFormBudgetAmount(event.target.value)
+                    setForm((value) => ({
+                      ...value,
+                      title: event.target.value,
+                    }))
                   }
                   required
                 />
               </Field>
-              <Field label="Thời lượng">
-                <Input
-                  type="number"
-                  value={form.plannedDurationValue}
+              <Field
+                label="Yêu cầu dự án"
+                hint="Mô tả càng chi tiết, AI càng sinh SoW chính xác hơn."
+              >
+                <Textarea
+                  value={form.rawRequirements}
+                  autoResize
                   onChange={(event) =>
                     setForm((value) => ({
                       ...value,
-                      plannedDurationValue: event.target.value,
+                      rawRequirements: event.target.value,
                     }))
+                  }
+                  required
+                />
+              </Field>
+
+              <div className="grid gap-6">
+                <Field label="Lĩnh vực nền tảng (chọn 1)">
+                  <div className="max-h-56 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {domains.map((domain) => {
+                        const isSelected = selectedDomainId === domain.domainId;
+                        return (
+                          <label
+                            key={domain.domainId}
+                            className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                              isSelected
+                                ? "bg-primary-container/20 text-primary"
+                                : "text-on-surface-variant hover:bg-surface-container-high"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="domain-select"
+                              className="h-4 w-4 cursor-pointer text-primary focus:ring-primary"
+                              checked={isSelected}
+                              onChange={() =>
+                                setSelectedDomainId(domain.domainId)
+                              }
+                            />
+                            <span className="min-w-0 break-words">
+                              {domain.domainName}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </Field>
+
+                <Field label="Công nghệ nền tảng">
+                  <div className="max-h-72 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
+                    <div className="grid gap-3">
+                      {technologies.map((technology) => {
+                        const isSelected = selectedTechnologyIds.includes(
+                          technology.technologyId,
+                        );
+                        return (
+                          <div
+                            key={technology.technologyId}
+                            className={`rounded-xl border px-3 py-3 transition-colors ${
+                              isSelected
+                                ? "border-brand-100 bg-brand-50/50"
+                                : "border-slate-100 bg-white"
+                            }`}
+                          >
+                            <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
+                                checked={isSelected}
+                                onChange={() =>
+                                  toggleTechnology(technology.technologyId)
+                                }
+                              />
+                              <span className="min-w-0 break-words">
+                                {technology.technologyName}
+                              </span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </Field>
+
+                <Field label="Kỹ năng yêu cầu">
+                  <div className="max-h-72 overflow-y-auto rounded-2xl border border-outline-variant bg-surface p-3 shadow-sm">
+                    <div className="grid gap-3">
+                      {skills.map((skill) => {
+                        const assignment = skillAssignments.find(
+                          (item) => item.skillId === skill.skillId,
+                        );
+                        const isSelected = Boolean(assignment);
+                        return (
+                          <div
+                            key={skill.skillId}
+                            className={`grid gap-3 rounded-xl border px-3 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_120px] md:items-center ${
+                              isSelected
+                                ? "border-brand-100 bg-brand-50/50"
+                                : "border-slate-100 bg-white"
+                            }`}
+                          >
+                            <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
+                                checked={isSelected}
+                                onChange={() => toggleSkill(skill.skillId)}
+                              />
+                              <span className="min-w-0 break-words">
+                                {skill.skillName}
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  assignment ? !assignment.isMandatory : false
+                                }
+                                disabled={!isSelected}
+                                onChange={(event) =>
+                                  updateSkillAssignment(skill.skillId, {
+                                    isMandatory: !event.target.checked,
+                                  })
+                                }
+                              />
+                              Optional
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Ngân sách (VND)">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={form.budgetAmount}
+                    onChange={(event) =>
+                      updateFormBudgetAmount(event.target.value)
+                    }
+                    required
+                  />
+                </Field>
+                <Field label="Thời lượng">
+                  <Input
+                    type="number"
+                    value={form.plannedDurationValue}
+                    onChange={(event) =>
+                      setForm((value) => ({
+                        ...value,
+                        plannedDurationValue: event.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Đơn vị">
+                  <Input value="tuần" readOnly disabled />
+                </Field>
+              </div>
+            </div>
+
+            {/* ── STEP 2: AI Generate ── */}
+            <div className="rounded-2xl border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/60 to-indigo-50/40 p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-extrabold text-brand-700">
+                    <Sparkles className="h-4 w-4" />
+                    Bước 2 — Để AI sinh Statement of Work
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    AI phân tích yêu cầu, tham chiếu RAG context và tự động chia
+                    milestone + ngân sách.
+                    {selectedTechnologyIds.length > 0 && (
+                      <span className="ml-1 font-semibold text-brand-600">
+                        (
+                        {technologies
+                          .filter((t) =>
+                            selectedTechnologyIds.includes(t.technologyId),
+                          )
+                          .map((t) => t.technologyName)
+                          .join(", ")}{" "}
+                        sẽ được gửi lên AI)
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {sowGeneratedLocked && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={unlockForm}
+                      title="Mở khóa để chỉnh sửa lại"
+                    >
+                      <Unlock className="h-4 w-4" />
+                      Chỉnh sửa lại
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={aiLoading}
+                    onClick={generateSow}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {sowGeneratedLocked ? "Tạo lại SoW" : "Sinh SoW bằng AI"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* AI Questions — needMoreInfo flow */}
+              {showAiReplyBox && aiQuestions.length > 0 && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-bold text-amber-700">
+                    <HelpCircle className="h-4 w-4 shrink-0" />
+                    AI cần thêm thông tin
+                  </p>
+                  <ul className="mb-4 grid gap-2">
+                    {aiQuestions.map((q, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-sm text-amber-800"
+                      >
+                        <span className="mt-1 shrink-0 text-amber-500">›</span>
+                        {q}
+                      </li>
+                    ))}
+                  </ul>
+                  <Field label="Bổ sung câu trả lời cho AI">
+                    <Textarea
+                      value={aiAdditionalInfo}
+                      placeholder="Nhập thêm thông tin để AI có thể sinh SoW đầy đủ hơn..."
+                      autoResize
+                      onChange={(e) => setAiAdditionalInfo(e.target.value)}
+                    />
+                  </Field>
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={aiLoading}
+                      onClick={generateSow}
+                      size="sm"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Gửi và sinh lại SoW
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Message notice */}
+              {createMessage && !savedJob && (
+                <div className="mt-4">
+                  <Notice tone={createMessageTone} title={createMessage} />
+                </div>
+              )}
+            </div>
+
+            {/* ── STEP 3: Review SoW & Milestones ── */}
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between">
+                <SectionHeading
+                  title="Bước 3 — Kiểm tra & điều chỉnh SoW"
+                  description={
+                    sowGeneratedLocked
+                      ? 'AI đã sinh SoW. Xem preview bên dưới. Nhấn "Chỉnh sửa lại" nếu cần sửa.'
+                      : "SoW hiển thị dưới dạng text để bạn chỉnh sửa thủ công nếu cần."
+                  }
+                />
+                {sowGeneratedLocked && generatedSow && (
+                  <Badge tone="mint">✓ AI đã sinh</Badge>
+                )}
+              </div>
+
+              {/* SoW Preview Cards (when AI generated) */}
+              {generatedSow && sowGeneratedLocked && (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  {generatedSow.title && (
+                    <p className="mb-4 font-display text-base font-extrabold text-ink">
+                      {generatedSow.title}
+                    </p>
+                  )}
+                  <SowPreviewPanel sow={generatedSow} />
+                </div>
+              )}
+
+              {/* Structured SoW Text — editable when not locked */}
+              <Field
+                label={
+                  sowGeneratedLocked
+                    ? "SoW dạng text (chỉ đọc)"
+                    : "Structured SoW"
+                }
+              >
+                <Textarea
+                  value={form.structuredSow}
+                  disabled={sowGeneratedLocked}
+                  autoResize
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      structuredSow: event.target.value,
+                    }))
+                  }
+                  className={
+                    sowGeneratedLocked ? "bg-slate-50 text-slate-500" : ""
                   }
                 />
               </Field>
-              <Field label="Đơn vị">
-                <Input value="tuần" readOnly disabled />
-              </Field>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                loading={aiLoading}
-                onClick={generateSow}
-              >
-                <Sparkles className="h-4 w-4" />
-                Mô phỏng AI chuẩn hóa SoW
-              </Button>
-            </div>
-            {createMessage && !savedJob && (
-              <Notice
-                tone={
-                  createMessage.includes("Không gọi được") ? "warning" : "info"
-                }
-                title={createMessage}
-              />
-            )}
-            <Field label="Structured SoW">
-              <Textarea
-                value={form.structuredSow}
-                disabled={sowGeneratedLocked}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    structuredSow: event.target.value,
-                  }))
-                }
-              />
-            </Field>
 
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <SectionHeading
-                title="Project milestones"
-                description="Milestones are attached to the job, then reused by the contract after proposal acceptance."
-              />
-              <div className="mt-4 hidden grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
-                <span>Công việc</span>
-                <span>Ngân sách</span>
-                <span>Giai đoạn</span>
-                <span>Thời gian</span>
-                <span>Tiêu chí nghiệm thu</span>
-              </div>
-              <div className="mt-3 grid gap-3">
-                {milestones.map((milestone, index) => (
-                  <div
-                    key={index}
-                    className="grid gap-3 rounded-2xl bg-white p-3 xl:grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)]"
-                  >
-                    <Input
-                      aria-label={`Công việc ${index + 1}`}
-                      value={milestone.milestoneName}
-                      placeholder="Milestone name"
-                      disabled={sowGeneratedLocked}
-                      onChange={(event) =>
-                        updateMilestone(index, {
-                          milestoneName: event.target.value,
-                        })
-                      }
-                    />
-                    <Input
-                      aria-label={`Ngân sách ${index + 1}`}
-                      type="number"
-                      min={0}
-                      step="1"
-                      value={milestone.fundsAllocated}
-                      placeholder="Budget"
-                      disabled={sowGeneratedLocked}
-                      onChange={(event) =>
-                        updateMilestoneBudgetAmount(index, event.target.value)
-                      }
-                    />
-                    <Input
-                      aria-label={`Giai đoạn ${index + 1}`}
-                      type="number"
-                      min={1}
-                      value={milestone.orderIndex}
-                      placeholder="GĐ"
-                      disabled={sowGeneratedLocked}
-                      onChange={(event) =>
-                        updateMilestone(index, {
-                          orderIndex: event.target.value,
-                        })
-                      }
-                    />
+              {/* Project Milestones */}
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <SectionHeading
+                    title="Project milestones"
+                    description="Milestones được đính kèm với job, dùng lại trong hợp đồng sau khi proposal được chấp nhận."
+                  />
+                  {/* Budget diff indicator */}
+                  {Number(form.budgetAmount) > 0 && (
+                    <div className="shrink-0 text-right">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Ngân sách còn lại
+                      </p>
+                      <p
+                        className={cn(
+                          "text-sm font-extrabold",
+                          budgetDiff === 0
+                            ? "text-mint-600"
+                            : budgetDiff < 0
+                              ? "text-rose-600"
+                              : "text-amber-600",
+                        )}
+                      >
+                        {formatCurrency(budgetDiff)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 hidden grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
+                  <span>Công việc</span>
+                  <span>Ngân sách</span>
+                  <span>Giai đoạn</span>
+                  <span>Thời gian</span>
+                  <span>Tiêu chí nghiệm thu</span>
+                </div>
+                <div className="mt-3 grid gap-3">
+                  {milestones.map((milestone, index) => (
                     <div
-                      className={`flex h-11 self-start rounded-2xl border border-slate-200 px-3 ${
-                        sowGeneratedLocked ? "bg-slate-50" : "bg-white"
-                      }`}
+                      key={index}
+                      className="grid gap-3 rounded-2xl bg-white p-3 xl:grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)]"
                     >
+                      {/* Milestone name — always editable */}
                       <Input
-                        aria-label={`Thời gian ${index + 1}`}
-                        type="number"
-                        min={1}
-                        value={milestone.durationValue}
-                        placeholder="TL"
-                        className="h-full border-0 px-0 shadow-none focus:ring-0"
-                        disabled={sowGeneratedLocked}
+                        aria-label={`Công việc ${index + 1}`}
+                        value={milestone.milestoneName}
+                        placeholder="Milestone name"
                         onChange={(event) =>
                           updateMilestone(index, {
-                            durationValue: event.target.value,
+                            milestoneName: event.target.value,
                           })
                         }
                       />
-                      <span className="flex shrink-0 items-center pl-2 text-sm font-semibold text-slate-500">
-                        tuần
-                      </span>
-                    </div>
-                    <div>
-                      <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
-                        {acceptanceCriteria.length === 0 ? (
-                          <p className="px-2 py-1 text-xs font-semibold text-slate-500">
-                            Chưa tải được danh sách tiêu chí.
-                          </p>
-                        ) : (
-                          <div className="grid gap-1.5">
-                            {acceptanceCriteria.map((criteria) => (
-                              <label
-                                key={criteria.criteriaId}
-                                className="flex cursor-pointer items-start gap-2 rounded-xl px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white"
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-outline-variant text-primary focus:ring-primary"
-                                  checked={milestone.criteriaIds.includes(
-                                    criteria.criteriaId,
-                                  )}
-                                  onChange={() =>
-                                    toggleMilestoneCriteria(
-                                      index,
+                      {/* Budget — editable only when not locked */}
+                      <Input
+                        aria-label={`Ngân sách ${index + 1}`}
+                        type="number"
+                        min={0}
+                        step="1"
+                        value={milestone.fundsAllocated}
+                        placeholder="Budget"
+                        disabled={sowGeneratedLocked}
+                        onChange={(event) =>
+                          updateMilestoneBudgetAmount(index, event.target.value)
+                        }
+                      />
+                      <Input
+                        aria-label={`Giai đoạn ${index + 1}`}
+                        type="number"
+                        min={1}
+                        value={milestone.orderIndex}
+                        placeholder="GĐ"
+                        disabled={sowGeneratedLocked}
+                        onChange={(event) =>
+                          updateMilestone(index, {
+                            orderIndex: event.target.value,
+                          })
+                        }
+                      />
+                      <div
+                        className={`flex h-11 self-start rounded-2xl border border-slate-200 px-3 ${
+                          sowGeneratedLocked ? "bg-slate-50" : "bg-white"
+                        }`}
+                      >
+                        <Input
+                          aria-label={`Thời gian ${index + 1}`}
+                          type="number"
+                          min={1}
+                          value={milestone.durationValue}
+                          placeholder="TL"
+                          className="h-full border-0 px-0 shadow-none focus:ring-0"
+                          disabled={sowGeneratedLocked}
+                          onChange={(event) =>
+                            updateMilestone(index, {
+                              durationValue: event.target.value,
+                            })
+                          }
+                        />
+                        <span className="flex shrink-0 items-center pl-2 text-sm font-semibold text-slate-500">
+                          tuần
+                        </span>
+                      </div>
+
+                      {/* Acceptance Criteria — always interactive */}
+                      <div>
+                        {/* Search filter */}
+                        <div className="mb-2 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5">
+                          <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Lọc tiêu chí..."
+                            value={criteriaSearch}
+                            onChange={(e) => setCriteriaSearch(e.target.value)}
+                            className="w-full bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
+                          />
+                        </div>
+                        <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                          {filteredCriteria.length === 0 ? (
+                            <p className="px-2 py-1 text-xs font-semibold text-slate-500">
+                              {acceptanceCriteria.length === 0
+                                ? "Chưa tải được danh sách tiêu chí."
+                                : "Không tìm thấy tiêu chí phù hợp."}
+                            </p>
+                          ) : (
+                            <div className="grid gap-1.5">
+                              {filteredCriteria.map((criteria) => (
+                                <label
+                                  key={criteria.criteriaId}
+                                  className="flex cursor-pointer items-start gap-2 rounded-xl px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-outline-variant text-primary focus:ring-primary"
+                                    checked={milestone.criteriaIds.includes(
                                       criteria.criteriaId,
-                                    )
-                                  }
-                                />
-                                <span className="min-w-0 break-words">
-                                  {criteria.description}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
+                                    )}
+                                    onChange={() =>
+                                      toggleMilestoneCriteria(
+                                        index,
+                                        criteria.criteriaId,
+                                      )
+                                    }
+                                  />
+                                  <span className="min-w-0 break-words">
+                                    {criteria.description}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+
+            {/* ── STEP 4: Submit ── */}
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div>
+                <p className="text-sm font-bold text-slate-700">
+                  Bước 4 — Lưu job nháp
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Job sẽ được lưu ở trạng thái Draft. Bạn có thể mở public sau.
+                </p>
+              </div>
               <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
                 Lưu job nháp
@@ -760,9 +1165,7 @@ export function CreateJobPage() {
                   <span className="break-words text-right font-extrabold text-ink">
                     {technologies
                       .filter((technology) =>
-                        selectedTechnologyIds.includes(
-                          technology.technologyId,
-                        ),
+                        selectedTechnologyIds.includes(technology.technologyId),
                       )
                       .map((technology) => technology.technologyName)
                       .join(", ") || "Chưa chọn"}

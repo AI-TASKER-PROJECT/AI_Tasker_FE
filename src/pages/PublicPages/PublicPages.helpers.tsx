@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Bot,
   BriefcaseBusiness,
+  ChevronDown,
   CheckCircle2,
   Clock3,
   Filter,
@@ -9,6 +10,7 @@ import {
   Sparkles,
   Star,
   WalletCards,
+  Search,
 } from "lucide-react";
 import {
   useEffect,
@@ -16,15 +18,18 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   catalogApi,
   contractApi,
   marketplaceApi,
   profileApi,
   type Domain,
+  type JobDomain,
   type JobSkill,
   type JobTechnology,
   type Skill,
@@ -33,7 +38,13 @@ import {
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
-import type { BusinessProfile, Job, Milestone } from "../../types";
+import type {
+  BusinessProfile,
+  ExpertProfile,
+  Job,
+  Milestone,
+  Portfolio,
+} from "../../types";
 import { jobDomainLabel } from "./publicPages.utils";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
 import {
@@ -63,7 +74,10 @@ function resolveSkillName(skillId: number, skills: Skill[]) {
   );
 }
 
-function resolveTechnologyName(technologyId: number, technologies: Technology[]) {
+function resolveTechnologyName(
+  technologyId: number,
+  technologies: Technology[],
+) {
   return (
     technologies.find((technology) => technology.technologyId === technologyId)
       ?.technologyName || `Technology #${technologyId}`
@@ -75,6 +89,14 @@ function resolveDomainName(domainId: number, domains: Domain[]) {
     domains.find((domain) => domain.domainId === domainId)?.domainName ||
     `Lĩnh vực #${domainId}`
   );
+}
+
+function parseCatalogIds(value?: string) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item));
 }
 
 export function JobDomainBadge({
@@ -254,9 +276,7 @@ export function JobHoverPopover({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
-                <JobDomainBadge
-                  label={jobDomainLabel(jobDomainIds, domains)}
-                />
+                <JobDomainBadge label={jobDomainLabel(jobDomainIds, domains)} />
                 {detail.isHot && <Badge tone="coral">Hot project</Badge>}
               </div>
               <h4 className="mt-3 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink">
@@ -354,11 +374,29 @@ export function JobHoverPopover({
 export function LandingPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const session = useSession();
+  const location = useLocation();
   const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
     marketplaceApi.listJobs().then((data) => setJobs(data.slice(0, 3)));
   }, []);
+
+  useEffect(() => {
+    const sectionId =
+      location.pathname === "/how-it-works"
+        ? "how-it-works"
+        : location.pathname === "/about"
+          ? "about"
+          : "";
+
+    if (!sectionId) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [location.pathname]);
 
   return (
     <main>
@@ -479,7 +517,10 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-12 md:grid-cols-[1fr_1fr] md:px-6">
+      <section
+        id="about"
+        className="mx-auto grid max-w-7xl gap-6 px-4 py-12 md:grid-cols-[1fr_1fr] md:px-6"
+      >
         <Card className="overflow-hidden p-6">
           <div className="flex items-start justify-between gap-4">
             <SectionHeading
@@ -554,25 +595,162 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
+    Record<number, number[]>
+  >({});
+  const [jobSkillIdsByJobId, setJobSkillIdsByJobId] = useState<
+    Record<number, number[]>
+  >({});
+  const [jobTechnologyIdsByJobId, setJobTechnologyIdsByJobId] = useState<
+    Record<number, number[]>
+  >({});
+  const [domainFilterOpen, setDomainFilterOpen] = useState(false);
+  const [skillFilterOpen, setSkillFilterOpen] = useState(false);
+  const [technologyFilterOpen, setTechnologyFilterOpen] = useState(false);
+  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
+    [],
+  );
   const session = useSession();
   const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
-    marketplaceApi.listJobs().then(setJobs);
+    let ignore = false;
+
+    async function loadJobs() {
+      const [jobItems, domainItems, skillItems, technologyItems] =
+        await Promise.all([
+          marketplaceApi.listJobs(),
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listTechnologies(true),
+        ]);
+
+      if (ignore) return;
+      setJobs(jobItems);
+      setDomains(domainItems);
+      setSkills(skillItems);
+      setTechnologies(technologyItems);
+
+      const relationItems = await Promise.all(
+        jobItems.map(async (job) => {
+          const [jobDomains, jobSkills, jobTechnologies] = await Promise.all([
+            catalogApi.listJobDomains(job.jobId).catch(() => [] as JobDomain[]),
+            catalogApi.listJobSkills(job.jobId).catch(() => [] as JobSkill[]),
+            catalogApi
+              .listJobTechnologies(job.jobId)
+              .catch(() => [] as JobTechnology[]),
+          ]);
+
+          return {
+            jobId: job.jobId,
+            domainIds: jobDomains.map((item) => item.id.domainId),
+            skillIds: jobSkills.map((item) => item.id.skillId),
+            technologyIds: jobTechnologies.map((item) => item.id.technologyId),
+          };
+        }),
+      );
+
+      if (ignore) return;
+      setJobDomainIdsByJobId(
+        Object.fromEntries(
+          relationItems.map((item) => [item.jobId, item.domainIds]),
+        ),
+      );
+      setJobSkillIdsByJobId(
+        Object.fromEntries(
+          relationItems.map((item) => [item.jobId, item.skillIds]),
+        ),
+      );
+      setJobTechnologyIdsByJobId(
+        Object.fromEntries(
+          relationItems.map((item) => [item.jobId, item.technologyIds]),
+        ),
+      );
+    }
+
+    loadJobs();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  const filtered = useMemo(
-    () =>
-      jobs.filter((job) => {
-        const matchesQuery =
-          `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`
-            .toLowerCase()
-            .includes(query.toLowerCase());
-        const matchesStatus = status === "ALL" || job.status === status;
-        return matchesQuery && matchesStatus;
-      }),
-    [jobs, query, status],
-  );
+  const toggleSelectedId = (
+    value: number,
+    setter: Dispatch<SetStateAction<number[]>>,
+  ) => {
+    setter((items) =>
+      items.includes(value)
+        ? items.filter((item) => item !== value)
+        : [...items, value],
+    );
+  };
+
+  const filtered = useMemo(() => {
+    const matchesAny = (selectedIds: number[], candidateIds: number[]) =>
+      selectedIds.length === 0 ||
+      selectedIds.some((selectedId) => candidateIds.includes(selectedId));
+
+    return jobs.filter((job) => {
+      const domainIds = jobDomainIdsByJobId[job.jobId] || [];
+      const skillIds = jobSkillIdsByJobId[job.jobId] || [];
+      const technologyIds = jobTechnologyIdsByJobId[job.jobId] || [];
+      const domainNames = domainIds.map((domainId) =>
+        resolveDomainName(domainId, domains),
+      );
+      const skillNames = skillIds.map((skillId) =>
+        resolveSkillName(skillId, skills),
+      );
+      const technologyNames = technologyIds.map((technologyId) =>
+        resolveTechnologyName(technologyId, technologies),
+      );
+      const matchesQuery = `${job.title} ${job.rawRequirements} ${
+        job.structuredSow || ""
+      } ${domainNames.join(" ")} ${skillNames.join(" ")} ${technologyNames.join(" ")}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+      const matchesStatus = status === "ALL" || job.status === status;
+      return (
+        matchesQuery &&
+        matchesStatus &&
+        matchesAny(selectedDomainIds, domainIds) &&
+        matchesAny(selectedSkillIds, skillIds) &&
+        matchesAny(selectedTechnologyIds, technologyIds)
+      );
+    });
+  }, [
+    domains,
+    jobDomainIdsByJobId,
+    jobSkillIdsByJobId,
+    jobTechnologyIdsByJobId,
+    jobs,
+    query,
+    selectedDomainIds,
+    selectedSkillIds,
+    selectedTechnologyIds,
+    skills,
+    status,
+    technologies,
+  ]);
+
+  const hasActiveFilters =
+    query ||
+    status !== "ALL" ||
+    selectedDomainIds.length > 0 ||
+    selectedSkillIds.length > 0 ||
+    selectedTechnologyIds.length > 0;
+
+  const clearFilters = () => {
+    setQuery("");
+    setStatus("ALL");
+    setSelectedDomainIds([]);
+    setSelectedSkillIds([]);
+    setSelectedTechnologyIds([]);
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
@@ -587,33 +765,128 @@ export function JobsPage() {
         }
       />
       <Card className="mt-8 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_220px_120px]">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <SearchInput
             value={query}
             onChange={setQuery}
             placeholder="Tìm theo tiêu đề, kỹ năng, lĩnh vực..."
           />
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none"
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDomainFilterOpen(true);
+              setSkillFilterOpen(true);
+              setTechnologyFilterOpen(true);
+            }}
           >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="OPEN">Đang mở</option>
-            <option value="DRAFT">Nháp</option>
-            <option value="CLOSED">Đã đóng</option>
-          </select>
-          <Button variant="secondary">
-            <Filter className="h-4 w-4" />
-            Lọc
+            <Search className="h-4 w-4" />
+            Tìm kiếm
           </Button>
         </div>
       </Card>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        {filtered.map((job) => (
-          <JobCard key={job.jobId} job={job} />
-        ))}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <Card className="p-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <Filter className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-lg font-extrabold text-ink">
+                  Loc nang cao
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Chon linh vuc, ky nang va cong nghe phu hop.
+                </p>
+              </div>
+            </div>
+
+            <div className="my-5 border-t border-slate-200/80" />
+
+            <div className="grid gap-3">
+              <FilterAccordion
+                title="Linh vuc"
+                count={selectedDomainIds.length}
+                open={domainFilterOpen}
+                onToggle={() => setDomainFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={domains.map((domain) => ({
+                    id: domain.domainId,
+                    label: domain.domainName,
+                    selected: selectedDomainIds.includes(domain.domainId),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) => toggleSelectedId(id, setSelectedDomainIds)}
+                />
+              </FilterAccordion>
+
+              <FilterAccordion
+                title="Ky nang"
+                count={selectedSkillIds.length}
+                open={skillFilterOpen}
+                onToggle={() => setSkillFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={skills.map((skill) => ({
+                    id: skill.skillId,
+                    label: skill.skillName,
+                    selected: selectedSkillIds.includes(skill.skillId),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) => toggleSelectedId(id, setSelectedSkillIds)}
+                />
+              </FilterAccordion>
+
+              <FilterAccordion
+                title="Cong nghe"
+                count={selectedTechnologyIds.length}
+                open={technologyFilterOpen}
+                onToggle={() => setTechnologyFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={technologies.map((technology) => ({
+                    id: technology.technologyId,
+                    label: technology.technologyName,
+                    selected: selectedTechnologyIds.includes(
+                      technology.technologyId,
+                    ),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) =>
+                    toggleSelectedId(id, setSelectedTechnologyIds)
+                  }
+                />
+              </FilterAccordion>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200/80 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!hasActiveFilters}
+                onClick={clearFilters}
+              >
+                Xoa loc
+              </Button>
+              <Button type="button" onClick={() => {}}>
+                Luu bo loc
+              </Button>
+            </div>
+          </Card>
+        </aside>
+
+        <section>
+          <p className="mb-4 text-xs font-semibold text-slate-400">
+            Hien thi {filtered.length}/{jobs.length} job phu hop.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((job) => (
+              <JobCard key={job.jobId} job={job} />
+            ))}
+          </div>
+        </section>
       </div>
       {filtered.length === 0 && (
         <div className="mt-6">
@@ -638,15 +911,6 @@ export function JobCard({
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
-  const visibleSkills = (job.skills || []).slice(0, 3).map((skill, index) => {
-    if (typeof skill === "string") {
-      return { key: `${skill}-${index}`, label: skill };
-    }
-    return {
-      key: `${skill.skillId}-${index}`,
-      label: skill.skillName || `Skill #${skill.skillId}`,
-    };
-  });
 
   useEffect(() => {
     let ignore = false;
@@ -676,60 +940,57 @@ export function JobCard({
 
   return (
     <Card hover className="flex h-full flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            <JobDomainBadgeForJob jobId={job.jobId} />
-            {job.isHot && <Badge tone="coral">Hot project</Badge>}
-          </div>
-          <StatusBadge status={job.status} />
+      <div className="flex min-h-9 items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <JobDomainBadgeForJob jobId={job.jobId} />
+          {job.isHot && <Badge tone="coral">Hot project</Badge>}
         </div>
-        <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
-          {job.title}
-        </h3>
-        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
-          {job.structuredSow || job.rawRequirements}
+        <StatusBadge status={job.status} />
+      </div>
+      <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+        {job.title}
+      </h3>
+      <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
+        {job.structuredSow || job.rawRequirements}
+      </p>
+      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
+        <div>
+          <p className="text-xs font-bold text-slate-400">Ngân sách</p>
+          <p className="mt-1 text-sm font-extrabold text-ink">
+            {formatCompactCurrency(job.budget)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-slate-400">Proposal</p>
+          <p className="mt-1 text-sm font-extrabold text-ink">
+            {job.proposalsCount || 0}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">
+          {skillCountLabel(skillCount)}
         </p>
-        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
-          <div>
-            <p className="text-xs font-bold text-slate-400">Ngân sách</p>
-            <p className="mt-1 text-sm font-extrabold text-ink">
-              {formatCompactCurrency(job.budget)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-400">Proposal</p>
-            <p className="mt-1 text-sm font-extrabold text-ink">
-              {job.proposalsCount || 0}
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-          <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
-          <p className="mt-1 text-sm font-extrabold text-ink">
-            {skillCountLabel(skillCount)}
-          </p>
-        </div>
-        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-          <p className="text-xs font-bold text-slate-400">Milestone</p>
-          <p className="mt-1 text-sm font-extrabold text-ink">
-            {milestoneCount} mốc
-          </p>
-        </div>
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <span className="text-xs font-semibold text-slate-400">
-            {job.companyName || "Doanh nghiệp"}
-          </span>
-          <LinkButton
-            to={
-              detailTo ||
-              (manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`)
-            }
-            size="sm"
-            variant="secondary"
-          >
-            Chi tiết <ArrowRight className="h-4 w-4" />
-          </LinkButton>
-        </div>
+      </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Milestone</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">
+          {milestoneCount} mốc
+        </p>
+      </div>
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <span className="text-xs font-semibold text-slate-400">
+          {job.companyName || "Doanh nghiệp"}
+        </span>
+        <LinkButton
+          to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`}
+          size="sm"
+          variant="secondary"
+        >
+          Chi tiết <ArrowRight className="h-4 w-4" />
+        </LinkButton>
+      </div>
     </Card>
   );
 }
@@ -769,13 +1030,13 @@ export function JobDetailPage() {
           jobSkillItems,
           jobTechnologyItems,
         ]) => {
-        setDomains(domainItems);
-        setSkills(skillItems);
-        setTechnologies(technologyItems);
-        setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
-        setJobSkills(jobSkillItems);
-        setJobTechnologies(jobTechnologyItems);
-      },
+          setDomains(domainItems);
+          setSkills(skillItems);
+          setTechnologies(technologyItems);
+          setJobDomainIds(jobDomainItems.map((item) => item.id.domainId));
+          setJobSkills(jobSkillItems);
+          setJobTechnologies(jobTechnologyItems);
+        },
       )
       .catch(() => {
         setDomains([]);
@@ -1094,7 +1355,7 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
               </p>
             </div>
             <p className="text-sm font-extrabold text-ink md:text-right">
-              {formatCompactCurrency(milestone.fundsAllocated)}
+              {formatCurrency(milestone.fundsAllocated)}
             </p>
           </div>
         ))}
@@ -1129,7 +1390,228 @@ function BusinessInfoItem({
   );
 }
 
+function FilterAccordion({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div>
+          <p className="text-sm font-extrabold text-ink">{title}</p>
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && <div className="border-t border-slate-100 p-3">{children}</div>}
+    </div>
+  );
+}
+
+function ChipGrid({
+  items,
+  emptyLabel,
+  onToggle,
+}: {
+  items: Array<{ id: number; label: string; selected: boolean }>;
+  emptyLabel: string;
+  onToggle: (id: number) => void;
+}) {
+  return (
+    <div className="grid max-h-48 gap-2 overflow-y-auto pr-1">
+      {items.length === 0 && (
+        <span className="text-sm font-semibold text-slate-400">
+          {emptyLabel}
+        </span>
+      )}
+      {items.map((item) => (
+        <label
+          key={item.id}
+          className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition ${
+            item.selected
+              ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+              : "text-slate-600 hover:bg-white hover:text-brand-700"
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="h-5 w-5 rounded border-slate-300 text-emerald-600 accent-emerald-600"
+            checked={item.selected}
+            onChange={() => onToggle(item.id)}
+          />
+          <span className="min-w-0 flex-1 break-words">{item.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function ExpertDirectoryPage() {
+  const [experts, setExperts] = useState<ExpertProfile[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [query, setQuery] = useState("");
+  const [domainFilterOpen, setDomainFilterOpen] = useState(false);
+  const [skillFilterOpen, setSkillFilterOpen] = useState(false);
+  const [technologyFilterOpen, setTechnologyFilterOpen] = useState(false);
+  const [experienceFilter, setExperienceFilter] = useState<
+    "ALL" | "UNDER_5" | "FROM_5_TO_10" | "OVER_10"
+  >("ALL");
+  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadExperts() {
+      setLoading(true);
+      setError("");
+      try {
+        const [
+          expertItems,
+          portfolioItems,
+          domainItems,
+          skillItems,
+          technologyItems,
+        ] = await Promise.all([
+          profileApi.listExperts(),
+          profileApi.listPortfolios(),
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listTechnologies(true),
+        ]);
+        if (ignore) return;
+        setExperts(expertItems);
+        setPortfolios(portfolioItems);
+        setDomains(domainItems);
+        setSkills(skillItems);
+        setTechnologies(technologyItems);
+      } catch {
+        if (ignore) return;
+        setExperts([]);
+        setPortfolios([]);
+        setDomains([]);
+        setSkills([]);
+        setTechnologies([]);
+        setError(
+          "Chua lay duoc du lieu chuyen gia tu backend. Vui long kiem tra server hoac quyen truy cap API.",
+        );
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadExperts();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const portfolioByExpertId = useMemo(
+    () =>
+      new Map(portfolios.map((portfolio) => [portfolio.expertId, portfolio])),
+    [portfolios],
+  );
+
+  const toggleSelectedId = (
+    value: number,
+    setter: Dispatch<SetStateAction<number[]>>,
+  ) => {
+    setter((items) =>
+      items.includes(value)
+        ? items.filter((item) => item !== value)
+        : [...items, value],
+    );
+  };
+
+  const filteredExperts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const matchesAny = (selectedIds: number[], candidateIds: number[]) =>
+      selectedIds.length === 0 ||
+      selectedIds.some((selectedId) => candidateIds.includes(selectedId));
+
+    return experts.filter((expert) => {
+      const portfolio = portfolioByExpertId.get(expert.expertId);
+      const experience =
+        portfolio?.yearsExperience ?? expert.yearsOfExperience ?? 0;
+      const domainIds = parseCatalogIds(portfolio?.domainIds);
+      const skillIds = parseCatalogIds(portfolio?.skillIds);
+      const technologyIds = parseCatalogIds(portfolio?.technologyIds);
+      const skillNames = skillIds.map((skillId) =>
+        resolveSkillName(skillId, skills),
+      );
+      const domainNames = domainIds.map((domainId) =>
+        resolveDomainName(domainId, domains),
+      );
+      const technologyNames = technologyIds.map((technologyId) =>
+        resolveTechnologyName(technologyId, technologies),
+      );
+      const searchable = [
+        expert.fullName,
+        expert.title,
+        expert.phone,
+        portfolio?.selfDescription,
+        ...skillNames,
+        ...domainNames,
+        ...technologyNames,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        (!normalizedQuery || searchable.includes(normalizedQuery)) &&
+        (experienceFilter === "ALL" ||
+          (experienceFilter === "UNDER_5" && experience < 5) ||
+          (experienceFilter === "FROM_5_TO_10" &&
+            experience >= 5 &&
+            experience <= 10) ||
+          (experienceFilter === "OVER_10" && experience > 10)) &&
+        matchesAny(selectedDomainIds, domainIds) &&
+        matchesAny(selectedSkillIds, skillIds) &&
+        matchesAny(selectedTechnologyIds, technologyIds)
+      );
+    });
+  }, [
+    domains,
+    experienceFilter,
+    experts,
+    portfolioByExpertId,
+    query,
+    selectedDomainIds,
+    selectedSkillIds,
+    selectedTechnologyIds,
+    skills,
+    technologies,
+  ]);
+
+  const hasActiveFilters =
+    query ||
+    experienceFilter !== "ALL" ||
+    selectedDomainIds.length > 0 ||
+    selectedSkillIds.length > 0 ||
+    selectedTechnologyIds.length > 0;
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
       <PageHeader
@@ -1137,61 +1619,274 @@ export function ExpertDirectoryPage() {
         title="Danh bạ chuyên gia AI"
         description="Giao diện phục vụ matching, review uy tín và lựa chọn chuyên gia. Khi API public expert profile chưa có dữ liệu, trang hiển thị trạng thái trống."
       />
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {([] as import("../../types").ExpertProfile[]).map((expert) => (
-          <Card key={expert.expertId} hover className="p-5">
-            <Avatar name={expert.fullName} size="xl" />
-            <h3 className="mt-4 font-display text-lg font-extrabold text-ink">
-              {expert.fullName}
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              {expert.title}
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              <span className="text-sm font-extrabold text-ink">
-                {expert.rating}
-              </span>
-              <span className="text-sm text-slate-400">
-                • {expert.completedProjects} dự án
-              </span>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {(expert.skills || []).slice(0, 3).map((skill: string) => (
-                <Badge key={skill} tone="slate">
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-            <Button className="mt-5 w-full" variant="secondary">
-              Xem năng lực
-            </Button>
-          </Card>
-        ))}
-      </div>
-      <Card className="mt-8 overflow-hidden p-6">
-        <div className="grid gap-6 md:grid-cols-[320px_1fr]">
-          <img
-            src="/images/ai-job-assistant.png"
-            alt="AI assistant"
-            className="rounded-3xl bg-brand-50 object-cover"
+
+      <Card className="mt-8 p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Tim theo ten, ky nang, linh vuc, cong nghe..."
+            className="flex-1"
           />
-          <div className="flex flex-col justify-center">
-            <Badge tone="brand">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Matching theo SoW và Portfolio
-            </Badge>
-            <h2 className="mt-4 font-display text-3xl font-black tracking-tight text-ink">
-              Giao diện đã sẵn sàng cho thuật toán đề xuất nâng cấp.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">
-              Hiện back-end có endpoint matching theo keyword. Khi có AI
-              matching thật, trang này có thể hiển thị score theo domain, skill,
-              portfolio và lịch sử review mà không đổi luồng người dùng.
-            </p>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!hasActiveFilters}
+            onClick={() => {
+              setQuery("");
+              setExperienceFilter("ALL");
+              setSelectedDomainIds([]);
+              setSelectedSkillIds([]);
+              setSelectedTechnologyIds([]);
+            }}
+          >
+            <Search className="h-4 w-4" />
+            Tìm kiếm
+          </Button>
         </div>
       </Card>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <Card className="p-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <Filter className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-lg font-extrabold text-ink">
+                  Loc nang cao
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Chon tieu chi de tim chuyen gia phu hop.
+                </p>
+              </div>
+            </div>
+
+            <div className="my-5 border-t border-slate-200/80" />
+
+            <section>
+              <p className="text-sm font-extrabold text-ink">Kinh nghiem</p>
+              <div className="mt-3 grid gap-3">
+                {[
+                  { value: "ALL", label: "Khong loc" },
+                  { value: "UNDER_5", label: "Duoi 5 nam" },
+                  { value: "FROM_5_TO_10", label: "Tu 5-10 nam" },
+                  { value: "OVER_10", label: "Tren 10 nam" },
+                ].map((item) => {
+                  const selected = experienceFilter === item.value;
+                  return (
+                    <label
+                      key={item.value}
+                      className="flex cursor-pointer items-center gap-3 rounded-2xl px-1 py-1 text-sm font-semibold text-slate-700"
+                    >
+                      <input
+                        type="radio"
+                        name="experience-filter"
+                        checked={selected}
+                        onChange={() =>
+                          setExperienceFilter(
+                            item.value as
+                              | "ALL"
+                              | "UNDER_5"
+                              | "FROM_5_TO_10"
+                              | "OVER_10",
+                          )
+                        }
+                        className="h-5 w-5 accent-emerald-600"
+                      />
+                      {item.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="my-5 border-t border-dashed border-slate-200" />
+
+            <div className="grid gap-3">
+              <FilterAccordion
+                title="Linh vuc"
+                count={selectedDomainIds.length}
+                open={domainFilterOpen}
+                onToggle={() => setDomainFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={domains.map((domain) => ({
+                    id: domain.domainId,
+                    label: domain.domainName,
+                    selected: selectedDomainIds.includes(domain.domainId),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) => toggleSelectedId(id, setSelectedDomainIds)}
+                />
+              </FilterAccordion>
+
+              <FilterAccordion
+                title="Ky nang"
+                count={selectedSkillIds.length}
+                open={skillFilterOpen}
+                onToggle={() => setSkillFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={skills.map((skill) => ({
+                    id: skill.skillId,
+                    label: skill.skillName,
+                    selected: selectedSkillIds.includes(skill.skillId),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) => toggleSelectedId(id, setSelectedSkillIds)}
+                />
+              </FilterAccordion>
+
+              <FilterAccordion
+                title="Cong nghe"
+                count={selectedTechnologyIds.length}
+                open={technologyFilterOpen}
+                onToggle={() => setTechnologyFilterOpen((value) => !value)}
+              >
+                <ChipGrid
+                  items={technologies.map((technology) => ({
+                    id: technology.technologyId,
+                    label: technology.technologyName,
+                    selected: selectedTechnologyIds.includes(
+                      technology.technologyId,
+                    ),
+                  }))}
+                  emptyLabel="Chua co du lieu"
+                  onToggle={(id) =>
+                    toggleSelectedId(id, setSelectedTechnologyIds)
+                  }
+                />
+              </FilterAccordion>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200/80 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!hasActiveFilters}
+                onClick={() => {
+                  setQuery("");
+                  setExperienceFilter("ALL");
+                  setSelectedDomainIds([]);
+                  setSelectedSkillIds([]);
+                  setSelectedTechnologyIds([]);
+                }}
+              >
+                Xoa loc
+              </Button>
+              <Button type="button" onClick={() => {}}>
+                Luu bo loc
+              </Button>
+            </div>
+          </Card>
+        </aside>
+
+        <section>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-slate-400">
+              Hien thi {filteredExperts.length}/{experts.length} chuyen gia phu
+              hop.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {error && (
+              <Notice className="col-span-full" tone="warning" title={error} />
+            )}
+            {loading &&
+              Array.from({ length: 4 }).map((_, index) => (
+                <Card
+                  key={`expert-skeleton-${index}`}
+                  className="h-72 animate-pulse bg-slate-50 p-5"
+                >
+                  <span className="sr-only">Dang tai chuyen gia</span>
+                </Card>
+              ))}
+            {!loading && filteredExperts.length === 0 && !error && (
+              <div className="col-span-full">
+                <EmptyState
+                  title={
+                    experts.length === 0
+                      ? "Chua co chuyen gia"
+                      : "Khong tim thay chuyen gia phu hop"
+                  }
+                  description={
+                    experts.length === 0
+                      ? "Khi backend co ho so chuyen gia, danh sach se hien thi tai day."
+                      : "Thu bo bot linh vuc, ky nang, cong nghe hoac doi tu khoa tim kiem."
+                  }
+                />
+              </div>
+            )}
+            {!loading &&
+              filteredExperts.map((expert) => {
+                const portfolio = portfolioByExpertId.get(expert.expertId);
+                const skillNames = parseCatalogIds(portfolio?.skillIds)
+                  .map((skillId) => resolveSkillName(skillId, skills))
+                  .slice(0, 3);
+                const experience =
+                  portfolio?.yearsExperience ?? expert.yearsOfExperience ?? 0;
+                const displayName =
+                  expert.fullName || `Expert #${expert.expertId}`;
+                const description =
+                  portfolio?.selfDescription ||
+                  expert.title ||
+                  "Chuyen gia AI tren AITASKER";
+
+                return (
+                  <Card
+                    key={expert.expertId}
+                    hover
+                    className="flex h-full flex-col p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Avatar name={displayName} size="xl" />
+                      <StatusBadge status={expert.kycStatus} />
+                    </div>
+                    <h3 className="mt-4 min-h-12 line-clamp-2 font-display text-lg font-extrabold leading-6 text-ink">
+                      {displayName}
+                    </h3>
+                    <p className="mt-1 min-h-16 line-clamp-3 text-sm leading-6 text-slate-500">
+                      {description}
+                    </p>
+                    <div className="mt-4 flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="text-sm font-extrabold text-ink">
+                        {experience} nam kinh nghiem
+                      </span>
+                    </div>
+                    <div className="mt-4 flex min-h-16 flex-wrap content-start gap-2">
+                      {skillNames.length > 0 ? (
+                        skillNames.map((skill) => (
+                          <Badge key={skill} tone="slate">
+                            {skill}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge tone="slate">Chua cap nhat ky nang</Badge>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-5">
+                      {expert.portfolioUrl ? (
+                        <FirebaseFileLink
+                          path={expert.portfolioUrl}
+                          buttonText="Xem nang luc"
+                          emptyText="Chua co ho so nang luc"
+                        />
+                      ) : (
+                        <Button className="w-full" variant="secondary" disabled>
+                          Chua co ho so nang luc
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

@@ -234,8 +234,8 @@ export function MyJobsPage() {
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
         {filtered.map((job) => (
-          <Card key={job.jobId} className="group p-5">
-            <div className="flex items-start justify-between gap-3">
+          <Card key={job.jobId} className="group flex h-full flex-col p-5">
+            <div className="flex min-h-9 items-start justify-between gap-3">
               <JobDomainBadge
                 label={jobDomainLabel(
                   jobDomainIdsByJobId[job.jobId] || [],
@@ -245,11 +245,11 @@ export function MyJobsPage() {
               <StatusBadge status={job.status} />
             </div>
             <Link to={`/jobs/${job.jobId}`} className="group">
-              <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+              <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
                 {job.title}
               </h3>
             </Link>
-            <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+            <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
               {job.structuredSow}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
@@ -270,7 +270,7 @@ export function MyJobsPage() {
             <MilestoneCount
               count={(milestonesByJobId[job.jobId] || []).length}
             />
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-auto flex flex-wrap gap-2 pt-5">
               <LinkButton
                 to={`/app/jobs/${job.jobId}/manage`}
                 variant="secondary"

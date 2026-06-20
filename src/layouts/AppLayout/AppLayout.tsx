@@ -236,6 +236,7 @@ const roleNav: Record<Role, NavItem[]> = {
   ],
 };
 
+//nạp tiền
 export function AppShell() {
   const session = useSession();
   const navigate = useNavigate();
@@ -306,11 +307,12 @@ export function AppShell() {
     }, 120);
   }, [topupPayment, topupQrDataUrl]);
 
+  
   const loadWallet = useCallback(async () => {
     if (!session?.accessToken) return;
     setWalletLoading(true);
     try {
-      setWallet(await walletApi.current());
+      setWallet(await walletApi.current());// api lấy info ví
     } catch {
       setWallet(null);
     } finally {
@@ -347,7 +349,7 @@ export function AppShell() {
   const syncTopupStatus = useCallback(
     async (orderCode: number, showPending = true) => {
       try {
-        const paymentOrder = await paymentApi.syncWalletTopup(orderCode);
+        const paymentOrder = await paymentApi.syncWalletTopup(orderCode);//api cập nhật số dư
         if (paymentOrder.status === "PAID") {
           setTopupNotice({
             tone: "success",
@@ -407,7 +409,7 @@ export function AppShell() {
     };
   }, [syncTopupStatus, topupOpen, topupPayment]);
 
-  const submitTopup = async (event: FormEvent) => {
+  const submitTopup = async (event: FormEvent) => { //bấm submit
     event.preventDefault();
     const amount = Number(topupForm.amount);
     if (!Number.isInteger(amount) || amount < 2000) {
@@ -424,7 +426,7 @@ export function AppShell() {
     setTopupQrDataUrl("");
 
     try {
-      const payment = await paymentApi.createWalletTopup({
+      const payment = await paymentApi.createWalletTopup({ //api tạo link nạp
         amount,
         description: topupForm.description.trim() || defaultTopupDescription,
       });

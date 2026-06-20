@@ -1,17 +1,21 @@
-import { ChevronDown, LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { getPublicStartPath, getWorkspacePath } from '../../lib/roleExperience';
-import { clearSession, roleLabel, useSession } from '../../context/sessionContext';
-import { cn } from '../../lib/utils';
-import { Logo } from '../../components/Logo';
-import { Avatar, LinkButton } from '../../components/ui';
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { useState } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { getPublicStartPath, getWorkspacePath } from "../../lib/roleExperience";
+import {
+  clearSession,
+  roleLabel,
+  useSession,
+} from "../../context/sessionContext";
+import { cn } from "../../lib/utils";
+import { Logo } from "../../components/Logo";
+import { Avatar, LinkButton } from "../../components/ui";
 
 const nav = [
-  { label: 'Cơ hội dự án', to: '/jobs' },
-  { label: 'Chuyên gia AI', to: '/experts' },
-  { label: 'Quy trình', to: '/#how-it-works' },
-  { label: 'Về AITASKER', to: '/#about' },
+  { label: "Cơ hội dự án", to: "/jobs" },
+  { label: "Chuyên gia AI", to: "/experts" },
+  { label: "Quy trình", to: "/how-it-works" },
+  { label: "Về AITASKER", to: "/about" },
 ];
 
 export function PublicShell() {
@@ -22,8 +26,8 @@ export function PublicShell() {
   const startPath = getPublicStartPath(session);
   const workspacePath = getWorkspacePath(session);
   const publicNav = nav.filter((item) => {
-    if (session?.role === 'EXPERT') return item.to !== '/experts';
-    if (session?.role === 'BUSINESS') return item.to !== '/jobs';
+    if (session?.role === "EXPERT") return item.to !== "/experts";
+    if (session?.role === "BUSINESS") return item.to !== "/jobs";
     return true;
   });
 
@@ -31,7 +35,7 @@ export function PublicShell() {
     clearSession();
     setAccountOpen(false);
     setOpen(false);
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -46,8 +50,10 @@ export function PublicShell() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-xl px-3 py-2 text-sm font-semibold transition',
-                    isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50 hover:text-ink',
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    isActive
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-ink",
                   )
                 }
               >
@@ -67,16 +73,24 @@ export function PublicShell() {
                   >
                     <Avatar name={session.fullName} size="lg" />
                     <div className="min-w-0 text-left">
-                      <p className="max-w-32 truncate text-sm font-extrabold text-ink">{session.fullName}</p>
-                      <p className="text-xs font-medium text-slate-400">{roleLabel(session.role)}</p>
+                      <p className="max-w-32 truncate text-sm font-extrabold text-ink">
+                        {session.fullName}
+                      </p>
+                      <p className="text-xs font-medium text-slate-400">
+                        {roleLabel(session.role)}
+                      </p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-slate-400" />
                   </button>
                   {accountOpen && (
                     <div className="absolute right-0 top-14 w-64 rounded-3xl border border-slate-100 bg-white p-2 shadow-soft">
                       <div className="rounded-2xl bg-brand-50 px-3 py-2.5">
-                        <p className="truncate text-sm font-extrabold text-brand-700">{session.fullName}</p>
-                        <p className="mt-1 text-xs text-slate-500">{roleLabel(session.role)}</p>
+                        <p className="truncate text-sm font-extrabold text-brand-700">
+                          {session.fullName}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {roleLabel(session.role)}
+                        </p>
                       </div>
                       <div className="my-2 border-t border-slate-100" />
                       <Link
@@ -144,8 +158,12 @@ export function PublicShell() {
                   >
                     <Avatar name={session.fullName} size="lg" />
                     <div className="min-w-0 text-left">
-                      <p className="truncate text-sm font-extrabold text-ink">{session.fullName}</p>
-                      <p className="text-xs font-medium text-slate-400">{roleLabel(session.role)}</p>
+                      <p className="truncate text-sm font-extrabold text-ink">
+                        {session.fullName}
+                      </p>
+                      <p className="text-xs font-medium text-slate-400">
+                        {roleLabel(session.role)}
+                      </p>
                     </div>
                     <ChevronDown className="ml-auto h-4 w-4 text-slate-400" />
                   </Link>
@@ -176,12 +194,26 @@ export function PublicShell() {
           <div>
             <Logo />
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">
-              Nền tảng kết nối doanh nghiệp với chuyên gia AI, quản lý hợp đồng, nghiệm thu và dòng tiền minh bạch.
+              Nền tảng kết nối doanh nghiệp với chuyên gia AI, quản lý hợp đồng,
+              nghiệm thu và dòng tiền minh bạch.
             </p>
           </div>
-          <FooterColumn title="Nền tảng" links={['Cơ hội dự án', 'Chuyên gia AI', 'Quy trình làm việc']} />
-          <FooterColumn title="Hỗ trợ" links={['Trung tâm trợ giúp', 'Điều khoản sử dụng', 'Chính sách bảo mật']} />
-          <FooterColumn title="Liên hệ" links={['hello@aitasker.vn', 'TP. Hồ Chí Minh', 'Thứ 2 - Thứ 6']} />
+          <FooterColumn
+            title="Nền tảng"
+            links={["Cơ hội dự án", "Chuyên gia AI", "Quy trình làm việc"]}
+          />
+          <FooterColumn
+            title="Hỗ trợ"
+            links={[
+              "Trung tâm trợ giúp",
+              "Điều khoản sử dụng",
+              "Chính sách bảo mật",
+            ]}
+          />
+          <FooterColumn
+            title="Liên hệ"
+            links={["hello@aitasker.vn", "TP. Hồ Chí Minh", "Thứ 2 - Thứ 6"]}
+          />
         </div>
         <div className="border-t border-slate-100 py-4 text-center text-xs text-slate-400">
           © 2026 AITASKER. All rights reserved.

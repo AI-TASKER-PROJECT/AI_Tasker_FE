@@ -127,6 +127,7 @@ function SkillCount({ count }: { count: number }) {
   );
 }
 
+//nộp proposal
 export function SubmitProposalPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -172,7 +173,7 @@ export function SubmitProposalPage() {
           jobTechnologyItems,
           milestoneItems,
           portfolioResult,
-        ] = await Promise.all([
+        ] = await Promise.all([ //api 
           marketplaceApi.getJob(numericJobId),
           catalogApi.listDomains(true),
           catalogApi.listSkills(true),
@@ -249,7 +250,7 @@ export function SubmitProposalPage() {
     : job?.budget || 0;
   const bidAmountDisplay = bidAmount > 0 ? String(bidAmount) : "";
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent) => { //submit proposal
     event.preventDefault();
     if (session?.role !== "EXPERT") {
       setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
@@ -296,7 +297,7 @@ export function SubmitProposalPage() {
     try {
       let proposalFileUrl = form.proposalFileUrl;
       if (proposalFile) {
-        proposalFileUrl = await profileApi.uploadProposalFile(proposalFile);
+        proposalFileUrl = await profileApi.uploadProposalFile(proposalFile); //api upload file đề xuất
       }
       const proposalMilestone =
         requestBudgetChange &&
@@ -307,7 +308,7 @@ export function SubmitProposalPage() {
               proposedBudget: Number(milestoneBudgets[milestone.milestoneId]),
             }))
           : undefined;
-      const proposal = await marketplaceApi.submitProposal({
+      const proposal = await marketplaceApi.submitProposal({ //api cập nhật thông tin
         jobId: numericJobId,
         domainId: Number(form.domainId),
         skillId: Number(form.skillId),
