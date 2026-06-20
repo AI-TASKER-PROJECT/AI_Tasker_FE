@@ -13,7 +13,11 @@ import type {
   Dispute,
   ExpertProfile,
   Job,
+  MembershipPackage,
+  MembershipPurchase,
   Milestone,
+  PaymentActionResponse,
+  PaymentOrder,
   Portfolio,
   Proposal,
   Review,
@@ -23,6 +27,9 @@ import type {
   SystemWallet,
   TaxCheckResponse,
   Transaction,
+  UserQuota,
+  WalletTransaction,
+  WithdrawalRequest,
   NotificationItem,
   UnreadNotificationCount,
 } from "../types";
@@ -33,6 +40,7 @@ const api = axios.create({
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
+
 
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
@@ -207,6 +215,42 @@ export const sowApi = {
         setDataMode("live");
         return response.data;
       });
+  },
+};
+
+// ── Expert Recommendation AI ──────────────────────────────────────────────────
+export interface ExpertRecommendationResponse {
+  expertId: number;
+  portfolioId?: number;
+  rankPosition: number;
+  matchScore?: number;
+  matchedSkills?: string[];
+  matchedDomains?: string[];
+  reason?: string;
+}
+
+export interface ExpertRecommendationListResponse {
+  jobPostingId: number;
+  recommendations: ExpertRecommendationResponse[];
+  generatedByAi?: boolean;
+  message?: string;
+}
+
+export const expertRecommendationApi = {
+  /** POST — Gọi AI generate mới, lưu DB và trả kết quả */
+  generate(jobPostingId: number) {
+    return call<ExpertRecommendationListResponse>({
+      method: "POST",
+      url: `/api/jobs/${jobPostingId}/expert-recommendations`,
+      timeout: 90000,
+    });
+  },
+  /** GET — Lấy danh sách đã lưu (không gọi lại AI) */
+  get(jobPostingId: number) {
+    return call<ExpertRecommendationListResponse>({
+      method: "GET",
+      url: `/api/jobs/${jobPostingId}/expert-recommendations`,
+    });
   },
 };
 
@@ -699,9 +743,95 @@ export const paymentApi = {
     });
   },
   syncWalletTopup(orderCode: number) {
-    return call<CreatePayOSPaymentResponse>({
+    return call<PaymentOrder>({
       method: "POST",
       url: `/api/payments/payos/${orderCode}/sync`,//đồng bộ 
+    });
+  },
+};
+
+export const walletTransactionApi = {
+  list() {
+    return call<WalletTransaction[]>({
+      method: "GET",
+      url: "/api/wallet/transactions",
+    });
+  },
+};
+
+export const membershipApi = {
+  listPackages() {
+    return call<MembershipPackage[]>({
+      method: "GET",
+      url: "/api/membership/packages",
+    });
+  },
+  purchasePackage(packageId: number) {
+    return call<PaymentActionResponse<MembershipPurchase>>({
+      method: "POST",
+      url: `/api/membership/packages/${packageId}/purchase`,
+    });
+  },
+};
+
+export const creditApi = {
+  purchaseJobPost(quantity: number) {
+    return call<PaymentActionResponse<UserQuota>>({
+      method: "POST",
+      url: "/api/credits/job-post/purchase",
+      data: { quantity },
+    });
+  },
+  purchaseProposal(quantity: number) {
+    return call<PaymentActionResponse<UserQuota>>({
+      method: "POST",
+      url: "/api/credits/proposal/purchase",
+      data: { quantity },
+    });
+  },
+};
+
+export const withdrawalApi = {
+  create(payload: { amount: number; bankName: string; bankAccountNumber: string; bankAccountHolder: string }) {
+    return call<PaymentActionResponse<WithdrawalRequest>>({
+      method: "POST",
+      url: "/api/v1/withdrawal-requests",
+      data: payload,
+    });
+  },
+  listMy() {
+    return call<WithdrawalRequest[]>({
+      method: "GET",
+      url: "/api/v1/withdrawal-requests",
+    });
+  },
+  listAll() {
+    return call<WithdrawalRequest[]>({
+      method: "GET",
+      url: "/api/v1/admin/withdrawal-requests",
+    });
+  },
+  approve(withdrawalId: number, adminNote?: string) {
+    return call<WithdrawalRequest>({
+      method: "POST",
+      url: `/api/v1/admin/withdrawal-requests/${withdrawalId}/approve`,
+      data: adminNote ? { adminNote } : undefined,
+    });
+  },
+  reject(withdrawalId: number, adminNote?: string) {
+    return call<WithdrawalRequest>({
+      method: "POST",
+      url: `/api/v1/admin/withdrawal-requests/${withdrawalId}/reject`,
+      data: adminNote ? { adminNote } : undefined,
+    });
+  },
+};
+
+export const userQuotaApi = {
+  getCurrent() {
+    return call<UserQuota>({
+      method: "GET",
+      url: "/api/users/me/quota",
     });
   },
 };

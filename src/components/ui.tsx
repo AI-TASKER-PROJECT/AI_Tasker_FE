@@ -10,6 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import {
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -338,7 +339,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ autoResize = false, className, defaultValue, onInput, value, ...props }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const resizeToContent = () => {
+    const resizeToContent = useCallback(() => {
       const textarea = textareaRef.current;
       if (!textarea || !autoResize) {
         return;
@@ -346,13 +347,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
 
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
-    };
+    }, [autoResize]);
 
     useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
 
     useLayoutEffect(() => {
       resizeToContent();
-    }, [autoResize, defaultValue, value]);
+    }, [resizeToContent, defaultValue, value]);
 
     return (
       <textarea

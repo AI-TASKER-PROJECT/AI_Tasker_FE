@@ -16,6 +16,7 @@ import {
   getApiErrorMessage,
   marketplaceApi,
   sowApi,
+  userQuotaApi,
   type GeneratedSow,
   type GeneratedSowMilestone,
   type Domain,
@@ -23,7 +24,7 @@ import {
   type Technology,
 } from "../../../services";
 import { cn, formatCurrency } from "../../../lib/utils";
-import type { AcceptanceCriteria, Job } from "../../../types";
+import type { AcceptanceCriteria, Job, UserQuota } from "../../../types";
 import {
   Badge,
   Button,
@@ -270,6 +271,7 @@ export function CreateJobPage() {
   const [skillAssignments, setSkillAssignments] = useState<SkillAssignment[]>(
     [],
   );
+  const [quota, setQuota] = useState<UserQuota | null>(null);
 
   // ── AI NeedMoreInfo flow ──────────────────────────────────────────────────
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -288,11 +290,13 @@ export function CreateJobPage() {
       catalogApi.listSkills(true),
       catalogApi.listTechnologies(true),
       catalogApi.listAcceptanceCriteria(true).catch(() => []),
-    ]).then(([domainItems, skillItems, technologyItems, criteriaItems]) => {
+      userQuotaApi.getCurrent().catch(() => null),
+    ]).then(([domainItems, skillItems, technologyItems, criteriaItems, quotaItem]) => {
       setDomains(domainItems);
       setSkills(skillItems);
       setTechnologies(technologyItems);
       setAcceptanceCriteria(criteriaItems);
+      setQuota(quotaItem);
     });
   }, []);
 
@@ -508,7 +512,7 @@ export function CreateJobPage() {
         description: milestone.description || "",
         fundsAllocated: Number(milestone.fundsAllocated || 0),
         orderIndex: Number(milestone.orderIndex || index + 1),
-        status: "Pending",
+        status: "PENDING",
         criteriaIds: milestone.criteriaIds,
       }));
 
@@ -517,6 +521,12 @@ export function CreateJobPage() {
     setLoading(true);
     setCreateMessage("");
     try {
+      if (quota && (quota.jobPostQuotaBalance ?? 0) <= 0) {
+        setCreateMessage("Bạn đã hết lượt đăng Job. Vui lòng mua thêm credit hoặc gói thành viên.");
+        setCreateMessageTone("danger");
+        setLoading(false);
+        return;
+      }
       if (selectedDomainId === null) {
         setCreateMessage("Vui lòng chọn ít nhất một lĩnh vực cho job.");
         setCreateMessageTone("warning");

@@ -1,35 +1,31 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
+  Award,
+  BrainCircuit,
   CheckCircle2,
   Eye,
   FileCheck2,
-  Plus,
-  RefreshCw,
-  Save,
   Sparkles,
+  Star,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   catalogApi,
   contractApi,
+  expertRecommendationApi,
   getApiErrorMessage,
   marketplaceApi,
   profileApi,
-  sowApi,
-  type GeneratedSow,
-  type GeneratedSowMilestone,
   type Domain,
+  type ExpertRecommendationListResponse,
+  type ExpertRecommendationResponse,
   type JobSkill,
   type Skill,
 } from "../../../services";
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
-import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
-  AcceptanceCriteria,
   ExpertProfile,
   Job,
   Milestone,
@@ -48,25 +44,18 @@ import {
   Modal,
   Notice,
   PageHeader,
-  SearchInput,
+  Progress,
   SectionHeading,
   StatusBadge,
-  Textarea,
 } from "../../../components/ui";
-import { JobCard, JobDomainBadge } from "../../PublicPages";
+import { JobDomainBadge } from "../../PublicPages";
 import {
-  formatGeneratedSow,
   jobDomainLabel,
-  parseCatalogIdList,
   resolveDomainName,
   resolveSkillName,
   skillCountLabel,
-  type MilestoneDraft,
-  type SkillAssignment,
 } from "../marketplacePages.utils";
-import {
-  CompactMilestones,
-} from "../marketplacePages.helpers";
+import { CompactMilestones } from "../marketplacePages.helpers";
 export function ManageJobPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -84,6 +73,15 @@ export function ManageJobPage() {
     totalBudget: "",
     timelineDays: "60",
   });
+
+  // ── AI Expert Recommendations ──────────────────────────────────────────────
+  const [recommendationResult, setRecommendationResult] =
+    useState<ExpertRecommendationListResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+  const [aiMessageTone, setAiMessageTone] = useState<
+    "info" | "success" | "warning" | "danger"
+  >("info");
 
   useEffect(() => {
     const id = Number(jobId);
@@ -111,7 +109,46 @@ export function ManageJobPage() {
       .listJobMilestones(id)
       .then(setMilestones)
       .catch(() => setMilestones([]));
+    // Load saved AI recommendations silently
+    expertRecommendationApi
+      .get(id)
+      .then((result) => {
+        if (result.recommendations?.length > 0) {
+          setRecommendationResult(result);
+        }
+      })
+      .catch(() => {});
   }, [jobId]);
+
+  const generateRecommendations = async () => {
+    const id = Number(jobId);
+    setAiLoading(true);
+    setAiMessage("");
+    try {
+      const result = await expertRecommendationApi.generate(id);
+      setRecommendationResult(result);
+      if (result.recommendations?.length === 0) {
+        setAiMessage(
+          result.message ||
+            "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
+        );
+        setAiMessageTone("warning");
+      } else {
+        setAiMessage(
+          result.generatedByAi
+            ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
+            : (result.message ??
+                "Đề xuất được tạo bằng rule-based ranking (AI không khả dụng)."),
+        );
+        setAiMessageTone(result.generatedByAi ? "success" : "warning");
+      }
+    } catch (error) {
+      setAiMessage(`Không gọi được AI: ${getApiErrorMessage(error)}`);
+      setAiMessageTone("danger");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!job) return <div>Đang tải job...</div>;
 
@@ -172,55 +209,79 @@ export function ManageJobPage() {
             </Button>
           </div>
           {proposalTab === "ai" && (
-            <div className="grid gap-4">
-              <SectionHeading
-                title="AI đề xuất chuyên gia"
-                description="Khu vực giao diện chuẩn bị cho AI matching. Chức năng đề xuất tự động sẽ được nối sau."
-              />
-              <div className="grid gap-4 md:grid-cols-2">
-                {[1, 2].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-3xl border border-dashed border-brand-200 bg-brand-50/40 p-5"
+            <div className="grid gap-5">
+              {/* Header row */}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <SectionHeading
+                  title="AI đề xuất chuyên gia"
+                  description="Backend lọc top 20 candidate theo skill/domain/kinh nghiệm, sau đó OpenAI chọn top 5 phù hợp nhất với SoW của job."
+                />
+                <div className="flex gap-2">
+                  {recommendationResult && (
+                    <Badge
+                      tone={
+                        recommendationResult.generatedByAi ? "mint" : "amber"
+                      }
+                    >
+                      {recommendationResult.generatedByAi
+                        ? "✦ AI generated"
+                        : "Rule-based"}
+                    </Badge>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={aiLoading}
+                    onClick={generateRecommendations}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-brand-600">
-                        <Sparkles className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="font-extrabold text-ink">
-                          Chuyên gia đề xuất #{item}
-                        </p>
-                        <p className="text-sm font-semibold text-slate-500">
-                          Đang chờ AI matching
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-5 grid gap-2 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Phù hợp lĩnh vực</span>
-                        <span className="font-bold text-slate-400">
-                          Chưa có dữ liệu
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Skill khớp</span>
-                        <span className="font-bold text-slate-400">
-                          Chưa có dữ liệu
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Trạng thái</span>
-                        <Badge tone="amber">Sắp tích hợp</Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    <BrainCircuit className="h-4 w-4" />
+                    {recommendationResult
+                      ? "Tạo lại đề xuất"
+                      : "Sinh đề xuất AI"}
+                  </Button>
+                </div>
               </div>
-              <Notice tone="info" title="AI matching chưa kích hoạt">
-                Tab này giữ giao diện cho luồng AI đề xuất chuyên gia, chưa gọi
-                API đề xuất thật.
-              </Notice>
+
+              {/* Notice after generate */}
+              {aiMessage && <Notice tone={aiMessageTone} title={aiMessage} />}
+
+              {/* Empty / loading state */}
+              {!recommendationResult && !aiLoading && (
+                <div className="rounded-3xl border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/60 to-indigo-50/40 px-6 py-12 text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-3xl bg-white text-brand-500 shadow-sm mx-auto">
+                    <BrainCircuit className="h-6 w-6" />
+                  </span>
+                  <p className="mt-4 font-extrabold text-ink">
+                    Chưa có đề xuất nào
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Nhấn "Sinh đề xuất AI" để backend phân tích SoW và matching
+                    chuyên gia.
+                  </p>
+                </div>
+              )}
+
+              {/* Skeleton while loading */}
+              {aiLoading && (
+                <div className="grid gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-36 animate-pulse rounded-3xl border border-slate-100 bg-slate-100"
+                    />
+                  ))}
+                  <p className="text-center text-sm font-semibold text-brand-600">
+                    AI đang phân tích SoW và lọc chuyên gia phù hợp...
+                  </p>
+                </div>
+              )}
+
+              {/* Recommendation cards */}
+              {!aiLoading &&
+                recommendationResult?.recommendations?.map((rec) => (
+                  <ExpertRecommendationCard key={rec.expertId} rec={rec} />
+                ))}
             </div>
           )}
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
@@ -475,7 +536,9 @@ function ProposalCard({
     "skillName",
   );
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
-  const proposalMilestones = parseProposalMilestones(proposal.proposalMilestone);
+  const proposalMilestones = parseProposalMilestones(
+    proposal.proposalMilestone,
+  );
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
@@ -558,7 +621,8 @@ function ProposalCard({
               </div>
             ) : (
               <p className="mt-2 text-sm font-semibold text-slate-400">
-                Chuyên gia giữ ngân sách milestone mặc định hoặc chưa gửi đề xuất chi tiết.
+                Chuyên gia giữ ngân sách milestone mặc định hoặc chưa gửi đề
+                xuất chi tiết.
               </p>
             )}
           </div>
@@ -801,6 +865,122 @@ function ExpertInfoBlock({
         {label}
       </p>
       <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+// ─── Expert Recommendation Card ───────────────────────────────────────────────
+function ExpertRecommendationCard({
+  rec,
+}: {
+  rec: ExpertRecommendationResponse;
+}) {
+  const rankColors = [
+    "from-amber-400 to-yellow-300", // #1 gold
+    "from-slate-400 to-slate-300", // #2 silver
+    "from-orange-400 to-amber-300", // #3 bronze
+    "from-brand-400 to-indigo-400", // #4
+    "from-brand-300 to-violet-300", // #5
+  ];
+  const gradientClass =
+    rankColors[(rec.rankPosition ?? 1) - 1] ?? rankColors[4];
+  const score = rec.matchScore ?? 0;
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:border-brand-100 hover:shadow-card">
+      {/* Header */}
+      <div className="grid gap-4 bg-gradient-to-r from-slate-50 to-brand-50/30 p-5 md:grid-cols-[56px_1fr_160px]">
+        {/* Rank badge */}
+        <div
+          className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${gradientClass} text-white shadow`}
+        >
+          <span className="text-xl font-black">#{rec.rankPosition}</span>
+        </div>
+
+        {/* Expert info */}
+        <div className="min-w-0">
+          <p className="font-display text-base font-extrabold text-ink">
+            Expert #{rec.expertId}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-400">
+            Expert ID: {rec.expertId}
+            {rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""}
+          </p>
+        </div>
+
+        {/* Match score */}
+        <div className="text-right">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            Match score
+          </p>
+          <p
+            className={cn(
+              "mt-1 font-display text-3xl font-black",
+              score >= 80
+                ? "text-mint-600"
+                : score >= 50
+                  ? "text-amber-500"
+                  : "text-slate-400",
+            )}
+          >
+            {score.toFixed(1)}
+            <span className="text-base font-bold opacity-60">%</span>
+          </p>
+          <Progress
+            value={score}
+            color={score >= 80 ? "mint" : score >= 50 ? "coral" : "brand"}
+            className="mt-2"
+          />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="grid gap-4 p-5 pt-4">
+        {/* Skills & Domains */}
+        <div className="grid gap-3 md:grid-cols-2">
+          {(rec.matchedSkills?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                <Star className="h-3.5 w-3.5" />
+                Kỹ năng khớp
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.matchedSkills!.map((skill) => (
+                  <Badge key={skill} tone="brand">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {(rec.matchedDomains?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                <Award className="h-3.5 w-3.5" />
+                Lĩnh vực khớp
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.matchedDomains!.map((domain) => (
+                  <Badge key={domain} tone="mint">
+                    {domain}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* AI reasoning */}
+        {rec.reason && (
+          <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              <BrainCircuit className="h-3.5 w-3.5" />
+              Lý do AI đề xuất
+            </p>
+            <p className="text-sm leading-6 text-slate-700">{rec.reason}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

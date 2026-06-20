@@ -286,6 +286,53 @@ export interface SystemWallet {
   updatedAt?: string;
 }
 
+export interface MembershipPackage {
+  packageId: number;
+  packageCode: string;
+  packageName: string;
+  price: number;
+  badgeDurationDays: number;
+  jobPostQuota: number;
+  proposalQuota: number;
+  recommendVisibility: boolean;
+  targetRole: 'BUSINESS' | 'EXPERT';
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MembershipPurchase {
+  purchaseId: number;
+  accountId: number;
+  packageId: number;
+  price: number;
+  badgeExpiredAt?: string;
+  purchasedAt?: string;
+  status?: string;
+  walletTransactionId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WithdrawalRequest {
+  withdrawalId: number;
+  accountId: number;
+  walletId: number;
+  amount: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  status: string;
+  holdTransactionId?: number;
+  reviewTransactionId?: number;
+  adminId?: number;
+  adminNote?: string;
+  requestedAt?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CreatePayOSPaymentResponse {
   checkoutUrl: string;
   qrCode?: string;
@@ -296,6 +343,21 @@ export interface CreatePayOSPaymentResponse {
   orderCode: number;
   amount: number;
   status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
+}
+
+/** Payment order persisted by PayOS after a status synchronisation. */
+export interface PaymentOrder {
+  id: number;
+  accountId?: number;
+  businessId?: number;
+  amount: number;
+  provider: 'PAYOS';
+  purpose: 'WALLET_TOPUP';
+  providerOrderCode: number;
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
+  description?: string;
+  createdAt?: string;
+  paidAt?: string;
 }
 
 export interface AdminAccount {
@@ -338,6 +400,55 @@ export interface NotificationItem {
 
 export interface UnreadNotificationCount {
   unreadCount: number;
+}
+
+export interface WalletTransaction {
+  id: number;
+  systemWalletId: number;
+  accountId?: number;
+  paymentOrderId?: number;
+  transactionType:
+    | 'TOPUP'
+    | 'MEMBERSHIP_PURCHASE'
+    | 'CREDIT_PURCHASE'
+    | 'CONTRACT_SECURITY_DEPOSIT_HOLD'
+    | 'DEPOSIT_REFUND'
+    | 'WITHDRAW_HOLD'
+    | 'WITHDRAW_APPROVED'
+    | 'WITHDRAW_REJECTED';
+  direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE';
+  balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  referenceType?: string;
+  referenceId?: number;
+  description?: string;
+  createdAt?: string;
+}
+
+export interface PaymentActionResponse<T> {
+  completed: boolean;
+  needTopup: boolean;
+  currentBalance: number;
+  requiredAmount: number;
+  missingAmount: number;
+  redirectUrl?: string;
+  message?: string;
+  data?: T;
+}
+
+export interface UserQuota {
+  quotaId: number;
+  accountId: number;
+  jobPostQuotaBalance: number;
+  proposalQuotaBalance: number;
+  badgeExpiredAt?: string;
+  premiumRecommendationVisible?: boolean;
+  premiumActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuditLog {

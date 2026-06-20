@@ -43,12 +43,14 @@ import type {
   NotificationItem,
   Role,
   SystemWallet,
+  UserQuota,
 } from "../../types";
 import {
   authApi,
   getApiErrorMessage,
   notificationApi,
   paymentApi,
+  userQuotaApi,
   walletApi,
 } from "../../services";
 import {
@@ -106,6 +108,16 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <WalletCards className="h-4 w-4" />,
     },
     {
+      label: "Ví & Thanh toán",
+      to: "/app/wallet",
+      icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      label: "Gói thành viên",
+      to: "/app/membership",
+      icon: <Star className="h-4 w-4" />,
+    },
+    {
       label: "Tranh chấp",
       to: "/app/disputes",
       icon: <Gavel className="h-4 w-4" />,
@@ -141,6 +153,16 @@ const roleNav: Record<Role, NavItem[]> = {
       label: "Tài chính",
       to: "/app/finance",
       icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      label: "Ví & Thanh toán",
+      to: "/app/wallet",
+      icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      label: "Gói thành viên",
+      to: "/app/membership",
+      icon: <Star className="h-4 w-4" />,
     },
     {
       label: "Tranh chấp",
@@ -185,6 +207,11 @@ const roleNav: Record<Role, NavItem[]> = {
       label: "System Wallet",
       to: "/app/admin/wallet",
       icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      label: "Rút tiền",
+      to: "/app/admin/withdrawals",
+      icon: <ReceiptText className="h-4 w-4" />,
     },
     {
       label: "Accounts",
@@ -243,6 +270,7 @@ export function AppShell() {
   const [roleOpen, setRoleOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
+  const [quota, setQuota] = useState<UserQuota | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupLoading, setTopupLoading] = useState(false);
@@ -300,13 +328,20 @@ export function AppShell() {
     if (!session?.accessToken) return;
     setWalletLoading(true);
     try {
-      setWallet(await walletApi.current());// api lấy info ví
+      const isExternal = session.role === "BUSINESS" || session.role === "EXPERT";
+      const [walletRes, quotaRes] = await Promise.allSettled([
+        walletApi.current(),
+        isExternal ? userQuotaApi.getCurrent() : Promise.reject(),
+      ]);
+      setWallet(walletRes.status === "fulfilled" ? walletRes.value : null);
+      setQuota(quotaRes.status === "fulfilled" ? quotaRes.value : null);
     } catch {
       setWallet(null);
+      setQuota(null);
     } finally {
       setWalletLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [session]);
 
   useEffect(() => {
     void Promise.resolve().then(loadWallet);
@@ -322,7 +357,7 @@ export function AppShell() {
     navigate("/login");
   };
 
-  const openTopup = () => {
+  const openTopup = useCallback(() => {
     setTopupNotice(null);
     setTopupPayment(null);
     setTopupQrDataUrl("");
@@ -332,7 +367,16 @@ export function AppShell() {
     }));
     setTopupOpen(true);
     setRoleOpen(false);
-  };
+  }, [defaultTopupDescription]);
+
+  useEffect(() => {
+    window.addEventListener("aitasker:open-wallet-topup", openTopup);
+    window.addEventListener("aitasker:reload-wallet", loadWallet);
+    return () => {
+      window.removeEventListener("aitasker:open-wallet-topup", openTopup);
+      window.removeEventListener("aitasker:reload-wallet", loadWallet);
+    };
+  }, [openTopup, loadWallet]);
 
   const syncTopupStatus = useCallback(
     async (orderCode: number, showPending = true) => {
@@ -698,10 +742,41 @@ export function AppShell() {
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Badge tone="mint" className="hidden sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-mint-500" />
-                API trực tiếp
-              </Badge>
+              {(session?.role === "BUSINESS" || session?.role === "EXPERT") && quota && (
+                <Badge
+                  tone={(() => {
+                    if (!quota.premiumActive) return "slate";
+                    const name = localStorage.getItem("aitasker_active_package") || "Premium";
+                    if (name.includes("Premium")) return "amber";
+                    if (name.includes("Plus")) return "brand";
+                    if (name.includes("Standard")) return "violet";
+                    return "amber";
+                  })()}
+                  className="hidden sm:inline-flex text-sm px-3 py-1.5"
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      (() => {
+                        if (!quota.premiumActive) return "bg-slate-500";
+                        const name = localStorage.getItem("aitasker_active_package") || "Premium";
+                        if (name.includes("Premium")) return "bg-amber-500";
+                        if (name.includes("Plus")) return "bg-brand-500";
+                        if (name.includes("Standard")) return "bg-violet-500";
+                        return "bg-amber-500";
+                      })()
+                    )}
+                  />
+                  {(() => {
+                    if (!quota.premiumActive) return "Basic";
+                    const name = localStorage.getItem("aitasker_active_package") || "Premium";
+                    if (name.includes("Premium")) return "Premium";
+                    if (name.includes("Plus")) return "Plus";
+                    if (name.includes("Standard")) return "Standard";
+                    return "Premium";
+                  })()}
+                </Badge>
+              )}
               <div className="relative">
                 <button
                   type="button"
@@ -868,6 +943,24 @@ export function AppShell() {
                           </p>
                         </div>
                       </div>
+                      
+                      {quota && (
+                        <div className="mt-3 rounded-2xl bg-slate-50 p-3">
+                          <div className="flex justify-between items-center">
+                            <p className="text-[11px] font-bold text-slate-400">
+                              Lượt đăng Job
+                            </p>
+                            <p className="text-sm font-black text-ink">{quota.jobPostQuotaBalance ?? 0}</p>
+                          </div>
+                          <div className="mt-2 flex justify-between items-center">
+                            <p className="text-[11px] font-bold text-slate-400">
+                              Lượt nộp Proposal
+                            </p>
+                            <p className="text-sm font-black text-ink">{quota.proposalQuotaBalance ?? 0}</p>
+                          </div>
+                        </div>
+                      )}
+
                       <Button
                         type="button"
                         size="sm"

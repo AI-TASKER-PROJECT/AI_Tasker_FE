@@ -7,6 +7,7 @@ import { getSession } from '../context/sessionContext';
 import { LoginPage, RegisterPage } from '../pages/AuthPages';
 import {
   AccountsPage,
+  AdminWithdrawalPage,
   AnalyticsPage,
   AuditLogsPage,
   MasterDataPage,
@@ -16,6 +17,7 @@ import {
   SystemWalletPage,
 } from '../pages/AdminPages';
 import { DashboardPage, NotificationsPage } from '../pages/DashboardPages';
+import { WalletPage, MembershipPage } from '../pages/PaymentPages';
 import {
   ContractDetailPage,
   ContractsPage,
@@ -82,34 +84,45 @@ export function AppRoutes() {
         <Route index element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="notifications" element={<PageTransition><NotificationsPage /></PageTransition>} />
 
+        {/* Jobs */}
         <Route path="jobs" element={<PageTransition><MyJobsPage /></PageTransition>} />
         <Route path="jobs/new" element={<PageTransition><CreateJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/manage" element={<PageTransition><ManageJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/proposal" element={<PageTransition><SubmitProposalPage /></PageTransition>} />
         <Route path="business/profile" element={<PageTransition><BusinessProfilePage /></PageTransition>} />
 
+        {/* Expert */}
         <Route path="opportunities" element={<PageTransition><OpportunitiesPage /></PageTransition>} />
         <Route path="proposals" element={<PageTransition><ProposalsPage /></PageTransition>} />
         <Route path="expert/profile" element={<PageTransition><ExpertProfilePage /></PageTransition>} />
         <Route path="expert/portfolio" element={<PageTransition><ExpertPortfolioPage /></PageTransition>} />
 
+        {/* Contracts */}
         <Route path="contracts" element={<PageTransition><ContractsPage /></PageTransition>} />
         <Route path="contracts/:contractId" element={<PageTransition><ContractDetailPage /></PageTransition>} />
         <Route path="contracts/:contractId/workspace" element={<PageTransition><WorkspacePage /></PageTransition>} />
         <Route path="finance" element={<PageTransition><FinancePage /></PageTransition>} />
         <Route path="reviews" element={<PageTransition><ReviewsPage /></PageTransition>} />
 
+        {/* Payment */}
+        <Route path="wallet" element={<PageTransition><WalletPage /></PageTransition>} />
+        <Route path="membership" element={<PageTransition><MembershipPage /></PageTransition>} />
+
+        {/* Disputes */}
         <Route path="disputes" element={<PageTransition><DisputesPage /></PageTransition>} />
         <Route path="disputes/new" element={<PageTransition><NewDisputePage /></PageTransition>} />
         <Route path="disputes/:disputeId" element={<PageTransition><DisputeDetailPage /></PageTransition>} />
 
+        {/* Staff */}
         <Route path="tickets" element={<PageTransition><DisputesPage staffMode /></PageTransition>} />
         <Route path="tickets/:disputeId" element={<PageTransition><DisputeDetailPage staffMode /></PageTransition>} />
         <Route path="verifications" element={<PageTransition><VerificationsPage /></PageTransition>} />
         <Route path="verifications/:type/:id" element={<PageTransition><VerificationDetailPage /></PageTransition>} />
 
+        {/* Admin */}
         <Route path="admin/analytics" element={<PageTransition><AnalyticsPage /></PageTransition>} />
         <Route path="admin/wallet" element={<PageTransition><SystemWalletPage /></PageTransition>} />
+        <Route path="admin/withdrawals" element={<PageTransition><AdminWithdrawalPage /></PageTransition>} />
         <Route path="admin/accounts" element={<PageTransition><AccountsPage /></PageTransition>} />
         <Route path="admin/staff" element={<PageTransition><StaffPage /></PageTransition>} />
         <Route path="admin/settings" element={<PageTransition><SettingsPage /></PageTransition>} />

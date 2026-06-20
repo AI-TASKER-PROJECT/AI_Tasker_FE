@@ -897,16 +897,41 @@ export function FinancePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="FIN-01"
-        title="Tài chính và VNPay Sandbox"
-        description="Tạo escrow transaction, nhận webhook sandbox, cập nhật trạng thái và đồng bộ ví hệ thống."
+        title="Ví thanh toán & ký quỹ"
+        description="Nạp số dư qua payOS để sử dụng trong nền tảng, đồng thời theo dõi giao dịch ký quỹ theo từng milestone."
         actions={
-          canCreateTransaction ? (
-            <Button onClick={() => setTransactionOpen(true)}>
-              <Plus className="h-4 w-4" /> Tạo transaction
+          <>
+            <Button onClick={() => window.dispatchEvent(new Event("aitasker:open-wallet-topup"))}>
+              <WalletCards className="h-4 w-4" /> Nạp tiền qua payOS
             </Button>
-          ) : undefined
+            {canCreateTransaction && (
+              <Button variant="secondary" onClick={() => setTransactionOpen(true)}>
+                <Plus className="h-4 w-4" /> Tạo ký quỹ milestone
+              </Button>
+            )}
+          </>
         }
       />
+      <Card className="overflow-hidden border-brand-100 bg-gradient-to-br from-brand-50 via-white to-indigo-50">
+        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <Badge tone="brand">PAYOS · NẠP VÍ</Badge>
+            <h2 className="mt-3 font-display text-2xl font-black tracking-tight text-ink">
+              Nạp tiền nhanh, hệ thống tự đối soát
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Nhập số tiền nguyên VND từ 2.000đ, quét QR hoặc mở trang payOS. Khi payOS xác nhận, số dư khả dụng được cập nhật tự động qua wallet ledger.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-3xl bg-white/90 p-4 shadow-card">
+            <span className="text-xs font-extrabold uppercase tracking-wide text-slate-400">Quy trình</span>
+            <span className="text-sm font-bold text-ink">Tạo QR → Thanh toán → Xác nhận</span>
+            <Button size="sm" onClick={() => window.dispatchEvent(new Event("aitasker:open-wallet-topup"))}>
+              Bắt đầu nạp tiền
+            </Button>
+          </div>
+        </div>
+      </Card>
       <Card className="p-5">
         {wallet && (
           <div className="mb-5 grid gap-3 md:grid-cols-3">
@@ -1034,9 +1059,8 @@ export function FinancePage() {
           />
         )}
       </Card>
-      <Notice tone="info" title="VNPay / QR thật đang chờ tích hợp">
-        Dự án dùng VNPay Sandbox nên không còn bảng invoice nội bộ; transaction
-        là nguồn đối soát chính.
+      <Notice tone="info" title="Hai luồng thanh toán độc lập">
+        Nạp ví dùng payOS và chỉ cộng số dư sau khi order được xác nhận PAID. Bảng bên trên là giao dịch ký quỹ theo milestone; giao dịch đó không thay thế lịch sử nạp ví.
       </Notice>
 
       <Modal

@@ -24,6 +24,7 @@ import {
   marketplaceApi,
   profileApi,
   sowApi,
+  userQuotaApi,
   type GeneratedSow,
   type GeneratedSowMilestone,
   type Domain,
@@ -41,6 +42,7 @@ import type {
   Milestone,
   Portfolio,
   Proposal,
+  UserQuota,
 } from "../../../types";
 import {
   Avatar,
@@ -157,6 +159,7 @@ export function SubmitProposalPage() {
     domainId: "",
     skillId: "",
   });
+  const [quota, setQuota] = useState<UserQuota | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -173,6 +176,7 @@ export function SubmitProposalPage() {
           jobTechnologyItems,
           milestoneItems,
           portfolioResult,
+          quotaItem,
         ] = await Promise.all([ //api 
           marketplaceApi.getJob(numericJobId),
           catalogApi.listDomains(true),
@@ -183,6 +187,7 @@ export function SubmitProposalPage() {
           catalogApi.listJobTechnologies(numericJobId).catch(() => []),
           contractApi.listJobMilestones(numericJobId).catch(() => []),
           profileApi.getMyPortfolio().catch(() => null),
+          userQuotaApi.getCurrent().catch(() => null),
         ]);
         if (ignore) return;
         setJob(jobItem);
@@ -204,6 +209,7 @@ export function SubmitProposalPage() {
           ),
         );
         setPortfolio(portfolioResult);
+        setQuota(quotaItem);
       } catch {
         if (!ignore) setJob(null);
       }
@@ -254,6 +260,10 @@ export function SubmitProposalPage() {
     event.preventDefault();
     if (session?.role !== "EXPERT") {
       setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
+      return;
+    }
+    if (quota && (quota.proposalQuotaBalance ?? 0) <= 0) {
+      setMessage("Bạn đã hết lượt gửi Proposal. Vui lòng mua thêm credit hoặc gói thành viên.");
       return;
     }
     if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
