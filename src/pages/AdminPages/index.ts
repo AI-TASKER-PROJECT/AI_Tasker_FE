@@ -7,3 +7,5 @@ export * from './SettingsPage/SettingsPage';
 export * from './MasterDataPage/MasterDataPage';
 export * from './AuditLogsPage/AuditLogsPage';
 export * from './ReportsPage/ReportsPage';
+export { AdminWithdrawalPage } from './WithdrawalPage/WithdrawalPage';
+

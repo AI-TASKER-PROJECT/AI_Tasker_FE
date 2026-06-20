@@ -14,7 +14,11 @@ import type {
   Dispute,
   ExpertProfile,
   Job,
+  MembershipPackage,
+  MembershipPurchase,
   Milestone,
+  PaymentActionResponse,
+  PaymentOrder,
   Portfolio,
   Proposal,
   Review,
@@ -24,8 +28,10 @@ import type {
   SystemWallet,
   TaxCheckResponse,
   Transaction,
+  UserQuota,
+  WalletTransaction,
+  WithdrawalRequest,
   NotificationItem,
-  PaymentActionResponse,
   UnreadNotificationCount,
 } from "../types";
 import { getSession } from "../context/sessionContext";
@@ -35,6 +41,7 @@ const api = axios.create({
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
+
 
 api.interceptors.request.use((config) => {
   const token = getSession()?.accessToken;
@@ -53,13 +60,20 @@ function setDataMode(mode: "live") {
 }
 
 async function call<T>(config: AxiosRequestConfig): Promise<T> {
-  const response = await api.request<ApiResponse<T>>(config);
-  setDataMode("live");
-  return response.data.data;
+  try {
+    const response = await api.request<ApiResponse<T>>(config);
+    setDataMode("live");
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
 }
 
 export function getApiErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
     return "Đã có lỗi không xác định.";
   }
 
@@ -75,15 +89,15 @@ export function getApiErrorMessage(error: unknown) {
     | undefined;
 
   if (typeof responseData === "string" && responseData.trim()) {
-    return responseData;
+    return mapApiErrorCode(responseData);
   }
 
   if (responseData && typeof responseData === "object") {
     if ("message" in responseData && responseData.message) {
-      return String(responseData.message);
+      return mapApiErrorCode(String(responseData.message));
     }
     if ("error" in responseData && responseData.error) {
-      return String(responseData.error);
+      return mapApiErrorCode(String(responseData.error));
     }
   }
 
@@ -101,6 +115,23 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
+}
+
+function mapApiErrorCode(message: string) {
+  const normalized = message.trim().toUpperCase();
+  if (normalized === "INSUFFICIENT_BALANCE") {
+    return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
+  }
+  if (normalized === "CONTRACT_INVALID_STATUS") {
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần đủ 2 bên chấp nhận contract và ký NDA trước.";
+  }
+  if (normalized === "DEPOSIT_ALREADY_HELD") {
+    return "Hợp đồng này đã được ký quỹ rồi.";
+  }
+  if (normalized === "CONTRACT_NOT_FOUND") {
+    return "Không tìm thấy hợp đồng.";
+  }
+  return message;
 }
 
 export interface Domain {
@@ -209,6 +240,42 @@ export const sowApi = {
         setDataMode("live");
         return response.data;
       });
+  },
+};
+
+// ── Expert Recommendation AI ──────────────────────────────────────────────────
+export interface ExpertRecommendationResponse {
+  expertId: number;
+  portfolioId?: number;
+  rankPosition: number;
+  matchScore?: number;
+  matchedSkills?: string[];
+  matchedDomains?: string[];
+  reason?: string;
+}
+
+export interface ExpertRecommendationListResponse {
+  jobPostingId: number;
+  recommendations: ExpertRecommendationResponse[];
+  generatedByAi?: boolean;
+  message?: string;
+}
+
+export const expertRecommendationApi = {
+  /** POST — Gọi AI generate mới, lưu DB và trả kết quả */
+  generate(jobPostingId: number) {
+    return call<ExpertRecommendationListResponse>({
+      method: "POST",
+      url: `/api/jobs/${jobPostingId}/expert-recommendations`,
+      timeout: 90000,
+    });
+  },
+  /** GET — Lấy danh sách đã lưu (không gọi lại AI) */
+  get(jobPostingId: number) {
+    return call<ExpertRecommendationListResponse>({
+      method: "GET",
+      url: `/api/jobs/${jobPostingId}/expert-recommendations`,
+    });
   },
 };
 
@@ -603,6 +670,12 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/nda-sign`,
     });
   },
+  reject(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/reject`,
+    });
+  },
   payDeposit(contractId: number) {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
@@ -719,9 +792,95 @@ export const paymentApi = {
     });
   },
   syncWalletTopup(orderCode: number) {
-    return call<CreatePayOSPaymentResponse>({
+    return call<PaymentOrder>({
       method: "POST",
       url: `/api/payments/payos/${orderCode}/sync`,//đồng bộ 
+    });
+  },
+};
+
+export const walletTransactionApi = {
+  list() {
+    return call<WalletTransaction[]>({
+      method: "GET",
+      url: "/api/wallet/transactions",
+    });
+  },
+};
+
+export const membershipApi = {
+  listPackages() {
+    return call<MembershipPackage[]>({
+      method: "GET",
+      url: "/api/membership/packages",
+    });
+  },
+  purchasePackage(packageId: number) {
+    return call<PaymentActionResponse<MembershipPurchase>>({
+      method: "POST",
+      url: `/api/membership/packages/${packageId}/purchase`,
+    });
+  },
+};
+
+export const creditApi = {
+  purchaseJobPost(quantity: number) {
+    return call<PaymentActionResponse<UserQuota>>({
+      method: "POST",
+      url: "/api/credits/job-post/purchase",
+      data: { quantity },
+    });
+  },
+  purchaseProposal(quantity: number) {
+    return call<PaymentActionResponse<UserQuota>>({
+      method: "POST",
+      url: "/api/credits/proposal/purchase",
+      data: { quantity },
+    });
+  },
+};
+
+export const withdrawalApi = {
+  create(payload: { amount: number; bankName: string; bankAccountNumber: string; bankAccountHolder: string }) {
+    return call<PaymentActionResponse<WithdrawalRequest>>({
+      method: "POST",
+      url: "/api/v1/withdrawal-requests",
+      data: payload,
+    });
+  },
+  listMy() {
+    return call<WithdrawalRequest[]>({
+      method: "GET",
+      url: "/api/v1/withdrawal-requests",
+    });
+  },
+  listAll() {
+    return call<WithdrawalRequest[]>({
+      method: "GET",
+      url: "/api/v1/admin/withdrawal-requests",
+    });
+  },
+  approve(withdrawalId: number, adminNote?: string) {
+    return call<WithdrawalRequest>({
+      method: "POST",
+      url: `/api/v1/admin/withdrawal-requests/${withdrawalId}/approve`,
+      data: adminNote ? { adminNote } : undefined,
+    });
+  },
+  reject(withdrawalId: number, adminNote?: string) {
+    return call<WithdrawalRequest>({
+      method: "POST",
+      url: `/api/v1/admin/withdrawal-requests/${withdrawalId}/reject`,
+      data: adminNote ? { adminNote } : undefined,
+    });
+  },
+};
+
+export const userQuotaApi = {
+  getCurrent() {
+    return call<UserQuota>({
+      method: "GET",
+      url: "/api/users/me/quota",
     });
   },
 };

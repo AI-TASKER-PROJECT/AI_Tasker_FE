@@ -1,40 +1,37 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
-import {
+﻿import {
+  Award,
+  BrainCircuit,
   CheckCircle2,
   Eye,
   FileCheck2,
-  Plus,
-  RefreshCw,
-  Save,
   Sparkles,
+  Star,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   catalogApi,
   contractApi,
+  expertRecommendationApi,
   getApiErrorMessage,
   marketplaceApi,
   profileApi,
-  sowApi,
-  type GeneratedSow,
-  type GeneratedSowMilestone,
   type Domain,
+  type ExpertRecommendationListResponse,
+  type ExpertRecommendationResponse,
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
-import { useSession } from "../../../context/sessionContext";
+import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
-  AcceptanceCriteria,
   ExpertProfile,
   Job,
   Milestone,
   Portfolio,
   Proposal,
+  Contract,
 } from "../../../types";
 import {
   Avatar,
@@ -48,30 +45,24 @@ import {
   Modal,
   Notice,
   PageHeader,
-  SearchInput,
+  Progress,
   SectionHeading,
   StatusBadge,
-  Textarea,
 } from "../../../components/ui";
-import { JobCard, JobDomainBadge } from "../../PublicPages";
+import { JobDomainBadge } from "../../PublicPages";
 import {
-  formatGeneratedSow,
   jobDomainLabel,
-  parseCatalogIdList,
   resolveDomainName,
   resolveSkillName,
   skillCountLabel,
-  type MilestoneDraft,
-  type SkillAssignment,
 } from "../marketplacePages.utils";
-import {
-  CompactMilestones,
-} from "../marketplacePages.helpers";
+import { CompactMilestones } from "../marketplacePages.helpers";
 export function ManageJobPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -85,6 +76,15 @@ export function ManageJobPage() {
   });
   const [contractError, setContractError] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
+
+  // ── AI Expert Recommendations ──────────────────────────────────────────────
+  const [recommendationResult, setRecommendationResult] =
+    useState<ExpertRecommendationListResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+  const [aiMessageTone, setAiMessageTone] = useState<
+    "info" | "success" | "warning" | "danger"
+  >("info");
 
   useEffect(() => {
     const id = Number(jobId);
@@ -112,14 +112,65 @@ export function ManageJobPage() {
       .listJobMilestones(id)
       .then(setMilestones)
       .catch(() => setMilestones([]));
+    contractApi
+      .listContracts()
+      .then(setContracts)
+      .catch(() => setContracts([]));
+    // Load saved AI recommendations silently
+    expertRecommendationApi
+      .get(id)
+      .then((result) => {
+        if (result.recommendations?.length > 0) {
+          setRecommendationResult(result);
+        }
+      })
+      .catch(() => {});
   }, [jobId]);
 
+  const generateRecommendations = async () => {
+    const id = Number(jobId);
+    setAiLoading(true);
+    setAiMessage("");
+    try {
+      const result = await expertRecommendationApi.generate(id);
+      setRecommendationResult(result);
+      if (result.recommendations?.length === 0) {
+        setAiMessage(
+          result.message ||
+            "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
+        );
+        setAiMessageTone("warning");
+      } else {
+        setAiMessage(
+          result.generatedByAi
+            ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
+            : (result.message ??
+                "Đề xuất được tạo bằng rule-based ranking (AI không khả dụng)."),
+        );
+        setAiMessageTone(result.generatedByAi ? "success" : "warning");
+      }
+    } catch (error) {
+      setAiMessage(`Không gọi được AI: ${getApiErrorMessage(error)}`);
+      setAiMessageTone("danger");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (!job) return <div>Đang tải job...</div>;
+
+  const jobStatus = job.status.trim().toUpperCase();
+  const jobInProgress = jobStatus === "IN_PROGRESS";
+  const contractTimelineDays = Math.max(1, Number(contractForm.timelineDays) || 1);
+  const contractStartDate = new Date();
+  const contractEndDate = new Date(contractStartDate);
+  contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
 
   const review = async (
     proposalId: number,
     status: "Accepted" | "Rejected",
   ) => {
+    if (jobInProgress) return;
     const updated = await marketplaceApi.reviewProposal(proposalId, status);
     setProposals((items) =>
       items.map((item) => (item.proposalId === proposalId ? updated : item)),
@@ -128,6 +179,10 @@ export function ManageJobPage() {
 
   const createContract = async () => {
     if (!contractModal) return;
+    if (jobInProgress) {
+      setContractError("Job đang IN_PROGRESS nên không thể tạo hoặc thay đổi hợp đồng.");
+      return;
+    }
     if (contractModal.status !== "Accepted") {
       setContractError("Chỉ tạo contract draft sau khi proposal đã Accepted.");
       return;
@@ -147,6 +202,7 @@ export function ManageJobPage() {
           timelineDays: Number(contractForm.timelineDays),
         },
       );
+      setContracts((items) => [contract, ...items]);
       setContractModal(null);
       navigate(`/app/contracts/${contract.contractId}`);
     } catch (error) {
@@ -187,55 +243,79 @@ export function ManageJobPage() {
             </Button>
           </div>
           {proposalTab === "ai" && (
-            <div className="grid gap-4">
-              <SectionHeading
-                title="AI đề xuất chuyên gia"
-                description="Khu vực giao diện chuẩn bị cho AI matching. Chức năng đề xuất tự động sẽ được nối sau."
-              />
-              <div className="grid gap-4 md:grid-cols-2">
-                {[1, 2].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-3xl border border-dashed border-brand-200 bg-brand-50/40 p-5"
+            <div className="grid gap-5">
+              {/* Header row */}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <SectionHeading
+                  title="AI đề xuất chuyên gia"
+                  description="Backend lọc top 20 candidate theo skill/domain/kinh nghiệm, sau đó OpenAI chọn top 5 phù hợp nhất với SoW của job."
+                />
+                <div className="flex gap-2">
+                  {recommendationResult && (
+                    <Badge
+                      tone={
+                        recommendationResult.generatedByAi ? "mint" : "amber"
+                      }
+                    >
+                      {recommendationResult.generatedByAi
+                        ? "✦ AI generated"
+                        : "Rule-based"}
+                    </Badge>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={aiLoading}
+                    onClick={generateRecommendations}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-brand-600">
-                        <Sparkles className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="font-extrabold text-ink">
-                          Chuyên gia đề xuất #{item}
-                        </p>
-                        <p className="text-sm font-semibold text-slate-500">
-                          Đang chờ AI matching
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-5 grid gap-2 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Phù hợp lĩnh vực</span>
-                        <span className="font-bold text-slate-400">
-                          Chưa có dữ liệu
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Skill khớp</span>
-                        <span className="font-bold text-slate-400">
-                          Chưa có dữ liệu
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Trạng thái</span>
-                        <Badge tone="amber">Sắp tích hợp</Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    <BrainCircuit className="h-4 w-4" />
+                    {recommendationResult
+                      ? "Tạo lại đề xuất"
+                      : "Sinh đề xuất AI"}
+                  </Button>
+                </div>
               </div>
-              <Notice tone="info" title="AI matching chưa kích hoạt">
-                Tab này giữ giao diện cho luồng AI đề xuất chuyên gia, chưa gọi
-                API đề xuất thật.
-              </Notice>
+
+              {/* Notice after generate */}
+              {aiMessage && <Notice tone={aiMessageTone} title={aiMessage} />}
+
+              {/* Empty / loading state */}
+              {!recommendationResult && !aiLoading && (
+                <div className="rounded-3xl border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/60 to-indigo-50/40 px-6 py-12 text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-3xl bg-white text-brand-500 shadow-sm mx-auto">
+                    <BrainCircuit className="h-6 w-6" />
+                  </span>
+                  <p className="mt-4 font-extrabold text-ink">
+                    Chưa có đề xuất nào
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Nhấn "Sinh đề xuất AI" để backend phân tích SoW và matching
+                    chuyên gia.
+                  </p>
+                </div>
+              )}
+
+              {/* Skeleton while loading */}
+              {aiLoading && (
+                <div className="grid gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-36 animate-pulse rounded-3xl border border-slate-100 bg-slate-100"
+                    />
+                  ))}
+                  <p className="text-center text-sm font-semibold text-brand-600">
+                    AI đang phân tích SoW và lọc chuyên gia phù hợp...
+                  </p>
+                </div>
+              )}
+
+              {/* Recommendation cards */}
+              {!aiLoading &&
+                recommendationResult?.recommendations?.map((rec) => (
+                  <ExpertRecommendationCard key={rec.expertId} rec={rec} />
+                ))}
             </div>
           )}
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
@@ -243,14 +323,25 @@ export function ManageJobPage() {
               title="Proposal của chuyên gia"
               description="Danh sách proposal được chuyên gia gửi trực tiếp cho job này."
             />
+            {jobInProgress && (
+              <Notice
+                tone="info"
+                title="Job đang IN_PROGRESS, các thao tác đổi proposal và tạo hợp đồng đã bị khóa."
+                className="mt-4"
+              />
+            )}
             <div className="mt-6 grid gap-4">
               {proposals.map((proposal) => (
                 <ProposalCard
                   key={proposal.proposalId}
                   proposal={proposal}
                   milestones={milestones}
+                  contract={contracts.find(
+                    (contract) => contract.proposalId === proposal.proposalId,
+                  )}
                   onAccept={() => review(proposal.proposalId, "Accepted")}
                   onReject={() => review(proposal.proposalId, "Rejected")}
+                  statusLocked={jobInProgress}
                   onContract={() => {
                     setContractError("");
                     setContractModal(proposal);
@@ -309,6 +400,12 @@ export function ManageJobPage() {
               <StatusBadge status={job.status} />
             </div>
             <div className="flex justify-between gap-3 text-sm">
+              <span className="text-slate-500">Ngày tạo job</span>
+              <span className="font-extrabold text-ink">
+                {formatDate(job.createdAt)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Milestone</span>
               <span className="font-extrabold text-ink">
                 {milestones.length} mốc
@@ -364,6 +461,7 @@ export function ManageJobPage() {
               loading={contractLoading}
               disabled={
                 contractLoading ||
+                jobInProgress ||
                 contractModal?.status !== "Accepted" ||
                 milestones.length === 0
               }
@@ -410,36 +508,73 @@ export function ManageJobPage() {
               }
             />
           </Field>
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
+            <ContractPreviewMetric
+              label="Ngay bat dau du kien"
+              value={formatDate(contractStartDate.toISOString())}
+            />
+            <ContractPreviewMetric
+              label="Ngay ket thuc du kien"
+              value={formatDate(contractEndDate.toISOString())}
+            />
+            <ContractPreviewMetric
+              label="Tong thoi gian"
+              value={`${contractTimelineDays} ngay`}
+            />
+          </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
-              title="Milestone từ đề bài"
-              description="Dữ liệu này được lấy từ milestone thật của job, backend sẽ dùng để tạo milestone budget cho contract."
+              title="Ngân sách sẽ đưa vào hợp đồng"
+              description="Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi."
             />
             <div className="mt-4 grid gap-2">
               {milestones
                 .slice()
                 .sort((a, b) => a.orderIndex - b.orderIndex)
-                .map((milestone) => (
-                  <div
-                    key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
-                    className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm md:grid-cols-[72px_1fr_auto] md:items-center"
-                  >
-                    <Badge tone="brand">Mốc {milestone.orderIndex}</Badge>
-                    <div className="min-w-0">
-                      <p className="break-words font-extrabold text-ink">
-                        {milestone.milestoneName}
-                      </p>
-                      {milestone.description && (
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                          {milestone.description}
+                .map((milestone) => {
+                  const proposalMilestone = parseProposalMilestones(
+                    contractModal?.proposalMilestone,
+                  ).find((item) => item.milestoneId === milestone.milestoneId);
+                  const finalBudget =
+                    proposalMilestone?.proposedBudget ?? milestone.fundsAllocated;
+                  const changed = finalBudget !== milestone.fundsAllocated;
+                  return (
+                    <div
+                      key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+                      className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm md:grid-cols-[72px_1fr_150px_150px] md:items-center"
+                    >
+                      <Badge tone={changed ? "amber" : "brand"}>
+                        Mốc {milestone.orderIndex}
+                      </Badge>
+                      <div className="min-w-0">
+                        <p className="break-words font-extrabold text-ink">
+                          {milestone.milestoneName}
                         </p>
-                      )}
+                        {milestone.description && (
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {milestone.description}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400">
+                          Ngân sách job
+                        </p>
+                        <p className="font-extrabold text-slate-700">
+                          {formatCurrency(milestone.fundsAllocated)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400">
+                          Chốt contract
+                        </p>
+                        <p className="font-extrabold text-ink">
+                          {formatCurrency(finalBudget)}
+                        </p>
+                      </div>
                     </div>
-                    <p className="font-extrabold text-ink md:text-right">
-                      {formatCurrency(milestone.fundsAllocated)}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -448,17 +583,30 @@ export function ManageJobPage() {
   );
 }
 
+function ContractPreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-3">
+      <p className="text-xs font-bold text-slate-400">{label}</p>
+      <p className="mt-1 font-extrabold text-ink">{value}</p>
+    </div>
+  );
+}
+
 function ProposalCard({
   proposal,
   milestones,
+  contract,
   onAccept,
   onReject,
+  statusLocked,
   onContract,
 }: {
   proposal: Proposal;
   milestones: Milestone[];
+  contract?: Contract;
   onAccept: () => void;
   onReject: () => void;
+  statusLocked?: boolean;
   onContract: () => void;
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
@@ -538,7 +686,7 @@ function ProposalCard({
   );
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
   const proposalMilestones = parseProposalMilestones(proposal.proposalMilestone);
-  const canCreateContract = proposal.status === "Accepted";
+  const canCreateContract = proposal.status === "Accepted" && !contract && !statusLocked;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
@@ -621,7 +769,8 @@ function ProposalCard({
               </div>
             ) : (
               <p className="mt-2 text-sm font-semibold text-slate-400">
-                Chuyên gia giữ ngân sách milestone mặc định hoặc chưa gửi đề xuất chi tiết.
+                Chuyên gia giữ ngân sách milestone mặc định hoặc chưa gửi đề
+                xuất chi tiết.
               </p>
             )}
           </div>
@@ -648,27 +797,50 @@ function ProposalCard({
             Xem chuyên gia
           </Button>
           <div className="flex flex-wrap gap-2">
-            <Button variant="success" size="sm" onClick={onAccept}>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={onAccept}
+              disabled={statusLocked || proposal.status === "Accepted" || Boolean(contract)}
+            >
               <CheckCircle2 className="h-4 w-4" />
               Accept
             </Button>
-            <Button variant="danger" size="sm" onClick={onReject}>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onReject}
+              disabled={statusLocked || proposal.status === "Rejected" || Boolean(contract)}
+            >
               <XCircle className="h-4 w-4" />
               Reject
             </Button>
-            <Button
-              size="sm"
-              onClick={onContract}
-              disabled={!canCreateContract}
-              title={
-                canCreateContract
-                  ? "Tạo contract draft"
-                  : "Chỉ tạo contract sau khi proposal được Accepted"
-              }
-            >
-              <FileCheck2 className="h-4 w-4" />
-              Tạo contract
-            </Button>
+            {contract ? (
+              <LinkButton
+                to={`/app/contracts/${contract.contractId}`}
+                size="sm"
+                variant="secondary"
+              >
+                <FileCheck2 className="h-4 w-4" />
+                Xem hợp đồng
+              </LinkButton>
+            ) : (
+              <Button
+                size="sm"
+                onClick={onContract}
+                disabled={!canCreateContract}
+                title={
+                  canCreateContract
+                    ? "Tạo contract draft"
+                    : statusLocked
+                      ? "Job đang IN_PROGRESS nên không thể thay đổi"
+                    : "Chỉ tạo contract sau khi proposal được Accepted"
+                }
+              >
+                <FileCheck2 className="h-4 w-4" />
+                Tạo hợp đồng
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -873,6 +1045,122 @@ function ExpertInfoBlock({
         {label}
       </p>
       <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+// ─── Expert Recommendation Card ───────────────────────────────────────────────
+function ExpertRecommendationCard({
+  rec,
+}: {
+  rec: ExpertRecommendationResponse;
+}) {
+  const rankColors = [
+    "from-amber-400 to-yellow-300", // #1 gold
+    "from-slate-400 to-slate-300", // #2 silver
+    "from-orange-400 to-amber-300", // #3 bronze
+    "from-brand-400 to-indigo-400", // #4
+    "from-brand-300 to-violet-300", // #5
+  ];
+  const gradientClass =
+    rankColors[(rec.rankPosition ?? 1) - 1] ?? rankColors[4];
+  const score = rec.matchScore ?? 0;
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:border-brand-100 hover:shadow-card">
+      {/* Header */}
+      <div className="grid gap-4 bg-gradient-to-r from-slate-50 to-brand-50/30 p-5 md:grid-cols-[56px_1fr_160px]">
+        {/* Rank badge */}
+        <div
+          className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${gradientClass} text-white shadow`}
+        >
+          <span className="text-xl font-black">#{rec.rankPosition}</span>
+        </div>
+
+        {/* Expert info */}
+        <div className="min-w-0">
+          <p className="font-display text-base font-extrabold text-ink">
+            Expert #{rec.expertId}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-400">
+            Expert ID: {rec.expertId}
+            {rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""}
+          </p>
+        </div>
+
+        {/* Match score */}
+        <div className="text-right">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            Match score
+          </p>
+          <p
+            className={cn(
+              "mt-1 font-display text-3xl font-black",
+              score >= 80
+                ? "text-mint-600"
+                : score >= 50
+                  ? "text-amber-500"
+                  : "text-slate-400",
+            )}
+          >
+            {score.toFixed(1)}
+            <span className="text-base font-bold opacity-60">%</span>
+          </p>
+          <Progress
+            value={score}
+            color={score >= 80 ? "mint" : score >= 50 ? "coral" : "brand"}
+            className="mt-2"
+          />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="grid gap-4 p-5 pt-4">
+        {/* Skills & Domains */}
+        <div className="grid gap-3 md:grid-cols-2">
+          {(rec.matchedSkills?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                <Star className="h-3.5 w-3.5" />
+                Kỹ năng khớp
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.matchedSkills!.map((skill) => (
+                  <Badge key={skill} tone="brand">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {(rec.matchedDomains?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                <Award className="h-3.5 w-3.5" />
+                Lĩnh vực khớp
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.matchedDomains!.map((domain) => (
+                  <Badge key={domain} tone="mint">
+                    {domain}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* AI reasoning */}
+        {rec.reason && (
+          <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-600">
+              <BrainCircuit className="h-3.5 w-3.5" />
+              Lý do AI đề xuất
+            </p>
+            <p className="text-sm leading-6 text-slate-700">{rec.reason}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

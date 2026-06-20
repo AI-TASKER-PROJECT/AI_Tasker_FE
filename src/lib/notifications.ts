@@ -7,6 +7,18 @@ export function notificationHref(targetUrl?: string) {
   const proposalMatch = targetUrl.match(/^\/business\/jobs\/(\d+)\/proposals/);
   if (proposalMatch) return `/app/jobs/${proposalMatch[1]}/manage`;
 
+  const contractWorkspaceMatch = targetUrl.match(
+    /^\/(?:business\/|expert\/)?contracts\/(\d+)\/workspace/,
+  );
+  if (contractWorkspaceMatch) {
+    return `/app/contracts/${contractWorkspaceMatch[1]}/workspace`;
+  }
+
+  const contractMatch = targetUrl.match(
+    /^\/(?:business\/|expert\/)?contracts\/(\d+)/,
+  );
+  if (contractMatch) return `/app/contracts/${contractMatch[1]}`;
+
   if (targetUrl === "/expert/proposals") return "/app/proposals";
   if (targetUrl === "/business/kyb") return "/app/business/profile";
   if (targetUrl === "/expert/profile") return "/app/expert/profile";

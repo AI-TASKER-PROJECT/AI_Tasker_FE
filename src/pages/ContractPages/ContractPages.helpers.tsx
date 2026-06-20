@@ -21,6 +21,7 @@ import {
   contractApi,
   disputeApi,
   financeApi,
+  getApiErrorMessage,
   profileApi,
   walletApi,
 } from "../../lib/api";
@@ -60,7 +61,7 @@ import {
 export function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [activeStatus, setActiveStatus] = useState<
-    "ALL" | "Draft" | "Negotiating" | "Active"
+    "ALL" | "DRAFT" | "PENDING" | "ACTIVE" | "COMPLETED"
   >("ALL");
 
   useEffect(() => {
@@ -73,15 +74,23 @@ export function ContractsPage() {
   const filteredContracts =
     activeStatus === "ALL"
       ? contracts
-      : contracts.filter((contract) => contract.status === activeStatus);
+      : contracts.filter(
+          (contract) =>
+            normalizeContractStatus(contract.status) ===
+            normalizeContractStatus(activeStatus),
+        );
   const draftCount = contracts.filter(
-    (contract) => contract.status === "Draft",
+    (contract) => normalizeContractStatus(contract.status) === "DRAFT",
   ).length;
-  const negotiatingCount = contracts.filter(
-    (contract) => contract.status === "Negotiating",
+  const pendingCount = contracts.filter(
+    (contract) => normalizeContractStatus(contract.status) === "PENDING",
   ).length;
+  const negotiatingCount = pendingCount;
   const activeCount = contracts.filter(
-    (contract) => contract.status === "Active",
+    (contract) => normalizeContractStatus(contract.status) === "ACTIVE",
+  ).length;
+  const completedCount = contracts.filter(
+    (contract) => normalizeContractStatus(contract.status) === "COMPLETED",
   ).length;
 
   return (
@@ -126,6 +135,9 @@ export function ContractsPage() {
                 contract.title ||
                 `Hợp đồng nháp #${contract.contractId}`}
             </h3>
+            <p className="mt-2 text-xs font-bold text-slate-400">
+              Ngày tạo: {formatDateTime(contract.createdAt)}
+            </p>
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
               <div>
                 <p className="text-xs font-bold text-slate-400">Giá trị</p>
@@ -168,7 +180,7 @@ export function ContractsPage() {
       {filteredContracts.length === 0 && (
         <EmptyState
           title={
-            activeStatus === "Draft"
+            normalizeContractStatus(activeStatus) === "DRAFT"
               ? "Chưa có hợp đồng nháp"
               : "Chưa có hợp đồng"
           }
@@ -195,6 +207,8 @@ export function ContractDetailPage() {
     message?: string;
   } | null>(null);
   const [depositLoading, setDepositLoading] = useState(false);
+  const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
+  const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
   const [changeOpen, setChangeOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [changeForm, setChangeForm] = useState({
@@ -275,6 +289,24 @@ export function ContractDetailPage() {
     };
   }, [contract?.businessId, contract?.expertId]);
 
+  useEffect(() => {
+    if (!contract || session?.role !== "BUSINESS") return;
+    let ignore = false;
+
+    walletApi
+      .current()
+      .then((wallet) => {
+        if (!ignore) setPaymentWallet(wallet);
+      })
+      .catch(() => {
+        if (!ignore) setPaymentWallet(null);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [contract?.contractId, session?.role]);
+
   if (!contract)
     return (
       <EmptyState
@@ -287,6 +319,8 @@ export function ContractDetailPage() {
     setContract(await contractApi.sign(contract.contractId));
   const signNda = async () =>
     setContract(await contractApi.signNda(contract.contractId));
+  const rejectContract = async () =>
+    setContract(await contractApi.reject(contract.contractId));
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
     setContract(updated);
@@ -298,10 +332,6 @@ export function ContractDetailPage() {
     setContractNotice(null);
     try {
       const result = await contractApi.payDeposit(contract.contractId);
-      if (result.redirectUrl) {
-        window.location.assign(result.redirectUrl);
-        return;
-      }
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
@@ -312,11 +342,29 @@ export function ContractDetailPage() {
         });
         return;
       }
-      await refreshContract();
+      if (result.redirectUrl) {
+        window.location.assign(result.redirectUrl);
+        return;
+      }
+      const depositAmount = result.data?.depositAmount ?? securityDepositAmount;
+      const [, updatedWallet] = await Promise.all([
+        refreshContract(),
+        walletApi.current().catch(() => null),
+      ]);
+      setPaymentWallet(updatedWallet);
+      setDepositConfirmOpen(false);
+      window.dispatchEvent(new Event("aitasker:reload-wallet"));
       setContractNotice({
         tone: "success",
         title: "Đã ký quỹ và kích hoạt contract.",
         message: "Backend đã chuyển contract sang Active và gắn budget vào milestone thật.",
+      });
+      setContractNotice({
+        tone: "success",
+        title: "Da ky quy va kich hoat contract.",
+        message: updatedWallet
+          ? `Backend da hold ${formatCurrency(depositAmount)} vao escrow. So du kha dung con ${formatCurrency(updatedWallet.availableBalance)}, escrow hien tai ${formatCurrency(updatedWallet.escrowBalance)}.`
+          : `Backend da hold ${formatCurrency(depositAmount)} vao escrow va cap nhat contract/milestone.`,
       });
     } catch (err) {
       setContractNotice({
@@ -344,6 +392,9 @@ export function ContractDetailPage() {
   };
   const contractTitle =
     contract.contractTitle || contract.title || `Contract #${contract.contractId}`;
+  const contractStatus = normalizeContractStatus(contract.status);
+  const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
+  const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
   const ndaSigned = Boolean(
     contract.ndaSigned ||
       (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
@@ -372,10 +423,12 @@ export function ContractDetailPage() {
     (item) => !["Resolved", "Closed"].includes(item.status),
   );
   const underReviewCount = jobMilestones.filter(
-    (item) => item.status === "Under Review",
+    (item) => normalizeContractStatus(item.status) === "UNDER_REVIEW",
   ).length;
   const completedMilestoneCount = jobMilestones.filter(
-    (item) => ["Completed", "Released"].includes(item.status),
+    (item) => ["COMPLETED", "RELEASED"].includes(
+      normalizeContractStatus(item.status),
+    ),
   ).length;
   const nextAction = getContractNextAction({
     contract,
@@ -388,11 +441,20 @@ export function ContractDetailPage() {
     activeDisputeCount: activeDisputes.length,
   });
   const canPayDeposit =
-    session?.role === "BUSINESS" && contract.status === "PendingDeposit";
-  const canRequestChange = ["Draft", "Negotiating"].includes(contract.status);
+    session?.role === "BUSINESS" && contractStatus === "PENDING";
+  const canRequestChange = contractStatus === "DRAFT";
   const canTerminate =
     (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
-    !["Completed", "Terminated", "Cancelled"].includes(contract.status);
+    !contractInProgress &&
+    !["COMPLETED", "CANCELLED"].includes(contractStatus);
+  const canRejectContract =
+    session?.role === "EXPERT" && ["DRAFT", "PENDING"].includes(contractStatus);
+  const availableBalance = paymentWallet?.availableBalance ?? 0;
+  const depositMissingAmount = Math.max(
+    0,
+    securityDepositAmount - availableBalance,
+  );
+  const hasEnoughDepositBalance = depositMissingAmount <= 0;
 
   return (
     <div className="space-y-6">
@@ -435,6 +497,13 @@ export function ContractDetailPage() {
           >
             {nextAction.description}
           </Notice>
+          {contractInProgress && (
+            <Notice
+              tone="info"
+              title="Contract đang IN_PROGRESS/ACTIVE, các thao tác đổi trạng thái đã bị khóa."
+              className="mb-5"
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={contract.status} />
             <Badge tone={ndaSigned ? "mint" : "amber"}>
@@ -448,8 +517,16 @@ export function ContractDetailPage() {
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
+              label="Ky quy 20%"
+              value={formatCurrency(securityDepositAmount)}
+            />
+            <ContractMetric
               label="Timeline"
               value={`${contract.timelineDays} ngày`}
+            />
+            <ContractMetric
+              label="Ngày tạo hợp đồng"
+              value={formatDateTime(contract.createdAt)}
             />
             <ContractMetric
               label="Milestone draft"
@@ -520,12 +597,12 @@ export function ContractDetailPage() {
             </div>
             <Notice
               tone={
-                readyToActivate || contract.status === "Active"
+                readyToActivate || contractStatus === "ACTIVE"
                   ? "success"
                   : "info"
               }
               title={
-                contract.status === "Active"
+                contractStatus === "ACTIVE"
                   ? "Contract đã Active, milestone budget và job status đã được backend cập nhật."
                   : "Contract sẽ Active sau khi đủ 2 chữ ký contract và 2 chữ ký NDA."
               }
@@ -573,13 +650,13 @@ export function ContractDetailPage() {
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            {canCurrentPartyAct && ["Draft", "Negotiating"].includes(contract.status) && (
+            {canCurrentPartyAct && contractStatus === "DRAFT" && (
               <Button onClick={signContract} disabled={currentPartyAccepted}>
                 <CheckCircle2 className="h-4 w-4" />
                 Chấp nhận contract
               </Button>
             )}
-            {canCurrentPartyAct && ["Draft", "Negotiating"].includes(contract.status) && (
+            {canCurrentPartyAct && contractStatus === "DRAFT" && (
               <Button
                 variant="secondary"
                 onClick={signNda}
@@ -590,9 +667,15 @@ export function ContractDetailPage() {
               </Button>
             )}
             {canPayDeposit && (
-              <Button onClick={payDeposit} loading={depositLoading}>
+              <Button onClick={() => setDepositConfirmOpen(true)}>
                 <WalletCards className="h-4 w-4" />
                 Thanh toán ký quỹ
+              </Button>
+            )}
+            {canRejectContract && (
+              <Button variant="danger" onClick={rejectContract}>
+                <XCircle className="h-4 w-4" />
+                Tu choi hop dong
               </Button>
             )}
             {canRequestChange && (
@@ -657,6 +740,95 @@ export function ContractDetailPage() {
           </Notice>
         </Card>
       </div>
+
+      <Modal
+        open={depositConfirmOpen}
+        onClose={() => !depositLoading && setDepositConfirmOpen(false)}
+        title="Xac nhan ky quy contract"
+        description="So tien ky quy bang 20% tong ngan sach contract va se duoc giu trong escrow."
+        size="lg"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setDepositConfirmOpen(false)}
+              disabled={depositLoading}
+            >
+              Huy
+            </Button>
+            {!hasEnoughDepositBalance && (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("aitasker:open-wallet-topup", {
+                      detail: {
+                        amount: depositMissingAmount,
+                        description: `Nap vi de ky quy contract #${contract.contractId}`,
+                      },
+                    }),
+                  )
+                }
+              >
+                Nap vi
+              </Button>
+            )}
+            <Button
+              onClick={payDeposit}
+              loading={depositLoading}
+              disabled={!hasEnoughDepositBalance || depositLoading}
+            >
+              Xac nhan ky quy
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <ContractMetric
+              label="Tong contract"
+              value={formatCurrency(contract.totalBudget)}
+            />
+            <ContractMetric
+              label="Ky quy 20%"
+              value={formatCurrency(securityDepositAmount)}
+            />
+            <ContractMetric
+              label="So du kha dung"
+              value={formatCurrency(availableBalance)}
+            />
+          </div>
+          {!hasEnoughDepositBalance ? (
+            <Notice
+              tone="danger"
+              title={`Vi con thieu ${formatCurrency(depositMissingAmount)} de ky quy.`}
+            >
+              Hay nap them vao vi truoc, sau khi PayOS xac nhan so du thi quay lai bam xac nhan ky quy.
+            </Notice>
+          ) : (
+            <Notice
+              tone="warning"
+              title="Ban co chac chan muon ky quy contract nay?"
+            >
+              Sau khi xac nhan, BE se hold 20% gia tri contract vao escrow, chuyen contract sang ACTIVE va cap nhat ngan sach milestone theo proposal da accept.
+            </Notice>
+          )}
+          <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+            <SectionHeading
+              title="Dieu kien truoc khi ky quy"
+              description="Contract phai o trang thai PENDING, nghia la business va expert da chap nhan contract va da ky NDA."
+            />
+            <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600 md:grid-cols-2">
+              <span>Contract: #{contract.contractId}</span>
+              <span>Status: {contract.status}</span>
+              <span>Business accepted: {businessAccepted ? "Da xong" : "Chua"}</span>
+              <span>Expert accepted: {expertAccepted ? "Da xong" : "Chua"}</span>
+              <span>Business NDA: {businessNdaSigned ? "Da xong" : "Chua"}</span>
+              <span>Expert NDA: {expertNdaSigned ? "Da xong" : "Chua"}</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={changeOpen}
@@ -755,16 +927,37 @@ export function ContractDetailPage() {
   );
 }
 
+function normalizeContractStatus(status?: string) {
+  const normalized = (status || "").trim().replaceAll(" ", "_").toUpperCase();
+  if (normalized === "DRAFT" || normalized === "NEGOTIATING") return "DRAFT";
+  if (normalized === "PENDING" || normalized === "PENDINGDEPOSIT") return "PENDING";
+  if (normalized === "ACTIVE") return "ACTIVE";
+  if (normalized === "COMPLETED") return "COMPLETED";
+  if (normalized === "TERMINATED" || normalized === "CANCELLED") return "CANCELLED";
+  return normalized;
+}
+
+function calculateSecurityDeposit(totalBudget?: number) {
+  return Math.round(Number(totalBudget || 0) * 20) / 100;
+}
+
 function ContractLifecycle({ status }: { status: string }) {
-  const steps = ["Draft", "Negotiating", "PendingDeposit", "Active", "Completed"];
-  const currentIndex = steps.indexOf(status);
-  const terminal = ["Terminated", "Cancelled"].includes(status);
+  const steps = ["DRAFT", "PENDING", "ACTIVE", "COMPLETED"];
+  const labels: Record<string, string> = {
+    DRAFT: "Draft",
+    PENDING: "Cho ky quy",
+    ACTIVE: "Active",
+    COMPLETED: "Completed",
+  };
+  const normalizedStatus = normalizeContractStatus(status);
+  const currentIndex = steps.indexOf(normalizedStatus);
+  const terminal = normalizedStatus === "CANCELLED";
 
   return (
     <div className="mt-3 grid gap-2 md:grid-cols-5">
       {steps.map((step, index) => {
         const reached = !terminal && currentIndex >= index;
-        const current = status === step;
+        const current = normalizedStatus === step;
         return (
           <div
             key={step}
@@ -787,7 +980,7 @@ function ContractLifecycle({ status }: { status: string }) {
                 <CheckCircle2 className="h-4 w-4" />
               </span>
               <p className="min-w-0 truncate text-xs font-extrabold text-ink">
-                {step}
+                {labels[step] || step}
               </p>
             </div>
           </div>
@@ -826,6 +1019,7 @@ function getContractNextAction({
   underReviewCount: number;
   activeDisputeCount: number;
 }): { tone: "info" | "success" | "warning" | "danger"; title: string; description: string } {
+  const contractStatus = normalizeContractStatus(contract.status);
   if (activeDisputeCount > 0) {
     return {
       tone: "warning",
@@ -833,21 +1027,21 @@ function getContractNextAction({
       description: `${activeDisputeCount} dispute chưa xử lý xong. Hai bên nên ưu tiên xử lý trước khi tiếp tục nghiệm thu/thanh toán.`,
     };
   }
-  if (contract.status === "Completed") {
+  if (contractStatus === "COMPLETED") {
     return {
       tone: "success",
       title: "Contract đã hoàn tất.",
       description: "Tất cả milestone đã hoàn thành theo logic backend.",
     };
   }
-  if (["Terminated", "Cancelled"].includes(contract.status)) {
+  if (contractStatus === "CANCELLED") {
     return {
       tone: "danger",
       title: "Contract không còn tiếp tục thực hiện.",
       description: `Trạng thái hiện tại là ${contract.status}.`,
     };
   }
-  if (contract.status === "PendingDeposit") {
+  if (contractStatus === "PENDING") {
     return {
       tone: role === "BUSINESS" ? "warning" : "info",
       title:
@@ -897,7 +1091,7 @@ function getContractNextAction({
       description: "BE lưu thời điểm ký NDA riêng cho từng bên.",
     };
   }
-  if (contract.status === "Active") {
+  if (contractStatus === "ACTIVE") {
     return {
       tone: underReviewCount > 0 && role === "BUSINESS" ? "warning" : "success",
       title:
@@ -1434,16 +1628,41 @@ export function FinancePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="FIN-01"
-        title="Tài chính và VNPay Sandbox"
-        description="Tạo escrow transaction, nhận webhook sandbox, cập nhật trạng thái và đồng bộ ví hệ thống."
+        title="Ví thanh toán & ký quỹ"
+        description="Nạp số dư qua payOS để sử dụng trong nền tảng, đồng thời theo dõi giao dịch ký quỹ theo từng milestone."
         actions={
-          canCreateTransaction ? (
-            <Button onClick={() => setTransactionOpen(true)}>
-              <Plus className="h-4 w-4" /> Tạo transaction
+          <>
+            <Button onClick={() => window.dispatchEvent(new Event("aitasker:open-wallet-topup"))}>
+              <WalletCards className="h-4 w-4" /> Nạp tiền qua payOS
             </Button>
-          ) : undefined
+            {canCreateTransaction && (
+              <Button variant="secondary" onClick={() => setTransactionOpen(true)}>
+                <Plus className="h-4 w-4" /> Tạo ký quỹ milestone
+              </Button>
+            )}
+          </>
         }
       />
+      <Card className="overflow-hidden border-brand-100 bg-gradient-to-br from-brand-50 via-white to-indigo-50">
+        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <Badge tone="brand">PAYOS · NẠP VÍ</Badge>
+            <h2 className="mt-3 font-display text-2xl font-black tracking-tight text-ink">
+              Nạp tiền nhanh, hệ thống tự đối soát
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Nhập số tiền nguyên VND từ 2.000đ, quét QR hoặc mở trang payOS. Khi payOS xác nhận, số dư khả dụng được cập nhật tự động qua wallet ledger.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-3xl bg-white/90 p-4 shadow-card">
+            <span className="text-xs font-extrabold uppercase tracking-wide text-slate-400">Quy trình</span>
+            <span className="text-sm font-bold text-ink">Tạo QR → Thanh toán → Xác nhận</span>
+            <Button size="sm" onClick={() => window.dispatchEvent(new Event("aitasker:open-wallet-topup"))}>
+              Bắt đầu nạp tiền
+            </Button>
+          </div>
+        </div>
+      </Card>
       <Card className="p-5">
         {wallet && (
           <div className="mb-5 grid gap-3 md:grid-cols-3">
@@ -1571,9 +1790,8 @@ export function FinancePage() {
           />
         )}
       </Card>
-      <Notice tone="info" title="VNPay / QR thật đang chờ tích hợp">
-        Dự án dùng VNPay Sandbox nên không còn bảng invoice nội bộ; transaction
-        là nguồn đối soát chính.
+      <Notice tone="info" title="Hai luồng thanh toán độc lập">
+        Nạp ví dùng payOS và chỉ cộng số dư sau khi order được xác nhận PAID. Bảng bên trên là giao dịch ký quỹ theo milestone; giao dịch đó không thay thế lịch sử nạp ví.
       </Notice>
 
       <Modal

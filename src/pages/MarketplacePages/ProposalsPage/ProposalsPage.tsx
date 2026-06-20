@@ -29,6 +29,7 @@ import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
   AcceptanceCriteria,
+  Contract,
   ExpertProfile,
   Job,
   Milestone,
@@ -73,6 +74,9 @@ export function ProposalsPage() {
   const [milestonesByJobId, setMilestonesByJobId] = useState<
     Record<number, Milestone[]>
   >({});
+  const [contractsByProposalId, setContractsByProposalId] = useState<
+    Record<number, Contract>
+  >({});
   const [loading, setLoading] = useState(true);
   const [proposalStatusFilter, setProposalStatusFilter] = useState<
     "ALL" | "ACCEPTED" | "PENDING" | "REJECTED"
@@ -93,7 +97,7 @@ export function ProposalsPage() {
         const jobResults = await Promise.allSettled(
           uniqueJobIds.map((id) => marketplaceApi.getJob(id)), //api Lấy thông tin chi tiết của từng công việc
         );
-        const [domainItems, jobDomainResults, milestoneResults] =
+        const [domainItems, jobDomainResults, milestoneResults, contractItems] =
           await Promise.all([
             catalogApi.listDomains(true).catch(() => []), // api lấy toàn bộ danh sách Lĩnh vực
             Promise.allSettled(
@@ -102,6 +106,7 @@ export function ProposalsPage() {
             Promise.allSettled(
               uniqueJobIds.map((id) => contractApi.listJobMilestones(id)), //api Lấy danh sách tất cả các mốc tiến độ dựa trên id
             ),
+            contractApi.listContracts().catch(() => []),
           ]);
         if (ignore) return;
         const map: Record<number, Job> = {};
@@ -126,6 +131,13 @@ export function ProposalsPage() {
         setDomains(domainItems);
         setJobDomainIdsByJobId(domainMap);
         setMilestonesByJobId(milestoneMap);
+        setContractsByProposalId(
+          Object.fromEntries(
+            contractItems
+              .filter((contract) => contract.proposalId)
+              .map((contract) => [contract.proposalId as number, contract]),
+          ),
+        );
       } catch {
         if (!ignore) {
           setProposals([]);
@@ -133,6 +145,7 @@ export function ProposalsPage() {
           setDomains([]);
           setJobDomainIdsByJobId({});
           setMilestonesByJobId({});
+          setContractsByProposalId({});
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -227,6 +240,7 @@ export function ProposalsPage() {
           const proposalMilestones = parseProposalMilestones(
             proposal.proposalMilestone,
           );
+          const contract = contractsByProposalId[proposal.proposalId];
           return (
             <Card key={proposal.proposalId} className="overflow-hidden">
               <div className="grid gap-4 bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5 lg:grid-cols-[1fr_240px]">
@@ -333,6 +347,14 @@ export function ProposalsPage() {
                       size="sm"
                     >
                       Xem job
+                    </LinkButton>
+                  )}
+                  {contract && (
+                    <LinkButton
+                      to={`/app/contracts/${contract.contractId}`}
+                      size="sm"
+                    >
+                      Xem hợp đồng nháp
                     </LinkButton>
                   )}
                 </div>
