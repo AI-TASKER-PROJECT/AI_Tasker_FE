@@ -43,7 +43,6 @@ import {
   Notice,
   PageHeader,
   Progress,
-  SearchInput,
   SectionHeading,
 } from "../../components/ui";
 
@@ -1009,7 +1008,6 @@ export function SettingsPage() {
 
 export function MasterDataPage() {
   const [tab, setTab] = useState<"domains" | "skills" | "criteria">("domains");
-  const [query, setQuery] = useState("");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [criteria, setCriteria] = useState<AcceptanceCriteria[]>([]);
@@ -1063,41 +1061,15 @@ export function MasterDataPage() {
     void Promise.resolve().then(loadCatalog);
   }, []);
 
-  const filteredDomains = domains.filter((domain) =>
-    [
-      domain.domainCode,
-      domain.domainName,
-      domain.description || "",
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  ).sort((left, right) => {
+  const sortedDomains = [...domains].sort((left, right) => {
     const sortDelta = (left.sortOrder || 0) - (right.sortOrder || 0);
     if (sortDelta !== 0) return sortDelta;
     const nameDelta = left.domainName.localeCompare(right.domainName);
     if (nameDelta !== 0) return nameDelta;
     return left.domainId - right.domainId;
   });
-  const filteredSkills = skills.filter((skill) =>
-    [
-      skill.skillCode,
-      skill.skillName,
-      skill.description || "",
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
-  const filteredCriteria = criteria.filter((item) =>
-    [
-      item.criteriaCode || "",
-      item.description,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  ).sort((left, right) => {
+  const sortedSkills = [...skills];
+  const sortedCriteria = [...criteria].sort((left, right) => {
     const sortDelta = (left.sortOrder || 0) - (right.sortOrder || 0);
     if (sortDelta !== 0) return sortDelta;
     return (left.criteriaCode || "").localeCompare(right.criteriaCode || "");
@@ -1246,19 +1218,6 @@ export function MasterDataPage() {
           Acceptance criteria
         </Button>
       </Card>
-      <Card className="p-4">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder={
-            tab === "domains"
-              ? "Tim theo ma, ten hoac mo ta domain..."
-              : tab === "skills"
-                ? "Tim theo ma, ten hoac mo ta skill..."
-                : "Tim theo ma hoac noi dung criteria..."
-          }
-        />
-      </Card>
       {error && <Notice tone="danger" title="Khong tai duoc catalog">{error}</Notice>}
       {tab === "domains" && <Card className="overflow-hidden">
         <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
@@ -1274,12 +1233,12 @@ export function MasterDataPage() {
             Dang tai domain...
           </div>
         )}
-        {!loading && filteredDomains.length === 0 && (
+        {!loading && sortedDomains.length === 0 && (
           <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co domain phu hop.
+            Chua co domain.
           </div>
         )}
-        {!loading && filteredDomains.map((domain) => (
+        {!loading && sortedDomains.map((domain) => (
           <div
             key={domain.domainId}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
@@ -1316,12 +1275,12 @@ export function MasterDataPage() {
             Dang tai skill...
           </div>
         )}
-        {!loading && filteredSkills.length === 0 && (
+        {!loading && sortedSkills.length === 0 && (
           <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co skill phu hop.
+            Chua co skill.
           </div>
         )}
-        {!loading && filteredSkills.map((skill) => (
+        {!loading && sortedSkills.map((skill) => (
           <div
             key={skill.skillId}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
@@ -1358,12 +1317,12 @@ export function MasterDataPage() {
             Dang tai acceptance criteria...
           </div>
         )}
-        {!loading && filteredCriteria.length === 0 && (
+        {!loading && sortedCriteria.length === 0 && (
           <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co acceptance criteria phu hop.
+            Chua co acceptance criteria.
           </div>
         )}
-        {!loading && filteredCriteria.map((item) => (
+        {!loading && sortedCriteria.map((item) => (
           <div
             key={item.criteriaId}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px] md:items-start"

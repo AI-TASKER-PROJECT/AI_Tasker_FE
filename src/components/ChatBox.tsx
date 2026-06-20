@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { MessageCircle, Minimize2, Send, Sparkles, X } from 'lucide-react';
+import { MessageCircle, Minimize2, Send, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from '../context/sessionContext';
 import { chatbotApi } from '../services';
@@ -110,14 +110,6 @@ export function ChatBox() {
                 className="grid h-9 w-9 place-items-center rounded-xl text-blue-50 transition hover:bg-white/10 hover:text-white"
               >
                 <Minimize2 className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Close chat"
-                onClick={() => setOpen(false)}
-                className="grid h-9 w-9 place-items-center rounded-xl text-blue-50 transition hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-4 w-4" />
               </button>
             </header>
 

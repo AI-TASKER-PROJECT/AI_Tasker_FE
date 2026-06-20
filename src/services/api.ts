@@ -8,6 +8,7 @@ import type {
   BusinessProfile,
   Contract,
   ContractChangeRequest,
+  ContractDeposit,
   CreatePayOSPaymentResponse,
   Deliverable,
   Dispute,
@@ -24,6 +25,7 @@ import type {
   TaxCheckResponse,
   Transaction,
   NotificationItem,
+  PaymentActionResponse,
   UnreadNotificationCount,
 } from "../types";
 import { getSession } from "../context/sessionContext";
@@ -588,6 +590,12 @@ export const contractApi = {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/nda-sign`,
+    });
+  },
+  payDeposit(contractId: number) {
+    return call<PaymentActionResponse<ContractDeposit>>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/deposit/pay`,
     });
   },
   terminate(contractId: number, reason: string) {
