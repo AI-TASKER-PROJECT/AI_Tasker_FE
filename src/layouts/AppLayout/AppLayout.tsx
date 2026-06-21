@@ -27,7 +27,7 @@ import {
   Users,
   WalletCards,
   X,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -36,9 +36,18 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
-} from "react";
+} from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { connectNotificationSocket } from '../../lib/notificationSocket';
+import {
+  formatNotificationTime,
+  mergeNotification,
+  notificationHref,
+  notificationTone,
+} from '../../lib/notifications';
+import { Logo } from '../../components/Logo';
+import { ChatBox } from '../../components/ChatBox';
 import QRCode from "qrcode";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import type {
   CreatePayOSPaymentResponse,
   NotificationItem,
@@ -49,11 +58,13 @@ import type {
 import {
   authApi,
   getApiErrorMessage,
-  notificationApi,
   paymentApi,
   userQuotaApi,
   walletApi,
+  notificationApi,
 } from "../../services";
+import { cn, formatCurrency } from "../../lib/utils";
+
 import {
   clearSession,
   getSession,
@@ -61,15 +72,7 @@ import {
   saveSession,
   useSession,
 } from "../../context/sessionContext";
-import { cn, formatCurrency } from "../../lib/utils";
-import { connectNotificationSocket } from "../../lib/notificationSocket";
-import {
-  formatNotificationTime,
-  mergeNotification,
-  notificationTone,
-} from "../../lib/notifications";
 import { notifyProfileReviewSync } from "../../lib/profileReviewSync";
-import { Logo } from "../../components/Logo";
 import {
   Avatar,
   Badge,
@@ -79,7 +82,6 @@ import {
   Modal,
   Notice,
 } from "../../components/ui";
-import { ChatBox } from "../../components/ChatBox";
 
 type NavItem = { label: string; to: string; icon: ReactNode };
 
@@ -327,6 +329,11 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
   const [quota, setQuota] = useState<UserQuota | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
@@ -340,11 +347,7 @@ export function AppShell() {
   const [topupPayment, setTopupPayment] =
     useState<CreatePayOSPaymentResponse | null>(null);
   const [topupQrDataUrl, setTopupQrDataUrl] = useState("");
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [notificationLoading, setNotificationLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [realtimeConnected, setRealtimeConnected] = useState(false);
+
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.role;
@@ -357,17 +360,26 @@ export function AppShell() {
     session?.role === "BUSINESS"
       ? "/app/business/profile"
       : "/app/expert/profile";
+  const verificationAllowedPaths = useMemo(() => {
+    if (!session) return [];
+    if (session.role === "EXPERT") {
+      return [verificationPath, "/app/opportunities", "/app/notifications"];
+    }
+    return [verificationPath, "/app/notifications"];
+  }, [session, verificationPath]);
   const navItems = useMemo(() => {
     if (!role) return [];
     if (needsVerification) {
-      return roleNav[role].filter((item) => item.to === verificationPath);
+      return roleNav[role].filter((item) =>
+        verificationAllowedPaths.includes(item.to),
+      );
     }
     return [...commonNav, ...roleNav[role]].filter((item) => {
       if (role === "STAFF") return !item.to.startsWith("/app/admin");
       if (role === "ADMIN") return item.to !== "/app/verifications";
       return true;
     });
-  }, [needsVerification, role, verificationPath]);
+  }, [needsVerification, role, verificationAllowedPaths]);
 
   const defaultTopupDescription = useMemo(() => {
     const payerName = session?.fullName || "AITasker";
@@ -418,13 +430,21 @@ export function AppShell() {
     navigate("/login");
   };
 
-  const openTopup = useCallback(() => {
+  const openTopup = useCallback((event?: Event) => {
+    const detail = (event as CustomEvent<{ amount?: number; description?: string }> | undefined)
+      ?.detail;
     setTopupNotice(null);
     setTopupPayment(null);
     setTopupQrDataUrl("");
     setTopupForm((value) => ({
-      amount: value.amount,
-      description: value.description.trim() || defaultTopupDescription,
+      amount:
+        detail?.amount && Number.isFinite(detail.amount)
+          ? String(Math.ceil(detail.amount))
+          : value.amount,
+      description:
+        detail?.description ||
+        value.description.trim() ||
+        defaultTopupDescription,
     }));
     setTopupOpen(true);
     setRoleOpen(false);
@@ -585,13 +605,10 @@ export function AppShell() {
   // Thay thế đoạn useEffect cũ bằng đoạn này:
   useEffect(() => {
     if (!session) return;
-    const isNotificationPage =
-      location.pathname.startsWith("/app/notifications");
-    if (
-      needsVerification &&
-      location.pathname !== verificationPath &&
-      !isNotificationPage
-    ) {
+    const canOpenWhileVerifying = verificationAllowedPaths.some((path) =>
+      location.pathname.startsWith(path),
+    );
+    if (needsVerification && !canOpenWhileVerifying) {
       navigate(verificationPath, { replace: true });
     }
   }, [
@@ -599,6 +616,7 @@ export function AppShell() {
     navigate,
     needsVerification,
     session,
+    verificationAllowedPaths,
     verificationPath,
   ]);
 
@@ -1057,7 +1075,7 @@ export function AppShell() {
                         type="button"
                         size="sm"
                         className="mt-3 w-full"
-                        onClick={openTopup}
+                        onClick={() => openTopup()}
                       >
                         <Plus className="h-4 w-4" />
                         Nạp tiền

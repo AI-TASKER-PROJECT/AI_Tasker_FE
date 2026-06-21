@@ -80,22 +80,44 @@ export interface Proposal {
   deliveryDays?: number;
 }
 
+export interface ContractMilestone {
+  contractMilestoneId: number;
+  contractId: number;
+  jobMilestoneId: number;
+  milestoneName: string;
+  description?: string;
+  originalBudget: number;
+  finalBudget: number;
+  orderIndex: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Contract {
   contractId: number;
   jobId: number;
+  proposalId?: number;
   businessId: number;
   expertId: number;
+  contractTitle?: string;
   technologyUsed?: string;
   totalBudget: number;
   timelineDays: number;
-  ndaSigned: boolean;
+  ndaSigned?: boolean;
   status: string;
+  businessAcceptedAt?: string;
+  expertAcceptedAt?: string;
+  businessNdaSignedAt?: string;
+  expertNdaSignedAt?: string;
+  activatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   title?: string;
   businessName?: string;
   expertName?: string;
   progress?: number;
+  contractMilestones?: ContractMilestone[];
 }
 
 export interface ContractChangeRequest {
@@ -110,6 +132,36 @@ export interface ContractChangeRequest {
   reviewedByAccountId?: number;
   reviewedAt?: string;
   createdAt?: string;
+}
+
+export interface ContractDeposit {
+  depositId: number;
+  contractId: number;
+  businessId: number;
+  depositAmount: number;
+  heldAmount: number;
+  refundedAmount: number;
+  resolvedAmount: number;
+  status: string;
+  holdTransactionId?: number;
+  refundTransactionId?: number;
+  adminId?: number;
+  adminNote?: string;
+  paidAt?: string;
+  refundedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentActionResponse<T> {
+  completed: boolean;
+  needTopup: boolean;
+  currentBalance?: number;
+  requiredAmount?: number;
+  missingAmount?: number;
+  redirectUrl?: string;
+  message?: string;
+  data?: T;
 }
 
 export interface Milestone {
@@ -436,17 +488,6 @@ export interface WalletTransaction {
   referenceId?: number;
   description?: string;
   createdAt?: string;
-}
-
-export interface PaymentActionResponse<T> {
-  completed: boolean;
-  needTopup: boolean;
-  currentBalance: number;
-  requiredAmount: number;
-  missingAmount: number;
-  redirectUrl?: string;
-  message?: string;
-  data?: T;
 }
 
 export interface UserQuota {

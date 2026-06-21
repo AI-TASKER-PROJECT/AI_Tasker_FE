@@ -24,7 +24,7 @@ import {
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
+import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
@@ -78,7 +78,7 @@ export function MyJobsPage() {
   >({});
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "ALL" | "DRAFT" | "OPEN" | "CLOSED"
+    "ALL" | "DRAFT" | "OPEN" | "IN_PROGRESS" | "CLOSED"
   >("ALL");
 
   useEffect(() => {
@@ -150,6 +150,7 @@ export function MyJobsPage() {
     { value: "ALL", label: "All" },
     { value: "DRAFT", label: "Draft" },
     { value: "OPEN", label: "Open" },
+    { value: "IN_PROGRESS", label: "In progress" },
     { value: "CLOSED", label: "Close" },
   ] as const;
 
@@ -235,7 +236,12 @@ export function MyJobsPage() {
         />
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
-        {filtered.map((job) => (
+        {filtered.map((job) => {
+          const jobStatus = job.status.trim().toUpperCase();
+          const isInProgress = jobStatus === "IN_PROGRESS";
+          const canOpenJob = ["DRAFT", "CLOSED"].includes(jobStatus);
+          const canCloseJob = jobStatus === "OPEN";
+          return (
           <Card key={job.jobId} className="group flex h-full flex-col p-5">
             <div className="flex min-h-9 items-start justify-between gap-3">
               <JobDomainBadge
@@ -253,6 +259,9 @@ export function MyJobsPage() {
             </Link>
             <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
               {job.structuredSow}
+            </p>
+            <p className="mt-2 text-xs font-bold text-slate-400">
+              Ngày tạo: {formatDate(job.createdAt)}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
               <div>
@@ -280,7 +289,8 @@ export function MyJobsPage() {
               >
                 Quản lý
               </LinkButton>
-              {job.status !== "OPEN" && (
+              {isInProgress && <Badge tone="mint">Đang thực thi</Badge>}
+              {canOpenJob && (
                 <Button
                   variant="success"
                   size="sm"
@@ -289,7 +299,7 @@ export function MyJobsPage() {
                   Mở job
                 </Button>
               )}
-              {job.status === "OPEN" && (
+              {canCloseJob && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -300,7 +310,8 @@ export function MyJobsPage() {
               )}
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

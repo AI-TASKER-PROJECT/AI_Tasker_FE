@@ -1,4 +1,4 @@
-import {
+﻿import {
   Award,
   BrainCircuit,
   CheckCircle2,
@@ -23,7 +23,7 @@ import {
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
+import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
   ExpertProfile,
@@ -31,6 +31,7 @@ import type {
   Milestone,
   Portfolio,
   Proposal,
+  Contract,
 } from "../../../types";
 import {
   Avatar,
@@ -61,6 +62,7 @@ export function ManageJobPage() {
   const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -69,10 +71,11 @@ export function ManageJobPage() {
   const [proposalTab, setProposalTab] = useState<"ai" | "proposal">("proposal");
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
-    technologyUsed: "Python, FastAPI, PostgreSQL",
-    totalBudget: "",
+    contractTitle: "",
     timelineDays: "60",
   });
+  const [contractError, setContractError] = useState("");
+  const [contractLoading, setContractLoading] = useState(false);
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
   const [recommendationResult, setRecommendationResult] =
@@ -109,6 +112,10 @@ export function ManageJobPage() {
       .listJobMilestones(id)
       .then(setMilestones)
       .catch(() => setMilestones([]));
+    contractApi
+      .listContracts()
+      .then(setContracts)
+      .catch(() => setContracts([]));
     // Load saved AI recommendations silently
     expertRecommendationApi
       .get(id)
@@ -152,10 +159,18 @@ export function ManageJobPage() {
 
   if (!job) return <div>Đang tải job...</div>;
 
+  const jobStatus = job.status.trim().toUpperCase();
+  const jobInProgress = jobStatus === "IN_PROGRESS";
+  const contractTimelineDays = Math.max(1, Number(contractForm.timelineDays) || 1);
+  const contractStartDate = new Date();
+  const contractEndDate = new Date(contractStartDate);
+  contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
+
   const review = async (
     proposalId: number,
     status: "Accepted" | "Rejected",
   ) => {
+    if (jobInProgress) return;
     const updated = await marketplaceApi.reviewProposal(proposalId, status);
     setProposals((items) =>
       items.map((item) => (item.proposalId === proposalId ? updated : item)),
@@ -164,18 +179,37 @@ export function ManageJobPage() {
 
   const createContract = async () => {
     if (!contractModal) return;
-    const contract = await contractApi.createFromProposal(
-      contractModal.proposalId,
-      {
-        technologyUsed: contractForm.technologyUsed,
-        totalBudget: Number(
-          contractForm.totalBudget || contractModal.bidAmount,
-        ),
-        timelineDays: Number(contractForm.timelineDays),
-      },
-    );
-    setContractModal(null);
-    navigate(`/app/contracts/${contract.contractId}`);
+    if (jobInProgress) {
+      setContractError("Job đang IN_PROGRESS nên không thể tạo hoặc thay đổi hợp đồng.");
+      return;
+    }
+    if (contractModal.status !== "Accepted") {
+      setContractError("Chỉ tạo contract draft sau khi proposal đã Accepted.");
+      return;
+    }
+    if (milestones.length === 0) {
+      setContractError("Job cần có ít nhất một milestone để tạo contract draft.");
+      return;
+    }
+    setContractError("");
+    setContractLoading(true);
+    try {
+      const contract = await contractApi.createFromProposal(
+        contractModal.proposalId,
+        {
+          contractTitle:
+            contractForm.contractTitle.trim() || `Contract - ${job.title}`,
+          timelineDays: Number(contractForm.timelineDays),
+        },
+      );
+      setContracts((items) => [contract, ...items]);
+      setContractModal(null);
+      navigate(`/app/contracts/${contract.contractId}`);
+    } catch (error) {
+      setContractError(getApiErrorMessage(error));
+    } finally {
+      setContractLoading(false);
+    }
   };
 
   return (
@@ -291,19 +325,32 @@ export function ManageJobPage() {
               title="Proposal của chuyên gia"
               description="Danh sách proposal được chuyên gia gửi trực tiếp cho job này."
             />
+            {jobInProgress && (
+              <Notice
+                tone="info"
+                title="Job đang IN_PROGRESS, các thao tác đổi proposal và tạo hợp đồng đã bị khóa."
+                className="mt-4"
+              />
+            )}
             <div className="mt-6 grid gap-4">
               {proposals.map((proposal) => (
                 <ProposalCard
                   key={proposal.proposalId}
                   proposal={proposal}
                   milestones={milestones}
+                  contract={contracts.find(
+                    (contract) => contract.proposalId === proposal.proposalId,
+                  )}
                   onAccept={() => review(proposal.proposalId, "Accepted")}
                   onReject={() => review(proposal.proposalId, "Rejected")}
+                  statusLocked={jobInProgress}
                   onContract={() => {
+                    setContractError("");
                     setContractModal(proposal);
                     setContractForm((value) => ({
                       ...value,
-                      totalBudget: String(proposal.bidAmount),
+                      contractTitle: `Contract - ${job.title}`,
+                      timelineDays: String(proposal.deliveryDays || 60),
                     }));
                   }}
                 />
@@ -355,6 +402,12 @@ export function ManageJobPage() {
               <StatusBadge status={job.status} />
             </div>
             <div className="flex justify-between gap-3 text-sm">
+              <span className="text-slate-500">Ngày tạo job</span>
+              <span className="font-extrabold text-ink">
+                {formatDate(job.createdAt)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Milestone</span>
               <span className="font-extrabold text-ink">
                 {milestones.length} mốc
@@ -398,50 +451,133 @@ export function ManageJobPage() {
         description="Tạo draft contract từ proposal đã chọn."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setContractModal(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => setContractModal(null)}
+              disabled={contractLoading}
+            >
               Hủy
             </Button>
-            <Button onClick={createContract}>Tạo Draft</Button>
+            <Button
+              onClick={createContract}
+              loading={contractLoading}
+              disabled={
+                contractLoading ||
+                jobInProgress ||
+                contractModal?.status !== "Accepted" ||
+                milestones.length === 0
+              }
+            >
+              Tạo Draft
+            </Button>
           </>
         }
       >
         <div className="grid gap-4">
-          <Field label="Công nghệ sử dụng">
+          {contractError && <Notice tone="danger" title={contractError} />}
+          {contractModal?.status !== "Accepted" && (
+            <Notice
+              tone="warning"
+              title="Proposal cần được Accepted trước khi tạo contract draft."
+            />
+          )}
+          {milestones.length === 0 && (
+            <Notice
+              tone="warning"
+              title="Job chưa có milestone nên backend chưa thể tạo contract draft."
+            />
+          )}
+          <Field label="Tiêu đề contract">
             <Input
-              value={contractForm.technologyUsed}
+              value={contractForm.contractTitle}
               onChange={(event) =>
                 setContractForm((value) => ({
                   ...value,
-                  technologyUsed: event.target.value,
+                  contractTitle: event.target.value,
                 }))
               }
             />
           </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Tổng ngân sách">
-              <Input
-                type="number"
-                value={contractForm.totalBudget}
-                onChange={(event) =>
-                  setContractForm((value) => ({
-                    ...value,
-                    totalBudget: event.target.value,
-                  }))
-                }
-              />
-            </Field>
-            <Field label="Timeline days">
-              <Input
-                type="number"
-                value={contractForm.timelineDays}
-                onChange={(event) =>
-                  setContractForm((value) => ({
-                    ...value,
-                    timelineDays: event.target.value,
-                  }))
-                }
-              />
-            </Field>
+          <Field label="Timeline days">
+            <Input
+              type="number"
+              value={contractForm.timelineDays}
+              onChange={(event) =>
+                setContractForm((value) => ({
+                  ...value,
+                  timelineDays: event.target.value,
+                }))
+              }
+            />
+          </Field>
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
+            <ContractPreviewMetric
+              label="Ngay bat dau du kien"
+              value={formatDate(contractStartDate.toISOString())}
+            />
+            <ContractPreviewMetric
+              label="Ngay ket thuc du kien"
+              value={formatDate(contractEndDate.toISOString())}
+            />
+            <ContractPreviewMetric
+              label="Tong thoi gian"
+              value={`${contractTimelineDays} ngay`}
+            />
+          </div>
+          <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+            <SectionHeading
+              title="Ngân sách sẽ đưa vào hợp đồng"
+              description="Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi."
+            />
+            <div className="mt-4 grid gap-2">
+              {milestones
+                .slice()
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((milestone) => {
+                  const proposalMilestone = parseProposalMilestones(
+                    contractModal?.proposalMilestone,
+                  ).find((item) => item.milestoneId === milestone.milestoneId);
+                  const finalBudget =
+                    proposalMilestone?.proposedBudget ?? milestone.fundsAllocated;
+                  const changed = finalBudget !== milestone.fundsAllocated;
+                  return (
+                    <div
+                      key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+                      className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm md:grid-cols-[72px_1fr_150px_150px] md:items-center"
+                    >
+                      <Badge tone={changed ? "amber" : "brand"}>
+                        Mốc {milestone.orderIndex}
+                      </Badge>
+                      <div className="min-w-0">
+                        <p className="break-words font-extrabold text-ink">
+                          {milestone.milestoneName}
+                        </p>
+                        {milestone.description && (
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {milestone.description}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400">
+                          Ngân sách job
+                        </p>
+                        <p className="font-extrabold text-slate-700">
+                          {formatCurrency(milestone.fundsAllocated)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400">
+                          Chốt contract
+                        </p>
+                        <p className="font-extrabold text-ink">
+                          {formatCurrency(finalBudget)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </div>
       </Modal>
@@ -449,17 +585,30 @@ export function ManageJobPage() {
   );
 }
 
+function ContractPreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-3">
+      <p className="text-xs font-bold text-slate-400">{label}</p>
+      <p className="mt-1 font-extrabold text-ink">{value}</p>
+    </div>
+  );
+}
+
 function ProposalCard({
   proposal,
   milestones,
+  contract,
   onAccept,
   onReject,
+  statusLocked,
   onContract,
 }: {
   proposal: Proposal;
   milestones: Milestone[];
+  contract?: Contract;
   onAccept: () => void;
   onReject: () => void;
+  statusLocked?: boolean;
   onContract: () => void;
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
@@ -538,9 +687,8 @@ function ProposalCard({
     "skillName",
   );
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
-  const proposalMilestones = parseProposalMilestones(
-    proposal.proposalMilestone,
-  );
+  const proposalMilestones = parseProposalMilestones(proposal.proposalMilestone);
+  const canCreateContract = proposal.status === "Accepted" && !contract && !statusLocked;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
@@ -651,18 +799,50 @@ function ProposalCard({
             Xem chuyên gia
           </Button>
           <div className="flex flex-wrap gap-2">
-            <Button variant="success" size="sm" onClick={onAccept}>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={onAccept}
+              disabled={statusLocked || proposal.status === "Accepted" || Boolean(contract)}
+            >
               <CheckCircle2 className="h-4 w-4" />
               Accept
             </Button>
-            <Button variant="danger" size="sm" onClick={onReject}>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onReject}
+              disabled={statusLocked || proposal.status === "Rejected" || Boolean(contract)}
+            >
               <XCircle className="h-4 w-4" />
               Reject
             </Button>
-            <Button size="sm" onClick={onContract}>
-              <FileCheck2 className="h-4 w-4" />
-              Tạo contract
-            </Button>
+            {contract ? (
+              <LinkButton
+                to={`/app/contracts/${contract.contractId}`}
+                size="sm"
+                variant="secondary"
+              >
+                <FileCheck2 className="h-4 w-4" />
+                Xem hợp đồng
+              </LinkButton>
+            ) : (
+              <Button
+                size="sm"
+                onClick={onContract}
+                disabled={!canCreateContract}
+                title={
+                  canCreateContract
+                    ? "Tạo contract draft"
+                    : statusLocked
+                      ? "Job đang IN_PROGRESS nên không thể thay đổi"
+                    : "Chỉ tạo contract sau khi proposal được Accepted"
+                }
+              >
+                <FileCheck2 className="h-4 w-4" />
+                Tạo hợp đồng
+              </Button>
+            )}
           </div>
         </div>
       </div>

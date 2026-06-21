@@ -8,6 +8,7 @@ import type {
   BusinessProfile,
   Contract,
   ContractChangeRequest,
+  ContractDeposit,
   CreatePayOSPaymentResponse,
   Deliverable,
   Dispute,
@@ -59,13 +60,20 @@ function setDataMode(mode: "live") {
 }
 
 async function call<T>(config: AxiosRequestConfig): Promise<T> {
-  const response = await api.request<ApiResponse<T>>(config);
-  setDataMode("live");
-  return response.data.data;
+  try {
+    const response = await api.request<ApiResponse<T>>(config);
+    setDataMode("live");
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
 }
 
 export function getApiErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
     return "Đã có lỗi không xác định.";
   }
 
@@ -81,15 +89,15 @@ export function getApiErrorMessage(error: unknown) {
     | undefined;
 
   if (typeof responseData === "string" && responseData.trim()) {
-    return responseData;
+    return mapApiErrorCode(responseData);
   }
 
   if (responseData && typeof responseData === "object") {
     if ("message" in responseData && responseData.message) {
-      return String(responseData.message);
+      return mapApiErrorCode(String(responseData.message));
     }
     if ("error" in responseData && responseData.error) {
-      return String(responseData.error);
+      return mapApiErrorCode(String(responseData.error));
     }
   }
 
@@ -107,6 +115,23 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
+}
+
+function mapApiErrorCode(message: string) {
+  const normalized = message.trim().toUpperCase();
+  if (normalized === "INSUFFICIENT_BALANCE") {
+    return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
+  }
+  if (normalized === "CONTRACT_INVALID_STATUS") {
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần đủ 2 bên chấp nhận contract và ký NDA trước.";
+  }
+  if (normalized === "DEPOSIT_ALREADY_HELD") {
+    return "Hợp đồng này đã được ký quỹ rồi.";
+  }
+  if (normalized === "CONTRACT_NOT_FOUND") {
+    return "Không tìm thấy hợp đồng.";
+  }
+  return message;
 }
 
 export interface Domain {
@@ -631,6 +656,12 @@ export const contractApi = {
   listContracts() {
     return call<Contract[]>({ method: "GET", url: "/api/v1/contracts" });
   },
+  getContract(contractId: number) {
+    return call<Contract>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}`,
+    });
+  },
   createFromProposal(proposalId: number, payload: Partial<Contract>) {
     return call<Contract>({
       method: "POST",
@@ -651,10 +682,28 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/activate`,
     });
   },
+  sign(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/sign`,
+    });
+  },
   signNda(contractId: number) {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/nda-sign`,
+    });
+  },
+  reject(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/reject`,
+    });
+  },
+  payDeposit(contractId: number) {
+    return call<PaymentActionResponse<ContractDeposit>>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/deposit/pay`,
     });
   },
   terminate(contractId: number, reason: string) {

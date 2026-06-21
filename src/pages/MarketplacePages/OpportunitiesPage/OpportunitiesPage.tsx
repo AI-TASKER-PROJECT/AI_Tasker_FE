@@ -101,7 +101,11 @@ export function OpportunitiesPage() {
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
         {filteredJobs.map((job) => (
-          <JobCard key={job.jobId} job={job} />
+          <JobCard
+            key={job.jobId}
+            job={job}
+            detailTo={`/app/jobs/${job.jobId}/proposal`}
+          />
         ))}
       </div>
       {filteredJobs.length === 0 && (
