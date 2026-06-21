@@ -13,11 +13,9 @@ import {
   IdCard,
   Layers3,
   MapPin,
-  Phone,
   Save,
   ShieldCheck,
   Sparkles,
-  UserRound,
   Users,
 } from "lucide-react";
 import {
@@ -251,7 +249,6 @@ export function ExpertProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Chưa gửi");
-  const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -276,7 +273,6 @@ export function ExpertProfilePage() {
           yearsOfExperience: String(profile.yearsOfExperience ?? 1),
         });
         setStatus(profile.kycStatus || "Chưa gửi");
-        setRejectionReason(profile.rejectionReason || "");
         setPortfolio(expertPortfolio);
         setDomains(domainItems);
         setSkills(skillItems);
@@ -310,7 +306,6 @@ export function ExpertProfilePage() {
         yearsOfExperience: String(profile.yearsOfExperience ?? 1),
       });
       setStatus(profile.kycStatus);
-      setRejectionReason(profile.rejectionReason || "");
 
       const session = getSession(); //lưu session
       setMessage("Đã lưu thành công hồ sơ");
@@ -792,10 +787,7 @@ export function PublicBusinessProfilePage() {
   const numericBusinessId = Number(businessId);
 
   useEffect(() => {
-    if (!Number.isFinite(numericBusinessId)) {
-      setError("Không tìm thấy doanh nghiệp.");
-      return;
-    }
+    if (!Number.isFinite(numericBusinessId)) return;
     Promise.all([
       profileApi.getBusinessById(numericBusinessId),
       profileApi.listBusinessJobs(numericBusinessId).catch(() => []),
@@ -809,6 +801,7 @@ export function PublicBusinessProfilePage() {
       );
   }, [numericBusinessId]);
 
+  if (!Number.isFinite(numericBusinessId)) return <Notice tone="danger" title="Không tìm thấy doanh nghiệp." />;
   if (error) return <Notice tone="danger" title={error} />;
   if (!profile) return <Notice title="Đang tải hồ sơ doanh nghiệp..." />;
 
@@ -818,17 +811,17 @@ export function PublicBusinessProfilePage() {
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-slate-100">
-        <div className="bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_34%),linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] p-6 text-white md:p-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+        <div className="bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_34%),linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] p-5 text-white md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
               {profile.logoUrl ? (
-                <img src={profile.logoUrl} alt={logoLabel} className="h-20 w-20 rounded-3xl bg-white object-contain p-2 shadow-sm ring-1 ring-white/20" />
+                <img src={profile.logoUrl} alt={logoLabel} className="h-16 w-16 rounded-3xl bg-white object-contain p-2 shadow-sm ring-1 ring-white/20" />
               ) : (
-                <Avatar name={logoLabel} size="xl" className="bg-white/95 text-brand-700" />
+                <Avatar name={logoLabel} size="lg" className="bg-white/95 text-brand-700" />
               )}
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai doanh nghiệp</p>
-                <h1 className="mt-2 text-3xl font-black md:text-4xl">{profile.companyName || "Doanh nghiệp"}</h1>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai doanh nghiệp</p>
+                <h1 className="mt-1 text-2xl font-black md:text-3xl">{profile.companyName || "Doanh nghiệp"}</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
                   {profile.website && <a className="inline-flex items-center gap-2 hover:text-white" href={profile.website} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />{profile.website}</a>}
                   {profile.followersCount != null && <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />{profile.followersCount} người theo dõi</span>}
@@ -843,8 +836,8 @@ export function PublicBusinessProfilePage() {
               )}
             </div>
           </div>
-          <div className="mt-6">
-            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "jobs", label: "Tin tuyển dụng", count: jobs.length }]} active={activeTab} onChange={setActiveTab} />
+          <div className="mt-4">
+            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "jobs", label: "Tin tuyển dụng", count: jobs.filter(j => j.status === 'OPEN').length }]} active={activeTab} onChange={setActiveTab} />
           </div>
         </div>
       </Card>
@@ -859,11 +852,10 @@ export function PublicBusinessProfilePage() {
           </Card>
           <Card className="p-6">
             <SectionHeading title="Thông tin chung" />
-            <div className="mt-5 space-y-4 text-sm">
-              <ProfileRow label="Website" value={profile.website ? <a className="text-brand-600 hover:text-brand-700" href={profile.website} target="_blank" rel="noreferrer">{profile.website}</a> : "Chưa cập nhật"} />
-              <ProfileRow label="Quy mô nhân sự" value={profile.employeeCount || "Chưa cập nhật"} />
-              <ProfileRow label="Lĩnh vực hoạt động" value={profile.industry || "Chưa cập nhật"} />
-              <ProfileRow label="Số người theo dõi" value={profile.followersCount ?? 0} />
+            <div className="mt-5 space-y-4">
+              <ProfileDetailRow icon={<IdCard className="h-4 w-4" />} label="Mã số thuế" value={profile.taxCode || "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<Layers3 className="h-4 w-4" />} label="Lĩnh vực hoạt động" value={profile.industry || "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<MapPin className="h-4 w-4" />} label="Địa chỉ" value={profile.address || "Chưa cập nhật"} />
             </div>
           </Card>
         </div>
@@ -873,7 +865,7 @@ export function PublicBusinessProfilePage() {
         <Card className="p-6">
           <SectionHeading title="Tin tuyển dụng / dự án đã đăng" />
           <div className="mt-5 grid gap-4">
-            {jobs.length ? jobs.map((job) => (
+            {jobs.filter(job => job.status === 'OPEN').length ? jobs.filter(job => job.status === 'OPEN').map((job) => (
               <Link key={job.jobId} to={`/jobs/${job.jobId}`} className="group rounded-3xl border border-slate-100 bg-slate-50 p-4 transition hover:border-brand-200 hover:bg-white hover:shadow-soft">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -884,7 +876,7 @@ export function PublicBusinessProfilePage() {
                 </div>
               </Link>
             )) : (
-              <EmptyProfileBlock icon={<BriefcaseBusiness className="h-5 w-5" />} title="Chưa có tin tuyển dụng nào" description="Doanh nghiệp chưa đăng job public." />
+              <EmptyProfileBlock icon={<BriefcaseBusiness className="h-5 w-5" />} title="Chưa có tin tuyển dụng nào" description="Doanh nghiệp hiện tại không có tin tuyển dụng OPEN." />
             )}
           </div>
         </Card>
@@ -906,10 +898,7 @@ export function PublicExpertProfilePage() {
   const numericExpertId = Number(expertId);
 
   useEffect(() => {
-    if (!Number.isFinite(numericExpertId)) {
-      setError("Không tìm thấy chuyên gia.");
-      return;
-    }
+    if (!Number.isFinite(numericExpertId)) return;
     Promise.all([
       profileApi.getExpertById(numericExpertId),
       profileApi.getPortfolioByExpert(numericExpertId).catch(() => null),
@@ -940,6 +929,7 @@ export function PublicExpertProfilePage() {
     "technologyName",
   );
 
+  if (!Number.isFinite(numericExpertId)) return <Notice tone="danger" title="Không tìm thấy chuyên gia." />;
   if (error) return <Notice tone="danger" title={error} />;
   if (!profile) return <Notice title="Đang tải hồ sơ chuyên gia..." />;
 
@@ -949,13 +939,13 @@ export function PublicExpertProfilePage() {
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-slate-100">
-        <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center">
-              <Avatar name={displayName} size="xl" className="bg-white/95 text-brand-700" />
+        <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-5 text-white md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <Avatar name={displayName} size="lg" className="bg-white/95 text-brand-700" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai chuyên gia</p>
-                <h1 className="mt-2 text-3xl font-black md:text-4xl">{displayName}</h1>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai chuyên gia</p>
+                <h1 className="mt-1 text-2xl font-black md:text-3xl">{displayName}</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
                   {profile.title && <span className="inline-flex items-center gap-2"><BriefcaseBusiness className="h-4 w-4" />{profile.title}</span>}
                   <span className="inline-flex items-center gap-2"><Award className="h-4 w-4" />{portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm kinh nghiệm</span>
@@ -971,8 +961,8 @@ export function PublicExpertProfilePage() {
               )}
             </div>
           </div>
-          <div className="mt-6">
-            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "portfolio", label: "Portfolio" }]} active={activeTab} onChange={setActiveTab} />
+          <div className="mt-4">
+            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "projects", label: "Dự án đã làm" }]} active={activeTab} onChange={setActiveTab} />
           </div>
         </div>
       </Card>
@@ -980,68 +970,36 @@ export function PublicExpertProfilePage() {
       {activeTab === "home" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <Card className="p-6">
-            <SectionHeading title="Giới thiệu chuyên gia" />
+            <SectionHeading title="Mô tả bản thân" />
             <p className="mt-5 text-sm leading-7 text-slate-600">{introText}</p>
           </Card>
           <Card className="p-6">
             <SectionHeading title="Thông tin chung" />
-            <div className="mt-5 space-y-4 text-sm">
-              <ProfileRow label="Chức danh" value={profile.title || "Chưa cập nhật"} />
-              <ProfileRow label="Số năm kinh nghiệm" value={`${portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm`} />
-              <ProfileRow label="Kỹ năng" value={selectedSkills.length ? selectedSkills.join(", ") : "Chưa cập nhật"} />
-              <ProfileRow label="Công nghệ" value={selectedTechnologies.length ? selectedTechnologies.join(", ") : "Chưa cập nhật"} />
+            <div className="mt-5 space-y-4">
+              <ProfileDetailRow icon={<Layers3 className="h-4 w-4" />} label="Lĩnh vực" value={selectedDomains.length ? selectedDomains.join(", ") : "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<BrainCircuit className="h-4 w-4" />} label="Kỹ năng" value={selectedSkills.length ? selectedSkills.join(", ") : "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<Cpu className="h-4 w-4" />} label="Công nghệ" value={selectedTechnologies.length ? selectedTechnologies.join(", ") : "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<Award className="h-4 w-4" />} label="Số năm kinh nghiệm" value={`${portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm`} />
+              <ProfileDetailRow icon={<FileText className="h-4 w-4" />} label="Chứng chỉ" value={<FirebaseFileLink path={portfolio?.certificates || profile.portfolioUrl} emptyText="Chưa có chứng chỉ" buttonText="Xem chứng chỉ" showPath={false} />} />
             </div>
           </Card>
         </div>
       )}
 
-      {activeTab === "portfolio" && (
+      {activeTab === "projects" && (
         <Card className="p-6">
-          <SectionHeading title="Portfolio" description="Lĩnh vực, kỹ năng, công nghệ và tệp đính kèm." />
-          {portfolio ? (
-            <div className="mt-5 grid gap-5">
-              <PreviewGroup icon={<Layers3 className="h-4 w-4" />} title="Lĩnh vực" emptyText="Chưa cập nhật lĩnh vực" items={selectedDomains} tone="mint" />
-              <PreviewGroup icon={<BrainCircuit className="h-4 w-4" />} title="Kỹ năng" emptyText="Chưa cập nhật kỹ năng" items={selectedSkills} tone="brand" />
-              <PreviewGroup icon={<Cpu className="h-4 w-4" />} title="Công nghệ" emptyText="Chưa cập nhật công nghệ" items={selectedTechnologies} tone="coral" />
-              <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
-                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-ink"><FileText className="h-4 w-4 text-brand-600" />Giới thiệu chuyên gia</div>
-                <p className="text-sm leading-7 text-slate-600">{introText}</p>
+          <SectionHeading title="Dự án đã làm" description="Những dự án đã hoàn thành trên nền tảng." />
+          <div className="mt-5">
+            {profile.completedProjects && profile.completedProjects > 0 ? (
+              <div className="grid h-32 place-items-center rounded-3xl border border-dashed border-brand-200 bg-brand-50/50">
+                 <p className="text-sm font-bold text-brand-700">Chuyên gia đã hoàn thành {profile.completedProjects} dự án.</p>
               </div>
-              <div className="rounded-3xl border border-slate-100 bg-white p-5">
-                <FirebaseFileLink path={portfolio.certificates || profile.portfolioUrl} emptyText="Chưa có tệp portfolio/chứng chỉ" buttonText="Xem portfolio/chứng chỉ" showPath={false} />
-              </div>
-            </div>
-          ) : (
-            <EmptyProfileBlock icon={<Sparkles className="h-5 w-5" />} title="Chưa có portfolio" description="Khi chuyên gia cập nhật portfolio, các kỹ năng và kinh nghiệm sẽ hiển thị tại đây." />
-          )}
+            ) : (
+              <EmptyProfileBlock icon={<BriefcaseBusiness className="h-5 w-5" />} title="Chưa có dự án hoàn thành" description="Chuyên gia này chưa hoàn thành dự án nào trên nền tảng." />
+            )}
+          </div>
         </Card>
       )}
-    </div>
-  );
-}
-
-function PortfolioMetric({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/70 bg-white/75 p-4 shadow-sm backdrop-blur">
-      <div className="mb-3 flex items-center justify-center gap-3">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">
-          {icon}
-        </div>
-        <p className="font-display text-2xl font-extrabold text-ink">
-          {value}
-        </p>
-      </div>
-      <p className="text-center text-xs font-bold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
     </div>
   );
 }
@@ -1128,33 +1086,25 @@ function PreviewGroup({
   );
 }
 
-function ProfileInfoCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-        <span className="grid h-8 w-8 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
-          {icon}
-        </span>
-        {label}
-      </div>
-      <div className="font-display text-lg font-extrabold text-ink">{value}</div>
-    </div>
-  );
-}
-
 function ProfileRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
       <span className="font-bold text-slate-500">{label}</span>
       <span className="text-right font-extrabold text-ink">{value}</span>
+    </div>
+  );
+}
+
+function ProfileDetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start gap-4">
+      <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500">
+        {icon}
+      </span>
+      <div>
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
+        <div className="mt-1 text-sm font-bold text-ink">{value}</div>
+      </div>
     </div>
   );
 }
@@ -1177,24 +1127,6 @@ function EmptyProfileBlock({
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>
     </div>
   );
-}
-
-function formatDate(value?: string) {
-  if (!value) return "Chưa cập nhật";
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function formatMoney(value?: number) {
-  if (value == null) return "Thỏa thuận";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function resolveCatalogNames<T extends object>(

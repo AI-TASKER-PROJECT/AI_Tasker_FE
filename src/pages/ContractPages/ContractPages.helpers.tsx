@@ -21,7 +21,6 @@ import {
   contractApi,
   disputeApi,
   financeApi,
-  getApiErrorMessage,
   profileApi,
   walletApi,
 } from "../../lib/api";
@@ -88,9 +87,6 @@ export function ContractsPage() {
   const negotiatingCount = pendingCount;
   const activeCount = contracts.filter(
     (contract) => normalizeContractStatus(contract.status) === "ACTIVE",
-  ).length;
-  const completedCount = contracts.filter(
-    (contract) => normalizeContractStatus(contract.status) === "COMPLETED",
   ).length;
 
   return (
@@ -479,6 +475,7 @@ export function ContractDetailPage() {
           </>
         }
       />
+      </div>
       {contractNotice && (
         <Notice tone={contractNotice.tone} title={contractNotice.title}>
           {contractNotice.message}

@@ -34,9 +34,7 @@ import {
   SubmitProposalPage,
 } from '../pages/MarketplacePages';
 import {
-  BusinessProfilePage,
   ExpertPortfolioPage,
-  ExpertProfilePage,
   MyPublicBusinessProfilePage,
   MyPublicExpertProfilePage,
   PublicBusinessProfilePage,

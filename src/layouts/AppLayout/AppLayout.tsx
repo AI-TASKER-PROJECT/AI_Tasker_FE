@@ -42,7 +42,6 @@ import { connectNotificationSocket } from '../../lib/notificationSocket';
 import {
   formatNotificationTime,
   mergeNotification,
-  notificationHref,
   notificationTone,
 } from '../../lib/notifications';
 import { Logo } from '../../components/Logo';
@@ -142,11 +141,11 @@ const commonNav: NavItem[] = [
 
 const roleNav: Record<Role, NavItem[]> = {
   BUSINESS: [
-    // {
-    //   label: "Trang cá nhân",
-    //   to: "/business/public-profile",
-    //   icon: <Building2 className="h-4 w-4" />,
-    // },
+    {
+      label: "Trang cá nhân",
+      to: "/app/business/public-profile",
+      icon: <Building2 className="h-4 w-4" />,
+    },
     {
       label: "Dự án của tôi",
       to: "/app/jobs",
@@ -189,11 +188,11 @@ const roleNav: Record<Role, NavItem[]> = {
     },
   ],
   EXPERT: [
-    // {
-    //   label: "Trang cá nhân",
-    //   to: "/expert/public-profile",
-    //   icon: <IdCard className="h-4 w-4" />,
-    // },
+    {
+      label: "Trang cá nhân",
+      to: "/app/expert/public-profile",
+      icon: <IdCard className="h-4 w-4" />,
+    },
     {
       label: "Cơ hội dự án",
       to: "/app/opportunities",
@@ -362,9 +361,6 @@ export function AppShell() {
       : "/app/expert/profile";
   const verificationAllowedPaths = useMemo(() => {
     if (!session) return [];
-    if (session.role === "EXPERT") {
-      return [verificationPath, "/app/opportunities", "/app/notifications"];
-    }
     return [verificationPath, "/app/notifications"];
   }, [session, verificationPath]);
   const navItems = useMemo(() => {

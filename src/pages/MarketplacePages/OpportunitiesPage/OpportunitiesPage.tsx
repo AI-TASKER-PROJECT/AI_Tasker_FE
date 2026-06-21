@@ -104,7 +104,6 @@ export function OpportunitiesPage() {
           <JobCard
             key={job.jobId}
             job={job}
-            detailTo={`/app/jobs/${job.jobId}/proposal`}
           />
         ))}
       </div>

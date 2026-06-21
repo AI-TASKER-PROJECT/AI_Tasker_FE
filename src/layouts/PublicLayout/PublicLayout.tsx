@@ -41,7 +41,7 @@ export function PublicShell() {
   return (
     <div className="min-h-screen bg-[#fbfdff] text-ink">
       <header className="sticky top-0 z-40 border-b border-white/80 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 py-2 md:px-6">
           <Logo />
           <nav className="hidden items-center gap-1 md:flex">
             {publicNav.map((item) => (

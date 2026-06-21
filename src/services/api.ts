@@ -435,10 +435,7 @@ export const profileApi = {
     });
   },
   listBusinessJobs(businessId: number) {
-    return call<Job[]>({
-      method: "GET",
-      url: `/api/v1/profiles/business/${businessId}/jobs`,
-    });
+    return marketplaceApi.listJobs().then(list => list.filter(j => j.businessId === businessId));
   },
   listExperts() {
     return call<ExpertProfile[]>({
@@ -461,7 +458,7 @@ export const profileApi = {
   getPortfolioByExpert(expertId: number) {
     return call<Portfolio>({
       method: "GET",
-      url: `/api/v1/profiles/portfolio/by-expert/${expertId}`,
+      url: `/api/v1/profiles/portfolio/expert/${expertId}`,
     });
   },
   getFileViewUrl(path: string) {

@@ -905,11 +905,9 @@ export function JobsPage() {
 export function JobCard({
   job,
   manage = false,
-  detailTo,
 }: {
   job: Job;
   manage?: boolean;
-  detailTo?: string;
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
