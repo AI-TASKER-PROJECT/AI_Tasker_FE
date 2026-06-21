@@ -57,7 +57,6 @@ import {
   Modal,
   Notice,
   PageHeader,
-  Progress,
   SearchInput,
   SectionHeading,
   StatusBadge,
@@ -378,7 +377,10 @@ export function LandingPage() {
   const publicExperience = getPublicExperience(session);
 
   useEffect(() => {
-    marketplaceApi.listJobs().then((data) => setJobs(data.slice(0, 3)));
+    marketplaceApi
+      .listJobs()
+      .then((data) => setJobs(data.slice(0, 3)))
+      .catch(() => setJobs([]));
   }, []);
 
   useEffect(() => {
@@ -400,72 +402,86 @@ export function LandingPage() {
 
   return (
     <main>
-      <section className="relative overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-brand-100/60 blur-3xl" />
-        <div className="absolute right-8 top-28 h-24 w-24 rounded-full bg-coral-100 blur-2xl" />
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-[1fr_1.05fr] md:px-6 md:py-24">
-          <div className="relative z-10">
-            <Badge tone="brand">
+      <section className="relative overflow-hidden bg-[#fff8f8] px-4 pb-24 pt-20 md:px-6 md:pb-32">
+        <div className="absolute inset-0 bg-[radial-gradient(#df0e84_1px,transparent_1px)] bg-[length:32px_32px] opacity-10" />
+        <div className="absolute right-[-10rem] top-[-4rem] h-[32rem] w-[32rem] rounded-full bg-[#ffb0cc]/35 blur-3xl" />
+        <div className="absolute left-[-8rem] top-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[#d8e2ff]/45 blur-3xl" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(420px,1.02fr)] lg:gap-16">
+          <div>
+            <Badge tone="brand" className="bg-[#df0e84] text-white ring-0 shadow-[0_6px_18px_rgba(223,14,132,.28)]">
               <Sparkles className="h-3.5 w-3.5" />
-              {publicExperience.badge}
+              {session?.role === "BUSINESS"
+                ? "Không gian doanh nghiệp"
+                : session?.role === "EXPERT"
+                  ? "Không gian chuyên gia"
+                  : session?.role === "STAFF"
+                    ? "Không gian vận hành"
+                    : session?.role === "ADMIN"
+                      ? "Không gian quản trị"
+                      : "Nền tảng AI Freelance Số 1"}
             </Badge>
-            <h1 className="mt-6 font-display text-4xl font-black tracking-[-0.055em] text-ink md:text-6xl">
-              {publicExperience.heroTitle}
+            <h1 className="mt-6 max-w-[42rem] font-display text-5xl font-black leading-[1.05] tracking-[-0.04em] text-[#27171d] md:text-[4.2rem]">
+              Nền tảng kết nối doanh nghiệp với{' '}
+              <span className="inline-block text-[#b30069]">
+                chuyên gia AI
+                <span className="mt-1 block h-[4px] w-full rounded-full bg-[#0070ea]" />
+              </span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-8 text-slate-600">
-              {publicExperience.heroDescription}
+            <p className="mt-6 max-w-xl text-xl leading-9 text-[#594048]">
+              AITASKER giúp bạn tìm kiếm, thuê và quản lý dự án AI trọn vẹn từ
+              hợp đồng đến thanh toán trên một hệ thống minh bạch.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <LinkButton to={publicExperience.primaryPath} size="lg">
-                {publicExperience.primaryLabel}{" "}
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <LinkButton
+                to={publicExperience.primaryPath}
+                size="lg"
+                className="h-14 rounded-xl bg-[#b30069] px-8 text-[15px] font-bold shadow-[0_10px_24px_rgba(179,0,105,.22)] hover:bg-[#b8006c]"
+              >
+                {session ? publicExperience.primaryLabel : "Đăng dự án ngay"}
                 <ArrowRight className="h-4 w-4" />
               </LinkButton>
               <LinkButton
                 to={publicExperience.secondaryPath}
                 size="lg"
                 variant="secondary"
+                className="h-14 rounded-xl border-[#8d6f79] bg-white px-8 text-[15px] font-bold text-[#27171d] hover:bg-[#fff0f3]"
               >
-                {publicExperience.secondaryLabel}
+                {session ? publicExperience.secondaryLabel : "Tìm việc AI"}
+                <Search className="h-4 w-4" />
               </LinkButton>
             </div>
-            <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
-              <HeroStat value="23" label="Business rules" />
-              <HeroStat value="4" label="Vai trò chính" />
-              <HeroStat value="100%" label="API mapped" />
+            <div className="mt-14 flex items-center gap-4 border-t border-[#f8dbe3] pt-8">
+              <div className="flex -space-x-3">
+                <Avatar name="Lan Anh" size="sm" className="ring-2 ring-[#fff8f8]" />
+                <Avatar name="Minh Khoa" size="sm" className="ring-2 ring-[#fff8f8]" />
+                <Avatar name="Bao Ngoc" size="sm" className="ring-2 ring-[#fff8f8]" />
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#ffd9e4] text-xs font-bold text-[#b30069] ring-2 ring-[#fff8f8]">
+                  5k+
+                </span>
+              </div>
+              <p className="text-base text-[#594048]">
+                Hơn <span className="font-extrabold text-[#27171d]">5,000+</span>{' '}
+                chuyên gia đã tham gia
+              </p>
             </div>
           </div>
-          <div className="relative z-10">
-            <div className="absolute -left-4 top-12 z-20 hidden rounded-3xl border border-white/80 bg-white/95 p-4 shadow-soft backdrop-blur md:block">
-              <p className="text-xs font-bold text-slate-400">Matching score</p>
-              <div className="mt-2 flex items-end gap-2">
-                <span className="font-display text-3xl font-black text-brand-600">
-                  96%
-                </span>
-                <Badge tone="mint">RAG</Badge>
-              </div>
-              <Progress value={96} className="mt-3 w-40" />
-            </div>
-            <div className="relative animate-float overflow-hidden rounded-[2.5rem] border border-white bg-white p-2 shadow-soft">
-              <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/45 via-transparent to-brand-100/40" />
-              <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-cyan-300/30 blur-3xl" />
+
+          <div className="relative hidden lg:block">
+            <div className="overflow-hidden rounded-[1.5rem] border border-[#e1bdc8]/30 bg-[#fff0f3]/70 p-2 shadow-[0_18px_40px_rgba(61,44,49,.12)] backdrop-blur-xl">
               <img
-                src="/images/hero-collaboration.png"
-                alt="AI hologram between robot and human hand"
-                className="relative h-full min-h-[320px] w-full rounded-[2rem] object-cover object-center ring-1 ring-cyan-100/60"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX"
+                alt="Minh họa cộng tác AI"
+                className="h-[27rem] w-full rounded-[1.15rem] object-cover"
               />
             </div>
-            <div className="absolute bottom-6 right-2 z-20 hidden rounded-3xl border border-white/80 bg-white/95 p-4 shadow-soft backdrop-blur md:block">
+            <div className="absolute left-0 top-8 rounded-2xl border border-[#e1bdc8] bg-white/95 px-4 py-3 shadow-lg">
               <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-mint-50 text-mint-600">
-                  <ShieldCheck className="h-5 w-5" />
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#0070ea] text-white">
+                  <CheckCircle2 className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-extrabold text-ink">
-                    Escrow bảo vệ 2 chiều
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Milestone, NDA, dispute, VNPay
-                  </p>
+                  <p className="text-sm font-bold text-[#27171d]">Hợp đồng ký kết</p>
+                  <p className="text-xs text-[#594048]">Vừa xong</p>
                 </div>
               </div>
             </div>
@@ -475,119 +491,164 @@ export function LandingPage() {
 
       <section
         id="how-it-works"
-        className="mx-auto max-w-7xl px-4 py-12 md:px-6"
+        className="bg-white px-4 py-20 md:px-6 md:py-24"
       >
-        <SectionHeading
-          title="Một luồng làm việc khép kín"
-          description="Thiết kế theo đúng nghiệp vụ trong BR_DB: đăng ký, thẩm định, đấu thầu, hợp đồng, thực thi, tài chính và rủi ro."
-        />
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          {[
-            [
-              "1",
-              "Chuẩn hóa bài toán",
-              "AI Job Assistant chuyển yêu cầu thô thành SoW có cấu trúc.",
-            ],
-            [
-              "2",
-              "Nhận proposal",
-              "Doanh nghiệp xem tab AI đề xuất và tab chuyên gia tự nộp.",
-            ],
-            [
-              "3",
-              "Ký hợp đồng",
-              "Draft, request change, activate, NDA và milestone.",
-            ],
-            [
-              "4",
-              "Nghiệm thu an toàn",
-              "Escrow, SLA 7 ngày, dispute và review chéo.",
-            ],
-          ].map(([step, title, desc]) => (
-            <Card key={step} hover className="p-5">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 font-display text-lg font-black text-brand-700">
-                {step}
-              </span>
-              <h3 className="mt-4 font-display text-lg font-extrabold text-ink">
-                {title}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{desc}</p>
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="font-display text-[2rem] font-black text-[#27171d] md:text-[2.35rem]">
+              Tính năng nổi bật
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-[#594048]">
+              Hệ sinh thái công cụ toàn diện giúp quá trình hợp tác trở nên dễ
+              dàng và an toàn hơn bao giờ hết.
+            </p>
+          </div>
+
+          <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3 md:auto-rows-[250px]">
+            <Card className="group relative overflow-hidden rounded-[1.2rem] border-[#f6dce5] bg-[#fff0f3] p-7 shadow-none md:col-span-2">
+              <div className="relative z-10 max-w-[65%]">
+                <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#df0e84] text-white">
+                  <ShieldCheck className="h-5 w-5" />
+                </span>
+                <h3 className="mt-6 font-display text-[2rem] font-black text-[#27171d]">
+                  Hồ sơ xác minh
+                </h3>
+                <p className="mt-3 text-base leading-7 text-[#594048]">
+                  100% chuyên gia trên nền tảng đều trải qua quy trình kiểm tra
+                  năng lực và danh tính nghiêm ngặt.
+                </p>
+              </div>
+              <div className="absolute bottom-0 right-0 h-40 w-40 bg-[linear-gradient(180deg,rgba(137,122,129,.05),rgba(137,122,129,.14))] [clip-path:polygon(52%_0,100%_0,100%_100%,15%_100%)] opacity-70 transition-opacity group-hover:opacity-100" />
             </Card>
-          ))}
+
+            <Card className="rounded-[1.2rem] border-[#0070ea] bg-[#0070ea] p-7 text-white shadow-none">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-white/15 text-white">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <h3 className="mt-12 font-display text-[2rem] font-black">
+                AI gợi ý phù hợp
+              </h3>
+              <p className="mt-3 text-base leading-7 text-blue-50">
+                Thuật toán thông minh phân tích yêu cầu và tự động đề xuất những
+                chuyên gia có kỹ năng sát nhất với dự án của bạn.
+              </p>
+            </Card>
+
+            {[
+              {
+                icon: <WalletCards className="h-5 w-5" />,
+                title: 'Ví điện tử & Thanh toán',
+                description:
+                  'Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân khi bạn hài lòng với kết quả nghiệm thu.',
+                iconClassName: 'bg-white text-[#df0e84]',
+              },
+              {
+                icon: <CheckCircle2 className="h-5 w-5" />,
+                title: 'Quản lý Tiến độ',
+                description:
+                  'Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và đánh giá từng giai đoạn.',
+                iconClassName: 'bg-[#2e7e94] text-white',
+              },
+              {
+                icon: <BriefcaseBusiness className="h-5 w-5" />,
+                title: 'Hợp đồng & NDA điện tử',
+                description:
+                  'Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính bảo mật và quyền sở hữu trí tuệ.',
+                iconClassName: 'bg-white text-[#0059bb]',
+              },
+            ].map((feature) => (
+              <Card
+                key={feature.title}
+                className="rounded-[1.2rem] border-[#f6dce5] bg-[#fff0f3] p-7 shadow-none"
+              >
+                <span
+                  className={`grid h-12 w-12 place-items-center rounded-xl ${feature.iconClassName}`}
+                >
+                  {feature.icon}
+                </span>
+                <h3 className="mt-8 font-display text-[2rem] font-black text-[#27171d]">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 text-base leading-7 text-[#594048]">
+                  {feature.description}
+                </p>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section
-        id="about"
-        className="mx-auto grid max-w-7xl gap-6 px-4 py-12 md:grid-cols-[1fr_1fr] md:px-6"
-      >
-        <Card className="overflow-hidden p-6">
-          <div className="flex items-start justify-between gap-4">
-            <SectionHeading
-              title="Job đang nổi bật"
-              description="Dữ liệu được tải trực tiếp từ API `/api/v1/jobs`; khi back-end chưa có dữ liệu, giao diện hiển thị trạng thái trống."
-            />
-            <LinkButton to="/jobs" variant="secondary" size="sm">
-              Xem tất cả
-            </LinkButton>
-          </div>
-          <div className="mt-5 grid gap-3">
-            {jobs.map((job) => (
-              <Link
-                key={job.jobId}
-                to={`/jobs/${job.jobId}`}
-                className="group rounded-2xl border border-slate-100 p-4 transition hover:border-brand-100 hover:bg-brand-50/40"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <JobDomainBadgeForJob jobId={job.jobId} className="mb-2" />
-                    <p className="font-bold text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
-                      {job.title}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {job.companyName}
-                    </p>
-                  </div>
-                  <StatusBadge status={job.status} />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge tone="mint">{formatCompactCurrency(job.budget)}</Badge>
-                  <Badge tone="slate">{job.proposalsCount || 0} proposal</Badge>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-700 p-6 text-white">
-          <div className="absolute -right-14 -top-14 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
-          <div className="relative z-10 max-w-md">
-            <Badge tone="mint">AI Job Assistant</Badge>
-            <h2 className="mt-5 font-display text-3xl font-black tracking-tight">
-              Giao diện đã có sẵn cho AI service dù back-end chưa tích hợp thật.
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-blue-50">
-              Form tạo job có khu vực mô tả thô, SoW gợi ý, lĩnh vực, kỹ năng,
-              ngân sách và thời lượng để giữ đúng JOB-01.
-            </p>
-            <div className="mt-6">
-              <LinkButton to="/app/jobs/new" variant="secondary">
-                Thử tạo job
+      <section id="about" className="bg-white px-4 pb-20 md:px-6 md:pb-24">
+        <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[1.15fr_.85fr]">
+          <Card className="overflow-hidden rounded-[1.5rem] border-[#f0dbe4] p-6 shadow-none md:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <SectionHeading
+                title="Dự án đang nổi bật"
+                description="Dữ liệu được tải trực tiếp từ API job hiện có để giữ nguyên luồng public listing và điều hướng vào chi tiết job."
+              />
+              <LinkButton to="/jobs" variant="secondary" size="sm" className="rounded-xl">
+                Xem tất cả
               </LinkButton>
             </div>
-          </div>
-        </Card>
+            <div className="mt-6 grid gap-3">
+              {jobs.length > 0 ? (
+                jobs.map((job) => (
+                  <Link
+                    key={job.jobId}
+                    to={`/jobs/${job.jobId}`}
+                    className="group rounded-[1rem] border border-[#f0dbe4] bg-[#fff8fb] p-4 transition hover:border-[#e1bdc8] hover:bg-[#fff0f3]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <JobDomainBadgeForJob jobId={job.jobId} className="mb-2" />
+                        <p className="font-bold text-[#27171d] transition group-hover:text-[#b30069]">
+                          {job.title}
+                        </p>
+                        <p className="mt-1 text-sm text-[#594048]">{job.companyName}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge tone="mint">{formatCompactCurrency(job.budget)}</Badge>
+                      <Badge tone="slate">{job.proposalsCount || 0} đề xuất</Badge>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <EmptyState
+                  title="Chưa có job công khai"
+                  description="Khi API job chưa trả dữ liệu, phần này sẽ giữ trạng thái trống an toàn."
+                />
+              )}
+            </div>
+          </Card>
+
+          <Card className="relative overflow-hidden rounded-[1.5rem] border-0 bg-[linear-gradient(180deg,#1877e6_0%,#0f69d8_100%)] p-6 text-white shadow-none md:p-7">
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+            <div className="relative z-10">
+              <Badge tone="mint" className="bg-white/15 text-white ring-0">
+                Trợ lý tạo dự án AI
+              </Badge>
+              <h2 className="mt-6 font-display text-[2rem] font-black leading-tight">
+                Luồng tạo dự án vẫn giữ nguyên logic hiện có của ứng dụng.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-blue-50">
+                CTA tiếp tục dùng route theo phiên đăng nhập hiện tại, còn form tạo
+                dự án, xác minh và điều hướng sau đăng nhập vẫn không thay đổi.
+              </p>
+              <div className="mt-8">
+                <LinkButton
+                  to={publicExperience.primaryPath}
+                  variant="secondary"
+                  className="rounded-xl border-white/30 bg-white text-[#0f69d8] hover:bg-white/90"
+                >
+                  {session ? publicExperience.primaryLabel : 'Bắt đầu dự án'}
+                </LinkButton>
+              </div>
+            </div>
+          </Card>
+        </div>
       </section>
     </main>
-  );
-}
-
-function HeroStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-3xl border border-white bg-white/80 p-4 shadow-card backdrop-blur">
-      <p className="font-display text-2xl font-black text-brand-700">{value}</p>
-      <p className="mt-1 text-xs font-semibold text-slate-500">{label}</p>
-    </div>
   );
 }
 

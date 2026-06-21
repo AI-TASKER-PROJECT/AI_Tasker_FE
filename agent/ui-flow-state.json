@@ -1,0 +1,621 @@
+{
+  "project": "AI_Tasker_FE",
+  "mode": "stitch-export-to-react",
+  "currentScreen": "Login",
+  "screens": [
+    {
+      "name": "Landing Page",
+      "route": "/",
+      "sharedRoutes": [
+        "/how-it-works",
+        "/about"
+      ],
+      "stitchRawFile": "stitch/raw/landingPage.html",
+      "screenshot": "stitch/screenshots/landingPage.png",
+      "reactFiles": [
+        "src/pages/PublicPages/LandingPage/LandingPage.tsx",
+        "src/layouts/PublicLayout/PublicLayout.tsx"
+      ],
+      "status": "done",
+      "changedFiles": [
+        "src/pages/PublicPages/LandingPage/LandingPage.tsx",
+        "src/layouts/PublicLayout/PublicLayout.tsx",
+        "docs/ui-flow-history.md",
+        "agent/ui-flow-state.json",
+        "agent/last-run-report.md"
+      ],
+      "preservedLogic": [
+        "Shared route component for /, /how-it-works, and /about",
+        "Session-aware CTA destinations from getPublicExperience",
+        "Anchor scrolling based on pathname",
+        "PublicShell navigation and session actions"
+      ],
+      "notes": "Reconverted Landing Page to follow the Stitch hero, feature bento grid, and footer styling more closely while preserving shared routes and session-aware CTA behavior."
+    },
+    {
+      "name": "Jobs Page",
+      "route": "/jobs",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/PublicPages/PublicPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to JobsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Job Detail",
+      "route": "/jobs/:jobId",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/PublicPages/PublicPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to JobDetailPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Expert Directory",
+      "route": "/experts",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/PublicPages/PublicPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ExpertDirectoryPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Public Business Profile",
+      "route": "/business-profile/:businessId",
+      "sharedRoutes": [
+        "/app/businesses/:businessId"
+      ],
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/ProfilePages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Shared public business profile component; no Stitch export is currently available."
+    },
+    {
+      "name": "Public Expert Profile",
+      "route": "/expert-profile/:expertId",
+      "sharedRoutes": [
+        "/app/experts/:expertId"
+      ],
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/ProfilePages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Shared public expert profile component; no Stitch export is currently available."
+    },
+    {
+      "name": "Login",
+      "route": "/login",
+      "stitchRawFile": "stitch/raw/login.html",
+      "screenshot": "stitch/screenshots/login.png",
+      "reactFiles": [
+        "src/pages/AuthPages/AuthPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to LoginPage but no matching Stitch raw export is currently available in stitch/raw/."
+    },
+    {
+      "name": "Register",
+      "route": "/register",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AuthPages/AuthPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to RegisterPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Dashboard",
+      "route": "/app",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/DashboardPages/DashboardPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to DashboardPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Notifications Center",
+      "route": "/app/notifications",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/DashboardPages/DashboardPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to NotificationsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "My Jobs",
+      "route": "/app/jobs",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/MyJobsPage/MyJobsPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to MyJobsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Create Job",
+      "route": "/app/jobs/new",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/CreateJobPage/CreateJobPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to CreateJobPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Manage Job",
+      "route": "/app/jobs/:jobId/manage",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/ManageJobPage/ManageJobPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ManageJobPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Business Verification Profile",
+      "route": "/app/business/profile",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/VerificationProfilePages.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to BusinessVerificationProfilePage but no Stitch export is currently available."
+    },
+    {
+      "name": "My Public Business Profile",
+      "route": "/app/business/public-profile",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/ProfilePages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to MyPublicBusinessProfilePage but no Stitch export is currently available."
+    },
+    {
+      "name": "Opportunities",
+      "route": "/app/opportunities",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/OpportunitiesPage/OpportunitiesPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to OpportunitiesPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Submit Proposal",
+      "route": "/app/jobs/:jobId/proposal",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/SubmitProposalPage/SubmitProposalPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to SubmitProposalPage but no Stitch export is currently available."
+    },
+    {
+      "name": "My Proposals",
+      "route": "/app/proposals",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/MarketplacePages/ProposalsPage/ProposalsPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ProposalsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Expert Verification Profile",
+      "route": "/app/expert/profile",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/VerificationProfilePages.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ExpertVerificationProfilePage but no Stitch export is currently available."
+    },
+    {
+      "name": "My Public Expert Profile",
+      "route": "/app/expert/public-profile",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/ProfilePages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to MyPublicExpertProfilePage but no Stitch export is currently available."
+    },
+    {
+      "name": "Expert Portfolio",
+      "route": "/app/expert/portfolio",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ProfilePages/ProfilePages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ExpertPortfolioPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Contracts",
+      "route": "/app/contracts",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ContractPages/ContractPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ContractsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Contract Detail",
+      "route": "/app/contracts/:contractId",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ContractPages/ContractPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ContractDetailPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Workspace",
+      "route": "/app/contracts/:contractId/workspace",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ContractPages/ContractPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to WorkspacePage but no Stitch export is currently available."
+    },
+    {
+      "name": "Finance",
+      "route": "/app/finance",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ContractPages/ContractPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to FinancePage but no Stitch export is currently available."
+    },
+    {
+      "name": "Reviews",
+      "route": "/app/reviews",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/ContractPages/ContractPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ReviewsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Wallet",
+      "route": "/app/wallet",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/PaymentPages/WalletPage/WalletPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to WalletPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Membership",
+      "route": "/app/membership",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/PaymentPages/MembershipPage/MembershipPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to MembershipPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Disputes",
+      "route": "/app/disputes",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to DisputesPage but no Stitch export is currently available."
+    },
+    {
+      "name": "New Dispute",
+      "route": "/app/disputes/new",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to NewDisputePage but no Stitch export is currently available."
+    },
+    {
+      "name": "Dispute Detail",
+      "route": "/app/disputes/:disputeId",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to DisputeDetailPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Tickets",
+      "route": "/app/tickets",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Shared DisputesPage in staffMode; no Stitch export is currently available."
+    },
+    {
+      "name": "Ticket Detail",
+      "route": "/app/tickets/:disputeId",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Shared DisputeDetailPage in staffMode; no Stitch export is currently available."
+    },
+    {
+      "name": "Verifications",
+      "route": "/app/verifications",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to VerificationsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Verification Detail",
+      "route": "/app/verifications/:type/:id",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/RiskPages/RiskPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to VerificationDetailPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Analytics",
+      "route": "/app/admin/analytics",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to AnalyticsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "System Wallet",
+      "route": "/app/admin/wallet",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to SystemWalletPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Withdrawal Management",
+      "route": "/app/admin/withdrawals",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/WithdrawalPage/WithdrawalPage.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to AdminWithdrawalPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Account Management",
+      "route": "/app/admin/accounts",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to AccountsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Staff Management",
+      "route": "/app/admin/staff",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to StaffPage but no Stitch export is currently available."
+    },
+    {
+      "name": "System Settings",
+      "route": "/app/admin/settings",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to SettingsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Catalog Management",
+      "route": "/app/admin/master-data",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to MasterDataPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Audit Logs",
+      "route": "/app/admin/audit-logs",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to AuditLogsPage but no Stitch export is currently available."
+    },
+    {
+      "name": "Reports & Export",
+      "route": "/app/admin/reports",
+      "stitchRawFile": "",
+      "screenshot": "",
+      "reactFiles": [
+        "src/pages/AdminPages/AdminPages.helpers.tsx"
+      ],
+      "status": "needs-stitch-export",
+      "changedFiles": [],
+      "preservedLogic": [],
+      "notes": "Mapped to ReportsPage but no Stitch export is currently available."
+    }
+  ],
+  "selectedScreen": "Landing Page",
+  "selectedRoute": "/",
+  "selectedStitchRawFile": "stitch/raw/landingPage.html",
+  "selectedScreenshotFile": "stitch/screenshots/landingPage.png",
+  "lastChangedFiles": [
+    "src/pages/PublicPages/LandingPage/LandingPage.tsx",
+    "src/layouts/PublicLayout/PublicLayout.tsx",
+    "docs/ui-flow-history.md",
+    "agent/ui-flow-state.json",
+    "agent/last-run-report.md"
+  ],
+  "status": "done",
+  "preservedLogic": [
+    "Shared route component for /, /how-it-works, and /about",
+    "Session-aware CTA destinations from getPublicExperience",
+    "Anchor scrolling based on pathname",
+    "PublicShell navigation and session actions"
+  ],
+  "notes": "Landing screen was reconverted to more closely match the available Stitch export. Login remains the next recommended screen once its Stitch export is added.",
+  "nextRecommendedScreen": "Login"
+}

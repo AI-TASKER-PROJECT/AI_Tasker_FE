@@ -1,4 +1,4 @@
-export * from './PublicPages.helpers';
+export { JobCard, JobDomainBadge, JobHoverPopover } from './PublicPages.helpers';
 export * from './LandingPage/LandingPage';
 export * from './JobsPage/JobsPage';
 export * from './JobDetailPage/JobDetailPage';

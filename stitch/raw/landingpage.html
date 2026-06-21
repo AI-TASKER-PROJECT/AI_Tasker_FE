@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AITASKER - Nền tảng kết nối AI</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#fefcff",
+                        "surface-dim": "#efd3db",
+                        "error": "#BA1A1A",
+                        "on-tertiary-fixed": "#001f27",
+                        "surface": "#FCF8FF",
+                        "on-surface-variant": "#594048",
+                        "outline": "#8D6F79",
+                        "secondary": "#0059bb",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#adc7ff",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#ffd9e4",
+                        "on-primary-fixed-variant": "#8d0051",
+                        "inverse-on-surface": "#ffecf0",
+                        "tertiary-fixed-dim": "#87d1e9",
+                        "inverse-primary": "#ffb0cc",
+                        "on-tertiary-fixed-variant": "#004e5f",
+                        "primary-container": "#df0e84",
+                        "tertiary": "#00657A",
+                        "on-secondary-fixed-variant": "#004493",
+                        "on-surface": "#27171d",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#3e0021",
+                        "background": "#fff8f8",
+                        "surface-container": "#ffe8ee",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#27171d",
+                        "on-primary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "primary": "#b30069",
+                        "tertiary-container": "#2e7e94",
+                        "surface-variant": "#f8dbe3",
+                        "on-tertiary-container": "#fafdff",
+                        "primary-fixed-dim": "#ffb0cc",
+                        "secondary-container": "#0070ea",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-secondary-fixed": "#001a41",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#f8dbe3",
+                        "surface-tint": "#b8006c",
+                        "outline-variant": "#e1bdc8",
+                        "surface-container-high": "#fee1e9",
+                        "surface-bright": "#fff8f8",
+                        "inverse-surface": "#3d2c31",
+                        "surface-container-low": "#fff0f3",
+                        "tertiary-fixed": "#b2ebff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "48px",
+                        "base": "8px",
+                        "margin-desktop": "40px",
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "gutter": "24px",
+                        "xl": "80px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"],
+                        "headline-lg": ["Be Vietnam Pro"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "body-sm": ["Be Vietnam Pro"],
+                        "headline-md": ["Be Vietnam Pro"],
+                        "headline-xl": ["Be Vietnam Pro"],
+                        "headline-lg-mobile": ["Be Vietnam Pro"],
+                        "body-md": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-pattern {
+            background-color: #fff8f8;
+            background-image: radial-gradient(#df0e84 1px, transparent 1px);
+            background-size: 32px 32px;
+            opacity: 0.1;
+        }
+        .glass-card {
+            background: rgba(255, 240, 243, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(225, 189, 200, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-background docked full-width top-0 bg-surface-container-low dark:bg-surface-container flat no shadows sticky z-50">
+    <div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-base max-w-7xl mx-auto">
+        <div class="flex items-center gap-md">
+            <a class="scale-95 active:scale-90 transition-transform block" href="#">
+                <img alt="AITASKER Logo" class="h-8 md:h-10 w-auto object-contain" src="data:image/png;base64,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"/>
+            </a>
+            <nav class="hidden md:flex gap-md items-center ml-lg">
+                <a class="text-on-surface-variant font-body-md hover:text-primary-container transition-colors duration-200" href="#">Doanh nghiệp</a>
+                <a class="text-on-surface-variant font-body-md hover:text-primary-container transition-colors duration-200" href="#">Chuyên gia</a>
+                <a class="text-on-surface-variant font-body-md hover:text-primary-container transition-colors duration-200" href="#">Cách hoạt động</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-sm">
+            <button class="hidden sm:block px-4 py-2 rounded-lg font-label-md text-label-md text-primary border border-primary hover:bg-surface-container transition-colors">Đăng nhập</button>
+            <button class="px-4 py-2 rounded-lg font-label-md text-label-md bg-primary text-on-primary hover:bg-surface-tint transition-colors shadow-sm">Bắt đầu dự án</button>
+            <button class="md:hidden text-on-surface p-2">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </div>
+</header>
+<main>
+    <!-- Hero Section -->
+    <section class="relative pt-20 pb-32 px-margin-mobile md:px-margin-desktop overflow-hidden flex items-center min-h-[80vh]">
+        <div class="absolute inset-0 hero-pattern z-0"></div>
+        <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-fixed-dim rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div class="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] bg-secondary-fixed rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-xl relative z-10 items-center">
+            <div class="flex flex-col gap-lg">
+                <div class="flex flex-col gap-sm">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm w-fit">
+<span class="material-symbols-outlined text-[16px]">bolt</span> Nền tảng AI Freelance Số 1
+                        </span>
+                    <h1 class="font-headline-lg-mobile md:font-headline-xl text-headline-lg-mobile md:text-headline-xl text-on-surface">
+                        Nền tảng kết nối doanh nghiệp với <span class="text-primary relative inline-block">chuyên gia AI<svg class="absolute -bottom-2 w-full h-3 text-secondary-container" preserveaspectratio="none" viewbox="0 0 100 10"><path d="M0 5 Q 50 10 100 5" fill="transparent" stroke="currentColor" stroke-width="4"></path></svg></span>
+                    </h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant mt-4 max-w-xl">
+                        AITASKER giúp bạn tìm kiếm, thuê và quản lý dự án AI trọn vẹn từ hợp đồng đến thanh toán trên một hệ thống minh bạch.
+                    </p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-sm">
+                    <button class="px-8 py-4 rounded-lg font-label-md text-label-md bg-primary text-on-primary hover:bg-surface-tint transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                        Đăng dự án ngay <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                    <button class="px-8 py-4 rounded-lg font-label-md text-label-md text-on-surface border border-outline hover:bg-surface-container transition-all flex items-center justify-center gap-2">
+                        Tìm việc AI <span class="material-symbols-outlined text-[18px]">search</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-4 mt-8 pt-8 border-t border-surface-variant">
+                    <div class="flex -space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center overflow-hidden">
+                            <img class="w-full h-full object-cover" data-alt="A professional headshot of a female AI engineer in her 30s, smiling confidently, wearing modern tech-casual attire, brightly lit in a modern office with light pink and white aesthetics. Shot with a shallow depth of field, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm8XkXqCWTg-OLwmwdKvwQz-1PiKPgOgwAM8AShZVP6-jTXN-S7PU2xAc6uQ14aeOSILeWkIKYEHOAxx-yWsyB5cHTI0sUeXj2kc22Pw5YwMvdy52WKW0H2m7NF65RhyBgxZmeuHyOeQrACxj0TgLyUHjNqLTZ78BjKoDOz_fP7VET5YTGvfJmO8kKU54cVC_W0c4EnEzmQtx9h31EZEqdrrFsZxIllee2nv5eMMF9z0Vu_tUVdn_JfIGMhCMss0LqoWeDLtnSalzA"/>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center overflow-hidden">
+                            <img class="w-full h-full object-cover" data-alt="A professional headshot of a male data scientist, wearing glasses, thoughtful expression, standing in front of a white board with faint abstract diagrams. Soft, professional lighting, corporate modern tech style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBugaHRyRjV7b8MZKc02FdxlM73xJ_sL5psgvSbyQ_YEF3zdXeGtSGDOaciUqh5RnrMVHRxIKP_j9U3SSnGdsD90gIS6_ijMiwHtAkXk5NrljoBx69Dqq_pvT802jQZewVIuJH7JXl3PHpnCueqLBopfEh91km9AiyRCy55pLp5rFiR0DoLb08fZK84fknVCW_jOrY00ZtpWODI3_kVGsR2UaxF8rZvS61VkPMXjplW61IxeRvRnOQL8Y5MWPQoP4OQpYEkVhZj2Qov"/>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center overflow-hidden">
+                            <img class="w-full h-full object-cover" data-alt="A professional headshot of a diverse female AI product manager, bright smile, against a minimalist soft pink background, corporate modern tech style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5pTmJV6SrvK6yU3GxjLfOrGgBGY52ceeAu-zgA5dnN71XZeiTnIwjHcc9Ef3zyKtG81uTUMusXfM52QmW6iH52-APY9WePwFoUrBqCL2EVQwSo9L94e1XfXmD1Bv4Kf-bjrhexM88Bru5kyux9UxGspax78FsGDonI3JCQ2DMWSo8CWQ60JBI3f_txJPvcVpKHmgtuAbMhJECp9FqDftIGlW3kd50QSCOuVqeeaUKNNNWlRRpFk-vbMw-s-9ohsDCZ2WTCT3_dZR0"/>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-surface-variant border-2 border-surface flex items-center justify-center text-primary font-label-sm text-label-sm">
+                            5k+
+                        </div>
+                    </div>
+                    <div class="text-sm text-on-surface-variant">
+                        Hơn <span class="font-bold text-on-surface">5,000+</span> chuyên gia đã tham gia
+                    </div>
+                </div>
+            </div>
+            <div class="relative hidden lg:block h-[500px] w-full rounded-2xl overflow-hidden glass-card shadow-lg">
+                <img class="w-full h-full object-cover opacity-90 mix-blend-multiply" data-alt="A highly stylized, modern 3D abstract illustration representing artificial intelligence collaboration. It features glowing, interconnected geometric nodes and soft, transparent glassy surfaces in hues of vibrant pink (#E91E8C) and deep blue (#007BFF). The composition is dynamic, set against a very light, pristine white background. High-key lighting, corporate modern tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX"/>
+                <!-- Floating UI elements -->
+                <div class="absolute top-8 -left-4 bg-surface rounded-lg p-4 shadow-md flex items-center gap-3 animate-pulse">
+                    <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[16px]">check</span>
+                    </div>
+                    <div>
+                        <div class="font-label-sm text-label-sm text-on-surface">Hợp đồng ký kết</div>
+                        <div class="text-[10px] text-on-surface-variant">Vừa xong</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Features Bento Grid -->
+    <section class="py-24 px-margin-mobile md:px-margin-desktop bg-surface-container-lowest">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="font-headline-md text-headline-md text-on-surface mb-4">Tính năng nổi bật</h2>
+                <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mx-auto">Hệ sinh thái công cụ toàn diện giúp quá trình hợp tác trở nên dễ dàng và an toàn hơn bao giờ hết.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
+                <!-- Bento Box 1: Verified Profiles -->
+                <div class="md:col-span-2 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between overflow-hidden relative group hover:bg-surface-container transition-colors">
+                    <div class="relative z-10 w-2/3">
+                        <div class="w-12 h-12 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container mb-4">
+                            <span class="material-symbols-outlined text-[24px]">verified_user</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-md font-bold text-on-surface mb-2">Hồ sơ xác minh</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">100% chuyên gia trên nền tảng đều trải qua quy trình kiểm tra năng lực và danh tính nghiêm ngặt.</p>
+                    </div>
+                    <div class="absolute right-[-20%] bottom-[-20%] w-64 h-64 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <img class="w-full h-full object-cover" data-alt="A close up shot of a generic sleek tablet screen showing a user profile interface with a glowing green verified checkmark. The UI is minimalist and modern, set against a clean, light surface. High-key lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV0Ck2fgYMU8TtuLGLuiI2-vKEBiX8AzeZNNeMVz99cgWTrIxyn20zPS3blLfTClBcvAd4u89MEpz1135j62lMirFo2ugpzf6Fh7InjoZnnXxJFsRE52wLaRnjke3ABzifYZ6rBWiReZ47FsNCO_cMOjHn_VH67FlxqXvez78l6DLnXU1uVrLfKnj18ZiELETHZIm1qqC-V03v1LiBqIcPxV9pgbZZyebFXhdfSe5ZGlGPFZbTDhukGwBYO98k4FyaudbM0VBj9jx7"/>
+                    </div>
+                </div>
+                <!-- Bento Box 2: Smart Matching -->
+                <div class="bg-secondary-container text-on-secondary-container rounded-xl p-8 flex flex-col justify-between hover:brightness-110 transition-all">
+                    <div>
+                        <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-4 backdrop-blur-sm">
+                            <span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-md font-bold mb-2">AI gợi ý phù hợp</h3>
+                        <p class="font-body-sm text-body-sm opacity-90">Thuật toán thông minh phân tích yêu cầu và tự động đề xuất những chuyên gia có kỹ năng sát nhất với dự án của bạn.</p>
+                    </div>
+                </div>
+                <!-- Bento Box 3: Secure Payments -->
+                <div class="bg-surface-container rounded-xl p-8 flex flex-col justify-between hover:bg-surface-container-high transition-colors">
+                    <div>
+                        <div class="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-primary mb-4 shadow-sm">
+                            <span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
+                        </div>
+                        <h3 class="font-headline-sm text-[20px] font-bold text-on-surface mb-2">Ví điện tử &amp; Thanh toán</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân khi bạn hài lòng với kết quả nghiệm thu.</p>
+                    </div>
+                </div>
+                <!-- Bento Box 4: Milestones -->
+                <div class="bg-surface-container-low rounded-xl p-8 flex flex-col justify-between overflow-hidden relative hover:bg-surface-container transition-colors">
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 bg-tertiary-container rounded-lg flex items-center justify-center text-on-tertiary-container mb-4">
+                            <span class="material-symbols-outlined text-[24px]">checklist</span>
+                        </div>
+                        <h3 class="font-headline-sm text-[20px] font-bold text-on-surface mb-2">Quản lý Tiến độ</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và đánh giá từng giai đoạn.</p>
+                    </div>
+                </div>
+                <!-- Bento Box 5: Contracts -->
+                <div class="bg-surface-variant rounded-xl p-8 flex flex-col justify-between hover:bg-surface-container-highest transition-colors">
+                    <div>
+                        <div class="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-secondary mb-4 shadow-sm">
+                            <span class="material-symbols-outlined text-[24px]">history_edu</span>
+                        </div>
+                        <h3 class="font-headline-sm text-[20px] font-bold text-on-surface mb-2">Hợp đồng &amp; NDA điện tử</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính bảo mật và quyền sở hữu trí tuệ.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-dim full-width bottom bg-surface-container-low flat no shadows">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop py-lg w-full max-w-7xl mx-auto">
+        <div class="col-span-1 md:col-span-1">
+            <div class="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
+                <img alt="AITASKER Logo" class="h-8 w-auto object-contain grayscale opacity-80" src="data:image/png;base64,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"/>
+            </div>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">
+                © 2024 AITASKER. Nền tảng kết nối AI hàng đầu.
+            </p>
+            <div class="flex gap-4">
+                <a class="text-on-surface-variant hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">mail</span></a>
+            </div>
+        </div>
+        <div class="col-span-1 md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-8">
+            <div>
+                <h4 class="font-label-md text-label-md text-on-surface mb-4 uppercase tracking-wider">Về chúng tôi</h4>
+                <ul class="flex flex-col gap-3">
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Về chúng tôi</a></li>
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Liên hệ</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-label-md text-label-md text-on-surface mb-4 uppercase tracking-wider">Hỗ trợ</h4>
+                <ul class="flex flex-col gap-3">
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Câu hỏi thường gặp</a></li>
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Hướng dẫn sử dụng</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-label-md text-label-md text-on-surface mb-4 uppercase tracking-wider">Pháp lý</h4>
+                <ul class="flex flex-col gap-3">
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Điều khoản sử dụng</a></li>
+                    <li><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-secondary underline opacity-80 hover:opacity-100 transition-opacity" href="#">Chính sách bảo mật</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
+</body></html>

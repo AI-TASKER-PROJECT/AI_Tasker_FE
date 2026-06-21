@@ -1,0 +1,1 @@
+export { contractApi } from './api';
