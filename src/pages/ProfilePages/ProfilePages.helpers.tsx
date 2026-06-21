@@ -1,16 +1,24 @@
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import {
   Award,
   BrainCircuit,
+  BriefcaseBusiness,
   Building2,
   ClipboardCheck,
   Cpu,
+  Edit3,
+  ExternalLink,
   FileText,
   IdCard,
   Layers3,
+  MapPin,
+  Phone,
   Save,
   ShieldCheck,
   Sparkles,
+  UserRound,
+  Users,
 } from "lucide-react";
 import {
   catalogApi,
@@ -23,17 +31,21 @@ import { getSession, saveSession } from "../../lib/session";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
 import {
   Badge,
+  Avatar,
   Button,
   Card,
+  EmptyState,
   Field,
   Input,
+  LinkButton,
   Notice,
   PageHeader,
   SectionHeading,
+  Tabs,
   StatusBadge,
   Textarea,
 } from "../../components/ui";
-import type { AccountStatus } from "../../types";
+import type { AccountStatus, BusinessProfile, ExpertProfile, Job, Portfolio } from "../../types";
 
 //Định danh business
 export function BusinessProfilePage() {
@@ -49,6 +61,11 @@ export function BusinessProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [activeTab, setActiveTab] = useState("overview");
+  const session = getSession();
+
+  const isOwner = session?.role === "BUSINESS";
 
   useEffect(() => { 
     profileApi //api Business profile
@@ -64,6 +81,11 @@ export function BusinessProfilePage() {
         setRejectionReason(profile.rejectionReason || "");
       })
       .catch(() => undefined);
+    profileApi
+      .getMyBusiness()
+      .then((profile) => profileApi.listBusinessJobs(profile.businessId).catch(() => []))
+      .then((items) => setJobs(items || []))
+      .catch(() => setJobs([]));
   }, []);
 
   const submit = async (event: FormEvent) => { //khi submit
@@ -106,113 +128,114 @@ export function BusinessProfilePage() {
 
   const isApproved = status === "Approved";
 
+  const canEdit = isOwner;
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="REG-02 / KYB"
-        title="Hồ sơ xác minh doanh nghiệp"
-        description="Doanh nghiệp nộp mã số thuế và giấy phép kinh doanh. Staff/Admin duyệt ở module Verifications."
-      />
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-4">
-            {message && <Notice tone="success" title={message} />}
-            {error && <Notice tone="danger" title={error} />}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Mã số thuế">
-                <Input
-                  value={form.taxCode}
-                  disabled={isApproved}
-                  // Đổi màu nền khi isApproved (ví dụ: bg-slate-100 hoặc bg-brand-50)
-                  className={isApproved ? "!bg-brand-50" : ""}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      taxCode: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </Field>
-              <Field label="Tên doanh nghiệp">
-                <Input
-                  value={form.companyName}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      companyName: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </Field>
-            </div>
-            <Field label="Địa chỉ">
-              <Input
-                value={form.address}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    address: event.target.value,
-                  }))
-                }
-              />
-            </Field>
-            <Field
-              label="Tệp giấy phép kinh doanh"
-              hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
-            >
-              <Input
-                type="file"
-                accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                onChange={(event) =>
-                  setLicenseFile(event.target.files?.[0] || null)
-                }
-              />
-              <FirebaseFileLink
-                path={form.businessLicenseUrl}
-                emptyText="Chưa có giấy phép"
-                buttonText="Xem giấy phép"
-                className="mt-3"
-                showPath={false}
-              />
-            </Field>
-            <div className="flex justify-end">
-              <Button type="submit" loading={loading}>
-                <Save className="h-4 w-4" />
-                Lưu hồ sơ
-              </Button>
-            </div>
-          </form>
-        </Card>
-        <Card className="p-6">
-          <SectionHeading title="Trạng thái KYB" />
-          <div className="mt-5 flex items-center gap-3 rounded-3xl bg-brand-50 p-4">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
-              <Building2 className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p>
-              <div className="mt-1">
-                <StatusBadge status={status} />
+      <Card className="overflow-hidden border-slate-100">
+        <div className="bg-[radial-gradient(circle_at_top_left,#e0f2fe,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eff6ff_55%,#f5f7ff_100%)] p-6 md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              <Avatar name={form.companyName || "Doanh nghiệp"} size="xl" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Trang cá nhân doanh nghiệp</p>
+                <h1 className="mt-2 text-3xl font-black text-ink md:text-4xl">{form.companyName || "Doanh nghiệp chưa cập nhật tên"}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                  <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" />{form.taxCode || "Chưa có mã số thuế"}</span>
+                  <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
+                  <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" />{form.address || "Chưa có địa chỉ"}</span>
+                  <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
+                  <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><StatusBadge status={status} /></span>
+                </div>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" type="button" className="min-w-40">
+                Theo dõi công ty
+              </Button>
+              {canEdit && (
+                <Button type="button" onClick={() => setActiveTab("edit")}>
+                  <Edit3 className="h-4 w-4" />
+                  Chỉnh sửa
+                </Button>
+              )}
+            </div>
           </div>
-          {status === "Rejected" && rejectionReason && (
-            <Notice tone="danger" title="Lý do từ chối" className="mt-4">
-              <ul className="list-disc ml-5 mt-1 space-y-1">
-                {rejectionReason.split(";").map((reason, index) => {
-                  const trimmedReason = reason.trim();
-                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
-                  return trimmedReason ? (
-                    <li key={index}>{trimmedReason}</li>
-                  ) : null;
-                })}
-              </ul>
-            </Notice>
-          )}
+          <div className="mt-6">
+            <Tabs
+              tabs={[
+                { id: "overview", label: "Trang chủ" },
+                { id: "projects", label: "Dự án", count: jobs.length },
+                ...(canEdit ? [{ id: "edit", label: "Chỉnh sửa" }] : []),
+              ]}
+              active={activeTab}
+              onChange={setActiveTab}
+            />
+          </div>
+        </div>
+      </Card>
+
+      {activeTab === "overview" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <SectionHeading title="Giới thiệu công ty" description="Thông tin hiển thị từ hồ sơ KYB." />
+            <div className="mt-5 space-y-4 text-sm leading-7 text-slate-600">
+              <p><strong className="text-ink">{form.companyName || "Doanh nghiệp"}</strong> đang sử dụng hồ sơ xác minh để đăng tải dự án và làm việc với chuyên gia.</p>
+              {rejectionReason && status === "Rejected" && <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>}
+            </div>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Thông tin chung" />
+            <div className="mt-5 space-y-4">
+              <ProfileRow label="Mã số thuế" value={form.taxCode || "Chưa cập nhật"} />
+              <ProfileRow label="Địa chỉ" value={form.address || "Chưa cập nhật"} />
+              <ProfileRow label="Trạng thái KYB" value={<StatusBadge status={status} />} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "projects" && (
+        <Card className="p-6">
+          <SectionHeading title="Dự án đã public" description="Danh sách job doanh nghiệp đã đăng công khai." />
+          <div className="mt-5 grid gap-4">
+            {jobs.length ? jobs.map((job) => (
+              <Link key={job.jobId} to={`/jobs/${job.jobId}`} className="rounded-3xl border border-slate-100 bg-slate-50 p-5 transition hover:border-brand-200 hover:bg-white hover:shadow-soft">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-ink">{job.title}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{job.rawRequirements || "Chưa có mô tả."}</p>
+                  </div>
+                  <Badge tone="mint">{job.status}</Badge>
+                </div>
+              </Link>
+            )) : <EmptyState title="Chưa có dự án public" description="Khi doanh nghiệp đăng job, chúng sẽ xuất hiện ở đây." />}
+          </div>
         </Card>
-      </div>
+      )}
+
+      {activeTab === "edit" && canEdit && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <form onSubmit={submit} className="grid gap-4">
+              {message && <Notice tone="success" title={message} />}
+              {error && <Notice tone="danger" title={error} />}
+              <Field label="Mã số thuế"><Input value={form.taxCode} disabled={isApproved} className={isApproved ? "!bg-brand-50" : ""} onChange={(event) => setForm((value) => ({ ...value, taxCode: event.target.value }))} required /></Field>
+              <Field label="Tên doanh nghiệp"><Input value={form.companyName} onChange={(event) => setForm((value) => ({ ...value, companyName: event.target.value }))} required /></Field>
+              <Field label="Địa chỉ"><Input value={form.address} onChange={(event) => setForm((value) => ({ ...value, address: event.target.value }))} /></Field>
+              <Field label="Tệp giấy phép kinh doanh" hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."><Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setLicenseFile(event.target.files?.[0] || null)} /><FirebaseFileLink path={form.businessLicenseUrl} emptyText="Chưa có giấy phép" buttonText="Xem giấy phép" className="mt-3" showPath={false} /></Field>
+              <div className="flex justify-end"><Button type="submit" loading={loading}><Save className="h-4 w-4" />Lưu hồ sơ</Button></div>
+            </form>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Trạng thái KYB" />
+            <div className="mt-5 flex items-center gap-3 rounded-3xl bg-brand-50 p-4">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Building2 className="h-5 w-5" /></span>
+              <div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -230,11 +253,23 @@ export function ExpertProfilePage() {
   const [status, setStatus] = useState("Chưa gửi");
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [activeTab, setActiveTab] = useState("overview");
+  const session = getSession();
+  const canEdit = session?.role === "EXPERT";
 
   useEffect(() => {
-    profileApi
-      .getMyExpert() //lấy info expert
-      .then((profile) => {
+    Promise.all([
+      profileApi.getMyExpert(),
+      profileApi.getMyPortfolio().catch(() => null),
+      catalogApi.listDomains(true),
+      catalogApi.listSkills(true),
+      catalogApi.listTechnologies(true),
+    ])
+      .then(([profile, expertPortfolio, domainItems, skillItems, technologyItems]) => {
         setForm({
           nationalId: profile.nationalId || "",
           portfolioUrl: profile.portfolioUrl || "",
@@ -242,9 +277,17 @@ export function ExpertProfilePage() {
         });
         setStatus(profile.kycStatus || "Chưa gửi");
         setRejectionReason(profile.rejectionReason || "");
+        setPortfolio(expertPortfolio);
+        setDomains(domainItems);
+        setSkills(skillItems);
+        setTechnologies(technologyItems);
       })
       .catch(() => undefined);
   }, []);
+
+  const selectedDomains = useMemo(() => resolveCatalogNames(domains, parseCatalogIds(portfolio?.domainIds), "domainId", "domainName"), [domains, portfolio?.domainIds]);
+  const selectedSkills = useMemo(() => resolveCatalogNames(skills, parseCatalogIds(portfolio?.skillIds), "skillId", "skillName"), [skills, portfolio?.skillIds]);
+  const selectedTechnologies = useMemo(() => resolveCatalogNames(technologies, parseCatalogIds(portfolio?.technologyIds), "technologyId", "technologyName"), [technologies, portfolio?.technologyIds]);
 
   const submit = async (event: FormEvent) => { // bấm submit
     event.preventDefault();
@@ -288,104 +331,84 @@ export function ExpertProfilePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="REG-02 / KYC"
-        title="Hồ sơ xác minh chuyên gia"
-        description="Chuyên gia nộp CCCD/hộ chiếu và tệp Portfolio. Sau khi Approved mới nên mở khóa giao dịch."
-      />
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-4">
-            {/* Đã di chuyển thông báo lên đầu form */}
-            {message && <Notice tone="success" title={message} />}
-            {error && <Notice tone="danger" title={error} />}
-
-            <Field label="Số CCCD / Hộ chiếu">
-              <Input
-                value={form.nationalId}
-                disabled={isApproved}
-                className={isApproved ? "!bg-brand-50" : ""}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    nationalId: event.target.value,
-                  }))
-                }
-                required
-              />
-            </Field>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                label="Tệp Portfolio"
-                hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
-              >
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                  onChange={(event) =>
-                    setPortfolioFile(event.target.files?.[0] || null)
-                  }
-                  required={!form.portfolioUrl}
-                />
-                <FirebaseFileLink
-                  path={form.portfolioUrl}
-                  emptyText="Chưa có tệp Portfolio"
-                  buttonText="Xem Portfolio"
-                  className="mt-3"
-                  showPath={false}
-                />
-              </Field>
-              <Field label="Số năm kinh nghiệm">
-                <Input
-                  type="number"
-                  min="0"
-                  value={form.yearsOfExperience}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      yearsOfExperience: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </Field>
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" loading={loading}>
-                <ShieldCheck className="h-4 w-4" />
-                Lưu hồ sơ
-              </Button>
-            </div>
-          </form>
-        </Card>
-        <Card className="p-6">
-          <SectionHeading title="Trạng thái KYC" />
-          <div className="mt-5 flex items-center gap-3 rounded-3xl bg-mint-50 p-4">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm">
-              <IdCard className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p>
-              <div className="mt-1">
-                <StatusBadge status={status} />
+      <Card className="overflow-hidden border-slate-100">
+        <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              <Avatar name={form.nationalId || "Chuyên gia"} size="xl" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân chuyên gia</p>
+                <h1 className="mt-2 text-3xl font-black md:text-4xl">{portfolio?.selfDescription ? "Chuyên gia AI" : "Chuyên gia"}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
+                  <span className="inline-flex items-center gap-2"><Award className="h-4 w-4" />{portfolio?.yearsExperience ?? form.yearsOfExperience} năm kinh nghiệm</span>
+                  <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
+                  <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><StatusBadge status={status} /></span>
+                </div>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" type="button" className="min-w-40">Theo dõi chuyên gia</Button>
+              {canEdit && <Button type="button" onClick={() => setActiveTab("edit")}><Edit3 className="h-4 w-4" />Chỉnh sửa</Button>}
+            </div>
           </div>
-          {status === "Rejected" && rejectionReason && (
-            <Notice tone="danger" title="Lý do từ chối" className="mt-4">
-              <ul className="list-disc ml-5 mt-1 space-y-1">
-                {rejectionReason.split(";").map((reason, index) => {
-                  const trimmedReason = reason.trim();
-                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
-                  return trimmedReason ? (
-                    <li key={index}>{trimmedReason}</li>
-                  ) : null;
-                })}
-              </ul>
-            </Notice>
-          )}
+          <div className="mt-6">
+            <Tabs tabs={[{ id: "overview", label: "Trang chủ" }, { id: "portfolio", label: "Portfolio" }, ...(canEdit ? [{ id: "edit", label: "Chỉnh sửa" }] : [])]} active={activeTab} onChange={setActiveTab} />
+          </div>
+        </div>
+      </Card>
+
+      {activeTab === "overview" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <SectionHeading title="Giới thiệu chuyên gia" description="Nội dung lấy từ selfDescription của Portfolio." />
+            <p className="mt-5 text-sm leading-7 text-slate-600">{portfolio?.selfDescription || "Chuyên gia đang hoàn thiện phần giới thiệu và hồ sơ năng lực."}</p>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Thông tin chung" />
+            <div className="mt-5 space-y-4">
+              <ProfileRow label="Số năm kinh nghiệm" value={`${portfolio?.yearsExperience ?? form.yearsOfExperience} năm`} />
+              <ProfileRow label="Số CCCD / Hộ chiếu" value={form.nationalId || "Chưa cập nhật"} />
+              <ProfileRow label="Trạng thái KYC" value={<StatusBadge status={status} />} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "portfolio" && (
+        <Card className="p-6">
+          <SectionHeading title="Portfolio" description="Lĩnh vực, kỹ năng, công nghệ và tệp đính kèm." />
+          <div className="mt-5 grid gap-6 lg:grid-cols-2">
+            <PreviewGroup icon={<Layers3 className="h-4 w-4" />} title="Lĩnh vực" emptyText="Chưa có lĩnh vực" items={selectedDomains} tone="mint" />
+            <PreviewGroup icon={<BrainCircuit className="h-4 w-4" />} title="Kỹ năng" emptyText="Chưa có kỹ năng" items={selectedSkills} tone="brand" />
+            <PreviewGroup icon={<Cpu className="h-4 w-4" />} title="Công nghệ" emptyText="Chưa có công nghệ" items={selectedTechnologies} tone="coral" />
+            <Card className="rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-none">
+              <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink"><FileText className="h-4 w-4 text-brand-600" />Tệp đính kèm</div>
+              <FirebaseFileLink path={portfolio?.certificates || form.portfolioUrl} emptyText="Chưa có tệp" buttonText="Xem tệp" showPath={false} />
+            </Card>
+          </div>
         </Card>
-      </div>
+      )}
+
+      {activeTab === "edit" && canEdit && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <form onSubmit={submit} className="grid gap-4">
+              {message && <Notice tone="success" title={message} />}
+              {error && <Notice tone="danger" title={error} />}
+              <Field label="Số CCCD / Hộ chiếu"><Input value={form.nationalId} disabled={isApproved} className={isApproved ? "!bg-brand-50" : ""} onChange={(event) => setForm((value) => ({ ...value, nationalId: event.target.value }))} required /></Field>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Tệp Portfolio" hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."><Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(event) => setPortfolioFile(event.target.files?.[0] || null)} required={!form.portfolioUrl} /><FirebaseFileLink path={form.portfolioUrl} emptyText="Chưa có tệp Portfolio" buttonText="Xem Portfolio" className="mt-3" showPath={false} /></Field>
+                <Field label="Số năm kinh nghiệm"><Input type="number" min="0" value={form.yearsOfExperience} onChange={(event) => setForm((value) => ({ ...value, yearsOfExperience: event.target.value }))} required /></Field>
+              </div>
+              <div className="flex justify-end"><Button type="submit" loading={loading}><ShieldCheck className="h-4 w-4" />Lưu hồ sơ</Button></div>
+            </form>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Trạng thái KYC" />
+            <div className="mt-5 flex items-center gap-3 rounded-3xl bg-mint-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm"><IdCard className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -521,31 +544,12 @@ export function ExpertPortfolioPage() {
 
   return (
     <div className="space-y-7">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#effcf7,transparent_34%),linear-gradient(135deg,#ffffff_0%,#eef7ff_52%,#fff4f1_100%)] p-6 shadow-card md:p-8">
-        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-          <PageHeader
+            <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
             eyebrow="PRF-01 / Expert portfolio"
             title="Portfolio năng lực AI"
             description="Biến hồ sơ chuyên gia thành một bản giới thiệu đủ rõ để doanh nghiệp nhìn thấy lĩnh vực mạnh, stack công nghệ, chứng chỉ và cách bạn giải quyết dự án."
           />
-          <div className="grid grid-cols-3 gap-3">
-            <PortfolioMetric
-              icon={<Layers3 className="h-4 w-4" />}
-              label="Lĩnh vực"
-              value={selectedDomainIds.length}
-            />
-            <PortfolioMetric
-              icon={<BrainCircuit className="h-4 w-4" />}
-              label="Kỹ năng"
-              value={selectedSkillIds.length}
-            />
-            <PortfolioMetric
-              icon={<Cpu className="h-4 w-4" />}
-              label="Công nghệ"
-              value={selectedTechnologyIds.length}
-            />
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -756,6 +760,266 @@ export function ExpertPortfolioPage() {
   );
 }
 
+export function MyPublicBusinessProfilePage() {
+  const [businessId, setBusinessId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    profileApi.getMyBusiness().then((profile) => setBusinessId(profile.businessId)).catch(() => setError("Không thể tải trang cá nhân doanh nghiệp."));
+  }, []);
+  if (error) return <Notice tone="danger" title={error} />;
+  if (!businessId) return <Notice title="Đang mở trang cá nhân..." />;
+  return <Navigate to={`/business-profile/${businessId}`} replace />;
+}
+
+export function MyPublicExpertProfilePage() {
+  const [expertId, setExpertId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    profileApi.getMyExpert().then((profile) => setExpertId(profile.expertId)).catch(() => setError("Không thể tải trang cá nhân chuyên gia."));
+  }, []);
+  if (error) return <Notice tone="danger" title={error} />;
+  if (!expertId) return <Notice title="Đang mở trang cá nhân..." />;
+  return <Navigate to={`/expert-profile/${expertId}`} replace />;
+}
+
+export function PublicBusinessProfilePage() {
+  const { businessId } = useParams();
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("home");
+  const session = getSession();
+  const numericBusinessId = Number(businessId);
+
+  useEffect(() => {
+    if (!Number.isFinite(numericBusinessId)) {
+      setError("Không tìm thấy doanh nghiệp.");
+      return;
+    }
+    Promise.all([
+      profileApi.getBusinessById(numericBusinessId),
+      profileApi.listBusinessJobs(numericBusinessId).catch(() => []),
+    ])
+      .then(([businessProfile, businessJobs]) => {
+        setProfile(businessProfile);
+        setJobs(businessJobs);
+      })
+      .catch((loadError) =>
+        setError(readApiError(loadError, "Không thể tải hồ sơ doanh nghiệp.")),
+      );
+  }, [numericBusinessId]);
+
+  if (error) return <Notice tone="danger" title={error} />;
+  if (!profile) return <Notice title="Đang tải hồ sơ doanh nghiệp..." />;
+
+  const canEdit = session?.role === "BUSINESS" && profile.accountId === session.accountId;
+  const logoLabel = profile.companyName || "Doanh nghiệp";
+
+  return (
+    <div className="space-y-6">
+      <Card className="overflow-hidden border-slate-100">
+        <div className="bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_34%),linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] p-6 text-white md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              {profile.logoUrl ? (
+                <img src={profile.logoUrl} alt={logoLabel} className="h-20 w-20 rounded-3xl bg-white object-contain p-2 shadow-sm ring-1 ring-white/20" />
+              ) : (
+                <Avatar name={logoLabel} size="xl" className="bg-white/95 text-brand-700" />
+              )}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai doanh nghiệp</p>
+                <h1 className="mt-2 text-3xl font-black md:text-4xl">{profile.companyName || "Doanh nghiệp"}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
+                  {profile.website && <a className="inline-flex items-center gap-2 hover:text-white" href={profile.website} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />{profile.website}</a>}
+                  {profile.followersCount != null && <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />{profile.followersCount} người theo dõi</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canEdit ? (
+                <LinkButton to="/app/business/profile" variant="secondary">Chỉnh sửa trang cá nhân</LinkButton>
+              ) : (
+                <Button type="button" variant="secondary">Theo dõi công ty</Button>
+              )}
+            </div>
+          </div>
+          <div className="mt-6">
+            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "jobs", label: "Tin tuyển dụng", count: jobs.length }]} active={activeTab} onChange={setActiveTab} />
+          </div>
+        </div>
+      </Card>
+
+      {activeTab === "home" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <SectionHeading title="Giới thiệu công ty" />
+            <p className="mt-5 text-sm leading-7 text-slate-600">
+              {profile.description || "Doanh nghiệp chưa cập nhật phần giới thiệu."}
+            </p>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Thông tin chung" />
+            <div className="mt-5 space-y-4 text-sm">
+              <ProfileRow label="Website" value={profile.website ? <a className="text-brand-600 hover:text-brand-700" href={profile.website} target="_blank" rel="noreferrer">{profile.website}</a> : "Chưa cập nhật"} />
+              <ProfileRow label="Quy mô nhân sự" value={profile.employeeCount || "Chưa cập nhật"} />
+              <ProfileRow label="Lĩnh vực hoạt động" value={profile.industry || "Chưa cập nhật"} />
+              <ProfileRow label="Số người theo dõi" value={profile.followersCount ?? 0} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "jobs" && (
+        <Card className="p-6">
+          <SectionHeading title="Tin tuyển dụng / dự án đã đăng" />
+          <div className="mt-5 grid gap-4">
+            {jobs.length ? jobs.map((job) => (
+              <Link key={job.jobId} to={`/jobs/${job.jobId}`} className="group rounded-3xl border border-slate-100 bg-slate-50 p-4 transition hover:border-brand-200 hover:bg-white hover:shadow-soft">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-display text-lg font-extrabold text-ink group-hover:text-brand-700">{job.title}</h3>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{job.rawRequirements || "Chưa có mô tả yêu cầu."}</p>
+                  </div>
+                  <Badge tone="mint">{job.status}</Badge>
+                </div>
+              </Link>
+            )) : (
+              <EmptyProfileBlock icon={<BriefcaseBusiness className="h-5 w-5" />} title="Chưa có tin tuyển dụng nào" description="Doanh nghiệp chưa đăng job public." />
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export function PublicExpertProfilePage() {
+  const { expertId } = useParams();
+  const [profile, setProfile] = useState<ExpertProfile | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("home");
+  const session = getSession();
+  const numericExpertId = Number(expertId);
+
+  useEffect(() => {
+    if (!Number.isFinite(numericExpertId)) {
+      setError("Không tìm thấy chuyên gia.");
+      return;
+    }
+    Promise.all([
+      profileApi.getExpertById(numericExpertId),
+      profileApi.getPortfolioByExpert(numericExpertId).catch(() => null),
+      catalogApi.listDomains(true),
+      catalogApi.listSkills(true),
+      catalogApi.listTechnologies(true),
+    ])
+      .then(([expertProfile, expertPortfolio, domainItems, skillItems, technologyItems]) => {
+        setProfile(expertProfile);
+        setPortfolio(expertPortfolio);
+        setDomains(domainItems);
+        setSkills(skillItems);
+        setTechnologies(technologyItems);
+      })
+      .catch((loadError) =>
+        setError(readApiError(loadError, "Không thể tải hồ sơ chuyên gia.")),
+      );
+  }, [numericExpertId]);
+
+  const canEdit =
+    session?.role === "EXPERT" && profile?.accountId === session.accountId;
+  const selectedDomains = resolveCatalogNames(domains, parseCatalogIds(portfolio?.domainIds), "domainId", "domainName");
+  const selectedSkills = resolveCatalogNames(skills, parseCatalogIds(portfolio?.skillIds), "skillId", "skillName");
+  const selectedTechnologies = resolveCatalogNames(
+    technologies,
+    parseCatalogIds(portfolio?.technologyIds),
+    "technologyId",
+    "technologyName",
+  );
+
+  if (error) return <Notice tone="danger" title={error} />;
+  if (!profile) return <Notice title="Đang tải hồ sơ chuyên gia..." />;
+
+  const displayName = profile.fullName || "Chuyên gia";
+  const introText = portfolio?.selfDescription || profile.description || "Chuyên gia chưa cập nhật phần giới thiệu.";
+
+  return (
+    <div className="space-y-6">
+      <Card className="overflow-hidden border-slate-100">
+        <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              <Avatar name={displayName} size="xl" className="bg-white/95 text-brand-700" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai chuyên gia</p>
+                <h1 className="mt-2 text-3xl font-black md:text-4xl">{displayName}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
+                  {profile.title && <span className="inline-flex items-center gap-2"><BriefcaseBusiness className="h-4 w-4" />{profile.title}</span>}
+                  <span className="inline-flex items-center gap-2"><Award className="h-4 w-4" />{portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm kinh nghiệm</span>
+                  {profile.followersCount != null && <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />{profile.followersCount} người theo dõi</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canEdit ? (
+                <LinkButton to="/app/expert/profile" variant="secondary">Chỉnh sửa trang cá nhân</LinkButton>
+              ) : (
+                <Button type="button" variant="secondary">Theo dõi</Button>
+              )}
+            </div>
+          </div>
+          <div className="mt-6">
+            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "portfolio", label: "Portfolio" }]} active={activeTab} onChange={setActiveTab} />
+          </div>
+        </div>
+      </Card>
+
+      {activeTab === "home" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <SectionHeading title="Giới thiệu chuyên gia" />
+            <p className="mt-5 text-sm leading-7 text-slate-600">{introText}</p>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Thông tin chung" />
+            <div className="mt-5 space-y-4 text-sm">
+              <ProfileRow label="Chức danh" value={profile.title || "Chưa cập nhật"} />
+              <ProfileRow label="Số năm kinh nghiệm" value={`${portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm`} />
+              <ProfileRow label="Kỹ năng" value={selectedSkills.length ? selectedSkills.join(", ") : "Chưa cập nhật"} />
+              <ProfileRow label="Công nghệ" value={selectedTechnologies.length ? selectedTechnologies.join(", ") : "Chưa cập nhật"} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "portfolio" && (
+        <Card className="p-6">
+          <SectionHeading title="Portfolio" description="Lĩnh vực, kỹ năng, công nghệ và tệp đính kèm." />
+          {portfolio ? (
+            <div className="mt-5 grid gap-5">
+              <PreviewGroup icon={<Layers3 className="h-4 w-4" />} title="Lĩnh vực" emptyText="Chưa cập nhật lĩnh vực" items={selectedDomains} tone="mint" />
+              <PreviewGroup icon={<BrainCircuit className="h-4 w-4" />} title="Kỹ năng" emptyText="Chưa cập nhật kỹ năng" items={selectedSkills} tone="brand" />
+              <PreviewGroup icon={<Cpu className="h-4 w-4" />} title="Công nghệ" emptyText="Chưa cập nhật công nghệ" items={selectedTechnologies} tone="coral" />
+              <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-ink"><FileText className="h-4 w-4 text-brand-600" />Giới thiệu chuyên gia</div>
+                <p className="text-sm leading-7 text-slate-600">{introText}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-100 bg-white p-5">
+                <FirebaseFileLink path={portfolio.certificates || profile.portfolioUrl} emptyText="Chưa có tệp portfolio/chứng chỉ" buttonText="Xem portfolio/chứng chỉ" showPath={false} />
+              </div>
+            </div>
+          ) : (
+            <EmptyProfileBlock icon={<Sparkles className="h-5 w-5" />} title="Chưa có portfolio" description="Khi chuyên gia cập nhật portfolio, các kỹ năng và kinh nghiệm sẽ hiển thị tại đây." />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function PortfolioMetric({
   icon,
   label,
@@ -862,6 +1126,86 @@ function PreviewGroup({
       )}
     </div>
   );
+}
+
+function ProfileInfoCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+      <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+        <span className="grid h-8 w-8 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
+          {icon}
+        </span>
+        {label}
+      </div>
+      <div className="font-display text-lg font-extrabold text-ink">{value}</div>
+    </div>
+  );
+}
+
+function ProfileRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
+      <span className="font-bold text-slate-500">{label}</span>
+      <span className="text-right font-extrabold text-ink">{value}</span>
+    </div>
+  );
+}
+
+function EmptyProfileBlock({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-slate-400 shadow-sm">
+        {icon}
+      </span>
+      <h3 className="mt-4 font-display text-lg font-extrabold text-ink">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function formatDate(value?: string) {
+  if (!value) return "Chưa cập nhật";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatMoney(value?: number) {
+  if (value == null) return "Thỏa thuận";
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function resolveCatalogNames<T extends object>(
+  items: T[],
+  ids: number[],
+  idKey: keyof T,
+  nameKey: keyof T,
+) {
+  return items
+    .filter((item) => ids.includes(Number(item[idKey] as unknown)))
+    .map((item) => String(item[nameKey] as unknown));
 }
 
 function readApiError(error: unknown, fallback: string) {

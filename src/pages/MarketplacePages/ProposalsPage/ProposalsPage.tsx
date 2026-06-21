@@ -190,7 +190,8 @@ export function ProposalsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="MATCH-02"
         title="Proposal của tôi"
         description="Theo dõi proposal đã gửi, trạng thái xét duyệt, bid amount và nội dung giải pháp đã nộp."
@@ -200,6 +201,7 @@ export function ProposalsPage() {
           </LinkButton>
         }
       />
+      </div>
       <Card className="p-3">
         <div className="flex flex-wrap gap-2">
           {proposalStatusTabs.map((tab) => {

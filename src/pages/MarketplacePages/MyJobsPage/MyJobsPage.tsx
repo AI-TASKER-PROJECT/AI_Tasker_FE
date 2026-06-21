@@ -183,7 +183,8 @@ export function MyJobsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="JOB-01 / MATCH-01"
         title="Dự án của doanh nghiệp"
         description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
@@ -194,6 +195,7 @@ export function MyJobsPage() {
           </LinkButton>
         }
       />
+      </div>
       <Card className="p-3">
         <div className="flex flex-wrap gap-2">
           {statusTabs.map((tab) => {
