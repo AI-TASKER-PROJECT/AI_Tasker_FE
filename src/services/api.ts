@@ -403,16 +403,40 @@ export const profileApi = {
       url: `/api/v1/profiles/business/by-job/${jobId}`,//Lấy ra DN dựa trên jobId
     });
   },
+  getBusinessById(businessId: number) {
+    return call<BusinessProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/business/${businessId}`,
+    });
+  },
+  listBusinessJobs(businessId: number) {
+    return call<Job[]>({
+      method: "GET",
+      url: `/api/v1/profiles/business/${businessId}/jobs`,
+    });
+  },
   listExperts() {
     return call<ExpertProfile[]>({
       method: "GET",
       url: "/api/v1/profiles/expert", //lấy ra danh sách hồ sơ
     });
   },
+  getExpertById(expertId: number) {
+    return call<ExpertProfile>({
+      method: "GET",
+      url: `/api/v1/profiles/expert/${expertId}`,
+    });
+  },
   listPortfolios() {
     return call<Portfolio[]>({
       method: "GET",
       url: "/api/v1/profiles/portfolio",//lấy ra ds portfolio
+    });
+  },
+  getPortfolioByExpert(expertId: number) {
+    return call<Portfolio>({
+      method: "GET",
+      url: `/api/v1/profiles/portfolio/by-expert/${expertId}`,
     });
   },
   getFileViewUrl(path: string) {

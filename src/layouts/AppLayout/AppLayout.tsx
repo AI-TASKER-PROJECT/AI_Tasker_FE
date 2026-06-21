@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BarChart3,
   Bell,
   BriefcaseBusiness,
@@ -82,6 +83,53 @@ import { ChatBox } from "../../components/ChatBox";
 
 type NavItem = { label: string; to: string; icon: ReactNode };
 
+type PackageLabel = "Basic" | "Standard" | "Plus" | "Premium";
+type PackageTone = "slate" | "violet" | "brand" | "amber";
+
+const packageConfig: Record<
+  PackageLabel,
+  {
+    tone: PackageTone;
+    dotClass: string;
+  }
+> = {
+  Basic: {
+    tone: "slate",
+    dotClass: "bg-slate-500",
+  },
+  Standard: {
+    tone: "violet",
+    dotClass: "bg-violet-500",
+  },
+  Plus: {
+    tone: "brand",
+    dotClass: "bg-brand-500",
+  },
+  Premium: {
+    tone: "amber",
+    dotClass: "bg-amber-500",
+  },
+};
+
+function hasActiveMembership(quota: UserQuota | null): boolean {
+  return resolveActivePackageTier(quota) !== "Basic";
+}
+
+function resolveActivePackageTier(quota: UserQuota | null): PackageLabel {
+  const packageCode = quota?.activePackageCode?.toUpperCase();
+  if (packageCode?.includes("STANDARD")) return "Standard";
+  if (packageCode?.includes("PLUS")) return "Plus";
+  if (packageCode?.includes("PREMIUM")) return "Premium";
+  return "Basic";
+}
+
+function getBadgeRemainingDays(expiredAt?: string): number | null {
+  if (!expiredAt) return null;
+  const ms = new Date(expiredAt).getTime() - Date.now();
+  if (ms <= 0) return 0;
+  return Math.ceil(ms / 86400000);
+}
+
 const commonNav: NavItem[] = [
   {
     label: "Tổng quan",
@@ -92,6 +140,11 @@ const commonNav: NavItem[] = [
 
 const roleNav: Record<Role, NavItem[]> = {
   BUSINESS: [
+    // {
+    //   label: "Trang cá nhân",
+    //   to: "/business/public-profile",
+    //   icon: <Building2 className="h-4 w-4" />,
+    // },
     {
       label: "Dự án của tôi",
       to: "/app/jobs",
@@ -134,6 +187,11 @@ const roleNav: Record<Role, NavItem[]> = {
     },
   ],
   EXPERT: [
+    // {
+    //   label: "Trang cá nhân",
+    //   to: "/expert/public-profile",
+    //   icon: <IdCard className="h-4 w-4" />,
+    // },
     {
       label: "Cơ hội dự án",
       to: "/app/opportunities",
@@ -319,16 +377,19 @@ export function AppShell() {
   useEffect(() => {
     if (!topupPayment || !topupQrDataUrl) return;
     window.setTimeout(() => {
-      topupQrBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      topupQrBoxRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 120);
   }, [topupPayment, topupQrDataUrl]);
 
-  
   const loadWallet = useCallback(async () => {
     if (!session?.accessToken) return;
     setWalletLoading(true);
     try {
-      const isExternal = session.role === "BUSINESS" || session.role === "EXPERT";
+      const isExternal =
+        session.role === "BUSINESS" || session.role === "EXPERT";
       const [walletRes, quotaRes] = await Promise.allSettled([
         walletApi.current(),
         isExternal ? userQuotaApi.getCurrent() : Promise.reject(),
@@ -381,7 +442,7 @@ export function AppShell() {
   const syncTopupStatus = useCallback(
     async (orderCode: number, showPending = true) => {
       try {
-        const paymentOrder = await paymentApi.syncWalletTopup(orderCode);//api cập nhật số dư
+        const paymentOrder = await paymentApi.syncWalletTopup(orderCode); //api cập nhật số dư
         if (paymentOrder.status === "PAID") {
           setTopupNotice({
             tone: "success",
@@ -441,7 +502,8 @@ export function AppShell() {
     };
   }, [syncTopupStatus, topupOpen, topupPayment]);
 
-  const submitTopup = async (event: FormEvent) => { //bấm submit
+  const submitTopup = async (event: FormEvent) => {
+    //bấm submit
     event.preventDefault();
     const amount = Number(topupForm.amount);
     if (!Number.isInteger(amount) || amount < 2000) {
@@ -458,7 +520,8 @@ export function AppShell() {
     setTopupQrDataUrl("");
 
     try {
-      const payment = await paymentApi.createWalletTopup({ //api tạo link nạp
+      const payment = await paymentApi.createWalletTopup({
+        //api tạo link nạp
         amount,
         description: topupForm.description.trim() || defaultTopupDescription,
       });
@@ -522,8 +585,13 @@ export function AppShell() {
   // Thay thế đoạn useEffect cũ bằng đoạn này:
   useEffect(() => {
     if (!session) return;
-    const isNotificationPage = location.pathname.startsWith('/app/notifications');
-    if (needsVerification && location.pathname !== verificationPath && !isNotificationPage) {
+    const isNotificationPage =
+      location.pathname.startsWith("/app/notifications");
+    if (
+      needsVerification &&
+      location.pathname !== verificationPath &&
+      !isNotificationPage
+    ) {
       navigate(verificationPath, { replace: true });
     }
   }, [
@@ -606,24 +674,37 @@ export function AppShell() {
         ),
       );
       setUnreadCount((count) => Math.max(0, count - 1));
-      notificationApi.markRead(notification.notificationId).catch(() => refreshNotifications());
+      notificationApi
+        .markRead(notification.notificationId)
+        .catch(() => refreshNotifications());
     }
     setNotificationOpen(false);
-    navigate(`/app/notifications?notificationId=${notification.notificationId}`);
+    navigate(
+      `/app/notifications?notificationId=${notification.notificationId}`,
+    );
   };
 
   const markAllNotificationsRead = async () => {
-    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    setNotifications((items) =>
+      items.map((item) => ({ ...item, isRead: true })),
+    );
     setUnreadCount(0);
-    notificationApi.markAllRead().then(setNotifications).catch(() => refreshNotifications());
+    notificationApi
+      .markAllRead()
+      .then(setNotifications)
+      .catch(() => refreshNotifications());
   };
 
   const renderNotificationIcon = (notification: NotificationItem) => {
     const tone = notificationTone(notification);
-    if (tone === 'success') return <CheckCircle2 className="h-4 w-4" />;
-    if (tone === 'warning') return <Clock3 className="h-4 w-4" />;
+    if (tone === "success") return <CheckCircle2 className="h-4 w-4" />;
+    if (tone === "warning") return <Clock3 className="h-4 w-4" />;
     return <Bell className="h-4 w-4" />;
   };
+
+  const activePackageTier = resolveActivePackageTier(quota);
+  const activePackage = packageConfig[activePackageTier];
+  const activePackageName = quota?.activePackageName || activePackageTier;
 
   return (
     <div className="min-h-screen bg-[#f7faff] text-ink">
@@ -742,55 +823,35 @@ export function AppShell() {
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
-              {(session?.role === "BUSINESS" || session?.role === "EXPERT") && quota && (
-                <Badge
-                  tone={(() => {
-                    if (!quota.premiumActive) return "slate";
-                    const name = localStorage.getItem("aitasker_active_package") || "Premium";
-                    if (name.includes("Premium")) return "amber";
-                    if (name.includes("Plus")) return "brand";
-                    if (name.includes("Standard")) return "violet";
-                    return "amber";
-                  })()}
-                  className="hidden sm:inline-flex text-sm px-3 py-1.5"
-                >
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      (() => {
-                        if (!quota.premiumActive) return "bg-slate-500";
-                        const name = localStorage.getItem("aitasker_active_package") || "Premium";
-                        if (name.includes("Premium")) return "bg-amber-500";
-                        if (name.includes("Plus")) return "bg-brand-500";
-                        if (name.includes("Standard")) return "bg-violet-500";
-                        return "bg-amber-500";
-                      })()
-                    )}
-                  />
-                  {(() => {
-                    if (!quota.premiumActive) return "Basic";
-                    const name = localStorage.getItem("aitasker_active_package") || "Premium";
-                    if (name.includes("Premium")) return "Premium";
-                    if (name.includes("Plus")) return "Plus";
-                    if (name.includes("Standard")) return "Standard";
-                    return "Premium";
-                  })()}
-                </Badge>
-              )}
+              {(session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+                quota && (
+                  <Badge
+                    tone={activePackage.tone}
+                    className="hidden sm:inline-flex text-sm px-3 py-1.5"
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        activePackage.dotClass,
+                      )}
+                    />
+                    {activePackageName}
+                  </Badge>
+                )}
               <div className="relative">
                 <button
                   type="button"
                   aria-label="Thông báo"
                   onClick={openNotificationPanel}
                   className={cn(
-                    'relative grid h-10 w-10 place-items-center rounded-2xl bg-slate-50 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600',
-                    notificationOpen && 'bg-brand-50 text-brand-600',
+                    "relative grid h-10 w-10 place-items-center rounded-2xl bg-slate-50 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600",
+                    notificationOpen && "bg-brand-50 text-brand-600",
                   )}
                 >
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 && (
                     <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral-500 px-1 text-[10px] font-black text-white ring-2 ring-white">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </button>
@@ -798,15 +859,21 @@ export function AppShell() {
                   <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-soft">
                     <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                       <div>
-                        <p className="text-sm font-extrabold text-ink">Thông báo</p>
+                        <p className="text-sm font-extrabold text-ink">
+                          Thông báo
+                        </p>
                         <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
                           <span
                             className={cn(
-                              'h-1.5 w-1.5 rounded-full',
-                              realtimeConnected ? 'bg-mint-500' : 'bg-slate-300',
+                              "h-1.5 w-1.5 rounded-full",
+                              realtimeConnected
+                                ? "bg-mint-500"
+                                : "bg-slate-300",
                             )}
                           />
-                          {realtimeConnected ? 'Realtime đang bật' : 'Đang kết nối realtime'}
+                          {realtimeConnected
+                            ? "Realtime đang bật"
+                            : "Đang kết nối realtime"}
                         </p>
                       </div>
                       {unreadCount > 0 && (
@@ -833,15 +900,17 @@ export function AppShell() {
                           <button
                             key={notification.notificationId}
                             type="button"
-                            onClick={() => openNotificationInCenter(notification)}
+                            onClick={() =>
+                              openNotificationInCenter(notification)
+                            }
                             className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
                           >
                             <span
                               className={cn(
-                                'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl',
+                                "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl",
                                 notification.isRead
-                                  ? 'bg-slate-50 text-slate-400'
-                                  : 'bg-brand-50 text-brand-600',
+                                  ? "bg-slate-50 text-slate-400"
+                                  : "bg-brand-50 text-brand-600",
                               )}
                             >
                               {renderNotificationIcon(notification)}
@@ -869,7 +938,7 @@ export function AppShell() {
                     <div className="border-t border-slate-100 p-2">
                       <button
                         type="button"
-                        onClick={() => navigate('/app/notifications')}
+                        onClick={() => navigate("/app/notifications")}
                         className="flex h-10 w-full items-center justify-center rounded-2xl text-sm font-extrabold text-brand-600 transition hover:bg-brand-50"
                       >
                         Xem tất cả thông báo
@@ -886,9 +955,14 @@ export function AppShell() {
                 >
                   <Avatar name={session?.fullName} />
                   <div className="hidden text-left xl:block">
-                    <p className="max-w-36 truncate text-sm font-extrabold text-ink">
-                      {session?.fullName}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="max-w-36 truncate text-sm font-extrabold text-ink">
+                        {session?.fullName}
+                      </p>
+                      {hasActiveMembership(quota) && (
+                        <BadgeCheck className="h-4 w-4 shrink-0 text-green-500" />
+                      )}
+                    </div>
                     <p className="text-xs text-slate-400">
                       {roleLabel(session?.role || "BUSINESS")}
                     </p>
@@ -901,9 +975,23 @@ export function AppShell() {
                       Tài khoản hiện tại
                     </p>
                     <div className="rounded-2xl bg-brand-50 px-3 py-2.5">
-                      <p className="text-sm font-extrabold text-brand-700">
-                        {roleLabel(session?.role || "BUSINESS")}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-extrabold text-brand-700">
+                          {session?.fullName ||
+                            roleLabel(session?.role || "BUSINESS")}
+                        </p>
+                        {hasActiveMembership(quota) && (
+                          <>
+                            <BadgeCheck className="h-4 w-4 shrink-0 text-green-500" />
+                            {quota?.badgeExpiredAt && (
+                              <span className="text-[10px] font-bold text-green-600">
+                                {getBadgeRemainingDays(quota.badgeExpiredAt)}{" "}
+                                ngày
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
                       <p className="mt-1 truncate text-xs text-slate-500">
                         {session?.email}
                       </p>
@@ -943,20 +1031,24 @@ export function AppShell() {
                           </p>
                         </div>
                       </div>
-                      
+
                       {quota && (
                         <div className="mt-3 rounded-2xl bg-slate-50 p-3">
                           <div className="flex justify-between items-center">
                             <p className="text-[11px] font-bold text-slate-400">
                               Lượt đăng Job
                             </p>
-                            <p className="text-sm font-black text-ink">{quota.jobPostQuotaBalance ?? 0}</p>
+                            <p className="text-sm font-black text-ink">
+                              {quota.jobPostQuotaBalance ?? 0}
+                            </p>
                           </div>
                           <div className="mt-2 flex justify-between items-center">
                             <p className="text-[11px] font-bold text-slate-400">
                               Lượt nộp Proposal
                             </p>
-                            <p className="text-sm font-black text-ink">{quota.proposalQuotaBalance ?? 0}</p>
+                            <p className="text-sm font-black text-ink">
+                              {quota.proposalQuotaBalance ?? 0}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -1134,7 +1226,10 @@ export function AppShell() {
             />
           </Field>
           {topupPayment && (
-            <div ref={topupQrBoxRef} className="rounded-3xl border border-brand-100 bg-brand-50/60 p-5">
+            <div
+              ref={topupQrBoxRef}
+              className="rounded-3xl border border-brand-100 bg-brand-50/60 p-5"
+            >
               <div className="grid gap-5 md:grid-cols-[260px_1fr] md:items-center">
                 <div className="rounded-2xl bg-white p-3 shadow-sm">
                   {topupQrDataUrl ? (

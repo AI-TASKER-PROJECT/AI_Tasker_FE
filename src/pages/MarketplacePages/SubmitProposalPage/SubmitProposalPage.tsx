@@ -357,7 +357,8 @@ export function SubmitProposalPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="MATCH-02"
         title="Nộp báo giá dự thầu"
         description={job.title}
@@ -367,6 +368,7 @@ export function SubmitProposalPage() {
           </LinkButton>
         }
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <form onSubmit={submit} className="grid gap-5">
           <Card className="overflow-hidden">

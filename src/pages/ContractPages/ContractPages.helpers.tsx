@@ -80,11 +80,13 @@ export function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="CON-01 / CON-02"
         title="Hợp đồng"
         description="Danh sách contract để đi vào đàm phán, NDA, workspace milestone, escrow và review."
       />
+      </div>
       <Card className="p-4">
         <div className="flex flex-wrap gap-2">
           {[
@@ -225,7 +227,8 @@ export function ContractDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="CONTRACT DETAIL"
         title={contract.title || `Contract #${contract.contractId}`}
         description="Điểm điều phối cho đàm phán, activate, NDA, termination và các luồng con."
@@ -243,6 +246,7 @@ export function ContractDetailPage() {
           </>
         }
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <Card className="p-6">
           <div className="flex flex-wrap items-center gap-2">
@@ -577,7 +581,8 @@ export function WorkspacePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="EXEC-01 / EXEC-02"
         title={`Workspace: ${contract.title}`}
         description="Quản lý milestone, acceptance criteria, deliverable và SLA auto approve."
@@ -592,6 +597,7 @@ export function WorkspacePage() {
           </>
         }
       />
+      </div>
       <div className="grid gap-4">
         {milestones.map((milestone) => (
           <Card key={milestone.milestoneId} className="p-5">
@@ -895,7 +901,8 @@ export function FinancePage() {
   };
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="FIN-01"
         title="Ví thanh toán & ký quỹ"
         description="Nạp số dư qua payOS để sử dụng trong nền tảng, đồng thời theo dõi giao dịch ký quỹ theo từng milestone."
@@ -912,6 +919,7 @@ export function FinancePage() {
           </>
         }
       />
+      </div>
       <Card className="overflow-hidden border-brand-100 bg-gradient-to-br from-brand-50 via-white to-indigo-50">
         <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
@@ -1169,11 +1177,13 @@ export function ReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="REV-01"
         title="Đánh giá chéo"
         description="Hai bên đánh giá sau khi hợp đồng Completed/Terminated/Cancelled."
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <Card className="p-6">
           <SectionHeading title="Gửi review" />

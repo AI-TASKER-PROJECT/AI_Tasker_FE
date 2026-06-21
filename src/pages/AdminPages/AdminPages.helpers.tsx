@@ -56,7 +56,8 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-02"
         title="Analytics & Revenue"
         description="Gọi `/api/v1/admin/analytics/overview`, hiển thị KPI và biểu đồ nhẹ bằng CSS để tránh phụ thuộc chart nặng."
@@ -66,6 +67,7 @@ export function AnalyticsPage() {
           </Button>
         }
       />
+      </div>
       {value && (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -241,7 +243,8 @@ export function SystemWalletPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-WALLET"
         title="System Wallet"
         description="Live aggregate from transactions and disputes. Admin owns fund-flow monitoring."
@@ -251,6 +254,7 @@ export function SystemWalletPage() {
           </Button>
         }
       />
+      </div>
       {wallet && (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -540,7 +544,8 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-ACCOUNTS"
         title="Account Management"
         description="Admin can create, update, activate, and deactivate every role account."
@@ -550,6 +555,7 @@ export function AccountsPage() {
           </Button>
         }
       />
+      </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
           <Button
@@ -776,7 +782,8 @@ export function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="STF-01"
         title="Quản lý Staff"
         description="Admin tạo hồ sơ staff nội bộ và khai báo specialization để auto-routing dispute."
@@ -786,6 +793,7 @@ export function StaffPage() {
           </Button>
         }
       />
+      </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {staffs.map((staff) => (
           <Card key={staff.staffId} className="p-5">
@@ -932,11 +940,13 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-03"
         title="System Settings"
         description="Cấu hình phí nền tảng, SLA và auto assign staff không cần sửa code."
       />
+      </div>
       <div className="grid gap-4">
         {settings.map((setting) => (
           <Card key={setting.settingKey} className="p-5">
@@ -1210,7 +1220,8 @@ export function MasterDataPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-01"
         title="Catalog Management"
         description="Quan ly domain va skill dung cho job, staff specialization va ho so chuyen gia."
@@ -1226,6 +1237,7 @@ export function MasterDataPage() {
           )
         }
       />
+      </div>
       <Card className="flex flex-wrap gap-2 p-3">
         <Button
           variant={tab === "domains" ? "primary" : "secondary"}
@@ -1550,11 +1562,13 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-01"
         title="Nhật ký audit"
         description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
       />
+      </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
           <Button
@@ -1645,7 +1659,8 @@ export function ReportsPage() {
   const [range, setRange] = useState("month");
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="ADM-02"
         title="Reports & Export"
         description="Giao diện xuất báo cáo tuần/tháng/quý. API export hiện chưa có, UI giữ đủ filter và preview."
@@ -1655,6 +1670,7 @@ export function ReportsPage() {
           </Button>
         }
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card className="p-6">
           <SectionHeading title="Bộ lọc báo cáo" />

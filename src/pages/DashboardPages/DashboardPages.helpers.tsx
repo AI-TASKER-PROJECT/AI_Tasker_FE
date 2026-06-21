@@ -106,7 +106,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow={roleLabel(session.role)}
         title={`Xin chào, ${session.fullName}`}
         description="Dashboard tổng hợp các điểm cần xử lý theo vai trò và luồng nghiệp vụ hiện tại."
@@ -117,6 +118,7 @@ export function DashboardPage() {
           </LinkButton>
         }
       />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -338,7 +340,8 @@ export function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="Realtime Center"
         title="Trung tam thong bao"
         description="Theo doi tat ca thong bao he thong va trang thai da doc."
@@ -350,6 +353,7 @@ export function NotificationsPage() {
           ) : undefined
         }
       />
+      </div>
       <div className="grid gap-4">
         {loading ? (
           <Card className="p-8 text-center text-sm font-semibold text-slate-400">

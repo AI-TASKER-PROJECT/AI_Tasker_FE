@@ -72,7 +72,8 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   );
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow={staffMode ? "STF-02 / STF-03 / STF-04" : "RSK-01 / RSK-02"}
         title={staffMode ? "Ticket tranh chấp" : "Tranh chấp của dự án"}
         description={
@@ -81,6 +82,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
             : "Doanh nghiệp/chuyên gia tạo dispute để khóa dòng tiền và yêu cầu can thiệp."
         }
       />
+      </div>
       <Card className="p-4">
         <SearchInput
           value={query}
@@ -191,7 +193,8 @@ export function DisputeDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="DISPUTE FLOW"
         title={dispute.title || `Dispute #${dispute.disputeId}`}
         description="Single source of truth là acceptance criteria và deliverables trong workspace."
@@ -208,6 +211,7 @@ export function DisputeDetailPage({
           </>
         }
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <Card className="p-6">
           <div className="flex flex-wrap gap-2">
@@ -353,11 +357,13 @@ export function VerificationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="REG-02 / ADM-01"
         title="Duyệt hồ sơ KYC/KYB"
         description="Admin/Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
       />
+      </div>
       <Card className="p-5">
         <Tabs
           active={tab}
@@ -569,7 +575,8 @@ export function VerificationDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow={isBusiness ? "Business KYB" : "Expert KYC"}
         title={title}
         description="Kiểm tra thông tin định danh và ra quyết định duyệt."
@@ -579,6 +586,7 @@ export function VerificationDetailPage() {
           </LinkButton>
         }
       />
+      </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <SectionHeading title="Thông tin hồ sơ" />
@@ -847,11 +855,13 @@ export function NewDisputePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="RSK-01"
         title="Tạo tranh chấp"
         description="Dùng khi một bên khiếu nại và cần đóng băng dòng tiền milestone."
       />
+      </div>
       <Card className="p-6">
         <form onSubmit={submit} className="grid gap-4">
           {message && <Notice tone="danger" title={message} />}

@@ -180,7 +180,8 @@ export function ManageJobPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="MATCH-01 / MATCH-02"
         title={job.title}
         description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
@@ -190,6 +191,7 @@ export function ManageJobPage() {
           </LinkButton>
         }
       />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-100 pb-4">

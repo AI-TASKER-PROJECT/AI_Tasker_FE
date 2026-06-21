@@ -10,6 +10,7 @@ export interface ApiResponse<T> {
 }
 
 export interface SessionUser {
+  accountId?: number;
   accessToken: string;
   refreshToken?: string;
   role: Role;
@@ -186,6 +187,12 @@ export interface BusinessProfile {
   companyName: string;
   address?: string;
   businessLicenseUrl?: string;
+  website?: string;
+  employeeCount?: string;
+  industry?: string;
+  description?: string;
+  followersCount?: number;
+  logoUrl?: string;
   kybStatus: string;
   approvedBy?: number;
   rejectionReason?: string;
@@ -207,6 +214,9 @@ export interface ExpertProfile {
   nationalId: string;
   portfolioUrl?: string;
   yearsOfExperience?: number;
+  description?: string;
+  followersCount?: number;
+  avatarUrl?: string;
   kycStatus: string;
   approvedBy?: number;
   rejectionReason?: string;
@@ -295,7 +305,7 @@ export interface MembershipPackage {
   jobPostQuota: number;
   proposalQuota: number;
   recommendVisibility: boolean;
-  targetRole: 'BUSINESS' | 'EXPERT';
+  roleType: 'BUSINESS' | 'EXPERT';
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -305,10 +315,10 @@ export interface MembershipPurchase {
   purchaseId: number;
   accountId: number;
   packageId: number;
-  price: number;
-  badgeExpiredAt?: string;
-  purchasedAt?: string;
-  status?: string;
+  amount: number;
+  status: string;
+  badgeStartAt: string;
+  badgeEndAt: string;
   walletTransactionId?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -440,13 +450,16 @@ export interface PaymentActionResponse<T> {
 }
 
 export interface UserQuota {
-  quotaId: number;
+  // `GET /api/users/me/quota` is an entitlement view and does not expose quotaId.
+  quotaId?: number;
   accountId: number;
   jobPostQuotaBalance: number;
   proposalQuotaBalance: number;
   badgeExpiredAt?: string;
-  premiumRecommendationVisible?: boolean;
+  premiumExpiredAt?: string;
   premiumActive?: boolean;
+  activePackageCode?: string;
+  activePackageName?: string;
   createdAt?: string;
   updatedAt?: string;
 }

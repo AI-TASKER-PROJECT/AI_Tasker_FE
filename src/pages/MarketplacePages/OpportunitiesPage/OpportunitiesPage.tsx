@@ -85,11 +85,13 @@ export function OpportunitiesPage() {
   );
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="MATCH-02"
         title="Cơ hội dành cho chuyên gia"
         description="Chuyên gia xem job công khai và nộp proposal chủ động."
       />
+      </div>
       <Card className="p-4">
         <SearchInput
           value={query}

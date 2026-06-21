@@ -73,7 +73,7 @@ function PackageCard({
     <Card
       hover
       className={cn(
-        "overflow-hidden transition-all duration-300",
+        "flex h-full flex-col overflow-hidden transition-all duration-300",
         isPremium && "ring-2 ring-amber-300 ring-offset-2",
       )}
     >
@@ -100,7 +100,7 @@ function PackageCard({
       </div>
 
       {/* Benefits */}
-      <div className="p-5">
+      <div className="flex flex-grow flex-col p-5">
         <ul className="space-y-3">
           <li className="flex items-center gap-2.5 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-mint-500" />
@@ -132,16 +132,18 @@ function PackageCard({
           )}
         </ul>
 
-        <Button
-          className="mt-5 w-full"
-          variant={isPremium ? "primary" : "secondary"}
-          onClick={() => onPurchase(pkg)}
-          loading={purchasing}
-          disabled={purchasing}
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Mua ngay · {formatCurrency(pkg.price)}
-        </Button>
+        <div className="mt-auto pt-5">
+          <Button
+            className="w-full"
+            variant={isPremium ? "primary" : "secondary"}
+            onClick={() => onPurchase(pkg)}
+            loading={purchasing}
+            disabled={purchasing}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Mua ngay · {formatCurrency(pkg.price)}
+          </Button>
+        </div>
       </div>
     </Card>
   );

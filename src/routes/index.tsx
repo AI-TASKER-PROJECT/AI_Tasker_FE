@@ -33,7 +33,19 @@ import {
   ProposalsPage,
   SubmitProposalPage,
 } from '../pages/MarketplacePages';
-import { BusinessProfilePage, ExpertPortfolioPage, ExpertProfilePage } from '../pages/ProfilePages';
+import {
+  BusinessProfilePage,
+  ExpertPortfolioPage,
+  ExpertProfilePage,
+  MyPublicBusinessProfilePage,
+  MyPublicExpertProfilePage,
+  PublicBusinessProfilePage,
+  PublicExpertProfilePage,
+} from '../pages/ProfilePages';
+import {
+  BusinessVerificationProfilePage,
+  ExpertVerificationProfilePage,
+} from '../pages/ProfilePages/VerificationProfilePages';
 import { ExpertDirectoryPage, JobDetailPage, JobsPage, LandingPage } from '../pages/PublicPages';
 import {
   DisputeDetailPage,
@@ -73,10 +85,12 @@ export function AppRoutes() {
         <Route index element={<LandingPage />} />
         <Route path="how-it-works" element={<LandingPage />} />
         <Route path="about" element={<LandingPage />} />
-        <Route path="jobs" element={<JobsPage />} />
-        <Route path="jobs/:jobId" element={<JobDetailPage />} />
-        <Route path="experts" element={<ExpertDirectoryPage />} />
-      </Route>
+      <Route path="jobs" element={<JobsPage />} />
+      <Route path="jobs/:jobId" element={<JobDetailPage />} />
+      <Route path="experts" element={<ExpertDirectoryPage />} />
+      <Route path="business-profile/:businessId" element={<PageTransition><PublicBusinessProfilePage /></PageTransition>} />
+      <Route path="expert-profile/:expertId" element={<PageTransition><PublicExpertProfilePage /></PageTransition>} />
+    </Route>
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
 
@@ -89,13 +103,17 @@ export function AppRoutes() {
         <Route path="jobs/new" element={<PageTransition><CreateJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/manage" element={<PageTransition><ManageJobPage /></PageTransition>} />
         <Route path="jobs/:jobId/proposal" element={<PageTransition><SubmitProposalPage /></PageTransition>} />
-        <Route path="business/profile" element={<PageTransition><BusinessProfilePage /></PageTransition>} />
+        <Route path="business/profile" element={<PageTransition><BusinessVerificationProfilePage /></PageTransition>} />
+        <Route path="business/public-profile" element={<PageTransition><MyPublicBusinessProfilePage /></PageTransition>} />
+        <Route path="businesses/:businessId" element={<PageTransition><PublicBusinessProfilePage /></PageTransition>} />
 
         {/* Expert */}
         <Route path="opportunities" element={<PageTransition><OpportunitiesPage /></PageTransition>} />
         <Route path="proposals" element={<PageTransition><ProposalsPage /></PageTransition>} />
-        <Route path="expert/profile" element={<PageTransition><ExpertProfilePage /></PageTransition>} />
+        <Route path="expert/profile" element={<PageTransition><ExpertVerificationProfilePage /></PageTransition>} />
+        <Route path="expert/public-profile" element={<PageTransition><MyPublicExpertProfilePage /></PageTransition>} />
         <Route path="expert/portfolio" element={<PageTransition><ExpertPortfolioPage /></PageTransition>} />
+        <Route path="experts/:expertId" element={<PageTransition><PublicExpertProfilePage /></PageTransition>} />
 
         {/* Contracts */}
         <Route path="contracts" element={<PageTransition><ContractsPage /></PageTransition>} />

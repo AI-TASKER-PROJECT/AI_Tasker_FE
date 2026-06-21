@@ -754,7 +754,8 @@ export function JobsPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="Marketplace"
         title="Cơ hội dự án AI"
         description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
@@ -764,6 +765,7 @@ export function JobsPage() {
           </LinkButton>
         }
       />
+      </div>
       <Card className="mt-8 p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <SearchInput
@@ -1612,11 +1614,13 @@ export function ExpertDirectoryPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-      <PageHeader
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader
         eyebrow="Expert network"
         title="Danh bạ chuyên gia AI"
         description="Giao diện phục vụ matching, review uy tín và lựa chọn chuyên gia. Khi API public expert profile chưa có dữ liệu, trang hiển thị trạng thái trống."
       />
+      </div>
 
       <Card className="mt-8 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
