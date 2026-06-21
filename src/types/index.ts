@@ -89,6 +89,8 @@ export interface ContractMilestone {
   originalBudget: number;
   finalBudget: number;
   orderIndex: number;
+  duration?: number;
+  durationUnit?: string;
   status: string;
   createdAt?: string;
   updatedAt?: string;
@@ -172,6 +174,8 @@ export interface Milestone {
   description?: string;
   fundsAllocated: number;
   orderIndex: number;
+  duration?: number;
+  durationUnit?: string;
   status: string;
   criteriaIds?: number[];
   criteria?: AcceptanceCriteria[];

@@ -32,6 +32,7 @@ import {
   Field,
   Input,
   LinkButton,
+  Modal,
   Notice,
   PageHeader,
   SectionHeading,
@@ -254,6 +255,7 @@ export function CreateJobPage() {
   const [sowGeneratedLocked, setSowGeneratedLocked] = useState(false);
   const [generatedSow, setGeneratedSow] = useState<GeneratedSow | null>(null);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
+  const [publishSuccessOpen, setPublishSuccessOpen] = useState(false);
   const [createMessage, setCreateMessage] = useState("");
   const [createMessageTone, setCreateMessageTone] = useState<
     "info" | "success" | "warning" | "danger"
@@ -512,6 +514,8 @@ export function CreateJobPage() {
         description: milestone.description || "",
         fundsAllocated: Number(milestone.fundsAllocated || 0),
         orderIndex: Number(milestone.orderIndex || index + 1),
+        duration: Number(milestone.durationValue || 0),
+        durationUnit: "tuần",
         status: "PENDING",
         criteriaIds: milestone.criteriaIds,
       }));
@@ -540,6 +544,24 @@ export function CreateJobPage() {
       if (skillAssignments.length === 0) {
         setCreateMessage("Vui lòng chọn ít nhất một kỹ năng cho job.");
         setCreateMessageTone("warning");
+        return;
+      }
+      const projectTimelineWeeks = Number(form.plannedDurationValue || 0);
+      const totalMilestoneWeeks = milestones
+        .filter((milestone) => milestone.milestoneName.trim())
+        .reduce(
+          (total, milestone) => total + Number(milestone.durationValue || 0),
+          0,
+        );
+      if (
+        !Number.isFinite(projectTimelineWeeks) ||
+        projectTimelineWeeks <= totalMilestoneWeeks
+      ) {
+        setCreateMessage(
+          `Timeline dự án phải lớn hơn tổng thời gian milestone (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${totalMilestoneWeeks + 1} tuần.`,
+        );
+        setCreateMessageTone("warning");
+        setLoading(false);
         return;
       }
       const job = await marketplaceApi.createJob({
@@ -593,6 +615,7 @@ export function CreateJobPage() {
       "Job đã được mở public. Chuyên gia có thể nhìn thấy và gửi proposal.",
     );
     setCreateMessageTone("success");
+    setPublishSuccessOpen(true);
   };
 
   // ─── Derived helpers ───────────────────────────────────────────────────────
@@ -1227,6 +1250,35 @@ export function CreateJobPage() {
           </Card>
         )}
       </div>
+      <Modal
+        open={publishSuccessOpen}
+        onClose={() => setPublishSuccessOpen(false)}
+        title="Mở public job thành công"
+        description="Job đã hiển thị với chuyên gia và có thể nhận proposal mới."
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setPublishSuccessOpen(false)}
+            >
+              Đóng
+            </Button>
+            {savedJob && (
+              <LinkButton to={`/app/jobs/${savedJob.jobId}/manage`}>
+                Quản lý job
+              </LinkButton>
+            )}
+          </>
+        }
+      >
+        <Notice
+          tone="success"
+          title="Chuyên gia đã có thể nhìn thấy job này."
+        >
+          Bạn có thể vào màn quản lý để theo dõi proposal và tạo hợp đồng khi có chuyên gia phù hợp.
+        </Notice>
+      </Modal>
     </div>
   );
 }

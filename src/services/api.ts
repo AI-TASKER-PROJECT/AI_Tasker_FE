@@ -758,6 +758,12 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/deliverables`,
     });
   },
+  completeMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/complete`,
+    });
+  },
   runSlaAutoApprove() {
     return call<Milestone[]>({
       method: "POST",
