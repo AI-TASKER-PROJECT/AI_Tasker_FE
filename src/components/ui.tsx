@@ -99,13 +99,16 @@ export function Card({
   className,
   children,
   hover = false,
+  id,
 }: {
   className?: string;
   children: ReactNode;
   hover?: boolean;
+  id?: string;
 }) {
   return (
     <motion.div
+      id={id}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28 }}

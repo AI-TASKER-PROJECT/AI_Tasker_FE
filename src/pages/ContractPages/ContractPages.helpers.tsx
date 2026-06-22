@@ -251,7 +251,7 @@ export function ContractDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [contract?.contractId, contract?.jobId]);
+  }, [contract]);
 
   useEffect(() => {
     if (!contract) return;
@@ -285,7 +285,7 @@ export function ContractDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [contract?.businessId, contract?.expertId]);
+  }, [contract]);
 
   useEffect(() => {
     if (!contract || session?.role !== "BUSINESS") return;
@@ -303,7 +303,7 @@ export function ContractDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [contract?.contractId, session?.role]);
+  }, [contract, session?.role]);
 
   if (!contract)
     return (

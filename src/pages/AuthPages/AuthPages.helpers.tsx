@@ -760,50 +760,57 @@ function AuthFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-[#f7faff] px-4 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1fr_1.05fr]">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-700 p-8 text-white lg:min-h-[720px]">
+    <main className="flex min-h-screen items-center justify-center bg-[#f7faff] px-4 py-8">
+      <div className="mx-auto grid w-full max-w-6xl items-stretch gap-6 lg:grid-cols-2 lg:gap-8">
+        <Card className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-700 p-6 text-white lg:min-h-[560px] lg:p-8">
           <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/15 blur-3xl" />
           <div className="relative z-10">
-            <Logo className="[&_*]:text-white" />
-            <Badge tone="mint" className="mt-10">
-              <Sparkles className="h-3.5 w-3.5" />
-              Role-based workspace
-            </Badge>
-            <h1 className="mt-6 font-display text-4xl font-black tracking-[-0.05em]">
+            <div className="flex flex-wrap items-center gap-4">
+              <Logo className="[&_*]:text-white" />
+              <Badge tone="mint" className="mt-0">
+                <Sparkles className="h-3.5 w-3.5" />
+                Role-based workspace
+              </Badge>
+            </div>
+            <h1 className="mt-6 font-display text-3xl font-black leading-tight tracking-[-0.02em] lg:text-4xl">
               Một tài khoản, một vai trò, một luồng nghiệp vụ rõ ràng.
             </h1>
-            <p className="mt-5 max-w-md text-sm leading-7 text-blue-50">
+            <p className="mt-4 max-w-md text-[14px] leading-6 text-blue-50/90 lg:text-[15px] lg:leading-7">
               Sau đăng nhập, app tự điều hướng tới dashboard đúng role để tránh
               gọi chéo API sai thẩm quyền.
             </p>
+          </div>
+          <div className="relative z-10 mt-6 lg:mt-8">
             <img
               src="/images/ai-job-assistant.png"
               alt="AI job assistant"
-              className="mt-10 w-full rounded-[2rem] shadow-2xl ring-1 ring-white/20"
+              className="w-full rounded-[1.5rem] shadow-2xl ring-1 ring-white/20"
             />
           </div>
         </Card>
-        <div>
-          <LinkButton to="/" variant="ghost" className="mb-5">
-            ← Về trang chủ
-          </LinkButton>
-          <Card className="p-6 md:p-8">
-            <div className="mb-6">
-              <Badge tone="brand">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                JWT + RBAC
-              </Badge>
-              <h2 className="mt-4 font-display text-3xl font-black tracking-tight text-ink">
-                {title}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                {description}
-              </p>
-            </div>
+
+        <Card className="flex flex-col p-6 shadow-xl shadow-slate-200/50 md:p-8 lg:min-h-[560px]">
+          <div className="mb-2 flex justify-end">
+            <LinkButton to="/" variant="ghost" className="text-sm">
+              ← Về trang chủ
+            </LinkButton>
+          </div>
+          <div className="mb-6">
+            <Badge tone="brand">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              JWT + RBAC
+            </Badge>
+            <h2 className="mt-4 font-display text-2xl font-black tracking-tight text-ink lg:text-3xl">
+              {title}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {description}
+            </p>
+          </div>
+          <div className="flex-1">
             {children}
-          </Card>
-        </div>
+          </div>
+        </Card>
       </div>
     </main>
   );

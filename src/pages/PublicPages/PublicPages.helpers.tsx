@@ -11,6 +11,14 @@ import {
   Star,
   WalletCards,
   Search,
+  Eye,
+  BarChart3,
+  Workflow,
+  Cpu,
+  PenTool,
+  MessageSquareText,
+  Target,
+  FileSignature,
 } from "lucide-react";
 import {
   useEffect,
@@ -38,13 +46,7 @@ import {
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
-import type {
-  BusinessProfile,
-  ExpertProfile,
-  Job,
-  Milestone,
-  Portfolio,
-} from "../../types";
+import type { BusinessProfile, Job, Milestone } from "../../types";
 import { jobDomainLabel } from "./publicPages.utils";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
 import {
@@ -61,6 +63,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "../../components/ui";
+import { ScrollReveal } from "../../components/ui/ScrollReveal";
 
 function skillCountLabel(count: number) {
   return `${count} kỹ năng`;
@@ -88,14 +91,6 @@ function resolveDomainName(domainId: number, domains: Domain[]) {
     domains.find((domain) => domain.domainId === domainId)?.domainName ||
     `Lĩnh vực #${domainId}`
   );
-}
-
-function parseCatalogIds(value?: string) {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => Number.isFinite(item));
 }
 
 export function JobDomainBadge({
@@ -408,7 +403,10 @@ export function LandingPage() {
         <div className="absolute left-[-8rem] top-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[#d8e2ff]/45 blur-3xl" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(420px,1.02fr)] lg:gap-16">
           <div>
-            <Badge tone="brand" className="bg-[#df0e84] text-white ring-0 shadow-[0_6px_18px_rgba(223,14,132,.28)]">
+            <Badge
+              tone="brand"
+              className="bg-[#df0e84] text-white ring-0 shadow-[0_6px_18px_rgba(223,14,132,.28)]"
+            >
               <Sparkles className="h-3.5 w-3.5" />
               {session?.role === "BUSINESS"
                 ? "Không gian doanh nghiệp"
@@ -421,7 +419,7 @@ export function LandingPage() {
                       : "Nền tảng AI Freelance Số 1"}
             </Badge>
             <h1 className="mt-6 max-w-[42rem] font-display text-5xl font-black leading-[1.05] tracking-[-0.04em] text-[#27171d] md:text-[4.2rem]">
-              Nền tảng kết nối doanh nghiệp với{' '}
+              Nền tảng kết nối doanh nghiệp với{" "}
               <span className="inline-block text-[#b30069]">
                 chuyên gia AI
                 <span className="mt-1 block h-[4px] w-full rounded-full bg-[#0070ea]" />
@@ -452,15 +450,28 @@ export function LandingPage() {
             </div>
             <div className="mt-14 flex items-center gap-4 border-t border-[#f8dbe3] pt-8">
               <div className="flex -space-x-3">
-                <Avatar name="Lan Anh" size="sm" className="ring-2 ring-[#fff8f8]" />
-                <Avatar name="Minh Khoa" size="sm" className="ring-2 ring-[#fff8f8]" />
-                <Avatar name="Bao Ngoc" size="sm" className="ring-2 ring-[#fff8f8]" />
+                <Avatar
+                  name="Lan Anh"
+                  size="sm"
+                  className="ring-2 ring-[#fff8f8]"
+                />
+                <Avatar
+                  name="Minh Khoa"
+                  size="sm"
+                  className="ring-2 ring-[#fff8f8]"
+                />
+                <Avatar
+                  name="Bao Ngoc"
+                  size="sm"
+                  className="ring-2 ring-[#fff8f8]"
+                />
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-[#ffd9e4] text-xs font-bold text-[#b30069] ring-2 ring-[#fff8f8]">
                   5k+
                 </span>
               </div>
               <p className="text-base text-[#594048]">
-                Hơn <span className="font-extrabold text-[#27171d]">5,000+</span>{' '}
+                Hơn{" "}
+                <span className="font-extrabold text-[#27171d]">5,000+</span>{" "}
                 chuyên gia đã tham gia
               </p>
             </div>
@@ -480,7 +491,9 @@ export function LandingPage() {
                   <CheckCircle2 className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-[#27171d]">Hợp đồng ký kết</p>
+                  <p className="text-sm font-bold text-[#27171d]">
+                    Hợp đồng ký kết
+                  </p>
                   <p className="text-xs text-[#594048]">Vừa xong</p>
                 </div>
               </div>
@@ -537,24 +550,24 @@ export function LandingPage() {
             {[
               {
                 icon: <WalletCards className="h-5 w-5" />,
-                title: 'Ví điện tử & Thanh toán',
+                title: "Ví điện tử & Thanh toán",
                 description:
-                  'Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân khi bạn hài lòng với kết quả nghiệm thu.',
-                iconClassName: 'bg-white text-[#df0e84]',
+                  "Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân khi bạn hài lòng với kết quả nghiệm thu.",
+                iconClassName: "bg-white text-[#df0e84]",
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5" />,
-                title: 'Quản lý Tiến độ',
+                title: "Quản lý Tiến độ",
                 description:
-                  'Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và đánh giá từng giai đoạn.',
-                iconClassName: 'bg-[#2e7e94] text-white',
+                  "Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và đánh giá từng giai đoạn.",
+                iconClassName: "bg-[#2e7e94] text-white",
               },
               {
                 icon: <BriefcaseBusiness className="h-5 w-5" />,
-                title: 'Hợp đồng & NDA điện tử',
+                title: "Hợp đồng & NDA điện tử",
                 description:
-                  'Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính bảo mật và quyền sở hữu trí tuệ.',
-                iconClassName: 'bg-white text-[#0059bb]',
+                  "Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính bảo mật và quyền sở hữu trí tuệ.",
+                iconClassName: "bg-white text-[#0059bb]",
               },
             ].map((feature) => (
               <Card
@@ -586,7 +599,12 @@ export function LandingPage() {
                 title="Dự án đang nổi bật"
                 description="Dữ liệu được tải trực tiếp từ API job hiện có để giữ nguyên luồng public listing và điều hướng vào chi tiết job."
               />
-              <LinkButton to="/jobs" variant="secondary" size="sm" className="rounded-xl">
+              <LinkButton
+                to="/jobs"
+                variant="secondary"
+                size="sm"
+                className="rounded-xl"
+              >
                 Xem tất cả
               </LinkButton>
             </div>
@@ -600,16 +618,25 @@ export function LandingPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <JobDomainBadgeForJob jobId={job.jobId} className="mb-2" />
+                        <JobDomainBadgeForJob
+                          jobId={job.jobId}
+                          className="mb-2"
+                        />
                         <p className="font-bold text-[#27171d] transition group-hover:text-[#b30069]">
                           {job.title}
                         </p>
-                        <p className="mt-1 text-sm text-[#594048]">{job.companyName}</p>
+                        <p className="mt-1 text-sm text-[#594048]">
+                          {job.companyName}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge tone="mint">{formatCompactCurrency(job.budget)}</Badge>
-                      <Badge tone="slate">{job.proposalsCount || 0} đề xuất</Badge>
+                      <Badge tone="mint">
+                        {formatCompactCurrency(job.budget)}
+                      </Badge>
+                      <Badge tone="slate">
+                        {job.proposalsCount || 0} đề xuất
+                      </Badge>
                     </div>
                   </Link>
                 ))
@@ -632,8 +659,9 @@ export function LandingPage() {
                 Luồng tạo dự án vẫn giữ nguyên logic hiện có của ứng dụng.
               </h2>
               <p className="mt-4 text-base leading-7 text-blue-50">
-                CTA tiếp tục dùng route theo phiên đăng nhập hiện tại, còn form tạo
-                dự án, xác minh và điều hướng sau đăng nhập vẫn không thay đổi.
+                CTA tiếp tục dùng route theo phiên đăng nhập hiện tại, còn form
+                tạo dự án, xác minh và điều hướng sau đăng nhập vẫn không thay
+                đổi.
               </p>
               <div className="mt-8">
                 <LinkButton
@@ -641,7 +669,7 @@ export function LandingPage() {
                   variant="secondary"
                   className="rounded-xl border-white/30 bg-white text-[#0f69d8] hover:bg-white/90"
                 >
-                  {session ? publicExperience.primaryLabel : 'Bắt đầu dự án'}
+                  {session ? publicExperience.primaryLabel : "Bắt đầu dự án"}
                 </LinkButton>
               </div>
             </div>
@@ -817,15 +845,15 @@ export function JobsPage() {
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="Marketplace"
-        title="Cơ hội dự án AI"
-        description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
-        actions={
-          <LinkButton to={publicExperience.primaryPath}>
-            {publicExperience.primaryLabel}
-          </LinkButton>
-        }
-      />
+          eyebrow="Marketplace"
+          title="Cơ hội dự án AI"
+          description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
+          actions={
+            <LinkButton to={publicExperience.primaryPath}>
+              {publicExperience.primaryLabel}
+            </LinkButton>
+          }
+        />
       </div>
       <Card className="mt-8 p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -973,6 +1001,17 @@ export function JobCard({
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
 
+  const [businessName, setBusinessName] = useState(
+    job.companyName || "Doanh nghiệp",
+  );
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const session = useSession();
+  const businessProfilePath = business
+    ? session
+      ? `/app/businesses/${business.businessId}`
+      : `/business-profile/${business.businessId}`
+    : null;
+
   useEffect(() => {
     let ignore = false;
 
@@ -993,6 +1032,17 @@ export function JobCard({
       .catch(() => {
         if (!ignore) setSkillCount(0);
       });
+
+    profileApi
+      .getBusinessByJob(job.jobId)
+      .then((profile) => {
+        if (ignore) return;
+        setBusiness(profile);
+        if (profile?.companyName) {
+          setBusinessName(profile.companyName);
+        }
+      })
+      .catch(() => {});
 
     return () => {
       ignore = true;
@@ -1040,17 +1090,29 @@ export function JobCard({
           {milestoneCount} mốc
         </p>
       </div>
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-        <span className="text-xs font-semibold text-slate-400">
-          {job.companyName || "Doanh nghiệp"}
-        </span>
-        <LinkButton
-          to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`}
-          size="sm"
-          variant="secondary"
-        >
-          Chi tiết <ArrowRight className="h-4 w-4" />
-        </LinkButton>
+      <div className="mt-auto border-t border-slate-100 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold text-slate-400">
+            {businessName}
+          </span>
+          <LinkButton
+            to={manage ? `/app/jobs/${job.jobId}/manage` : `/jobs/${job.jobId}`}
+            size="sm"
+            variant="secondary"
+          >
+            Chi tiết <ArrowRight className="h-4 w-4" />
+          </LinkButton>
+        </div>
+        {businessProfilePath && (
+          <LinkButton
+            to={businessProfilePath}
+            size="sm"
+            variant="secondary"
+            className="mt-3 w-full"
+          >
+            Xem doanh nghiệp
+          </LinkButton>
+        )}
       </div>
     </Card>
   );
@@ -1146,6 +1208,11 @@ export function JobDetailPage() {
 
   const isOpenJob = job.status === "OPEN";
   const canSubmitProposal = session?.role === "EXPERT" && isOpenJob;
+  const businessProfilePath = business
+    ? session
+      ? `/app/businesses/${business.businessId}`
+      : `/business-profile/${business.businessId}`
+    : null;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
@@ -1238,6 +1305,11 @@ export function JobDetailPage() {
                 value={`${milestones.length} mốc`}
               />
             </div>
+            {businessProfilePath && (
+              <LinkButton to={businessProfilePath} className="mt-5 w-full">
+                Xem hồ sơ doanh nghiệp đầy đủ
+              </LinkButton>
+            )}
             <Button
               type="button"
               variant="secondary"
@@ -1521,435 +1593,302 @@ function ChipGrid({
 }
 
 export function ExpertDirectoryPage() {
-  const [experts, setExperts] = useState<ExpertProfile[]>([]);
-  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [domains, setDomains] = useState<Domain[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [technologies, setTechnologies] = useState<Technology[]>([]);
-  const [query, setQuery] = useState("");
-  const [domainFilterOpen, setDomainFilterOpen] = useState(false);
-  const [skillFilterOpen, setSkillFilterOpen] = useState(false);
-  const [technologyFilterOpen, setTechnologyFilterOpen] = useState(false);
-  const [experienceFilter, setExperienceFilter] = useState<
-    "ALL" | "UNDER_5" | "FROM_5_TO_10" | "OVER_10"
-  >("ALL");
-  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
-  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
-  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadExperts() {
-      setLoading(true);
-      setError("");
-      try {
-        const [
-          expertItems,
-          portfolioItems,
-          domainItems,
-          skillItems,
-          technologyItems,
-        ] = await Promise.all([
-          profileApi.listExperts(),
-          profileApi.listPortfolios(),
-          catalogApi.listDomains(true),
-          catalogApi.listSkills(true),
-          catalogApi.listTechnologies(true),
-        ]);
-        if (ignore) return;
-        setExperts(expertItems);
-        setPortfolios(portfolioItems);
-        setDomains(domainItems);
-        setSkills(skillItems);
-        setTechnologies(technologyItems);
-      } catch {
-        if (ignore) return;
-        setExperts([]);
-        setPortfolios([]);
-        setDomains([]);
-        setSkills([]);
-        setTechnologies([]);
-        setError(
-          "Chua lay duoc du lieu chuyen gia tu backend. Vui long kiem tra server hoac quyen truy cap API.",
-        );
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    loadExperts();
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const portfolioByExpertId = useMemo(
-    () =>
-      new Map(portfolios.map((portfolio) => [portfolio.expertId, portfolio])),
-    [portfolios],
-  );
-
-  const toggleSelectedId = (
-    value: number,
-    setter: Dispatch<SetStateAction<number[]>>,
-  ) => {
-    setter((items) =>
-      items.includes(value)
-        ? items.filter((item) => item !== value)
-        : [...items, value],
-    );
-  };
-
-  const filteredExperts = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const matchesAny = (selectedIds: number[], candidateIds: number[]) =>
-      selectedIds.length === 0 ||
-      selectedIds.some((selectedId) => candidateIds.includes(selectedId));
-
-    return experts.filter((expert) => {
-      const portfolio = portfolioByExpertId.get(expert.expertId);
-      const experience =
-        portfolio?.yearsExperience ?? expert.yearsOfExperience ?? 0;
-      const domainIds = parseCatalogIds(portfolio?.domainIds);
-      const skillIds = parseCatalogIds(portfolio?.skillIds);
-      const technologyIds = parseCatalogIds(portfolio?.technologyIds);
-      const skillNames = skillIds.map((skillId) =>
-        resolveSkillName(skillId, skills),
-      );
-      const domainNames = domainIds.map((domainId) =>
-        resolveDomainName(domainId, domains),
-      );
-      const technologyNames = technologyIds.map((technologyId) =>
-        resolveTechnologyName(technologyId, technologies),
-      );
-      const searchable = [
-        expert.fullName,
-        expert.title,
-        expert.phone,
-        portfolio?.selfDescription,
-        ...skillNames,
-        ...domainNames,
-        ...technologyNames,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return (
-        (!normalizedQuery || searchable.includes(normalizedQuery)) &&
-        (experienceFilter === "ALL" ||
-          (experienceFilter === "UNDER_5" && experience < 5) ||
-          (experienceFilter === "FROM_5_TO_10" &&
-            experience >= 5 &&
-            experience <= 10) ||
-          (experienceFilter === "OVER_10" && experience > 10)) &&
-        matchesAny(selectedDomainIds, domainIds) &&
-        matchesAny(selectedSkillIds, skillIds) &&
-        matchesAny(selectedTechnologyIds, technologyIds)
-      );
-    });
-  }, [
-    domains,
-    experienceFilter,
-    experts,
-    portfolioByExpertId,
-    query,
-    selectedDomainIds,
-    selectedSkillIds,
-    selectedTechnologyIds,
-    skills,
-    technologies,
-  ]);
-
-  const hasActiveFilters =
-    query ||
-    experienceFilter !== "ALL" ||
-    selectedDomainIds.length > 0 ||
-    selectedSkillIds.length > 0 ||
-    selectedTechnologyIds.length > 0;
-
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader
-        eyebrow="Expert network"
-        title="Danh bạ chuyên gia AI"
-        description="Giao diện phục vụ matching, review uy tín và lựa chọn chuyên gia. Khi API public expert profile chưa có dữ liệu, trang hiển thị trạng thái trống."
-      />
-      </div>
-
-      <Card className="mt-8 p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Tim theo ten, ky nang, linh vuc, cong nghe..."
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!hasActiveFilters}
-            onClick={() => {
-              setQuery("");
-              setExperienceFilter("ALL");
-              setSelectedDomainIds([]);
-              setSelectedSkillIds([]);
-              setSelectedTechnologyIds([]);
-            }}
-          >
-            <Search className="h-4 w-4" />
-            Tìm kiếm
-          </Button>
-        </div>
-      </Card>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Card className="p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
-                <Filter className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-lg font-extrabold text-ink">
-                  Loc nang cao
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Chon tieu chi de tim chuyen gia phu hop.
-                </p>
-              </div>
-            </div>
-
-            <div className="my-5 border-t border-slate-200/80" />
-
-            <section>
-              <p className="text-sm font-extrabold text-ink">Kinh nghiem</p>
-              <div className="mt-3 grid gap-3">
-                {[
-                  { value: "ALL", label: "Khong loc" },
-                  { value: "UNDER_5", label: "Duoi 5 nam" },
-                  { value: "FROM_5_TO_10", label: "Tu 5-10 nam" },
-                  { value: "OVER_10", label: "Tren 10 nam" },
-                ].map((item) => {
-                  const selected = experienceFilter === item.value;
-                  return (
-                    <label
-                      key={item.value}
-                      className="flex cursor-pointer items-center gap-3 rounded-2xl px-1 py-1 text-sm font-semibold text-slate-700"
-                    >
-                      <input
-                        type="radio"
-                        name="experience-filter"
-                        checked={selected}
-                        onChange={() =>
-                          setExperienceFilter(
-                            item.value as
-                              | "ALL"
-                              | "UNDER_5"
-                              | "FROM_5_TO_10"
-                              | "OVER_10",
-                          )
-                        }
-                        className="h-5 w-5 accent-emerald-600"
-                      />
-                      {item.label}
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
-
-            <div className="my-5 border-t border-dashed border-slate-200" />
-
-            <div className="grid gap-3">
-              <FilterAccordion
-                title="Linh vuc"
-                count={selectedDomainIds.length}
-                open={domainFilterOpen}
-                onToggle={() => setDomainFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={domains.map((domain) => ({
-                    id: domain.domainId,
-                    label: domain.domainName,
-                    selected: selectedDomainIds.includes(domain.domainId),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) => toggleSelectedId(id, setSelectedDomainIds)}
-                />
-              </FilterAccordion>
-
-              <FilterAccordion
-                title="Ky nang"
-                count={selectedSkillIds.length}
-                open={skillFilterOpen}
-                onToggle={() => setSkillFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={skills.map((skill) => ({
-                    id: skill.skillId,
-                    label: skill.skillName,
-                    selected: selectedSkillIds.includes(skill.skillId),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) => toggleSelectedId(id, setSelectedSkillIds)}
-                />
-              </FilterAccordion>
-
-              <FilterAccordion
-                title="Cong nghe"
-                count={selectedTechnologyIds.length}
-                open={technologyFilterOpen}
-                onToggle={() => setTechnologyFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={technologies.map((technology) => ({
-                    id: technology.technologyId,
-                    label: technology.technologyName,
-                    selected: selectedTechnologyIds.includes(
-                      technology.technologyId,
-                    ),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) =>
-                    toggleSelectedId(id, setSelectedTechnologyIds)
+    <div className="bg-[#f7faff] pb-24 pt-16">
+      <main className="mx-auto max-w-7xl px-4 md:px-6">
+        {/* Section 1: Hero */}
+        <ScrollReveal>
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div>
+              <Badge tone="brand">EXPERT NETWORK</Badge>
+              <h1 className="mt-6 font-display text-4xl font-black leading-tight tracking-[-0.02em] text-ink lg:text-5xl lg:leading-[1.15]">
+                Mạng lưới chuyên gia AI sẵn sàng đồng hành cùng doanh nghiệp
+              </h1>
+              <p className="mt-6 text-lg leading-8 text-slate-600">
+                Kết nối với các chuyên gia AI đã được chọn lọc, có năng lực thực
+                chiến và phù hợp với nhu cầu dự án của bạn — từ tư vấn chiến
+                lược, xây dựng chatbot, automation, phân tích dữ liệu đến triển
+                khai mô hình AI.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <LinkButton size="lg" to="/app/jobs/new">
+                  Bắt đầu dự án
+                </LinkButton>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  onClick={() =>
+                    document
+                      .getElementById("process-section")
+                      ?.scrollIntoView({ behavior: "smooth" })
                   }
-                />
-              </FilterAccordion>
+                >
+                  Tìm hiểu quy trình
+                </Button>
+              </div>
             </div>
+            <div className="relative">
+              <div className="relative mx-auto max-w-md">
+                <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-tr from-brand-100 to-indigo-100 opacity-50 blur-2xl" />
+                <Card className="relative overflow-hidden border border-brand-100/50 bg-white p-2 shadow-2xl shadow-brand-500/10">
+                  <div className="rounded-3xl bg-slate-50 p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-100 text-brand-600">
+                        <Bot className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="h-4 w-32 rounded-full bg-slate-200" />
+                        <div className="mt-2 h-3 w-20 rounded-full bg-slate-200" />
+                      </div>
+                    </div>
+                    <div className="mt-6 grid gap-3">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-slate-100" />
+                            <div className="h-3 w-24 rounded-full bg-slate-100" />
+                          </div>
+                          <div className="h-6 w-16 rounded-full bg-emerald-50" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 flex items-center justify-center gap-2 text-sm font-semibold text-brand-600">
+                      <Sparkles className="h-4 w-4" />
+                      AI Matching System
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
 
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200/80 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!hasActiveFilters}
-                onClick={() => {
-                  setQuery("");
-                  setExperienceFilter("ALL");
-                  setSelectedDomainIds([]);
-                  setSelectedSkillIds([]);
-                  setSelectedTechnologyIds([]);
-                }}
+        {/* Section 2: Trust metrics */}
+        <ScrollReveal>
+          <div className="mt-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Chuyên gia đã tham gia", value: "5,000+" },
+              { label: "Lĩnh vực AI", value: "30+" },
+              { label: "Hồ sơ được kiểm tra", value: "100%" },
+              { label: "Hợp đồng & thanh toán", value: "Minh bạch" },
+            ].map((metric) => (
+              <Card
+                key={metric.label}
+                className="flex flex-col items-center justify-center p-8 text-center"
               >
-                Xoa loc
-              </Button>
-              <Button type="button" onClick={() => {}}>
-                Luu bo loc
-              </Button>
-            </div>
-          </Card>
-        </aside>
+                <p className="font-display text-4xl font-black text-brand-600">
+                  {metric.value}
+                </p>
+                <p className="mt-3 text-sm font-bold text-slate-600">
+                  {metric.label}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </ScrollReveal>
 
-        <section>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-slate-400">
-              Hien thi {filteredExperts.length}/{experts.length} chuyen gia phu
-              hop.
+        {/* Section 3: AI Capabilities Grid */}
+        <ScrollReveal>
+          <div className="mt-32 text-center">
+            <h2 className="font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Chuyên gia AI cho mọi nhu cầu
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+              Đội ngũ chuyên gia đa dạng, đáp ứng toàn diện vòng đời phát triển
+              dự án AI của doanh nghiệp.
             </p>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {error && (
-              <Notice className="col-span-full" tone="warning" title={error} />
-            )}
-            {loading &&
-              Array.from({ length: 4 }).map((_, index) => (
-                <Card
-                  key={`expert-skeleton-${index}`}
-                  className="h-72 animate-pulse bg-slate-50 p-5"
-                >
-                  <span className="sr-only">Dang tai chuyen gia</span>
-                </Card>
-              ))}
-            {!loading && filteredExperts.length === 0 && !error && (
-              <div className="col-span-full">
-                <EmptyState
-                  title={
-                    experts.length === 0
-                      ? "Chua co chuyen gia"
-                      : "Khong tim thay chuyen gia phu hop"
-                  }
-                  description={
-                    experts.length === 0
-                      ? "Khi backend co ho so chuyen gia, danh sach se hien thi tai day."
-                      : "Thu bo bot linh vuc, ky nang, cong nghe hoac doi tu khoa tim kiem."
-                  }
-                />
-              </div>
-            )}
-            {!loading &&
-              filteredExperts.map((expert) => {
-                const portfolio = portfolioByExpertId.get(expert.expertId);
-                const skillNames = parseCatalogIds(portfolio?.skillIds)
-                  .map((skillId) => resolveSkillName(skillId, skills))
-                  .slice(0, 3);
-                const experience =
-                  portfolio?.yearsExperience ?? expert.yearsOfExperience ?? 0;
-                const displayName =
-                  expert.fullName || `Expert #${expert.expertId}`;
-                const description =
-                  portfolio?.selfDescription ||
-                  expert.title ||
-                  "Chuyen gia AI tren AITASKER";
-
-                return (
-                  <Card
-                    key={expert.expertId}
-                    hover
-                    className="flex h-full flex-col p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <Avatar name={displayName} size="xl" />
-                      <StatusBadge status={expert.kycStatus} />
-                    </div>
-                    <h3 className="mt-4 min-h-12 line-clamp-2 font-display text-lg font-extrabold leading-6 text-ink">
-                      {displayName}
-                    </h3>
-                    <p className="mt-1 min-h-16 line-clamp-3 text-sm leading-6 text-slate-500">
-                      {description}
-                    </p>
-                    <div className="mt-4 flex items-center gap-2">
-                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      <span className="text-sm font-extrabold text-ink">
-                        {experience} nam kinh nghiem
-                      </span>
-                    </div>
-                    <div className="mt-4 flex min-h-16 flex-wrap content-start gap-2">
-                      {skillNames.length > 0 ? (
-                        skillNames.map((skill) => (
-                          <Badge key={skill} tone="slate">
-                            {skill}
-                          </Badge>
-                        ))
-                      ) : (
-                        <Badge tone="slate">Chua cap nhat ky nang</Badge>
-                      )}
-                    </div>
-                    <div className="mt-auto pt-5">
-                      {expert.portfolioUrl ? (
-                        <FirebaseFileLink
-                          path={expert.portfolioUrl}
-                          buttonText="Xem nang luc"
-                          emptyText="Chua co ho so nang luc"
-                        />
-                      ) : (
-                        <Button className="w-full" variant="secondary" disabled>
-                          Chua co ho so nang luc
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                title: "AI Strategy Consultant",
+                desc: "Tư vấn lộ trình ứng dụng AI, đánh giá tính khả thi và thiết kế kiến trúc hệ thống.",
+                icon: <BriefcaseBusiness />,
+              },
+              {
+                title: "Chatbot & Conversational AI",
+                desc: "Xây dựng trợ lý ảo thông minh, tích hợp LLMs vào quy trình chăm sóc khách hàng.",
+                icon: <Bot />,
+              },
+              {
+                title: "Computer Vision",
+                desc: "Phân tích hình ảnh, nhận diện khuôn mặt, OCR và kiểm tra chất lượng tự động.",
+                icon: <Eye />,
+              },
+              {
+                title: "Data Science & Analytics",
+                desc: "Khai phá dữ liệu, dự báo xu hướng và xây dựng dashboard BI nâng cao.",
+                icon: <BarChart3 />,
+              },
+              {
+                title: "Workflow Automation",
+                desc: "Tự động hóa quy trình nghiệp vụ với AI agent, n8n, Zapier và RPA.",
+                icon: <Workflow />,
+              },
+              {
+                title: "Machine Learning Engineer",
+                desc: "Huấn luyện, fine-tune và deploy các mô hình ML lên môi trường production.",
+                icon: <Cpu />,
+              },
+              {
+                title: "AI Product Designer",
+                desc: "Thiết kế trải nghiệm người dùng tối ưu cho các sản phẩm tích hợp AI.",
+                icon: <PenTool />,
+              },
+              {
+                title: "Prompt Engineer",
+                desc: "Tối ưu hóa câu lệnh giao tiếp với AI để đạt được kết quả chính xác cao nhất.",
+                icon: <MessageSquareText />,
+              },
+            ].map((role) => (
+              <Card key={role.title} hover className="p-6">
+                <span className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+                  {role.icon}
+                </span>
+                <h3 className="text-lg font-extrabold text-ink">
+                  {role.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {role.desc}
+                </p>
+              </Card>
+            ))}
           </div>
-        </section>
-      </div>
-    </main>
+        </ScrollReveal>
+
+        {/* Section 4: Why choose AITASKER experts? */}
+        <ScrollReveal>
+          <div className="mt-32">
+            <h2 className="text-center font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Vì sao doanh nghiệp chọn chuyên gia trên AITASKER?
+            </h2>
+            <div className="mt-12 grid gap-8 lg:grid-cols-4">
+              {[
+                {
+                  title: "Hồ sơ được xác minh",
+                  desc: "Mọi chuyên gia đều phải trải qua quá trình KYC và kiểm định năng lực khắt khe.",
+                  icon: <ShieldCheck />,
+                  color: "text-emerald-600",
+                  bg: "bg-emerald-50",
+                },
+                {
+                  title: "AI gợi ý chuyên gia",
+                  desc: "Hệ thống AI tự động phân tích SoW và match đúng chuyên gia phù hợp nhất.",
+                  icon: <Sparkles />,
+                  color: "text-blue-600",
+                  bg: "bg-blue-50",
+                },
+                {
+                  title: "Làm việc theo milestone",
+                  desc: "Chia nhỏ dự án thành các cột mốc rõ ràng, dễ dàng nghiệm thu và quản lý rủi ro.",
+                  icon: <Target />,
+                  color: "text-brand-600",
+                  bg: "bg-brand-50",
+                },
+                {
+                  title: "Minh bạch hợp đồng & escrow",
+                  desc: "Hợp đồng điện tử, NDA bảo mật và cơ chế giữ tiền an toàn cho cả hai bên.",
+                  icon: <FileSignature />,
+                  color: "text-indigo-600",
+                  bg: "bg-indigo-50",
+                },
+              ].map((reason) => (
+                <div key={reason.title} className="text-center">
+                  <span
+                    className={`mx-auto grid h-16 w-16 place-items-center rounded-[2rem] ${reason.bg} ${reason.color} mb-6`}
+                  >
+                    {reason.icon}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-ink">
+                    {reason.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    {reason.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* Section 5: Process */}
+        <ScrollReveal>
+          <Card
+            id="process-section"
+            className="mt-32 bg-gradient-to-br from-white to-slate-50/50 p-8 md:p-12 lg:p-16"
+          >
+            <h2 className="text-center font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Quy trình kết nối chuyên gia
+            </h2>
+            <div className="relative mt-16 grid gap-12 lg:grid-cols-4">
+              <div className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-px bg-slate-200 lg:block" />
+              {[
+                {
+                  step: 1,
+                  title: "Mô tả nhu cầu",
+                  desc: "Doanh nghiệp đăng tải yêu cầu dự án AI cần giải quyết.",
+                },
+                {
+                  step: 2,
+                  title: "AI gợi ý chuyên gia",
+                  desc: "Hệ thống phân tích và đề xuất chuyên gia phù hợp năng lực.",
+                },
+                {
+                  step: 3,
+                  title: "Ký hợp đồng",
+                  desc: "Trao đổi proposal, chốt ngân sách và ký hợp đồng điện tử.",
+                },
+                {
+                  step: 4,
+                  title: "Nghiệm thu",
+                  desc: "Theo dõi milestone, nghiệm thu công việc và thanh toán.",
+                },
+              ].map((step) => (
+                <div key={step.step} className="relative z-10 text-center">
+                  <span className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full border-4 border-[#f7faff] bg-brand-600 text-xl font-black text-white shadow-xl shadow-brand-600/20">
+                    {step.step}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    {step.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </ScrollReveal>
+
+        {/* Section 6: Trust features */}
+        <ScrollReveal>
+          <div className="mt-32 border-y border-slate-200/60 py-16">
+            <div className="mb-12 text-center">
+              <h2 className="font-display text-2xl font-black text-ink">
+                Hợp tác minh bạch & tin cậy
+              </h2>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+              {[
+                "Định danh KYC/KYB",
+                "Ký NDA điện tử",
+                "Hợp đồng pháp lý",
+                "Thanh toán Escrow",
+                "Đánh giá năng lực",
+                "Hỗ trợ giải quyết tranh chấp",
+              ].map((feature) => (
+                <div key={feature} className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <span className="font-bold text-slate-600">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+      </main>
+    </div>
   );
 }

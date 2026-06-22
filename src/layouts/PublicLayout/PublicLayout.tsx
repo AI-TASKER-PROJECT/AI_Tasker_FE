@@ -12,9 +12,10 @@ import { getPublicStartPath, getWorkspacePath } from "../../lib/roleExperience";
 import { cn } from "../../lib/utils";
 
 const nav = [
+  { label: "Trang chủ", to: "/home" },
   { label: "Doanh nghiệp", to: "/jobs" },
   { label: "Chuyên gia", to: "/experts" },
-  { label: "Cách hoạt động", to: "/how-it-works" },
+  { label: "Quy trình", to: "/how-it-works" },
 ];
 
 export function PublicShell() {
@@ -216,7 +217,7 @@ export function PublicShell() {
           <div>
             <Logo className="opacity-80" />
             <p className="mt-4 max-w-xs text-sm leading-7 text-[#594048]">
-              © 2024 AITASKER. Nền tảng kết nối AI hàng đầu.
+              © 2026 AITASKER. Nền tảng kết nối AI hàng đầu.
             </p>
             <div className="mt-4 flex items-center gap-4 text-[#594048]">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px]">
@@ -263,7 +264,9 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wider text-ink">{title}</h3>
+      <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wider text-ink">
+        {title}
+      </h3>
       <div className="grid gap-3">
         {links.map((link) =>
           link.to ? (
@@ -275,7 +278,10 @@ function FooterColumn({
               {link.label}
             </Link>
           ) : (
-            <span key={link.label} className="text-sm text-[#594048] underline opacity-80">
+            <span
+              key={link.label}
+              className="text-sm text-[#594048] underline opacity-80"
+            >
               {link.label}
             </span>
           ),
