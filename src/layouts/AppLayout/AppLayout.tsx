@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   BadgeCheck,
   BarChart3,
   Bell,
@@ -350,6 +351,7 @@ export function AppShell() {
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.role;
+  const showBackButton = location.pathname !== "/app";
   const accountStatus = session?.accountStatus || "Approved";
   const needsVerification =
     !!session &&
@@ -1094,6 +1096,18 @@ export function AppShell() {
         </header>
         <main className="px-4 py-6 md:px-6 md:py-8">
           <div className="mx-auto max-w-[1440px]">
+            {showBackButton && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mb-5"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Quay lại
+              </Button>
+            )}
             {needsVerification && (
               <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                 Tai khoan dang o trang thai {accountStatus}. Hay hoan thien ho

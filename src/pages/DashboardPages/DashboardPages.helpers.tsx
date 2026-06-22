@@ -256,6 +256,7 @@ export function DashboardPage() {
                 to={`/app/notifications?notificationId=${item.notificationId}`}
                 title={item.title}
                 description={`${formatNotificationTime(item.createdAt)} - ${item.message}`}
+                descriptionClassName="line-clamp-2 whitespace-normal break-words leading-5"
                 leading={
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 text-brand-600">
                     <Bell className="h-4 w-4" />
@@ -373,7 +374,7 @@ export function NotificationsPage() {
           notifications.map((item) => {
             const tone = notificationTone(item);
             const isSelected = selectedNotification?.notificationId === item.notificationId;
-            const targetHref = item.targetUrl ? notificationHref(item.targetUrl) : null;
+            const targetHref = notificationHref(item.targetUrl, item);
 
             return (
               <Card

@@ -1,15 +1,15 @@
-import { ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Logo } from "../../components/Logo";
-import { Avatar, LinkButton } from "../../components/ui";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { getPublicStartPath, getWorkspacePath } from "../../lib/roleExperience";
 import {
   clearSession,
   roleLabel,
   useSession,
 } from "../../context/sessionContext";
-import { getPublicStartPath, getWorkspacePath } from "../../lib/roleExperience";
 import { cn } from "../../lib/utils";
+import { Logo } from "../../components/Logo";
+import { Avatar, Button, LinkButton } from "../../components/ui";
 
 const nav = [
   { label: "Trang chủ", to: "/home" },
@@ -23,8 +23,10 @@ export function PublicShell() {
   const [accountOpen, setAccountOpen] = useState(false);
   const session = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
   const startPath = getPublicStartPath(session);
   const workspacePath = getWorkspacePath(session);
+  const showBackButton = location.pathname !== "/";
   const publicNav = nav.filter((item) => {
     if (session?.role === "EXPERT") return item.to !== "/experts";
     if (session?.role === "BUSINESS") return item.to !== "/jobs";
@@ -211,6 +213,19 @@ export function PublicShell() {
           </div>
         )}
       </header>
+      {showBackButton && (
+        <div className="mx-auto max-w-7xl px-4 pt-5 md:px-6">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </Button>
+        </div>
+      )}
       <Outlet />
       <footer id="about" className="bg-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:px-6">

@@ -7,7 +7,6 @@ import type {
   AuditLog,
   BusinessProfile,
   Contract,
-  ContractChangeRequest,
   ContractDeposit,
   CreatePayOSPaymentResponse,
   Deliverable,
@@ -381,7 +380,8 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/profiles/expert/portfolio-file", //cập nhật hồ sơ năng lực
+      // Backend hiện chỉ expose endpoint upload file expert dưới nhánh portfolio.
+      url: "/api/v1/profiles/portfolio/certificate-file", //cập nhật hồ sơ năng lực
       data: formData,
     });
   },
@@ -666,13 +666,6 @@ export const contractApi = {
       data: payload,
     });
   },
-  requestChange(payload: Partial<ContractChangeRequest>) {
-    return call<ContractChangeRequest>({
-      method: "POST",
-      url: "/api/v1/contracts/change-requests",
-      data: payload,
-    });
-  },
   activate(contractId: number) {
     return call<Contract>({
       method: "POST",
@@ -753,6 +746,12 @@ export const contractApi = {
     return call<Deliverable[]>({
       method: "GET",
       url: `/api/v1/milestones/${milestoneId}/deliverables`,
+    });
+  },
+  completeMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/complete`,
     });
   },
   runSlaAutoApprove() {

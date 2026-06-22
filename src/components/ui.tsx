@@ -464,10 +464,16 @@ export function Modal({
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }) {
   if (!open) return null;
-  const sizes = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl' };
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-xl',
+    lg: 'max-w-3xl',
+    xl: 'max-w-5xl',
+    '2xl': 'max-w-7xl',
+  };
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <motion.button
@@ -590,12 +596,14 @@ export function ListLink({
   description,
   leading,
   trailing,
+  descriptionClassName,
 }: {
   to: string;
   title: string;
   description?: string;
   leading?: ReactNode;
   trailing?: ReactNode;
+  descriptionClassName?: string;
 }) {
   return (
     <Link
@@ -605,7 +613,16 @@ export function ListLink({
       {leading}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-ink">{title}</p>
-        {description && <p className="mt-0.5 truncate text-xs text-slate-500">{description}</p>}
+        {description && (
+          <p
+            className={cn(
+              "mt-0.5 text-xs text-slate-500",
+              descriptionClassName || "truncate",
+            )}
+          >
+            {description}
+          </p>
+        )}
       </div>
       {trailing || <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500" />}
     </Link>

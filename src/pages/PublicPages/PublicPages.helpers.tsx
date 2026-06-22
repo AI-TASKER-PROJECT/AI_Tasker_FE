@@ -45,7 +45,7 @@ import {
 } from "../../lib/api";
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
-import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
+import { formatCompactCurrency, formatCurrency, formatDate } from "../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../types";
 import { jobDomainLabel } from "./publicPages.utils";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
@@ -1090,6 +1090,12 @@ export function JobCard({
           {milestoneCount} mốc
         </p>
       </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <p className="text-xs font-bold text-slate-400">Ngay tao job</p>
+        <p className="mt-1 text-sm font-extrabold text-ink">
+          {formatDate(job.createdAt)}
+        </p>
+      </div>
       <div className="mt-auto border-t border-slate-100 pt-4">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-semibold text-slate-400">
@@ -1486,6 +1492,9 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
               <p className="mt-1 text-xs font-semibold text-slate-400">
                 {milestone.status || "Pending"}
               </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                Thời gian: {formatMilestoneDuration(milestone)}
+              </p>
             </div>
             <p className="text-sm font-extrabold text-ink md:text-right">
               {formatCurrency(milestone.fundsAllocated)}
@@ -1494,6 +1503,14 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
         ))}
     </div>
   );
+}
+
+function formatMilestoneDuration(milestone: Milestone) {
+  const duration = Number(milestone.duration || 0);
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return "Chưa có thời gian";
+  }
+  return `${duration} ${milestone.durationUnit || "tuần"}`;
 }
 
 function BusinessInfoItem({

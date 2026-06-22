@@ -89,6 +89,8 @@ export interface ContractMilestone {
   originalBudget: number;
   finalBudget: number;
   orderIndex: number;
+  duration?: number;
+  durationUnit?: string;
   status: string;
   createdAt?: string;
   updatedAt?: string;
@@ -118,20 +120,6 @@ export interface Contract {
   expertName?: string;
   progress?: number;
   contractMilestones?: ContractMilestone[];
-}
-
-export interface ContractChangeRequest {
-  requestId: number;
-  contractId: number;
-  requestedByAccountId: number;
-  changeType: string;
-  changeSummary: string;
-  proposedBudget?: number;
-  proposedTimelineDays?: number;
-  status: string;
-  reviewedByAccountId?: number;
-  reviewedAt?: string;
-  createdAt?: string;
 }
 
 export interface ContractDeposit {
@@ -172,6 +160,8 @@ export interface Milestone {
   description?: string;
   fundsAllocated: number;
   orderIndex: number;
+  duration?: number;
+  durationUnit?: string;
   status: string;
   criteriaIds?: number[];
   criteria?: AcceptanceCriteria[];
