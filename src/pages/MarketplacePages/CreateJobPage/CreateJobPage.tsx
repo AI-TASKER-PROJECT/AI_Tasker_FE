@@ -371,7 +371,7 @@ export function CreateJobPage() {
 
       const structuredSow = formatGeneratedSow(
         response.sow,
-        response.milestones,
+        
       );
       setGeneratedSow(response.sow || null);
       setForm((value) => ({
