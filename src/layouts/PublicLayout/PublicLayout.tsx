@@ -15,7 +15,7 @@ const nav = [
   { label: "Trang chủ", to: "/home" },
   { label: "Doanh nghiệp", to: "/jobs" },
   { label: "Chuyên gia", to: "/experts" },
-  { label: "Quy trình", to: "/how-it-works" },
+  { label: "Về AITASKER", to: "/about" },
 ];
 
 export function PublicShell() {
@@ -25,11 +25,7 @@ export function PublicShell() {
   const navigate = useNavigate();
   const startPath = getPublicStartPath(session);
   const workspacePath = getWorkspacePath(session);
-  const publicNav = nav.filter((item) => {
-    if (session?.role === "EXPERT") return item.to !== "/experts";
-    if (session?.role === "BUSINESS") return item.to !== "/jobs";
-    return true;
-  });
+  const publicNav = nav;
 
   const logout = () => {
     clearSession();
@@ -130,7 +126,7 @@ export function PublicShell() {
                   to="/register"
                   className="h-10 rounded-lg bg-[#b30069] px-4 text-sm font-semibold shadow-sm hover:bg-[#b8006c]"
                 >
-                  Bắt đầu dự án
+                  Bắt dầu dự án
                 </LinkButton>
               </>
             )}
@@ -203,7 +199,7 @@ export function PublicShell() {
                     to="/register"
                     className="rounded-lg bg-[#b30069] shadow-sm hover:bg-[#b8006c]"
                   >
-                    Bắt đầu dự án
+                    Bắt dầu dự án
                   </LinkButton>
                 </div>
               )}
@@ -217,7 +213,7 @@ export function PublicShell() {
           <div>
             <Logo className="opacity-80" />
             <p className="mt-4 max-w-xs text-sm leading-7 text-[#594048]">
-              © 2026 AITASKER. Nền tảng kết nối AI hàng đầu.
+              © 2026 AITASKER. Nền tảng kết nối AI hàng dầu.
             </p>
             <div className="mt-4 flex items-center gap-4 text-[#594048]">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px]">

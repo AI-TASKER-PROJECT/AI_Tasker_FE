@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+﻿/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
@@ -104,7 +104,7 @@ export function ProposalsPage() {
               uniqueJobIds.map((id) => catalogApi.listJobDomains(id)), //api Lấy danh sách các Lĩnh vực dựa trên JobId
             ),
             Promise.allSettled(
-              uniqueJobIds.map((id) => contractApi.listJobMilestones(id)), //api Lấy danh sách tất cả các mốc tiến độ dựa trên id
+              uniqueJobIds.map((id) => contractApi.listJobMilestones(id)), //api Lấy danh sách tất cả các mốc tiến dộ dựa trên id
             ),
             contractApi.listContracts().catch(() => []),
           ]);
@@ -192,7 +192,6 @@ export function ProposalsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="MATCH-02"
         title="Proposal của tôi"
         description="Theo dõi proposal đã gửi, trạng thái xét duyệt, bid amount và nội dung giải pháp đã nộp."
         actions={

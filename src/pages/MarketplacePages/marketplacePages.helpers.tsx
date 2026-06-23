@@ -28,9 +28,15 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
               <p className="break-words font-extrabold text-ink">
                 {milestone.milestoneName}
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-400">
-                {milestone.status || "Pending"}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                <span>{milestone.status || "Pending"}</span>
+                <span className="flex items-center gap-1">
+                  • {(() => {
+                    const dVal = milestone.durationValue ?? (milestone as any).duration;
+                    return dVal && dVal > 0 ? `${dVal} ${milestone.durationUnit || "WEEK"}` : "Chưa xác định";
+                  })()}
+                </span>
+              </div>
             </div>
             <p className="font-extrabold text-ink md:text-right">
               {formatCurrency(milestone.fundsAllocated)}

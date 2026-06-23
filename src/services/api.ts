@@ -74,7 +74,7 @@ export function getApiErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {
       return error.message;
     }
-    return "Đã có lỗi không xác định.";
+    return "Đã có lỗi không xác dịnh.";
   }
 
   if (error.code === "ECONNABORTED") {
@@ -102,31 +102,31 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   if (status === 401) {
-    return "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.";
+    return "Bạn chưa dăng nhập hoặc phiên dăng nhập dã hết hạn.";
   }
   if (status === 403) {
     return "Tài khoản hiện tại không có quyền gọi chức năng này.";
   }
   if (status === 502) {
-    return "Backend không gọi được AI API hoặc OPENAI_API_KEY chưa được cấu hình đúng.";
+    return "Backend không gọi dược AI API hoặc OPENAI_API_KEY chưa dược cấu hình dúng.";
   }
   if (status) {
     return `Backend trả lỗi HTTP ${status}.`;
   }
 
-  return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
+  return "Không kết nối dược backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
 }
 
 function mapApiErrorCode(message: string) {
   const normalized = message.trim().toUpperCase();
   if (normalized === "INSUFFICIENT_BALANCE") {
-    return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
+    return "Số dư khả dụng trong ví không dủ dể thực hiện giao dịch này.";
   }
   if (normalized === "CONTRACT_INVALID_STATUS") {
-    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần đủ 2 bên chấp nhận contract và ký NDA trước.";
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần dủ 2 bên chấp nhận contract và ký NDA trước.";
   }
   if (normalized === "DEPOSIT_ALREADY_HELD") {
-    return "Hợp đồng này đã được ký quỹ rồi.";
+    return "Hợp đồng này dã dược ký quỹ rồi.";
   }
   if (normalized === "CONTRACT_NOT_FOUND") {
     return "Không tìm thấy hợp đồng.";
@@ -252,6 +252,7 @@ export interface ExpertRecommendationResponse {
   matchedSkills?: string[];
   matchedDomains?: string[];
   reason?: string;
+  businessSelected?: boolean;
 }
 
 export interface ExpertRecommendationListResponse {
@@ -270,11 +271,18 @@ export const expertRecommendationApi = {
       timeout: 90000,
     });
   },
-  /** GET — Lấy danh sách đã lưu (không gọi lại AI) */
+  /** GET — Lấy danh sách dã lưu (không gọi lại AI) */
   get(jobPostingId: number) {
     return call<ExpertRecommendationListResponse>({
       method: "GET",
       url: `/api/jobs/${jobPostingId}/expert-recommendations`,
+    });
+  },
+  /** POST — Doanh nghiệp chọn chuyên gia từ danh sách dề xuất */
+  select(jobPostingId: number, expertId: number) {
+    return call<ExpertRecommendationResponse>({
+      method: "POST",
+      url: `/api/jobs/${jobPostingId}/expert-recommendations/${expertId}/select`,
     });
   },
 };
@@ -412,7 +420,7 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: "/api/v1/proposals/file",//cập nhật file đề xuất
+      url: "/api/v1/proposals/file",//cập nhật file dề xuất
       data: formData,
     });
   },
@@ -485,7 +493,7 @@ export const profileApi = {
       TaxCheckResponse | ApiResponse<TaxCheckResponse>
     >({
       method: "GET",
-      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,//lấy mã số thuế để check
+      url: `/api/auth/tax-check/${encodeURIComponent(taxCode)}`,//lấy mã số thuế dể check
     });
     const body = response.data;
     setDataMode("live");
@@ -611,6 +619,13 @@ export const marketplaceApi = {
   createJob(payload: Partial<Job>) {
     return call<Job>({ method: "POST", url: "/api/v1/jobs", data: payload });//cập nhật ds Job
   },
+  updateDraftJob(jobId: number, payload: Partial<Job>) {
+    return call<Job>({
+      method: "PUT",
+      url: `/api/v1/jobs/${jobId}`,
+      data: payload,
+    });
+  },
   updateJobStatus(jobId: number, status: string) {
     return call<Job>({
       method: "PATCH",
@@ -621,7 +636,7 @@ export const marketplaceApi = {
   submitProposal(payload: Partial<Proposal>) {
     return call<Proposal>({
       method: "POST",
-      url: "/api/v1/proposals",//cập nhật toàn bộ info proposal để gửi lại backend
+      url: "/api/v1/proposals",//cập nhật toàn bộ info proposal dể gửi lại backend
       data: payload,
     });
   },
@@ -726,7 +741,7 @@ export const contractApi = {
   listJobMilestones(jobId: number) {
     return call<Milestone[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/milestones`, //Lấy danh sách tất cả các mốc tiến độ
+      url: `/api/v1/jobs/${jobId}/milestones`, //Lấy danh sách tất cả các mốc tiến dộ
     });
   },
   createCriteria(payload: Partial<AcceptanceCriteria>) {

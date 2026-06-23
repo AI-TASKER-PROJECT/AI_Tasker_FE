@@ -173,6 +173,8 @@ export interface Milestone {
   fundsAllocated: number;
   orderIndex: number;
   status: string;
+  durationValue?: number;
+  durationUnit?: string;
   criteriaIds?: number[];
   criteria?: AcceptanceCriteria[];
   createdAt?: string;

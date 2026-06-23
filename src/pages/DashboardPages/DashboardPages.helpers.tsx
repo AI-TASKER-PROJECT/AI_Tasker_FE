@@ -10,7 +10,12 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { contractApi, disputeApi, marketplaceApi, notificationApi } from "../../services";
+import {
+  contractApi,
+  disputeApi,
+  marketplaceApi,
+  notificationApi,
+} from "../../services";
 import { roleLabel, useSession } from "../../context/sessionContext";
 import { connectNotificationSocket } from "../../lib/notificationSocket";
 import { cn, formatCompactCurrency } from "../../lib/utils";
@@ -72,13 +77,13 @@ export function DashboardPage() {
 
   const roleActions = {
     BUSINESS: [
-      ["Tạo job bằng AI", "/app/jobs/new", "Chuẩn hóa yêu cầu thô thành SoW"],
       [
-        "Quản lý proposal",
-        "/app/jobs",
-        "Chọn job thật để xem đề xuất và báo giá",
+        "Tạo yêu cầu bằng AI",
+        "/app/jobs/new",
+        "Chuẩn hóa yêu cầu thô thành SoW",
       ],
-      ["Theo dõi escrow", "/app/finance", "Ký quỹ, VNPay sandbox, webhook"],
+      ["Quản lý dự án", "/app/jobs", "Xem dề xuất và báo giá"],
+      ["Theo dõi escrow", "/app/finance", "Ký quỹ, PayOS"],
     ],
     EXPERT: [
       ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho job phù hợp"],
@@ -90,7 +95,7 @@ export function DashboardPage() {
       [
         "Bàn giao milestone",
         "/app/contracts",
-        "Chọn hợp đồng thật để mở workspace",
+        "Chọn hợp đồng thật dể mở workspace",
       ],
     ],
     STAFF: [
@@ -98,7 +103,7 @@ export function DashboardPage() {
       [
         "Demo testing",
         "/app/tickets",
-        "Chọn dispute thật để kiểm thử và ghi nhận kết quả",
+        "Chọn dispute thật dể kiểm thử và ghi nhận kết quả",
       ],
       ["Viết technical report", "/app/tickets", "Đề xuất phương án xử lý"],
     ],
@@ -113,23 +118,23 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow={roleLabel(session.role)}
-        title={`Xin chào, ${session.fullName}`}
-        description="Dashboard tổng hợp các điểm cần xử lý theo vai trò và luồng nghiệp vụ hiện tại."
-        actions={
-          <LinkButton to="/app/notifications" variant="secondary">
-            <Bell className="h-4 w-4" />
-            Thông báo
-          </LinkButton>
-        }
-      />
+          eyebrow={roleLabel(session.role)}
+          title={`Xin chào, ${session.fullName}`}
+          description="Tổng hợp chung các thông tin của doanh nghiệp"
+          actions={
+            <LinkButton to="/app/notifications" variant="secondary">
+              <Bell className="h-4 w-4" />
+              Thông báo
+            </LinkButton>
+          }
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Job đang mở"
+          label="Số bài dăng hiện có"
           value={jobs.filter((job) => job.status === "OPEN").length}
-          helper="Từ marketplace"
+          helper="Từ thị trường"
           icon={<BriefcaseBusiness className="h-5 w-5" />}
         />
         <MetricCard
@@ -142,19 +147,19 @@ export function DashboardPage() {
           tone="mint"
         />
         <MetricCard
-          label="Giá trị hợp đồng"
+          label="Giá trị hợp đồng hiện có"
           value={formatCompactCurrency(
             contracts.reduce(
               (total, contract) => total + Number(contract.totalBudget || 0),
               0,
             ),
           )}
-          helper="Từ contract API"
+          helper="Từ hợp đồng"
           icon={<WalletCards className="h-5 w-5" />}
           tone="coral"
         />
         <MetricCard
-          label="Dispute mở"
+          label="Tranh chấp mở"
           value={
             disputes.filter(
               (dispute) =>
@@ -169,10 +174,7 @@ export function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_.9fr]">
         <Card className="p-6">
-          <SectionHeading
-            title="Việc cần làm tiếp theo"
-            description="Các action dùng cùng pattern: tiêu đề, mô tả, nút đi tiếp ở cạnh phải."
-          />
+          <SectionHeading title="Việc cần làm tiếp theo" />
           <div className="mt-5 grid gap-3">
             {roleActions.map(([title, href, description], index) => (
               <Link
@@ -193,60 +195,6 @@ export function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="overflow-hidden p-6">
-          <SectionHeading
-            title="Tín hiệu hệ thống"
-            description="Dữ liệu realtime sẽ hiển thị khi back-end có API hoặc WebSocket tương ứng."
-          />
-          <div className="mt-5 space-y-4">
-            <Notice tone="info" title="Kết nối back-end thật">
-              App gọi trực tiếp API back-end. Với endpoint chưa có, giao diện
-              hiển thị trạng thái trống hoặc thông báo cần bổ sung API.
-            </Notice>
-            <div className="rounded-3xl bg-gradient-to-br from-brand-600 to-indigo-700 p-5 text-white">
-              <p className="font-extrabold">Dữ liệu đang tải từ API</p>
-              <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-2xl bg-white/10 p-3">
-                  <p className="text-2xl font-black">{jobs.length}</p>
-                  <p className="text-xs text-blue-50">Job</p>
-                </div>
-                <div className="rounded-2xl bg-white/10 p-3">
-                  <p className="text-2xl font-black">{contracts.length}</p>
-                  <p className="text-xs text-blue-50">Contract</p>
-                </div>
-                <div className="rounded-2xl bg-white/10 p-3">
-                  <p className="text-2xl font-black">{disputes.length}</p>
-                  <p className="text-xs text-blue-50">Dispute</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="p-6 xl:col-span-2">
-          <SectionHeading
-            title="Hợp đồng gần đây"
-            action={
-              <LinkButton to="/app/contracts" variant="secondary" size="sm">
-                Xem tất cả
-              </LinkButton>
-            }
-          />
-          <div className="mt-5 grid gap-3">
-            {contracts.map((contract) => (
-              <ListLink
-                key={contract.contractId}
-                to={`/app/contracts/${contract.contractId}`}
-                title={contract.title || `Contract #${contract.contractId}`}
-                description={`${contract.businessName} • ${contract.expertName} • ${formatCompactCurrency(contract.totalBudget)}`}
-                leading={<FileCheck2 className="h-5 w-5 text-brand-500" />}
-                trailing={<StatusBadge status={contract.status} />}
-              />
-            ))}
-          </div>
-        </Card>
         <Card className="p-6">
           <SectionHeading title="Thông báo mới" />
           <div className="mt-5 grid gap-3">
@@ -271,6 +219,31 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      <div className="grid gap-6">
+        <Card className="p-6">
+          <SectionHeading
+            title="Hợp đồng gần dây"
+            action={
+              <LinkButton to="/app/contracts" variant="secondary" size="sm">
+                Xem tất cả
+              </LinkButton>
+            }
+          />
+          <div className="mt-5 grid gap-3">
+            {contracts.map((contract) => (
+              <ListLink
+                key={contract.contractId}
+                to={`/app/contracts/${contract.contractId}`}
+                title={contract.title || `Contract #${contract.contractId}`}
+                description={`${contract.businessName} • ${contract.expertName} • ${formatCompactCurrency(contract.totalBudget)}`}
+                leading={<FileCheck2 className="h-5 w-5 text-brand-500" />}
+                trailing={<StatusBadge status={contract.status} />}
+              />
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -281,7 +254,9 @@ export function NotificationsPage() {
   const location = useLocation();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const selectedNotificationId = new URLSearchParams(location.search).get("notificationId");
+  const selectedNotificationId = new URLSearchParams(location.search).get(
+    "notificationId",
+  );
 
   const refresh = () => {
     setLoading(true);
@@ -314,15 +289,18 @@ export function NotificationsPage() {
   const selectedNotification = useMemo(
     () =>
       selectedNotificationId
-        ? notifications.find(
+        ? (notifications.find(
             (item) => String(item.notificationId) === selectedNotificationId,
-          ) ?? null
+          ) ?? null)
         : null,
     [notifications, selectedNotificationId],
   );
 
   const openNotification = (notification: NotificationItem) => {
-    navigate(`/app/notifications?notificationId=${notification.notificationId}`, { replace: true });
+    navigate(
+      `/app/notifications?notificationId=${notification.notificationId}`,
+      { replace: true },
+    );
     if (!notification.isRead) {
       const readAt = new Date().toISOString();
       setNotifications((items) =>
@@ -337,7 +315,9 @@ export function NotificationsPage() {
   };
 
   const markAllRead = () => {
-    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    setNotifications((items) =>
+      items.map((item) => ({ ...item, isRead: true })),
+    );
     notificationApi.markAllRead().then(setNotifications).catch(refresh);
   };
 
@@ -347,17 +327,17 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="Realtime Center"
-        title="Trung tam thong bao"
-        description="Theo doi tat ca thong bao he thong va trang thai da doc."
-        actions={
-          unreadCount > 0 ? (
-            <Button variant="secondary" onClick={markAllRead}>
-              Doc tat ca
-            </Button>
-          ) : undefined
-        }
-      />
+          eyebrow="Realtime Center"
+          title="Trung tam thong bao"
+          description="Theo doi tat ca thong bao he thong va trang thai da doc."
+          actions={
+            unreadCount > 0 ? (
+              <Button variant="secondary" onClick={markAllRead}>
+                Doc tat ca
+              </Button>
+            ) : undefined
+          }
+        />
       </div>
       <div className="grid gap-4">
         {loading ? (
@@ -372,8 +352,11 @@ export function NotificationsPage() {
         ) : (
           notifications.map((item) => {
             const tone = notificationTone(item);
-            const isSelected = selectedNotification?.notificationId === item.notificationId;
-            const targetHref = item.targetUrl ? notificationHref(item.targetUrl) : null;
+            const isSelected =
+              selectedNotification?.notificationId === item.notificationId;
+            const targetHref = item.targetUrl
+              ? notificationHref(item.targetUrl)
+              : null;
 
             return (
               <Card
@@ -413,7 +396,9 @@ export function NotificationsPage() {
                     <p
                       className={cn(
                         "mt-1 text-sm leading-6 text-slate-500 transition-all",
-                        isSelected ? "whitespace-pre-line text-slate-700" : "line-clamp-2",
+                        isSelected
+                          ? "whitespace-pre-line text-slate-700"
+                          : "line-clamp-2",
                       )}
                     >
                       {item.message}
@@ -423,13 +408,19 @@ export function NotificationsPage() {
                       <div className="mt-4 space-y-4 border-t border-slate-200/60 pt-4">
                         {item.metadata?.reason && (
                           <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
-                            <p className="mb-1 text-sm font-semibold text-rose-800">Ly do tu choi:</p>
-                            <p className="text-sm text-rose-700">{item.metadata.reason}</p>
+                            <p className="mb-1 text-sm font-semibold text-rose-800">
+                              Ly do tu choi:
+                            </p>
+                            <p className="text-sm text-rose-700">
+                              {item.metadata.reason}
+                            </p>
                           </div>
                         )}
                         <div className="grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-2">
                           <span>Loai: {item.type}</span>
-                          <span>Trang thai: {item.isRead ? "Da doc" : "Chua doc"}</span>
+                          <span>
+                            Trang thai: {item.isRead ? "Da doc" : "Chua doc"}
+                          </span>
                         </div>
                         <div className="flex flex-wrap justify-end gap-2 pt-1">
                           {targetHref && (
@@ -485,8 +476,8 @@ export function NotificationsPage() {
 export function ProfilePagesHint() {
   return (
     <Notice tone="info" title="Luồng xác minh">
-      Hồ sơ mặc định ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved
-      để mở khóa giao dịch.
+      Hồ sơ mặc dịnh ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved
+      dể mở khóa giao dịch.
     </Notice>
   );
 }

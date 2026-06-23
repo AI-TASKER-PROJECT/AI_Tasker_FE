@@ -22,7 +22,7 @@ const guestExperience: PublicExperience = {
   heroTitle: 'Thuê chuyên gia AI, quản lý dự án và escrow trong một nền tảng sáng rõ.',
   heroDescription:
     'AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận proposal, ký hợp đồng, chia milestone, nghiệm thu và xử lý dòng tiền minh bạch.',
-  primaryLabel: 'Bắt đầu dự án',
+  primaryLabel: 'Bắt dầu dự án',
   primaryPath: '/register',
   secondaryLabel: 'Xem cơ hội',
   secondaryPath: '/jobs',
@@ -33,7 +33,7 @@ const roleExperience: Record<Role, PublicExperience> = {
     badge: 'Không gian Business',
     heroTitle: 'Tạo job AI, nhận proposal và theo dõi hợp đồng của doanh nghiệp.',
     heroDescription:
-      'Bạn có thể bắt đầu một dự án mới, quản lý job đang mở, theo dõi milestone, escrow và các tranh chấp từ workspace Business.',
+      'Bạn có thể bắt dầu một dự án mới, quản lý job đang mở, theo dõi milestone, escrow và các tranh chấp từ workspace Business.',
     primaryLabel: 'Tạo dự án mới',
     primaryPath: '/app/jobs/new',
     secondaryLabel: 'Dự án của tôi',
@@ -43,7 +43,7 @@ const roleExperience: Record<Role, PublicExperience> = {
     badge: 'Không gian Expert',
     heroTitle: 'Tìm cơ hội AI phù hợp và quản lý proposal trong một workspace.',
     heroDescription:
-      'Bạn có thể xem job đang mở, nộp proposal, cập nhật portfolio AI và theo dõi hợp đồng hoặc dòng tiền sau khi được chọn.',
+      'Bạn có thể xem job đang mở, nộp proposal, cập nhật portfolio AI và theo dõi hợp đồng hoặc dòng tiền sau khi dược chọn.',
     primaryLabel: 'Tìm cơ hội phù hợp',
     primaryPath: '/app/opportunities',
     secondaryLabel: 'Proposal của tôi',

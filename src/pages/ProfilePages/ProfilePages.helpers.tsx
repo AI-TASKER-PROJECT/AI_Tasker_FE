@@ -141,7 +141,7 @@ export function BusinessProfilePage() {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                   <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" />{form.taxCode || "Chưa có mã số thuế"}</span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
-                  <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" />{form.address || "Chưa có địa chỉ"}</span>
+                  <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" />{form.address || "Chưa có dịa chỉ"}</span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
                   <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><StatusBadge status={status} /></span>
                 </div>
@@ -249,6 +249,7 @@ export function ExpertProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Chưa gửi");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -273,6 +274,7 @@ export function ExpertProfilePage() {
           yearsOfExperience: String(profile.yearsOfExperience ?? 1),
         });
         setStatus(profile.kycStatus || "Chưa gửi");
+        setRejectionReason(profile.rejectionReason || "");
         setPortfolio(expertPortfolio);
         setDomains(domainItems);
         setSkills(skillItems);
@@ -306,6 +308,7 @@ export function ExpertProfilePage() {
         yearsOfExperience: String(profile.yearsOfExperience ?? 1),
       });
       setStatus(profile.kycStatus);
+      setRejectionReason(profile.rejectionReason || "");
 
       const session = getSession(); //lưu session
       setMessage("Đã lưu thành công hồ sơ");
@@ -356,7 +359,10 @@ export function ExpertProfilePage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <Card className="p-6">
             <SectionHeading title="Giới thiệu chuyên gia" description="Nội dung lấy từ selfDescription của Portfolio." />
-            <p className="mt-5 text-sm leading-7 text-slate-600">{portfolio?.selfDescription || "Chuyên gia đang hoàn thiện phần giới thiệu và hồ sơ năng lực."}</p>
+            <div className="mt-5 space-y-4 text-sm leading-7 text-slate-600">
+              <p>{portfolio?.selfDescription || "Chuyên gia đang hoàn thiện phần giới thiệu và hồ sơ năng lực."}</p>
+              {rejectionReason && status === "Rejected" && <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>}
+            </div>
           </Card>
           <Card className="p-6">
             <SectionHeading title="Thông tin chung" />
@@ -541,7 +547,6 @@ export function ExpertPortfolioPage() {
     <div className="space-y-7">
             <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-            eyebrow="PRF-01 / Expert portfolio"
             title="Portfolio năng lực AI"
             description="Biến hồ sơ chuyên gia thành một bản giới thiệu đủ rõ để doanh nghiệp nhìn thấy lĩnh vực mạnh, stack công nghệ, chứng chỉ và cách bạn giải quyết dự án."
           />
@@ -809,38 +814,45 @@ export function PublicBusinessProfilePage() {
   const logoLabel = profile.companyName || "Doanh nghiệp";
 
   return (
-    <div className="space-y-6">
-      <Card className="overflow-hidden border-slate-100">
-        <div className="bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_34%),linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] p-5 text-white md:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              {profile.logoUrl ? (
-                <img src={profile.logoUrl} alt={logoLabel} className="h-16 w-16 rounded-3xl bg-white object-contain p-2 shadow-sm ring-1 ring-white/20" />
-              ) : (
-                <Avatar name={logoLabel} size="lg" className="bg-white/95 text-brand-700" />
-              )}
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai doanh nghiệp</p>
-                <h1 className="mt-1 text-2xl font-black md:text-3xl">{profile.companyName || "Doanh nghiệp"}</h1>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
-                  {profile.website && <a className="inline-flex items-center gap-2 hover:text-white" href={profile.website} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />{profile.website}</a>}
-                  {profile.followersCount != null && <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />{profile.followersCount} người theo dõi</span>}
+    <div className="min-h-[calc(100vh-80px)] bg-[#f7faff] py-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 space-y-8">
+        <Card className="relative overflow-hidden border-none shadow-sm">
+          {/* Header Cover Background */}
+          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,#ffe6f0,transparent_40%),linear-gradient(135deg,#ffffff_0%,#fdf2f6_100%)] sm:h-40" />
+          <div className="absolute left-[-10rem] top-[-5rem] h-64 w-64 rounded-full bg-[#ffb0cc]/20 blur-3xl" />
+          <div className="absolute right-[-10rem] top-[-5rem] h-64 w-64 rounded-full bg-[#d8e2ff]/30 blur-3xl" />
+          
+          <div className="relative z-10 px-6 pb-6 pt-20 sm:pt-28">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+                {profile.logoUrl ? (
+                  <img src={profile.logoUrl} alt={logoLabel} className="h-24 w-24 shrink-0 rounded-[1.25rem] bg-white object-contain p-2 shadow-[0_8px_30px_rgba(197,0,112,0.12)] ring-4 ring-white" />
+                ) : (
+                  <Avatar name={logoLabel} size="xl" className="h-24 w-24 shrink-0 shadow-[0_8px_30px_rgba(197,0,112,0.12)] ring-4 ring-white bg-[#ffe6f0] text-[#C50070] text-3xl" />
+                )}
+                <div className="mb-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#C50070]">Trang cá nhân doanh nghiệp</p>
+                  <h1 className="mt-1 font-display text-2xl font-black text-ink md:text-3xl">{profile.companyName || "Doanh nghiệp"}</h1>
+                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-semibold text-slate-500">
+                    {profile.website && <a className="inline-flex items-center gap-1.5 transition-colors hover:text-[#0B7AEA]" href={profile.website} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />{profile.website}</a>}
+                    {profile.followersCount != null && <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-slate-400" />{profile.followersCount} người theo dõi</span>}
+                  </div>
                 </div>
               </div>
+              <div className="flex shrink-0 flex-wrap gap-3 pb-1">
+                {canEdit ? (
+                  <LinkButton to="/app/business/profile" variant="secondary" className="shadow-sm">Chỉnh sửa trang</LinkButton>
+                ) : (
+                  <Button type="button" className="bg-[#0B7AEA] text-white hover:bg-[#0966c4] border-transparent shadow-md">Theo dõi công ty</Button>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canEdit ? (
-                <LinkButton to="/app/business/profile" variant="secondary">Chỉnh sửa trang cá nhân</LinkButton>
-              ) : (
-                <Button type="button" variant="secondary">Theo dõi công ty</Button>
-              )}
+            
+            <div className="mt-8 border-b border-slate-100">
+              <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "jobs", label: "Tin tuyển dụng", count: jobs.filter(j => j.status === 'OPEN').length }]} active={activeTab} onChange={setActiveTab} />
             </div>
           </div>
-          <div className="mt-4">
-            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "jobs", label: "Tin tuyển dụng", count: jobs.filter(j => j.status === 'OPEN').length }]} active={activeTab} onChange={setActiveTab} />
-          </div>
-        </div>
-      </Card>
+        </Card>
 
       {activeTab === "home" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -854,7 +866,7 @@ export function PublicBusinessProfilePage() {
             <SectionHeading title="Thông tin chung" />
             <div className="mt-5 space-y-4">
               <ProfileDetailRow icon={<IdCard className="h-4 w-4" />} label="Mã số thuế" value={profile.taxCode || "Chưa cập nhật"} />
-              <ProfileDetailRow icon={<Layers3 className="h-4 w-4" />} label="Lĩnh vực hoạt động" value={profile.industry || "Chưa cập nhật"} />
+              <ProfileDetailRow icon={<Layers3 className="h-4 w-4" />} label="Lĩnh vực hoạt dộng" value={profile.industry || "Chưa cập nhật"} />
               <ProfileDetailRow icon={<MapPin className="h-4 w-4" />} label="Địa chỉ" value={profile.address || "Chưa cập nhật"} />
             </div>
           </Card>
@@ -881,6 +893,7 @@ export function PublicBusinessProfilePage() {
           </div>
         </Card>
       )}
+      </div>
     </div>
   );
 }
@@ -937,35 +950,42 @@ export function PublicExpertProfilePage() {
   const introText = portfolio?.selfDescription || profile.description || "Chuyên gia chưa cập nhật phần giới thiệu.";
 
   return (
-    <div className="space-y-6">
-      <Card className="overflow-hidden border-slate-100">
-        <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-5 text-white md:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <Avatar name={displayName} size="lg" className="bg-white/95 text-brand-700" />
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Trang cá nhân công khai chuyên gia</p>
-                <h1 className="mt-1 text-2xl font-black md:text-3xl">{displayName}</h1>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
-                  {profile.title && <span className="inline-flex items-center gap-2"><BriefcaseBusiness className="h-4 w-4" />{profile.title}</span>}
-                  <span className="inline-flex items-center gap-2"><Award className="h-4 w-4" />{portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm kinh nghiệm</span>
-                  {profile.followersCount != null && <span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />{profile.followersCount} người theo dõi</span>}
+    <div className="min-h-[calc(100vh-80px)] bg-[#f7faff] py-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 space-y-8">
+        <Card className="relative overflow-hidden border-none shadow-sm">
+          {/* Header Cover Background */}
+          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,#e6f0ff,transparent_40%),linear-gradient(135deg,#ffffff_0%,#f2f7ff_100%)] sm:h-40" />
+          <div className="absolute left-[-10rem] top-[-5rem] h-64 w-64 rounded-full bg-[#d8e2ff]/40 blur-3xl" />
+          <div className="absolute right-[-10rem] top-[-5rem] h-64 w-64 rounded-full bg-[#e6f0ff]/50 blur-3xl" />
+          
+          <div className="relative z-10 px-6 pb-6 pt-20 sm:pt-28">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+                <Avatar name={displayName} size="xl" className="h-24 w-24 shrink-0 shadow-[0_8px_30px_rgba(11,122,234,0.12)] ring-4 ring-white bg-[#e6f0ff] text-[#0B7AEA] text-3xl" />
+                <div className="mb-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#0B7AEA]">Trang cá nhân chuyên gia</p>
+                  <h1 className="mt-1 font-display text-2xl font-black text-ink md:text-3xl">{displayName}</h1>
+                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-semibold text-slate-500">
+                    {profile.title && <span className="inline-flex items-center gap-1.5"><BriefcaseBusiness className="h-4 w-4 text-slate-400" />{profile.title}</span>}
+                    <span className="inline-flex items-center gap-1.5"><Award className="h-4 w-4 text-slate-400" />{portfolio?.yearsExperience ?? profile.yearsOfExperience ?? 0} năm kinh nghiệm</span>
+                    {profile.followersCount != null && <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-slate-400" />{profile.followersCount} người theo dõi</span>}
+                  </div>
                 </div>
               </div>
+              <div className="flex shrink-0 flex-wrap gap-3 pb-1">
+                {canEdit ? (
+                  <LinkButton to="/app/expert/profile" variant="secondary" className="shadow-sm">Chỉnh sửa trang</LinkButton>
+                ) : (
+                  <Button type="button" className="bg-[#0B7AEA] text-white hover:bg-[#0966c4] border-transparent shadow-md">Theo dõi</Button>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canEdit ? (
-                <LinkButton to="/app/expert/profile" variant="secondary">Chỉnh sửa trang cá nhân</LinkButton>
-              ) : (
-                <Button type="button" variant="secondary">Theo dõi</Button>
-              )}
+            
+            <div className="mt-8 border-b border-slate-100">
+              <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "projects", label: "Dự án đã làm" }]} active={activeTab} onChange={setActiveTab} />
             </div>
           </div>
-          <div className="mt-4">
-            <Tabs tabs={[{ id: "home", label: "Trang chủ" }, { id: "projects", label: "Dự án đã làm" }]} active={activeTab} onChange={setActiveTab} />
-          </div>
-        </div>
-      </Card>
+        </Card>
 
       {activeTab === "home" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -1000,6 +1020,7 @@ export function PublicExpertProfilePage() {
           </div>
         </Card>
       )}
+      </div>
     </div>
   );
 }
@@ -1034,7 +1055,7 @@ function TogglePill({
             : "border-slate-200 bg-white text-transparent"
         }`}
       >
-        ✓
+        âœ“
       </span>
       <span className="min-w-0">
         <span className="block break-words text-sm font-extrabold text-ink">

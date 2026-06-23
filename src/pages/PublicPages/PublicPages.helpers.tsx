@@ -2,10 +2,8 @@ import {
   ArrowRight,
   Bot,
   BriefcaseBusiness,
-  ChevronDown,
   CheckCircle2,
   Clock3,
-  Filter,
   ShieldCheck,
   Sparkles,
   Star,
@@ -23,12 +21,9 @@ import {
 import {
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
@@ -37,7 +32,6 @@ import {
   marketplaceApi,
   profileApi,
   type Domain,
-  type JobDomain,
   type JobSkill,
   type JobTechnology,
   type Skill,
@@ -58,12 +52,13 @@ import {
   LinkButton,
   Modal,
   Notice,
-  PageHeader,
-  SearchInput,
   SectionHeading,
   StatusBadge,
 } from "../../components/ui";
 import { ScrollReveal } from "../../components/ui/ScrollReveal";
+
+const heroImage =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX";
 
 function skillCountLabel(count: number) {
   return `${count} kỹ năng`;
@@ -271,7 +266,6 @@ export function JobHoverPopover({
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
                 <JobDomainBadge label={jobDomainLabel(jobDomainIds, domains)} />
-                {detail.isHot && <Badge tone="coral">Hot project</Badge>}
               </div>
               <h4 className="mt-3 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink">
                 {detail.title}
@@ -427,7 +421,7 @@ export function LandingPage() {
             </h1>
             <p className="mt-6 max-w-xl text-xl leading-9 text-[#594048]">
               AITASKER giúp bạn tìm kiếm, thuê và quản lý dự án AI trọn vẹn từ
-              hợp đồng đến thanh toán trên một hệ thống minh bạch.
+              hợp đồng dến thanh toán trên một hệ thống minh bạch.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <LinkButton
@@ -527,7 +521,7 @@ export function LandingPage() {
                   Hồ sơ xác minh
                 </h3>
                 <p className="mt-3 text-base leading-7 text-[#594048]">
-                  100% chuyên gia trên nền tảng đều trải qua quy trình kiểm tra
+                  100% chuyên gia trên nền tảng dều trải qua quy trình kiểm tra
                   năng lực và danh tính nghiêm ngặt.
                 </p>
               </div>
@@ -542,7 +536,7 @@ export function LandingPage() {
                 AI gợi ý phù hợp
               </h3>
               <p className="mt-3 text-base leading-7 text-blue-50">
-                Thuật toán thông minh phân tích yêu cầu và tự động đề xuất những
+                Thuật toán thông minh phân tích yêu cầu và tự động dề xuất những
                 chuyên gia có kỹ năng sát nhất với dự án của bạn.
               </p>
             </Card>
@@ -550,23 +544,23 @@ export function LandingPage() {
             {[
               {
                 icon: <WalletCards className="h-5 w-5" />,
-                title: "Ví điện tử & Thanh toán",
+                title: "Ví diện tử & Thanh toán",
                 description:
-                  "Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân khi bạn hài lòng với kết quả nghiệm thu.",
+                  "Bảo mật tuyệt dối với hệ thống Escrow. Tiền chỉ dược giải ngân khi bạn hài lòng với kết quả nghiệm thu.",
                 iconClassName: "bg-white text-[#df0e84]",
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5" />,
-                title: "Quản lý Tiến độ",
+                title: "Quản lý Tiến dộ",
                 description:
-                  "Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và đánh giá từng giai đoạn.",
+                  "Chia nhỏ dự án thành các mốc (Milestone) rõ ràng, dễ dàng theo dõi và dánh giá từng giai doạn.",
                 iconClassName: "bg-[#2e7e94] text-white",
               },
               {
                 icon: <BriefcaseBusiness className="h-5 w-5" />,
-                title: "Hợp đồng & NDA điện tử",
+                title: "Hợp đồng & NDA diện tử",
                 description:
-                  "Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính bảo mật và quyền sở hữu trí tuệ.",
+                  "Ký kết văn bản pháp lý trực tuyến nhanh chóng, dảm bảo tính bảo mật và quyền sở hữu trí tuệ.",
                 iconClassName: "bg-white text-[#0059bb]",
               },
             ].map((feature) => (
@@ -597,7 +591,7 @@ export function LandingPage() {
             <div className="flex items-start justify-between gap-4">
               <SectionHeading
                 title="Dự án đang nổi bật"
-                description="Dữ liệu được tải trực tiếp từ API job hiện có để giữ nguyên luồng public listing và điều hướng vào chi tiết job."
+                description="Dữ liệu dược tải trực tiếp từ API job hiện có dể giữ nguyên luồng public listing và diều hướng vào chi tiết job."
               />
               <LinkButton
                 to="/jobs"
@@ -635,7 +629,7 @@ export function LandingPage() {
                         {formatCompactCurrency(job.budget)}
                       </Badge>
                       <Badge tone="slate">
-                        {job.proposalsCount || 0} đề xuất
+                        {job.proposalsCount || 0} dề xuất
                       </Badge>
                     </div>
                   </Link>
@@ -659,9 +653,9 @@ export function LandingPage() {
                 Luồng tạo dự án vẫn giữ nguyên logic hiện có của ứng dụng.
               </h2>
               <p className="mt-4 text-base leading-7 text-blue-50">
-                CTA tiếp tục dùng route theo phiên đăng nhập hiện tại, còn form
-                tạo dự án, xác minh và điều hướng sau đăng nhập vẫn không thay
-                đổi.
+                CTA tiếp tục dùng route theo phiên dăng nhập hiện tại, còn form
+                tạo dự án, xác minh và diều hướng sau dăng nhập vẫn không thay
+                dổi.
               </p>
               <div className="mt-8">
                 <LinkButton
@@ -669,7 +663,7 @@ export function LandingPage() {
                   variant="secondary"
                   className="rounded-xl border-white/30 bg-white text-[#0f69d8] hover:bg-white/90"
                 >
-                  {session ? publicExperience.primaryLabel : "Bắt đầu dự án"}
+                  {session ? publicExperience.primaryLabel : "Bắt dầu dự án"}
                 </LinkButton>
               </div>
             </div>
@@ -681,313 +675,287 @@ export function LandingPage() {
 }
 
 export function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [domains, setDomains] = useState<Domain[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [technologies, setTechnologies] = useState<Technology[]>([]);
-  const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
-    Record<number, number[]>
-  >({});
-  const [jobSkillIdsByJobId, setJobSkillIdsByJobId] = useState<
-    Record<number, number[]>
-  >({});
-  const [jobTechnologyIdsByJobId, setJobTechnologyIdsByJobId] = useState<
-    Record<number, number[]>
-  >({});
-  const [domainFilterOpen, setDomainFilterOpen] = useState(false);
-  const [skillFilterOpen, setSkillFilterOpen] = useState(false);
-  const [technologyFilterOpen, setTechnologyFilterOpen] = useState(false);
-  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
-  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
-  const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
-    [],
-  );
   const session = useSession();
   const publicExperience = getPublicExperience(session);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadJobs() {
-      const [jobItems, domainItems, skillItems, technologyItems] =
-        await Promise.all([
-          marketplaceApi.listJobs(),
-          catalogApi.listDomains(true),
-          catalogApi.listSkills(true),
-          catalogApi.listTechnologies(true),
-        ]);
-
-      if (ignore) return;
-      setJobs(jobItems);
-      setDomains(domainItems);
-      setSkills(skillItems);
-      setTechnologies(technologyItems);
-
-      const relationItems = await Promise.all(
-        jobItems.map(async (job) => {
-          const [jobDomains, jobSkills, jobTechnologies] = await Promise.all([
-            catalogApi.listJobDomains(job.jobId).catch(() => [] as JobDomain[]),
-            catalogApi.listJobSkills(job.jobId).catch(() => [] as JobSkill[]),
-            catalogApi
-              .listJobTechnologies(job.jobId)
-              .catch(() => [] as JobTechnology[]),
-          ]);
-
-          return {
-            jobId: job.jobId,
-            domainIds: jobDomains.map((item) => item.id.domainId),
-            skillIds: jobSkills.map((item) => item.id.skillId),
-            technologyIds: jobTechnologies.map((item) => item.id.technologyId),
-          };
-        }),
-      );
-
-      if (ignore) return;
-      setJobDomainIdsByJobId(
-        Object.fromEntries(
-          relationItems.map((item) => [item.jobId, item.domainIds]),
-        ),
-      );
-      setJobSkillIdsByJobId(
-        Object.fromEntries(
-          relationItems.map((item) => [item.jobId, item.skillIds]),
-        ),
-      );
-      setJobTechnologyIdsByJobId(
-        Object.fromEntries(
-          relationItems.map((item) => [item.jobId, item.technologyIds]),
-        ),
-      );
-    }
-
-    loadJobs();
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const toggleSelectedId = (
-    value: number,
-    setter: Dispatch<SetStateAction<number[]>>,
-  ) => {
-    setter((items) =>
-      items.includes(value)
-        ? items.filter((item) => item !== value)
-        : [...items, value],
-    );
-  };
-
-  const filtered = useMemo(() => {
-    const matchesAny = (selectedIds: number[], candidateIds: number[]) =>
-      selectedIds.length === 0 ||
-      selectedIds.some((selectedId) => candidateIds.includes(selectedId));
-
-    return jobs.filter((job) => {
-      const domainIds = jobDomainIdsByJobId[job.jobId] || [];
-      const skillIds = jobSkillIdsByJobId[job.jobId] || [];
-      const technologyIds = jobTechnologyIdsByJobId[job.jobId] || [];
-      const domainNames = domainIds.map((domainId) =>
-        resolveDomainName(domainId, domains),
-      );
-      const skillNames = skillIds.map((skillId) =>
-        resolveSkillName(skillId, skills),
-      );
-      const technologyNames = technologyIds.map((technologyId) =>
-        resolveTechnologyName(technologyId, technologies),
-      );
-      const matchesQuery = `${job.title} ${job.rawRequirements} ${
-        job.structuredSow || ""
-      } ${domainNames.join(" ")} ${skillNames.join(" ")} ${technologyNames.join(" ")}`
-        .toLowerCase()
-        .includes(query.toLowerCase());
-      const matchesStatus = status === "ALL" || job.status === status;
-      return (
-        matchesQuery &&
-        matchesStatus &&
-        matchesAny(selectedDomainIds, domainIds) &&
-        matchesAny(selectedSkillIds, skillIds) &&
-        matchesAny(selectedTechnologyIds, technologyIds)
-      );
-    });
-  }, [
-    domains,
-    jobDomainIdsByJobId,
-    jobSkillIdsByJobId,
-    jobTechnologyIdsByJobId,
-    jobs,
-    query,
-    selectedDomainIds,
-    selectedSkillIds,
-    selectedTechnologyIds,
-    skills,
-    status,
-    technologies,
-  ]);
-
-  const hasActiveFilters =
-    query ||
-    status !== "ALL" ||
-    selectedDomainIds.length > 0 ||
-    selectedSkillIds.length > 0 ||
-    selectedTechnologyIds.length > 0;
-
-  const clearFilters = () => {
-    setQuery("");
-    setStatus("ALL");
-    setSelectedDomainIds([]);
-    setSelectedSkillIds([]);
-    setSelectedTechnologyIds([]);
-  };
-
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader
-          eyebrow="Marketplace"
-          title="Cơ hội dự án AI"
-          description="Danh sách job công khai cho chuyên gia và là nơi doanh nghiệp kiểm tra thị trường."
-          actions={
-            <LinkButton to={publicExperience.primaryPath}>
-              {publicExperience.primaryLabel}
-            </LinkButton>
-          }
-        />
-      </div>
-      <Card className="mt-8 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-          <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Tìm theo tiêu đề, kỹ năng, lĩnh vực..."
-          />
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setDomainFilterOpen(true);
-              setSkillFilterOpen(true);
-              setTechnologyFilterOpen(true);
-            }}
-          >
-            <Search className="h-4 w-4" />
-            Tìm kiếm
-          </Button>
-        </div>
-      </Card>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Card className="p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
-                <Filter className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-lg font-extrabold text-ink">
-                  Loc nang cao
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Chon linh vuc, ky nang va cong nghe phu hop.
-                </p>
+    <div className="relative overflow-x-hidden bg-[#f7faff] pb-24 pt-16">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 md:px-6">
+        {/* Section 1: Hero */}
+        <ScrollReveal>
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div>
+              <Badge
+                tone="brand"
+                className="bg-[#ffe6f0] text-[#C50070] ring-[#f6dce5]"
+              >
+                BUSINESS SOLUTION
+              </Badge>
+              <h1 className="mt-6 font-display text-4xl font-black leading-tight tracking-[-0.02em] text-ink lg:text-5xl lg:leading-[1.15]">
+                Đưa dự án AI của doanh nghiệp từ ý tưởng dến triển khai thực tế
+              </h1>
+              <p className="mt-6 text-lg leading-8 text-slate-600">
+                AITASKER giúp doanh nghiệp tìm dúng chuyên gia AI, dăng dự án
+                nhanh chóng, nhận dề xuất phù hợp và quản lý toàn bộ quá trình
+                hợp tác qua hợp dồng, milestone, escrow và nghiệm thu minh bạch.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <LinkButton
+                  size="lg"
+                  to={publicExperience.primaryPath}
+                  className="bg-[#C50070] text-white hover:bg-[#a3005c]"
+                >
+                  Bắt dầu dự án
+                </LinkButton>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  onClick={() =>
+                    document
+                      .getElementById("process-section")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                >
+                  Tìm hiểu quy trình
+                </Button>
               </div>
             </div>
-
-            <div className="my-5 border-t border-slate-200/80" />
-
-            <div className="grid gap-3">
-              <FilterAccordion
-                title="Linh vuc"
-                count={selectedDomainIds.length}
-                open={domainFilterOpen}
-                onToggle={() => setDomainFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={domains.map((domain) => ({
-                    id: domain.domainId,
-                    label: domain.domainName,
-                    selected: selectedDomainIds.includes(domain.domainId),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) => toggleSelectedId(id, setSelectedDomainIds)}
+            <div className="relative hidden lg:block">
+              <div className="rounded-[1.75rem] border border-[#e1bdc8]/30 bg-[rgba(255,240,243,0.7)] p-2 shadow-[0_18px_40px_rgba(61,44,49,.12)] backdrop-blur-[10px]">
+                <img
+                  src={heroImage}
+                  alt="Minh họa cộng tác AI"
+                  className="h-[25rem] w-full rounded-[1.25rem] object-cover"
                 />
-              </FilterAccordion>
-
-              <FilterAccordion
-                title="Ky nang"
-                count={selectedSkillIds.length}
-                open={skillFilterOpen}
-                onToggle={() => setSkillFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={skills.map((skill) => ({
-                    id: skill.skillId,
-                    label: skill.skillName,
-                    selected: selectedSkillIds.includes(skill.skillId),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) => toggleSelectedId(id, setSelectedSkillIds)}
-                />
-              </FilterAccordion>
-
-              <FilterAccordion
-                title="Cong nghe"
-                count={selectedTechnologyIds.length}
-                open={technologyFilterOpen}
-                onToggle={() => setTechnologyFilterOpen((value) => !value)}
-              >
-                <ChipGrid
-                  items={technologies.map((technology) => ({
-                    id: technology.technologyId,
-                    label: technology.technologyName,
-                    selected: selectedTechnologyIds.includes(
-                      technology.technologyId,
-                    ),
-                  }))}
-                  emptyLabel="Chua co du lieu"
-                  onToggle={(id) =>
-                    toggleSelectedId(id, setSelectedTechnologyIds)
-                  }
-                />
-              </FilterAccordion>
+              </div>
             </div>
+          </div>
+        </ScrollReveal>
 
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200/80 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!hasActiveFilters}
-                onClick={clearFilters}
+        {/* Section 2: Trust metrics */}
+        <ScrollReveal>
+          <div className="mt-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Chuyên gia trong mạng lưới", value: "5,000+" },
+              { label: "Lĩnh vực AI có thể triển khai", value: "30+" },
+              { label: "Hợp dồng, NDA và escrow", value: "Minh bạch" },
+              { label: "Nhận dề xuất phù hợp", value: "Nhanh chóng" },
+            ].map((metric) => (
+              <Card
+                key={metric.label}
+                className="flex flex-col items-center justify-center p-8 text-center"
               >
-                Xoa loc
-              </Button>
-              <Button type="button" onClick={() => {}}>
-                Luu bo loc
-              </Button>
-            </div>
-          </Card>
-        </aside>
-
-        <section>
-          <p className="mb-4 text-xs font-semibold text-slate-400">
-            Hien thi {filtered.length}/{jobs.length} job phu hop.
-          </p>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((job) => (
-              <JobCard key={job.jobId} job={job} />
+                <p className="font-display text-4xl font-black text-[#C50070]">
+                  {metric.value}
+                </p>
+                <p className="mt-3 text-sm font-bold text-slate-600">
+                  {metric.label}
+                </p>
+              </Card>
             ))}
           </div>
-        </section>
-      </div>
-      {filtered.length === 0 && (
-        <div className="mt-6">
-          <EmptyState
-            title="Không có job phù hợp"
-            description="Thử đổi từ khóa hoặc bỏ bớt bộ lọc trạng thái."
-          />
-        </div>
-      )}
-    </main>
+        </ScrollReveal>
+
+        {/* Section 3: AI Capabilities */}
+        <ScrollReveal>
+          <div className="mt-32 text-center">
+            <h2 className="font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Doanh nghiệp có thể triển khai gì với AITASKER?
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                title: "Chatbot chăm sóc khách hàng",
+                desc: "Tích hợp trợ lý ảo AI dể hỗ trợ khách hàng 24/7.",
+                icon: <Bot />,
+              },
+              {
+                title: "Tự dộng hóa quy trình nội bộ",
+                desc: "Tối ưu hóa các tác vụ lặp di lặp lại bằng AI và RPA.",
+                icon: <Workflow />,
+              },
+              {
+                title: "Phân tích dữ liệu kinh doanh",
+                desc: "Dự báo xu hướng và phân tích dữ liệu dể ra quyết dịnh.",
+                icon: <BarChart3 />,
+              },
+              {
+                title: "Computer Vision",
+                desc: "Nhận diện hình ảnh, OCR, và kiểm tra chất lượng tự dộng.",
+                icon: <Eye />,
+              },
+              {
+                title: "AI Recommendation System",
+                desc: "Hệ thống gợi ý sản phẩm giúp tăng tỷ lệ chuyển dổi.",
+                icon: <Cpu />,
+              },
+              {
+                title: "Xây dựng MVP sản phẩm AI",
+                desc: "Triển khai nhanh chóng phiên bản MVP dể thử nghiệm thị trường.",
+                icon: <PenTool />,
+              },
+              {
+                title: "Tối ưu vận hành bằng AI",
+                desc: "Ứng dụng AI dể giảm chi phí và nâng cao hiệu suất hoạt dộng.",
+                icon: <Target />,
+              },
+              {
+                title: "Tư vấn chiến lược AI",
+                desc: "Xây dựng lộ trình ứng dụng AI phù hợp với mục tiêu kinh doanh.",
+                icon: <BriefcaseBusiness />,
+              },
+            ].map((role) => (
+              <Card key={role.title} hover className="p-6">
+                <span className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#ffe6f0] text-[#C50070]">
+                  {role.icon}
+                </span>
+                <h3 className="text-lg font-extrabold text-ink">
+                  {role.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {role.desc}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </ScrollReveal>
+
+        {/* Section 4: Why choose us */}
+        <ScrollReveal>
+          <div className="mt-32">
+            <h2 className="text-center font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Vì sao doanh nghiệp chọn AITASKER?
+            </h2>
+            <div className="mt-12 grid gap-8 lg:grid-cols-4">
+              {[
+                {
+                  title: "Tìm chuyên gia phù hợp bằng AI Matching",
+                  desc: "Thuật toán thông minh tự dộng phân tích dự án và dề xuất chuyên gia có kỹ năng sát nhất.",
+                  icon: <Sparkles />,
+                  color: "text-[#0B7AEA]",
+                  bg: "bg-[#e6f0ff]",
+                },
+                {
+                  title: "Hồ sơ chuyên gia dược kiểm tra",
+                  desc: "100% chuyên gia trên hệ thống dều trải qua quá trình xác minh danh tính và kiểm dịnh năng lực.",
+                  icon: <ShieldCheck />,
+                  color: "text-teal-600",
+                  bg: "bg-teal-50",
+                },
+                {
+                  title: "Quản lý dự án theo milestone",
+                  desc: "Chia nhỏ dự án thành các giai doạn rõ ràng dể dễ dàng nghiệm thu và dánh giá tiến dộ.",
+                  icon: <Target />,
+                  color: "text-emerald-600",
+                  bg: "bg-emerald-50",
+                },
+                {
+                  title: "Thanh toán an toàn qua escrow",
+                  desc: "Ngân sách dược hệ thống giữ an toàn và chỉ giải ngân khi bạn dã nghiệm thu công việc.",
+                  icon: <FileSignature />,
+                  color: "text-[#C50070]",
+                  bg: "bg-[#ffe6f0]",
+                },
+              ].map((reason) => (
+                <div key={reason.title} className="text-center">
+                  <span
+                    className={`mx-auto grid h-16 w-16 place-items-center rounded-[2rem] ${reason.bg} ${reason.color} mb-6`}
+                  >
+                    {reason.icon}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-ink">
+                    {reason.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    {reason.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* Section 5: Process */}
+        <ScrollReveal>
+          <Card
+            id="process-section"
+            className="mt-32 bg-gradient-to-br from-white to-[#ffe6f0]/20 p-8 md:p-12 lg:p-16"
+          >
+            <h2 className="text-center font-display text-3xl font-black tracking-[-0.02em] text-ink lg:text-4xl">
+              Quy trình dành cho doanh nghiệp
+            </h2>
+            <div className="relative mt-16 grid gap-12 lg:grid-cols-4">
+              <div className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-px bg-slate-200 lg:block" />
+              {[
+                {
+                  step: 1,
+                  title: "Mô tả nhu cầu dự án AI",
+                  desc: "Đăng tải yêu cầu chi tiết về bài toán doanh nghiệp cần giải quyết.",
+                },
+                {
+                  step: 2,
+                  title: "Nhận gợi ý chuyên gia và proposal phù hợp",
+                  desc: "Hệ thống dề xuất chuyên gia phù hợp và nhận báo giá chi tiết.",
+                },
+                {
+                  step: 3,
+                  title: "Ký hợp dồng, NDA và thống nhất milestone",
+                  desc: "Ký kết văn bản pháp lý diện tử và chốt kế hoạch thực hiện.",
+                },
+                {
+                  step: 4,
+                  title: "Theo dõi tiến dộ, nghiệm thu và thanh toán",
+                  desc: "Quản lý tiến dộ theo từng cột mốc và thanh toán minh bạch qua escrow.",
+                },
+              ].map((step) => (
+                <div key={step.step} className="relative z-10 text-center">
+                  <span className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-[#C50070] text-xl font-black text-white shadow-xl shadow-[#C50070]/20">
+                    {step.step}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">
+                    {step.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </ScrollReveal>
+        {/* Section 7: Trust features */}
+        <ScrollReveal>
+          <div className="mt-32 border-y border-slate-200/60 py-16">
+            <div className="mb-12 text-center">
+              <h2 className="font-display text-2xl font-black text-ink">
+                Hợp tác minh bạch & kiểm soát rủi ro
+              </h2>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+              {[
+                "KYB/KYC",
+                "NDA diện tử",
+                "Hợp dồng diện tử",
+                "Escrow",
+                "Milestone rõ ràng",
+                "Đánh giá sau dự án",
+                "Quản lý tranh chấp",
+              ].map((feature) => (
+                <div key={feature} className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <span className="font-bold text-slate-600">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+      </main>
+
+      {/* AI/SaaS Light Mesh Grid Background Overlay */}
+      <div className="pointer-events-none absolute inset-0 z-0 ai-grid-layer" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[30%] z-0 opacity-40 bottom-glow-overlay" />
+    </div>
   );
 }
 
@@ -1004,13 +972,6 @@ export function JobCard({
   const [businessName, setBusinessName] = useState(
     job.companyName || "Doanh nghiệp",
   );
-  const [business, setBusiness] = useState<BusinessProfile | null>(null);
-  const session = useSession();
-  const businessProfilePath = business
-    ? session
-      ? `/app/businesses/${business.businessId}`
-      : `/business-profile/${business.businessId}`
-    : null;
 
   useEffect(() => {
     let ignore = false;
@@ -1037,7 +998,6 @@ export function JobCard({
       .getBusinessByJob(job.jobId)
       .then((profile) => {
         if (ignore) return;
-        setBusiness(profile);
         if (profile?.companyName) {
           setBusinessName(profile.companyName);
         }
@@ -1052,10 +1012,6 @@ export function JobCard({
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex min-h-9 items-start justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <JobDomainBadgeForJob jobId={job.jobId} />
-          {job.isHot && <Badge tone="coral">Hot project</Badge>}
-        </div>
         <StatusBadge status={job.status} />
       </div>
       <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
@@ -1103,16 +1059,6 @@ export function JobCard({
             Chi tiết <ArrowRight className="h-4 w-4" />
           </LinkButton>
         </div>
-        {businessProfilePath && (
-          <LinkButton
-            to={businessProfilePath}
-            size="sm"
-            variant="secondary"
-            className="mt-3 w-full"
-          >
-            Xem doanh nghiệp
-          </LinkButton>
-        )}
       </div>
     </Card>
   );
@@ -1208,40 +1154,36 @@ export function JobDetailPage() {
 
   const isOpenJob = job.status === "OPEN";
   const canSubmitProposal = session?.role === "EXPERT" && isOpenJob;
-  const businessProfilePath = business
-    ? session
-      ? `/app/businesses/${business.businessId}`
-      : `/business-profile/${business.businessId}`
-    : null;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="mb-8">
+        <Link
+          to={
+            session?.role === "BUSINESS"
+              ? `/app/jobs/${job.jobId}/manage`
+              : "/app/opportunities"
+          }
+          className="text-sm font-bold text-brand-600"
+        >
+          ← Quay lại trang quản lý dự án
+        </Link>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {jobDomainIds.map((domainId) => (
+            <Badge key={domainId} tone="brand">
+              {resolveDomainName(domainId, domains)}
+            </Badge>
+          ))}
+        </div>
+        <h1 className="mt-5 font-display text-4xl font-black tracking-[-0.045em] text-ink">
+          {job.title}
+        </h1>
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
         <div>
-          <Link to="/jobs" className="text-sm font-bold text-brand-600">
-            ← Quay lại marketplace
-          </Link>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {jobDomainIds.map((domainId) => (
-              <Badge key={domainId} tone="brand">
-                {resolveDomainName(domainId, domains)}
-              </Badge>
-            ))}
-            {job.isHot && <Badge tone="coral">Hot project</Badge>}
-            <StatusBadge status={job.status} />
-          </div>
-          <h1 className="mt-5 font-display text-4xl font-black tracking-[-0.045em] text-ink">
-            {job.title}
-          </h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
-            {job.rawRequirements}
-          </p>
-          <Card className="mt-8 p-6">
-            <SectionHeading
-              title="Statement of Work đã chuẩn hóa"
-              description="Khu vực này phục vụ JOB-01. Khi AI service được tích hợp, SoW sẽ được sinh tự động từ mô tả thô."
-            />
-            <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5 text-sm leading-7 text-slate-700">
+          <Card className="p-6">
+            <SectionHeading title="Thông tin dự án" />
+            <div className="mt-5 whitespace-pre-wrap rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5 text-sm leading-7 text-slate-700">
               {job.structuredSow ||
                 "Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."}
             </div>
@@ -1263,9 +1205,20 @@ export function JobDetailPage() {
           <Card className="mt-6 p-6">
             <SectionHeading
               title="Milestone dự án"
-              description="Các mốc công việc doanh nghiệp đã khai báo khi tạo job."
+              description="Các mốc công việc doanh nghiệp dã khai báo khi tạo job."
             />
             <MilestoneList milestones={milestones} />
+            {(canSubmitProposal || !session) && (
+              <div className="mt-8 flex justify-center border-t border-slate-100 pt-6">
+                <LinkButton
+                  to={session ? `/app/jobs/${job.jobId}/proposal` : "/login"}
+                  size="lg"
+                  className="px-8"
+                >
+                  Nộp proposal ngay
+                </LinkButton>
+              </div>
+            )}
           </Card>
         </div>
         <aside className="space-y-4">
@@ -1290,64 +1243,40 @@ export function JobDetailPage() {
                 }
               />
               <InfoRow
-                icon={<ShieldCheck className="h-4 w-4" />}
-                label="Mã số thuế"
-                value={business?.taxCode || "Đang cập nhật"}
-              />
-              <InfoRow
-                icon={<Bot className="h-4 w-4" />}
-                label="Kỹ năng"
-                value={skillCountLabel(jobSkills.length)}
-              />
-              <InfoRow
                 icon={<CheckCircle2 className="h-4 w-4" />}
                 label="Milestone"
                 value={`${milestones.length} mốc`}
               />
             </div>
-            {businessProfilePath && (
-              <LinkButton to={businessProfilePath} className="mt-5 w-full">
-                Xem hồ sơ doanh nghiệp đầy đủ
-              </LinkButton>
+            {business && (
+              <Button
+                onClick={() => setBusinessOpen(true)}
+                className="mt-5 w-full"
+              >
+                Chi tiết doanh nghiệp
+              </Button>
             )}
-            <Button
-              type="button"
-              variant="secondary"
-              className="mt-5 w-full"
-              onClick={() => setBusinessOpen(true)}
-            >
-              Xem chi tiết doanh nghiệp
-            </Button>
             {canSubmitProposal && (
               <LinkButton
                 to={`/app/jobs/${job.jobId}/proposal`}
                 className="mt-5 w-full"
               >
-                Nộp báo giá dự thầu
+                Nộp Proposal ngay
               </LinkButton>
             )}
             {!session && (
               <LinkButton to="/login" className="mt-5 w-full">
-                Nộp báo giá dự thầu
+                Nộp Proposal ngay
               </LinkButton>
             )}
-            {session && session.role !== "EXPERT" && (
-              <>
-                <Button className="mt-5 w-full" disabled>
-                  Nộp báo giá dự thầu
-                </Button>
-                <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Chỉ tài khoản Chuyên gia mới có thể nộp báo giá cho dự án.
-                </p>
-              </>
-            )}
+
             {session?.role === "EXPERT" && !isOpenJob && (
               <>
                 <Button className="mt-5 w-full" disabled>
                   Nộp báo giá dự thầu
                 </Button>
                 <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Dự án cần ở trạng thái OPEN để nhận proposal.
+                  Dự án cần ở trạng thái OPEN dể nhận proposal.
                 </p>
               </>
             )}
@@ -1358,7 +1287,7 @@ export function JobDetailPage() {
         open={businessOpen}
         onClose={() => setBusinessOpen(false)}
         title="Thông tin doanh nghiệp"
-        description="Dữ liệu hồ sơ KYB của doanh nghiệp đăng job."
+        description="Dữ liệu hồ sơ KYB của doanh nghiệp dăng job."
         size="lg"
       >
         <div className="grid gap-4">
@@ -1368,7 +1297,7 @@ export function JobDetailPage() {
           {!businessLoading && !business && (
             <Notice
               tone="warning"
-              title="Chưa lấy được hồ sơ doanh nghiệp từ API hiện tại."
+              title="Chưa lấy dược hồ sơ doanh nghiệp từ API hiện tại."
             />
           )}
           <div className="grid gap-3 md:grid-cols-2">
@@ -1461,7 +1390,7 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
     return (
       <EmptyState
         title="Chưa có milestone"
-        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại đây."
+        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại dây."
       />
     );
   }
@@ -1483,8 +1412,15 @@ function MilestoneList({ milestones }: { milestones: Milestone[] }) {
               <p className="break-words text-sm font-extrabold text-ink">
                 {milestone.milestoneName}
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-400">
-                {milestone.status || "Pending"}
+              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
+                <Clock3 className="h-3.5 w-3.5" />
+                {(() => {
+                  const dVal =
+                    milestone.durationValue ?? (milestone as any).duration;
+                  return dVal && dVal > 0
+                    ? `${dVal} ${milestone.durationUnit || "WEEK"}`
+                    : "Chưa xác định";
+                })()}
               </p>
             </div>
             <p className="text-sm font-extrabold text-ink md:text-right">
@@ -1523,76 +1459,9 @@ function BusinessInfoItem({
   );
 }
 
-function FilterAccordion({
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  count: number;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-      >
-        <div>
-          <p className="text-sm font-extrabold text-ink">{title}</p>
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && <div className="border-t border-slate-100 p-3">{children}</div>}
-    </div>
-  );
-}
-
-function ChipGrid({
-  items,
-  emptyLabel,
-  onToggle,
-}: {
-  items: Array<{ id: number; label: string; selected: boolean }>;
-  emptyLabel: string;
-  onToggle: (id: number) => void;
-}) {
-  return (
-    <div className="grid max-h-48 gap-2 overflow-y-auto pr-1">
-      {items.length === 0 && (
-        <span className="text-sm font-semibold text-slate-400">
-          {emptyLabel}
-        </span>
-      )}
-      {items.map((item) => (
-        <label
-          key={item.id}
-          className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition ${
-            item.selected
-              ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-              : "text-slate-600 hover:bg-white hover:text-brand-700"
-          }`}
-        >
-          <input
-            type="checkbox"
-            className="h-5 w-5 rounded border-slate-300 text-emerald-600 accent-emerald-600"
-            checked={item.selected}
-            onChange={() => onToggle(item.id)}
-          />
-          <span className="min-w-0 flex-1 break-words">{item.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
 export function ExpertDirectoryPage() {
+  const session = useSession();
+
   return (
     <div className="bg-[#f7faff] pb-24 pt-16">
       <main className="mx-auto max-w-7xl px-4 md:px-6">
@@ -1605,14 +1474,17 @@ export function ExpertDirectoryPage() {
                 Mạng lưới chuyên gia AI sẵn sàng đồng hành cùng doanh nghiệp
               </h1>
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                Kết nối với các chuyên gia AI đã được chọn lọc, có năng lực thực
+                Kết nối với các chuyên gia AI dã dược chọn lọc, có năng lực thực
                 chiến và phù hợp với nhu cầu dự án của bạn — từ tư vấn chiến
-                lược, xây dựng chatbot, automation, phân tích dữ liệu đến triển
+                lược, xây dựng chatbot, automation, phân tích dữ liệu dến triển
                 khai mô hình AI.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
-                <LinkButton size="lg" to="/app/jobs/new">
-                  Bắt đầu dự án
+                <LinkButton
+                  size="lg"
+                  to={session ? "/app/opportunities" : "/register"}
+                >
+                  Tìm dự án ngay
                 </LinkButton>
                 <Button
                   size="lg"
@@ -1627,40 +1499,13 @@ export function ExpertDirectoryPage() {
                 </Button>
               </div>
             </div>
-            <div className="relative">
-              <div className="relative mx-auto max-w-md">
-                <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-tr from-brand-100 to-indigo-100 opacity-50 blur-2xl" />
-                <Card className="relative overflow-hidden border border-brand-100/50 bg-white p-2 shadow-2xl shadow-brand-500/10">
-                  <div className="rounded-3xl bg-slate-50 p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-100 text-brand-600">
-                        <Bot className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="h-4 w-32 rounded-full bg-slate-200" />
-                        <div className="mt-2 h-3 w-20 rounded-full bg-slate-200" />
-                      </div>
-                    </div>
-                    <div className="mt-6 grid gap-3">
-                      {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-slate-100" />
-                            <div className="h-3 w-24 rounded-full bg-slate-100" />
-                          </div>
-                          <div className="h-6 w-16 rounded-full bg-emerald-50" />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-6 flex items-center justify-center gap-2 text-sm font-semibold text-brand-600">
-                      <Sparkles className="h-4 w-4" />
-                      AI Matching System
-                    </div>
-                  </div>
-                </Card>
+            <div className="relative hidden lg:block">
+              <div className="rounded-[1.75rem] border border-[#e1bdc8]/30 bg-[rgba(255,240,243,0.7)] p-2 shadow-[0_18px_40px_rgba(61,44,49,.12)] backdrop-blur-[10px]">
+                <img
+                  src={heroImage}
+                  alt="Minh họa cộng tác AI"
+                  className="h-[25rem] w-full rounded-[1.25rem] object-cover"
+                />
               </div>
             </div>
           </div>
@@ -1672,7 +1517,7 @@ export function ExpertDirectoryPage() {
             {[
               { label: "Chuyên gia đã tham gia", value: "5,000+" },
               { label: "Lĩnh vực AI", value: "30+" },
-              { label: "Hồ sơ được kiểm tra", value: "100%" },
+              { label: "Hồ sơ dược kiểm tra", value: "100%" },
               { label: "Hợp đồng & thanh toán", value: "Minh bạch" },
             ].map((metric) => (
               <Card
@@ -1697,7 +1542,7 @@ export function ExpertDirectoryPage() {
               Chuyên gia AI cho mọi nhu cầu
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-              Đội ngũ chuyên gia đa dạng, đáp ứng toàn diện vòng đời phát triển
+              Đội ngũ chuyên gia da dạng, dáp ứng toàn diện vòng dời phát triển
               dự án AI của doanh nghiệp.
             </p>
           </div>
@@ -1705,7 +1550,7 @@ export function ExpertDirectoryPage() {
             {[
               {
                 title: "AI Strategy Consultant",
-                desc: "Tư vấn lộ trình ứng dụng AI, đánh giá tính khả thi và thiết kế kiến trúc hệ thống.",
+                desc: "Tư vấn lộ trình ứng dụng AI, dánh giá tính khả thi và thiết kế kiến trúc hệ thống.",
                 icon: <BriefcaseBusiness />,
               },
               {
@@ -1725,7 +1570,7 @@ export function ExpertDirectoryPage() {
               },
               {
                 title: "Workflow Automation",
-                desc: "Tự động hóa quy trình nghiệp vụ với AI agent, n8n, Zapier và RPA.",
+                desc: "Tự dộng hóa quy trình nghiệp vụ với AI agent, n8n, Zapier và RPA.",
                 icon: <Workflow />,
               },
               {
@@ -1740,7 +1585,7 @@ export function ExpertDirectoryPage() {
               },
               {
                 title: "Prompt Engineer",
-                desc: "Tối ưu hóa câu lệnh giao tiếp với AI để đạt được kết quả chính xác cao nhất.",
+                desc: "Tối ưu hóa câu lệnh giao tiếp với AI dể dạt dược kết quả chính xác cao nhất.",
                 icon: <MessageSquareText />,
               },
             ].map((role) => (
@@ -1768,15 +1613,15 @@ export function ExpertDirectoryPage() {
             <div className="mt-12 grid gap-8 lg:grid-cols-4">
               {[
                 {
-                  title: "Hồ sơ được xác minh",
-                  desc: "Mọi chuyên gia đều phải trải qua quá trình KYC và kiểm định năng lực khắt khe.",
+                  title: "Hồ sơ dược xác minh",
+                  desc: "Mọi chuyên gia dều phải trải qua quá trình KYC và kiểm dịnh năng lực khắt khe.",
                   icon: <ShieldCheck />,
                   color: "text-emerald-600",
                   bg: "bg-emerald-50",
                 },
                 {
                   title: "AI gợi ý chuyên gia",
-                  desc: "Hệ thống AI tự động phân tích SoW và match đúng chuyên gia phù hợp nhất.",
+                  desc: "Hệ thống AI tự động phân tích SoW và match dúng chuyên gia phù hợp nhất.",
                   icon: <Sparkles />,
                   color: "text-blue-600",
                   bg: "bg-blue-50",
@@ -1790,7 +1635,7 @@ export function ExpertDirectoryPage() {
                 },
                 {
                   title: "Minh bạch hợp đồng & escrow",
-                  desc: "Hợp đồng điện tử, NDA bảo mật và cơ chế giữ tiền an toàn cho cả hai bên.",
+                  desc: "Hợp đồng diện tử, NDA bảo mật và cơ chế giữ tiền an toàn cho cả hai bên.",
                   icon: <FileSignature />,
                   color: "text-indigo-600",
                   bg: "bg-indigo-50",
@@ -1829,17 +1674,17 @@ export function ExpertDirectoryPage() {
                 {
                   step: 1,
                   title: "Mô tả nhu cầu",
-                  desc: "Doanh nghiệp đăng tải yêu cầu dự án AI cần giải quyết.",
+                  desc: "Doanh nghiệp dăng tải yêu cầu dự án AI cần giải quyết.",
                 },
                 {
                   step: 2,
                   title: "AI gợi ý chuyên gia",
-                  desc: "Hệ thống phân tích và đề xuất chuyên gia phù hợp năng lực.",
+                  desc: "Hệ thống phân tích và dề xuất chuyên gia phù hợp năng lực.",
                 },
                 {
                   step: 3,
                   title: "Ký hợp đồng",
-                  desc: "Trao đổi proposal, chốt ngân sách và ký hợp đồng điện tử.",
+                  desc: "Trao dổi proposal, chốt ngân sách và ký hợp đồng diện tử.",
                 },
                 {
                   step: 4,
@@ -1874,7 +1719,7 @@ export function ExpertDirectoryPage() {
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
               {[
                 "Định danh KYC/KYB",
-                "Ký NDA điện tử",
+                "Ký NDA diện tử",
                 "Hợp đồng pháp lý",
                 "Thanh toán Escrow",
                 "Đánh giá năng lực",

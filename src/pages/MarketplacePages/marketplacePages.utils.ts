@@ -1,4 +1,4 @@
-import type { Domain, GeneratedSow, Skill } from "../../services";
+import type { Domain, GeneratedSow, GeneratedSowMilestone, Skill } from "../../services";
 
 export type SkillAssignment = {
   skillId: number;
@@ -12,6 +12,7 @@ export type MilestoneDraft = {
   orderIndex: string;
   durationValue: string;
   criteriaIds: number[];
+  criteriaSearch?: string;
 };
 
 export function renderListSection(title: string, values?: string[]) {
@@ -19,17 +20,31 @@ export function renderListSection(title: string, values?: string[]) {
   return `${title}:\n${values.map((item) => `- ${item}`).join("\n")}`;
 }
 
-export function formatGeneratedSow(sow?: GeneratedSow) {
-  if (!sow) return "";
-  return [
-    sow.title ? `Tiêu đề: ${sow.title}` : "",
+export function formatGeneratedSow(sow?: GeneratedSow, milestones?: GeneratedSowMilestone[]) {
+  if (!sow && (!milestones || milestones.length === 0)) return "";
+  
+  const sowParts = sow ? [
+    sow.title ? `Tiêu dề: ${sow.title}` : "",
     sow.overview ? `Tổng quan: ${sow.overview}` : "",
     renderListSection("Mục tiêu", sow.objectives),
     renderListSection("Phạm vi công việc", sow.scopeOfWork),
     renderListSection("Sản phẩm bàn giao", sow.deliverables),
-    renderListSection("Giả định", sow.assumptions),
+    renderListSection("Giả dịnh", sow.assumptions),
     renderListSection("Ngoài phạm vi", sow.outOfScope),
-  ]
+  ] : [];
+
+  const milestonesPart = milestones && milestones.length > 0
+    ? `Milestones:\n${milestones
+        .map(
+          (m, i) =>
+            `- Mốc ${i + 1}: ${m.name || ""} (Thời gian: ${
+              m.duration ? `${m.duration} ${m.durationUnit || "WEEK"}` : "Chưa xác định"
+            })`
+        )
+        .join("\n")}`
+    : "";
+
+  return [...sowParts, milestonesPart]
     .filter(Boolean)
     .join("\n\n");
 }

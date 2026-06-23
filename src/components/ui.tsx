@@ -163,7 +163,7 @@ export function StatusBadge({ status }: { status?: string }) {
     normalized.includes('success') ||
     normalized.includes('released') ||
     normalized.includes('completed') ||
-    normalized.includes('đãduyệt') ||
+    normalized.includes('dãduyệt') ||
     normalized.includes('thànhcông')
       ? 'mint'
       : normalized.includes('rejected') ||
@@ -172,13 +172,13 @@ export function StatusBadge({ status }: { status?: string }) {
           normalized.includes('cancelled') ||
           normalized.includes('bịtừchối') ||
           normalized.includes('thấtbại') ||
-          normalized.includes('đãhủy')
+          normalized.includes('dãhủy')
         ? 'rose'
         : normalized.includes('pending') ||
             normalized.includes('draft') ||
             normalized.includes('underreview') ||
             normalized.includes('open') ||
-            normalized.includes('đangchờ')
+            normalized.includes('dangchờ')
           ? 'amber'
           : normalized.includes('escalated')
             ? 'violet'

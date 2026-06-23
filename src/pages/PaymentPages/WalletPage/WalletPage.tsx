@@ -58,7 +58,11 @@ function txTypeLabel(type: WalletTransaction["transactionType"]) {
 }
 
 function txIcon(type: WalletTransaction["transactionType"]) {
-  if (type === "TOPUP" || type === "DEPOSIT_REFUND" || type === "WITHDRAW_REJECTED")
+  if (
+    type === "TOPUP" ||
+    type === "DEPOSIT_REFUND" ||
+    type === "WITHDRAW_REJECTED"
+  )
     return <ArrowDownLeft className="h-4 w-4" />;
   return <ArrowUpRight className="h-4 w-4" />;
 }
@@ -100,7 +104,12 @@ function WithdrawalModal({
     useState<PaymentActionResponse<WithdrawalRequest> | null>(null);
 
   const reset = () => {
-    setForm({ amount: "", bankName: "", bankAccountNumber: "", bankAccountHolder: "" });
+    setForm({
+      amount: "",
+      bankName: "",
+      bankAccountNumber: "",
+      bankAccountHolder: "",
+    });
     setNotice(null);
     setResult(null);
   };
@@ -116,12 +125,22 @@ function WithdrawalModal({
       setNotice({ tone: "danger", msg: "Vui lòng nhập số tiền hợp lệ." });
       return;
     }
-    if (!form.bankName.trim() || !form.bankAccountNumber.trim() || !form.bankAccountHolder.trim()) {
-      setNotice({ tone: "danger", msg: "Vui lòng điền đầy đủ thông tin ngân hàng." });
+    if (
+      !form.bankName.trim() ||
+      !form.bankAccountNumber.trim() ||
+      !form.bankAccountHolder.trim()
+    ) {
+      setNotice({
+        tone: "danger",
+        msg: "Vui lòng diền dầy dủ thông tin ngân hàng.",
+      });
       return;
     }
     if (wallet && amount > wallet.availableBalance) {
-      setNotice({ tone: "danger", msg: `Số dư khả dụng không đủ. Tối đa: ${formatCurrency(wallet.availableBalance)}` });
+      setNotice({
+        tone: "danger",
+        msg: `Số dư khả dụng không dủ. Tối da: ${formatCurrency(wallet.availableBalance)}`,
+      });
       return;
     }
 
@@ -136,10 +155,16 @@ function WithdrawalModal({
       });
       setResult(res);
       if (res.completed) {
-        setNotice({ tone: "success", msg: "Yêu cầu rút tiền đã được gửi. Admin sẽ xử lý và chuyển khoản thủ công." });
+        setNotice({
+          tone: "success",
+          msg: "Yêu cầu rút tiền dã dược gửi. Admin sẽ xử lý và chuyển khoản thủ công.",
+        });
         onSuccess();
       } else if (res.needTopup) {
-        setNotice({ tone: "warning", msg: `Số dư không đủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} để thực hiện.` });
+        setNotice({
+          tone: "warning",
+          msg: `Số dư không dủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} dể thực hiện.`,
+        });
       }
     } catch (err) {
       setNotice({ tone: "danger", msg: getApiErrorMessage(err) });
@@ -153,13 +178,17 @@ function WithdrawalModal({
       open={open}
       onClose={handleClose}
       title="Yêu cầu rút tiền"
-      description="Số tiền sẽ được Admin chuyển khoản thủ công ra tài khoản ngân hàng của bạn."
+      description="Số tiền sẽ dược Admin chuyển khoản thủ công ra tài khoản ngân hàng của bạn."
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>
             Hủy
           </Button>
-          <Button onClick={submit} loading={loading} disabled={loading || !!result?.completed}>
+          <Button
+            onClick={submit}
+            loading={loading}
+            disabled={loading || !!result?.completed}
+          >
             <Send className="h-4 w-4" />
             Gửi yêu cầu
           </Button>
@@ -167,14 +196,16 @@ function WithdrawalModal({
       }
     >
       <div className="grid gap-4">
-        {notice && (
-          <Notice tone={notice.tone} title={notice.msg} />
-        )}
+        {notice && <Notice tone={notice.tone} title={notice.msg} />}
 
         {wallet && (
           <div className="rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4 ring-1 ring-brand-100">
-            <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Số dư khả dụng</p>
-            <p className="mt-1 text-2xl font-black text-brand-700">{formatCurrency(wallet.availableBalance)}</p>
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">
+              Số dư khả dụng
+            </p>
+            <p className="mt-1 text-2xl font-black text-brand-700">
+              {formatCurrency(wallet.availableBalance)}
+            </p>
           </div>
         )}
 
@@ -193,14 +224,18 @@ function WithdrawalModal({
             <Input
               placeholder="VD: Vietcombank, Techcombank..."
               value={form.bankName}
-              onChange={(e) => setForm((v) => ({ ...v, bankName: e.target.value }))}
+              onChange={(e) =>
+                setForm((v) => ({ ...v, bankName: e.target.value }))
+              }
             />
           </Field>
           <Field label="Số tài khoản">
             <Input
               placeholder="Số tài khoản ngân hàng"
               value={form.bankAccountNumber}
-              onChange={(e) => setForm((v) => ({ ...v, bankAccountNumber: e.target.value }))}
+              onChange={(e) =>
+                setForm((v) => ({ ...v, bankAccountNumber: e.target.value }))
+              }
             />
           </Field>
         </div>
@@ -209,13 +244,15 @@ function WithdrawalModal({
           <Input
             placeholder="Họ tên chủ tài khoản (in hoa)"
             value={form.bankAccountHolder}
-            onChange={(e) => setForm((v) => ({ ...v, bankAccountHolder: e.target.value }))}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, bankAccountHolder: e.target.value }))
+            }
           />
         </Field>
 
         <Notice tone="info" title="Lưu ý về rút tiền">
-          Chỉ có thể rút từ số dư khả dụng. Không thể rút từ escrow, holding hoặc disputed balance.
-          Không có phí rút tiền.
+          Chỉ có thể rút từ số dư khả dụng. Không thể rút từ escrow, holding
+          hoặc disputed balance. Không có phí rút tiền.
         </Notice>
       </div>
     </Modal>
@@ -230,7 +267,9 @@ export function WalletPage() {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"transactions" | "withdrawals">("transactions");
+  const [tab, setTab] = useState<"transactions" | "withdrawals">(
+    "transactions",
+  );
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -251,9 +290,12 @@ export function WalletPage() {
 
   useEffect(() => {
     void Promise.resolve().then(load);
+    window.addEventListener("aitasker:reload-wallet", load);
+    return () => window.removeEventListener("aitasker:reload-wallet", load);
   }, [load]);
 
-  const openTopup = () => window.dispatchEvent(new Event("aitasker:open-wallet-topup"));
+  const openTopup = () =>
+    window.dispatchEvent(new Event("aitasker:open-wallet-topup"));
 
   if (!session) return null;
 
@@ -264,10 +306,10 @@ export function WalletPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="Ví & Thanh toán"
-        title="Quản lý ví"
-        description="Theo dõi số dư, nạp tiền qua PayOS, rút tiền và xem toàn bộ lịch sử giao dịch ví."
-      />
+          eyebrow="Ví & Thanh toán"
+          title="Quản lý ví"
+          description="Theo dõi số dư, nạp tiền qua PayOS, rút tiền và xem toàn bộ lịch sử giao dịch ví."
+        />
       </div>
 
       {/* Balance Overview */}
@@ -281,7 +323,7 @@ export function WalletPage() {
             tone="brand"
           />
           <MetricCard
-            label="Escrow"
+            label="Quỹ hợp đồng"
             value={formatCurrency(wallet.escrowBalance)}
             helper="Đang giữ cho hợp đồng"
             icon={<Shield className="h-5 w-5" />}
@@ -309,12 +351,15 @@ export function WalletPage() {
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-4 bg-gradient-to-br from-brand-600 via-indigo-600 to-violet-700 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-100">Tổng số dư ví</p>
+              <p className="text-sm font-semibold text-blue-100">
+                Tổng số dư ví
+              </p>
               <p className="mt-1 font-display text-4xl font-black tracking-tight">
                 {formatCurrency(wallet.currentBalance)}
               </p>
               <p className="mt-2 text-xs font-semibold text-blue-200">
-                {wallet.currency} · Ví {wallet.walletType.replace("_WALLET", "")}
+                {wallet.currency} · Ví{" "}
+                {wallet.walletType.replace("_WALLET", "")}
               </p>
             </div>
             <div className="flex gap-3">
@@ -352,14 +397,29 @@ export function WalletPage() {
               <div className="flex items-center gap-3">
                 <Tabs
                   tabs={[
-                    { id: "transactions", label: "Giao dịch", count: transactions.length },
-                    { id: "withdrawals", label: "Rút tiền", count: withdrawals.length },
+                    {
+                      id: "transactions",
+                      label: "Giao dịch",
+                      count: transactions.length,
+                    },
+                    {
+                      id: "withdrawals",
+                      label: "Rút tiền",
+                      count: withdrawals.length,
+                    },
                   ]}
                   active={tab}
                   onChange={(id) => setTab(id as typeof tab)}
                 />
-                <Button variant="ghost" size="icon" onClick={load} title="Làm mới">
-                  <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={load}
+                  title="Làm mới"
+                >
+                  <RefreshCw
+                    className={cn("h-4 w-4", loading && "animate-spin")}
+                  />
                 </Button>
               </div>
             }
@@ -375,7 +435,7 @@ export function WalletPage() {
             <div className="p-6">
               <EmptyState
                 title="Chưa có giao dịch nào"
-                description="Các giao dịch nạp tiền, mua gói, đặt cọc hợp đồng và rút tiền sẽ xuất hiện tại đây."
+                description="Các giao dịch nạp tiền, mua gói, dặt cọc hợp đồng và rút tiền sẽ xuất hiện tại dây."
                 action={
                   isExternalRole ? (
                     <Button onClick={openTopup}>
@@ -397,7 +457,8 @@ export function WalletPage() {
                 <span className="w-28 text-right">Thời gian</span>
               </div>
               {transactions.map((tx) => {
-                const isCredit = tx.direction === "CREDIT" || tx.direction === "RELEASE";
+                const isCredit =
+                  tx.direction === "CREDIT" || tx.direction === "RELEASE";
                 return (
                   <div
                     key={tx.id}
@@ -406,15 +467,21 @@ export function WalletPage() {
                     <span
                       className={cn(
                         "grid h-9 w-9 place-items-center rounded-2xl",
-                        isCredit ? "bg-mint-50 text-mint-600" : "bg-coral-50 text-coral-600",
+                        isCredit
+                          ? "bg-mint-50 text-mint-600"
+                          : "bg-coral-50 text-coral-600",
                       )}
                     >
                       {txIcon(tx.transactionType)}
                     </span>
                     <div>
-                      <p className="text-sm font-bold text-ink">{txTypeLabel(tx.transactionType)}</p>
+                      <p className="text-sm font-bold text-ink">
+                        {txTypeLabel(tx.transactionType)}
+                      </p>
                       {tx.description && (
-                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{tx.description}</p>
+                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">
+                          {tx.description}
+                        </p>
                       )}
                     </div>
                     <span
@@ -441,7 +508,7 @@ export function WalletPage() {
           <div className="p-6">
             <EmptyState
               title="Chưa có yêu cầu rút tiền"
-              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại đây sau khi bạn tạo."
+              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại dây sau khi bạn tạo."
               action={
                 isExternalRole ? (
                   <Button onClick={() => setWithdrawOpen(true)}>
