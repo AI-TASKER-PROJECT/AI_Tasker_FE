@@ -23,13 +23,13 @@ export function renderListSection(title: string, values?: string[]) {
 export function formatGeneratedSow(sow?: GeneratedSow, _milestones?: GeneratedSowMilestone[]) {
   if (!sow) return "";
   
-  const sowParts = [
-    sow.title ? `Tiêu dề: ${sow.title}` : "",
+  const sowParts = sow ? [
+    sow.title ? `Tiêu đề: ${sow.title}` : "",
     sow.overview ? `Tổng quan: ${sow.overview}` : "",
     renderListSection("Mục tiêu", sow.objectives),
     renderListSection("Phạm vi công việc", sow.scopeOfWork),
     renderListSection("Sản phẩm bàn giao", sow.deliverables),
-    renderListSection("Giả dịnh", sow.assumptions),
+    renderListSection("Giả định", sow.assumptions),
     renderListSection("Ngoài phạm vi", sow.outOfScope),
   ];
 

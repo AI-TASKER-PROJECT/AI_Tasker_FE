@@ -1,4 +1,4 @@
-import {
+﻿import {
   Award,
   BrainCircuit,
   CheckCircle2,
@@ -63,6 +63,45 @@ import {
   skillCountLabel,
 } from "../marketplacePages.utils";
 import { CompactMilestones } from "../marketplacePages.helpers";
+
+const CONTRACT_TERM_SECTIONS = [
+  {
+    title: "Điều khoản công việc",
+    content:
+      "Hợp đồng được thực hiện dựa trên phạm vi công việc, milestone, ngân sách và timeline đã thống nhất trong job và proposal được chấp nhận.",
+  },
+  {
+    title: "Phạm vi trách nhiệm",
+    content:
+      "Doanh nghiệp cung cấp yêu cầu, tài liệu, phản hồi nghiệm thu đúng hạn. Chuyên gia chịu trách nhiệm triển khai, bàn giao và phản hồi các yêu cầu chỉnh sửa trong phạm vi đã cam kết.",
+  },
+  {
+    title: "Điều khoản thanh toán",
+    content:
+      "Ngân sách được phân bổ theo milestone. Doanh nghiệp thực hiện ký quỹ theo tỷ lệ nền tảng quy định, hệ thống giữ tiền trong escrow và giải ngân theo kết quả nghiệm thu.",
+  },
+  {
+    title: "Điều khoản bảo mật",
+    content:
+      "Hai bên không được tiết lộ dữ liệu, tài liệu, mã nguồn, thông tin kinh doanh hoặc thông tin người dùng phát sinh trong quá trình thực hiện hợp đồng khi chưa có sự đồng ý của bên còn lại.",
+  },
+  {
+    title: "Điều khoản chấm dứt",
+    content:
+      "Hợp đồng có thể bị chấm dứt khi một bên vi phạm cam kết, không phản hồi trong thời hạn hợp lý, hoặc hai bên thống nhất dừng dự án. Phần công việc đã nghiệm thu được xử lý theo trạng thái milestone thực tế.",
+  },
+  {
+    title: "Điều khoản tranh chấp",
+    content:
+      "Tranh chấp được ghi nhận qua hệ thống dispute. Hai bên cần cung cấp bằng chứng, nội dung trao đổi và tài liệu bàn giao để nền tảng hỗ trợ xử lý.",
+  },
+  {
+    title: "Quyền và nghĩa vụ hai bên",
+    content:
+      "Hai bên có quyền theo dõi tiến độ, yêu cầu làm rõ, xác nhận nghiệm thu và phản hồi chất lượng. Hai bên có nghĩa vụ hợp tác trung thực, tuân thủ quy trình nền tảng và chịu trách nhiệm với thông tin đã cung cấp.",
+  },
+];
+
 export function ManageJobPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -78,7 +117,7 @@ export function ManageJobPage() {
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
     contractTitle: "",
-    timelineDays: "60",
+    timelineWeeks: "6",
   });
   const [contractError, setContractError] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
@@ -169,10 +208,21 @@ export function ManageJobPage() {
 
   const jobStatus = job.status.trim().toUpperCase();
   const jobInProgress = jobStatus === "IN_PROGRESS";
-  const contractTimelineDays = Math.max(
+  const timelineBufferWeeks = 2;
+  const contractTimelineWeeks = Math.max(
     1,
-    Number(contractForm.timelineDays) || 1,
+    Number(contractForm.timelineWeeks) || 1,
   );
+  const contractTimelineDays = contractTimelineWeeks * 7;
+  const totalMilestoneWeeks = milestones.reduce(
+    (total, milestone) => total + Number(milestone.duration || 0),
+    0,
+  );
+  const minimumTimelineWeeks = Math.max(
+    timelineBufferWeeks,
+    totalMilestoneWeeks + timelineBufferWeeks,
+  );
+  const timelineValid = contractTimelineWeeks >= minimumTimelineWeeks;
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
   contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
@@ -206,6 +256,12 @@ export function ManageJobPage() {
       );
       return;
     }
+    if (!timelineValid) {
+      setContractError(
+        `Timeline hợp đồng phải bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần) cộng thêm ${timelineBufferWeeks} tuần dự phòng. Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuần.`,
+      );
+      return;
+    }
     setContractError("");
     setContractLoading(true);
     try {
@@ -214,7 +270,7 @@ export function ManageJobPage() {
         {
           contractTitle:
             contractForm.contractTitle.trim() || `Contract - ${job.title}`,
-          timelineDays: Number(contractForm.timelineDays),
+          timelineDays: contractTimelineDays,
         },
       );
       setContracts((items) => [contract, ...items]);
@@ -361,7 +417,7 @@ export function ManageJobPage() {
                     setContractForm((value) => ({
                       ...value,
                       contractTitle: `Contract - ${job.title}`,
-                      timelineDays: String(proposal.deliveryDays || 60),
+                      timelineWeeks: String(minimumTimelineWeeks),
                     }));
                   }}
                 />
@@ -453,6 +509,7 @@ export function ManageJobPage() {
         onClose={() => setContractModal(null)}
         title="Tạo hợp đồng nháp"
         description="Tạo draft contract từ proposal đã chọn."
+        size="2xl"
         footer={
           <>
             <Button
@@ -468,6 +525,7 @@ export function ManageJobPage() {
               disabled={
                 contractLoading ||
                 jobInProgress ||
+                !timelineValid ||
                 contractModal?.status !== "Accepted" ||
                 milestones.length === 0
               }
@@ -502,18 +560,25 @@ export function ManageJobPage() {
               }
             />
           </Field>
-          <Field label="Timeline days">
+          <Field label="Timeline (tuần)">
             <Input
               type="number"
-              value={contractForm.timelineDays}
+              min={minimumTimelineWeeks}
+              value={contractForm.timelineWeeks}
               onChange={(event) =>
                 setContractForm((value) => ({
                   ...value,
-                  timelineDays: event.target.value,
+                  timelineWeeks: event.target.value,
                 }))
               }
             />
           </Field>
+          {!timelineValid && (
+            <Notice
+              tone="warning"
+              title={`Timeline phải lấy tổng thời gian milestone (${totalMilestoneWeeks} tuần) cộng thêm ${timelineBufferWeeks} tuần. Tối thiểu ${minimumTimelineWeeks} tuần.`}
+            />
+          )}
           <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
             <ContractPreviewMetric
               label="Ngay bat dau du kien"
@@ -525,7 +590,7 @@ export function ManageJobPage() {
             />
             <ContractPreviewMetric
               label="Tong thoi gian"
-              value={`${contractTimelineDays} ngay`}
+              value={`${contractTimelineWeeks} tuần (${contractTimelineDays} ngày)`}
             />
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
@@ -533,7 +598,7 @@ export function ManageJobPage() {
               title="Ngân sách sẽ dưa vào hợp đồng"
               description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
             />
-            <div className="mt-4 grid gap-2">
+            <div className="mt-4 grid gap-3">
               {milestones
                 .slice()
                 .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -548,20 +613,26 @@ export function ManageJobPage() {
                   return (
                     <div
                       key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
-                      className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm md:grid-cols-[72px_1fr_150px_150px] md:items-center"
+                      className="grid gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-sm lg:grid-cols-[120px_minmax(320px,1fr)_170px_170px] lg:items-start"
                     >
                       <Badge tone={changed ? "amber" : "brand"}>
                         Mốc {milestone.orderIndex}
                       </Badge>
                       <div className="min-w-0">
-                        <p className="break-words font-extrabold text-ink">
+                        <p className="break-words font-extrabold leading-6 text-ink">
                           {milestone.milestoneName}
                         </p>
                         {milestone.description && (
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                          <p className="mt-1 break-words text-sm leading-6 text-slate-500">
                             {milestone.description}
                           </p>
                         )}
+                        <p className="mt-2 text-xs font-bold text-slate-400">
+                          Thời gian:{" "}
+                          {milestone.duration
+                            ? `${milestone.duration} ${milestone.durationUnit || "tuần"}`
+                            : "Chưa có thời gian"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-400">
@@ -582,6 +653,25 @@ export function ManageJobPage() {
                     </div>
                   );
                 })}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-slate-100 bg-white p-4">
+            <SectionHeading
+              title="Điều khoản hợp đồng"
+              description="Nội dung mẫu đang lưu cứng trên FE để đưa vào bước tạo hợp đồng nháp."
+            />
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {CONTRACT_TERM_SECTIONS.map((section) => (
+                <div
+                  key={section.title}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                >
+                  <p className="font-extrabold text-ink">{section.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {section.content}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

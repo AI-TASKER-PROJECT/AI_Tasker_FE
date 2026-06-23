@@ -1,7 +1,221 @@
 import type { NotificationItem } from "../types";
 
-export function notificationHref(targetUrl?: string) {
-  if (!targetUrl) return "/app/notifications";
+function metadataNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function metadataValue(
+  notification: NotificationItem | undefined,
+  keys: string[],
+) {
+  const metadata = notification?.metadata;
+  if (!metadata) return undefined;
+  for (const key of keys) {
+    if (metadata[key] !== undefined && metadata[key] !== null) {
+      return metadata[key];
+    }
+  }
+  return undefined;
+}
+
+function normalizedText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isContractNotification(notification?: NotificationItem) {
+  if (!notification) return false;
+  const value = `${notification.type} ${notification.title} ${notification.message}`.toLowerCase();
+  return (
+    value.includes("contract") ||
+    value.includes("hợp đồng") ||
+    value.includes("hop dong") ||
+    value.includes("ký quỹ") ||
+    value.includes("ky quy") ||
+    value.includes("nda")
+  );
+}
+
+function isProfileVerificationNotification(notification?: NotificationItem) {
+  if (!notification) return false;
+  const value = normalizedText(
+    `${notification.type} ${notification.title} ${notification.message}`,
+  );
+  return (
+    value.includes("profile_verification") ||
+    value.includes("kyb") ||
+    value.includes("kyc") ||
+    value.includes("xac minh") ||
+    value.includes("ho so")
+  );
+}
+
+function metadataProfileType(notification?: NotificationItem) {
+  const raw = metadataValue(notification, [
+    "profileType",
+    "profile_type",
+    "verificationType",
+    "verification_type",
+    "entityType",
+    "entity_type",
+  ]);
+  const value = String(raw || "").toLowerCase();
+  if (value.includes("business") || value.includes("kyb")) return "business";
+  if (value.includes("expert") || value.includes("kyc")) return "expert";
+  const text = normalizedText(
+    `${notification?.type || ""} ${notification?.title || ""} ${
+      notification?.message || ""
+    }`,
+  );
+  if (
+    text.includes("business") ||
+    text.includes("kyb") ||
+    text.includes("doanh nghiep")
+  ) {
+    return "business";
+  }
+  if (
+    text.includes("expert") ||
+    text.includes("kyc") ||
+    text.includes("chuyen gia")
+  ) {
+    return "expert";
+  }
+  return undefined;
+}
+
+function verificationHref(
+  notification: NotificationItem | undefined,
+  targetUrl?: string,
+) {
+  if (!isProfileVerificationNotification(notification)) return undefined;
+
+  const targetProfileMatch = targetUrl?.match(
+    /^\/(?:app\/)?(?:staff\/)?verifications\/(business|expert)\/(\d+)/,
+  );
+  if (targetProfileMatch) {
+    return `/app/verifications/${targetProfileMatch[1]}/${targetProfileMatch[2]}`;
+  }
+
+  const targetBusinessId = metadataNumber(
+    metadataValue(notification, [
+      "businessId",
+      "business_id",
+      "businessProfileId",
+      "business_profile_id",
+    ]),
+  );
+  if (targetBusinessId) return `/app/verifications/business/${targetBusinessId}`;
+
+  const targetExpertId = metadataNumber(
+    metadataValue(notification, [
+      "expertId",
+      "expert_id",
+      "expertProfileId",
+      "expert_profile_id",
+    ]),
+  );
+  if (targetExpertId) return `/app/verifications/expert/${targetExpertId}`;
+
+  const genericProfileId = metadataNumber(
+    metadataValue(notification, [
+      "profileId",
+      "profile_id",
+      "relatedProfileId",
+      "related_profile_id",
+      "entityId",
+      "entity_id",
+      "relatedId",
+      "related_id",
+      "referenceId",
+      "reference_id",
+      "id",
+    ]),
+  );
+  const profileType = metadataProfileType(notification);
+  if (genericProfileId && profileType) {
+    return `/app/verifications/${profileType}/${genericProfileId}`;
+  }
+
+  const queryBusinessId = targetUrl?.match(
+    /[?&](?:businessId|businessProfileId)=(\d+)/,
+  );
+  if (queryBusinessId) return `/app/verifications/business/${queryBusinessId[1]}`;
+
+  const queryExpertId = targetUrl?.match(
+    /[?&](?:expertId|expertProfileId)=(\d+)/,
+  );
+  if (queryExpertId) return `/app/verifications/expert/${queryExpertId[1]}`;
+
+  const queryProfileId = targetUrl?.match(
+    /[?&](?:profileId|entityId|id)=(\d+)/,
+  );
+  const queryType = targetUrl?.match(
+    /[?&](?:profileType|verificationType|entityType)=(business|expert|kyb|kyc)/i,
+  );
+  if (queryProfileId && queryType) {
+    const type = queryType[1].toLowerCase();
+    return `/app/verifications/${
+      type === "kyb" ? "business" : type === "kyc" ? "expert" : type
+    }/${queryProfileId[1]}`;
+  }
+
+  return "/app/verifications";
+}
+
+export function notificationHref(
+  targetUrl?: string,
+  notification?: NotificationItem,
+) {
+  const targetVerificationHref = verificationHref(notification, targetUrl);
+  if (targetVerificationHref) return targetVerificationHref;
+
+  const metadataContractId = metadataNumber(
+    metadataValue(notification, [
+      "contractId",
+      "contract_id",
+      "relatedContractId",
+      "related_contract_id",
+      "entityId",
+      "entity_id",
+      "relatedId",
+      "related_id",
+      "referenceId",
+      "reference_id",
+    ]),
+  );
+  const metadataJobId = metadataNumber(
+    metadataValue(notification, [
+      "jobId",
+      "job_id",
+      "relatedJobId",
+      "related_job_id",
+    ]),
+  );
+  const metadataDisputeId = metadataNumber(
+    metadataValue(notification, [
+      "disputeId",
+      "dispute_id",
+      "relatedDisputeId",
+      "related_dispute_id",
+      "ticketId",
+      "ticket_id",
+      "relatedTicketId",
+      "related_ticket_id",
+    ]),
+  );
+  const contractRelated = isContractNotification(notification);
+
+  if (!targetUrl) {
+    if (metadataContractId) return `/app/contracts/${metadataContractId}`;
+    if (contractRelated) return "/app/contracts";
+    if (metadataJobId) return `/app/jobs/${metadataJobId}/manage`;
+    if (metadataDisputeId) return `/app/tickets/${metadataDisputeId}`;
+    return "/app/notifications";
+  }
   if (targetUrl.startsWith("/app/")) return targetUrl;
 
   const proposalMatch = targetUrl.match(/^\/business\/jobs\/(\d+)\/proposals/);
@@ -19,14 +233,44 @@ export function notificationHref(targetUrl?: string) {
   );
   if (contractMatch) return `/app/contracts/${contractMatch[1]}`;
 
+  const bareContractMatch = targetUrl.match(/^\/contracts\/(\d+)/);
+  if (bareContractMatch) return `/app/contracts/${bareContractMatch[1]}`;
+
+  const contractIdFromQuery = targetUrl.match(/[?&]contractId=(\d+)/);
+  if (contractIdFromQuery) return `/app/contracts/${contractIdFromQuery[1]}`;
+
+  const contractIdFromText = targetUrl.match(/contract[^0-9]*(\d+)/i);
+  if (contractIdFromText) return `/app/contracts/${contractIdFromText[1]}`;
+
   if (targetUrl === "/expert/proposals") return "/app/proposals";
   if (targetUrl === "/business/kyb") return "/app/business/profile";
   if (targetUrl === "/expert/profile") return "/app/expert/profile";
 
-  const staffDisputeMatch = targetUrl.match(/^\/staff\/disputes\/(\d+)/);
+  const staffDisputeMatch = targetUrl.match(
+    /^\/(?:app\/)?staff\/(?:disputes|tickets)\/(\d+)/,
+  );
   if (staffDisputeMatch) return `/app/tickets/${staffDisputeMatch[1]}`;
 
-  if (targetUrl.startsWith("/")) return targetUrl;
+  const disputeIdFromQuery = targetUrl.match(
+    /[?&](?:disputeId|ticketId)=(\d+)/,
+  );
+  if (disputeIdFromQuery) return `/app/tickets/${disputeIdFromQuery[1]}`;
+
+  if (metadataContractId) return `/app/contracts/${metadataContractId}`;
+  if (contractRelated) return "/app/contracts";
+  if (metadataJobId) return `/app/jobs/${metadataJobId}/manage`;
+  if (metadataDisputeId) return `/app/tickets/${metadataDisputeId}`;
+
+  if (targetUrl.startsWith("/")) {
+    if (
+      targetUrl.startsWith("/business/") ||
+      targetUrl.startsWith("/expert/") ||
+      targetUrl.startsWith("/staff/")
+    ) {
+      return "/app/notifications";
+    }
+    return targetUrl;
+  }
   return "/app/notifications";
 }
 

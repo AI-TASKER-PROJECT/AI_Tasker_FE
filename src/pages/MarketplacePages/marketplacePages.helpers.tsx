@@ -2,6 +2,14 @@ import { formatCurrency } from "../../lib/utils";
 import type { Milestone } from "../../types";
 import { skillCountLabel } from "./marketplacePages.utils";
 
+function formatMilestoneDuration(milestone: Milestone) {
+  const duration = Number(milestone.duration || 0);
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return "Chưa có thời gian";
+  }
+  return `${duration} ${milestone.durationUnit || "tuần"}`;
+}
+
 export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
