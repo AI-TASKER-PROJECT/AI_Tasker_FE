@@ -143,8 +143,8 @@ const commonNav: NavItem[] = [
 const roleNav: Record<Role, NavItem[]> = {
   BUSINESS: [
     {
-      label: "Trang cá nhân",
-      to: "/app/business/public-profile",
+      label: "Trang chủ",
+      to: "/home",
       icon: <Building2 className="h-4 w-4" />,
     },
     {
@@ -190,8 +190,8 @@ const roleNav: Record<Role, NavItem[]> = {
   ],
   EXPERT: [
     {
-      label: "Trang cá nhân",
-      to: "/app/expert/public-profile",
+      label: "Trang Chủ",
+      to: "/home",
       icon: <IdCard className="h-4 w-4" />,
     },
     {

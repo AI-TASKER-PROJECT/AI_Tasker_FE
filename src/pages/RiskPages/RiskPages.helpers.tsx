@@ -221,7 +221,7 @@ export function DisputeDetailPage({
           </div>
           <SectionHeading
             title="Bằng chứng và báo cáo"
-            description="EvidenceReport trong back-end dùng cho cả bằng chứng, kết quả demo và technical report."
+            description=""
           />
           <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-7 text-slate-700">
             {dispute.evidenceReport || "Chưa có báo cáo."}
@@ -358,7 +358,7 @@ export function VerificationsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Duyệt hồ sơ KYC/KYB"
-          description="Admin/Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
+          description=""
         />
       </div>
       <Card className="p-5">
@@ -480,7 +480,7 @@ export function VerificationDetailPage() {
     return (
       <EmptyState
         title="Không tìm thấy hồ sơ"
-        description="Dữ liệu KYC/KYB được lấy trực tiếp từ backend."
+        description=""
       />
     );
 
@@ -579,7 +579,7 @@ export function VerificationDetailPage() {
           description="Kiểm tra thông tin dịnh danh và ra quyết dịnh duyệt."
           actions={
             <LinkButton to="/app/verifications" variant="secondary">
-              â† Danh sách
+              Danh sách
             </LinkButton>
           }
         />

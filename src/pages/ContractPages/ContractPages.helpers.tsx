@@ -134,7 +134,7 @@ export function ContractsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Hợp đồng"
-          description="Danh sách contract để di vào đàm phán, NDA, workspace milestone, escrow và review."
+          description="Danh sách contract để đi vào đàm phán, NDA, workspace milestone, escrow và review."
         />
       </div>
       <Card className="p-4">

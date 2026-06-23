@@ -33,6 +33,10 @@ function nameFromEmail(email?: string) {
     .replace(/[._-]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+function validatePhone(phone: string) {
+  const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
+  return phoneRegex.test(phone);
+}
 
 type GoogleSignupDraft = {
   credential: string; //mã nhận từ gg
@@ -47,6 +51,7 @@ export function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">(
     "LOGIN",
   );
@@ -65,7 +70,7 @@ export function LoginPage() {
       navigate("/app"); // chuyển qua trang app
     } catch {
       setMessage(
-        "Không thể dăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
+        "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
       );
     } finally {
       setLoading(false);
@@ -108,7 +113,7 @@ export function LoginPage() {
         });
         setLoginStep("GOOGLE_PROFILE");
       } catch {
-        setMessage("Không thể dăng nhập bằng Google. Vui lòng thử lại.");
+        setMessage("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -119,7 +124,10 @@ export function LoginPage() {
     //chưa có tk thì dki
     event.preventDefault();
     if (!googleSignup) return;
-
+    if (!validatePhone(googleSignup.phone.trim())) {
+      setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      return;
+    }
     setLoading(true);
     setMessage("");
 
@@ -135,7 +143,7 @@ export function LoginPage() {
       saveSession(session);
       navigate("/app");
     } catch {
-      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -217,16 +225,38 @@ export function LoginPage() {
               }
             />
           </Field>
-          <Field label="Số diện thoại">
+          <Field label="Số điện thoại">
             <Input
               value={googleSignup?.phone || ""}
-              onChange={(event) =>
-                setGoogleSignup((value) =>
-                  value ? { ...value, phone: event.target.value } : value,
-                )
-              }
+              onChange={(event) => {
+                const val = event.target.value;
+                if (/^\d*$/.test(val)) {
+                  // Chỉ cho nhập số
+                  setGoogleSignup((value) =>
+                    value ? { ...value, phone: val } : value,
+                  );
+                  if (phoneError) setPhoneError("");
+                }
+              }}
+              onBlur={(event) => {
+                // Check format khi rời ô input
+                const val = event.target.value;
+                if (!val) {
+                  setPhoneError("Số điện thoại không được để trống.");
+                } else if (!validatePhone(val)) {
+                  setPhoneError(
+                    "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                  );
+                }
+              }}
               required
+              placeholder="Nhập số điện thoại"
             />
+            {phoneError && (
+              <span className="text-xs text-red-500 mt-1 block">
+                {phoneError}
+              </span>
+            )}
           </Field>
           <Field label="Vai trò">
             <Select
@@ -258,7 +288,7 @@ export function LoginPage() {
               setMessage("");
             }}
           >
-            Quay lại dăng nhập
+            Quay lại đăng nhập
           </Button>
         </form>
       )}
@@ -268,6 +298,7 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [phoneError, setPhoneError] = useState("");
   const [step, setStep] = useState<"FORM" | "OTP" | "GOOGLE_PROFILE">("FORM");
   const [form, setForm] = useState({
     email: "",
@@ -323,7 +354,7 @@ export function RegisterPage() {
         setStep("GOOGLE_PROFILE");
       } catch {
         setMessageTone("danger");
-        setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+        setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -334,7 +365,10 @@ export function RegisterPage() {
   const submitGoogleSignup = async (event: FormEvent) => {
     event.preventDefault();
     if (!googleSignup) return;
-
+    if (!validatePhone(googleSignup.phone.trim())) {
+      setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      return;
+    }
     setLoading(true);
     setMessage("");
     setMessageTone("danger");
@@ -356,7 +390,7 @@ export function RegisterPage() {
       );
     } catch {
       setMessageTone("danger");
-      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -381,6 +415,10 @@ export function RegisterPage() {
   // =========================================================================
   const handleRegisterSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!validatePhone(form.phone.trim())) {
+      setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      return;
+    }
     setLoading(true);
     setMessage("");
 
@@ -568,17 +606,34 @@ export function RegisterPage() {
                   required
                 />
               </Field>
-              <Field label="Số diện thoại">
+              <Field label="Số điện thoại">
                 <Input
                   value={form.phone}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      phone: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    if (/^\d*$/.test(val)) {
+                      setForm((value) => ({ ...value, phone: val }));
+                      if (phoneError) setPhoneError("");
+                    }
+                  }}
+                  onBlur={(event) => {
+                    const val = event.target.value;
+                    if (!val) {
+                      setPhoneError("Số điện thoại không được để trống.");
+                    } else if (!validatePhone(val)) {
+                      setPhoneError(
+                        "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                      );
+                    }
+                  }}
                   required
+                  placeholder="Nhập số điện thoại"
                 />
+                {phoneError && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {phoneError}
+                  </span>
+                )}
               </Field>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -648,16 +703,34 @@ export function RegisterPage() {
               }
             />
           </Field>
-          <Field label="Số diện thoại">
+          <Field label="Số điện thoại">
             <Input
-              value={googleSignup?.phone || ""}
-              onChange={(event) =>
-                setGoogleSignup((value) =>
-                  value ? { ...value, phone: event.target.value } : value,
-                )
-              }
+              value={form.phone}
+              onChange={(event) => {
+                const val = event.target.value;
+                if (/^\d*$/.test(val)) {
+                  setForm((value) => ({ ...value, phone: val }));
+                  if (phoneError) setPhoneError("");
+                }
+              }}
+              onBlur={(event) => {
+                const val = event.target.value;
+                if (!val) {
+                  setPhoneError("Số điện thoại không được để trống.");
+                } else if (!validatePhone(val)) {
+                  setPhoneError(
+                    "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                  );
+                }
+              }}
               required
+              placeholder="Nhập số điện thoại"
             />
+            {phoneError && (
+              <span className="text-xs text-red-500 mt-1 block">
+                {phoneError}
+              </span>
+            )}
           </Field>
           <Field label="Vai trò">
             <Select

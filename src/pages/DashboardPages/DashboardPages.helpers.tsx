@@ -224,7 +224,7 @@ export function DashboardPage() {
       <div className="grid gap-6">
         <Card className="p-6">
           <SectionHeading
-            title="Hợp đồng gần dây"
+            title="Hợp đồng gần đây"
             action={
               <LinkButton to="/app/contracts" variant="secondary" size="sm">
                 Xem tất cả
@@ -329,12 +329,12 @@ export function NotificationsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           eyebrow="Realtime Center"
-          title="Trung tam thong bao"
-          description="Theo doi tat ca thong bao he thong va trang thai da doc."
+          title="Trung tâm thông báo"
+          description="Theo dõi tất cả thông báo hệ thống và trạng thái đã đọc."
           actions={
             unreadCount > 0 ? (
               <Button variant="secondary" onClick={markAllRead}>
-                Doc tat ca
+                Đọc tất cả
               </Button>
             ) : undefined
           }
@@ -343,12 +343,12 @@ export function NotificationsPage() {
       <div className="grid gap-4">
         {loading ? (
           <Card className="p-8 text-center text-sm font-semibold text-slate-400">
-            Dang tai thong bao...
+            Đang tải thông báo...
           </Card>
         ) : notifications.length === 0 ? (
           <EmptyState
             title="Chua co thong bao"
-            description="Khi backend tao thong bao moi, danh sach se hien thi tai day."
+            description=""
           />
         ) : (
           notifications.map((item) => {
@@ -407,7 +407,7 @@ export function NotificationsPage() {
                         {item.metadata?.reason && (
                           <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
                             <p className="mb-1 text-sm font-semibold text-rose-800">
-                              Ly do tu choi:
+                              Lý do từ chối:
                             </p>
                             <p className="text-sm text-rose-700">
                               {item.metadata.reason}
@@ -415,9 +415,9 @@ export function NotificationsPage() {
                           </div>
                         )}
                         <div className="grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-2">
-                          <span>Loai: {item.type}</span>
+                          <span>Loại: {item.type}</span>
                           <span>
-                            Trang thai: {item.isRead ? "Da doc" : "Chua doc"}
+                            Trạng thái: {item.isRead ? "Đã đọc" : "Chưa đọc"}
                           </span>
                         </div>
                         <div className="flex flex-wrap justify-end gap-2 pt-1">
@@ -430,7 +430,7 @@ export function NotificationsPage() {
                                 navigate(targetHref);
                               }}
                             >
-                              Mo lien ket
+                              Mở liên kết
                             </Button>
                           )}
                           <Button
@@ -441,7 +441,7 @@ export function NotificationsPage() {
                               navigate("/app/notifications", { replace: true });
                             }}
                           >
-                            Dong chi tiet
+                            Đóng chi tiết
                           </Button>
                         </div>
                       </div>
@@ -459,7 +459,7 @@ export function NotificationsPage() {
                       className="shrink-0"
                       onClick={() => openNotification(item)}
                     >
-                      Chi tiet
+                      Chi tiết
                     </Button>
                   )}
                 </div>
@@ -474,8 +474,8 @@ export function NotificationsPage() {
 export function ProfilePagesHint() {
   return (
     <Notice tone="info" title="Luồng xác minh">
-      Hồ sơ mặc dịnh ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved
-      dể mở khóa giao dịch.
+      Hồ sơ mặc định ở trạng thái Pending. Admin hoặc Staff chuyển sang Approved
+      để mở khóa giao dịch.
     </Notice>
   );
 }
