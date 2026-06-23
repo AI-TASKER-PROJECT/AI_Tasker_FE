@@ -28,7 +28,7 @@ import {
   Users,
   WalletCards,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -37,16 +37,16 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
-} from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { connectNotificationSocket } from '../../lib/notificationSocket';
+} from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { connectNotificationSocket } from "../../lib/notificationSocket";
 import {
   formatNotificationTime,
   mergeNotification,
   notificationTone,
-} from '../../lib/notifications';
-import { Logo } from '../../components/Logo';
-import { ChatBox } from '../../components/ChatBox';
+} from "../../lib/notifications";
+import { Logo } from "../../components/Logo";
+import { ChatBox } from "../../components/ChatBox";
 import QRCode from "qrcode";
 import type {
   CreatePayOSPaymentResponse,
@@ -247,7 +247,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
-      label: "Ticket được giao",
+      label: "Ticket dược giao",
       to: "/app/tickets",
       icon: <Gavel className="h-4 w-4" />,
     },
@@ -428,25 +428,31 @@ export function AppShell() {
     navigate("/login");
   };
 
-  const openTopup = useCallback((event?: Event) => {
-    const detail = (event as CustomEvent<{ amount?: number; description?: string }> | undefined)
-      ?.detail;
-    setTopupNotice(null);
-    setTopupPayment(null);
-    setTopupQrDataUrl("");
-    setTopupForm((value) => ({
-      amount:
-        detail?.amount && Number.isFinite(detail.amount)
-          ? String(Math.ceil(detail.amount))
-          : value.amount,
-      description:
-        detail?.description ||
-        value.description.trim() ||
-        defaultTopupDescription,
-    }));
-    setTopupOpen(true);
-    setRoleOpen(false);
-  }, [defaultTopupDescription]);
+  const openTopup = useCallback(
+    (event?: Event) => {
+      const detail = (
+        event as
+          | CustomEvent<{ amount?: number; description?: string }>
+          | undefined
+      )?.detail;
+      setTopupNotice(null);
+      setTopupPayment(null);
+      setTopupQrDataUrl("");
+      setTopupForm((value) => ({
+        amount:
+          detail?.amount && Number.isFinite(detail.amount)
+            ? String(Math.ceil(detail.amount))
+            : value.amount,
+        description:
+          detail?.description ||
+          value.description.trim() ||
+          defaultTopupDescription,
+      }));
+      setTopupOpen(true);
+      setRoleOpen(false);
+    },
+    [defaultTopupDescription],
+  );
 
   useEffect(() => {
     window.addEventListener("aitasker:open-wallet-topup", openTopup);
@@ -464,9 +470,13 @@ export function AppShell() {
         if (paymentOrder.status === "PAID") {
           setTopupNotice({
             tone: "success",
-            title: "Thanh toán thành công. Số dư ví đã được cập nhật.",
+            title: "Thanh toán thành công. Số dư ví dã dược cập nhật.",
           });
           await loadWallet();
+          window.dispatchEvent(new Event("aitasker:reload-wallet"));
+          setTimeout(() => {
+            setTopupOpen(false);
+          }, 1500);
           return true;
         }
 
@@ -477,7 +487,7 @@ export function AppShell() {
         ) {
           setTopupNotice({
             tone: "danger",
-            title: "Thanh toán không thành công, đã hủy hoặc đã hết hạn.",
+            title: "Thanh toán không thành công, dã hủy hoặc dã hết hạn.",
           });
           return true;
         }
@@ -560,7 +570,7 @@ export function AppShell() {
 
       setTopupNotice({
         tone: "info",
-        title: "Đã tạo mã thanh toán. Quét QR hoặc mở link payOS để nạp tiền.",
+        title: "Đã tạo mã thanh toán. Quét QR hoặc mở link payOS dể nạp tiền.",
       });
     } catch (error) {
       setTopupNotice({
@@ -600,7 +610,7 @@ export function AppShell() {
     };
   }, [location.pathname, refreshSession, session?.accessToken]);
 
-  // Thay thế đoạn useEffect cũ bằng đoạn này:
+  // Thay thế doạn useEffect cũ bằng doạn này:
   useEffect(() => {
     if (!session) return;
     const canOpenWhileVerifying = verificationAllowedPaths.some((path) =>
@@ -734,8 +744,8 @@ export function AppShell() {
           type="button"
           aria-label={
             sidebarCollapsed
-              ? "Mở rộng thanh điều hướng"
-              : "Thu gọn thanh điều hướng"
+              ? "Mở rộng thanh diều hướng"
+              : "Thu gọn thanh diều hướng"
           }
           title={sidebarCollapsed ? "Mở rộng" : "Thu gọn"}
           onClick={() => setSidebarCollapsed((value) => !value)}
@@ -1025,7 +1035,7 @@ export function AppShell() {
                           {walletLoading ? "Đang tải..." : "Làm mới"}
                         </button>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className={cn("mt-3 grid gap-2", session?.role === "EXPERT" ? "grid-cols-1" : "grid-cols-2")}>
                         <div className="rounded-2xl bg-slate-50 p-3">
                           <p className="text-[11px] font-bold text-slate-400">
                             Khả dụng
@@ -1036,36 +1046,42 @@ export function AppShell() {
                               : "--"}
                           </p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-bold text-slate-400">
-                            Hiện tại
-                          </p>
-                          <p className="mt-1 truncate text-sm font-black text-brand-700">
-                            {wallet
-                              ? formatCurrency(wallet.currentBalance)
-                              : "--"}
-                          </p>
-                        </div>
+                        {session?.role !== "EXPERT" && (
+                          <div className="rounded-2xl bg-slate-50 p-3">
+                            <p className="text-[11px] font-bold text-slate-400">
+                              Quỹ hợp đồng
+                            </p>
+                            <p className="mt-1 truncate text-sm font-black text-brand-700">
+                              {wallet
+                                ? formatCurrency(wallet.escrowBalance)
+                                : "--"}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       {quota && (
-                        <div className="mt-3 rounded-2xl bg-slate-50 p-3">
-                          <div className="flex justify-between items-center">
-                            <p className="text-[11px] font-bold text-slate-400">
-                              Lượt đăng Job
-                            </p>
-                            <p className="text-sm font-black text-ink">
-                              {quota.jobPostQuotaBalance ?? 0}
-                            </p>
-                          </div>
-                          <div className="mt-2 flex justify-between items-center">
-                            <p className="text-[11px] font-bold text-slate-400">
-                              Lượt nộp Proposal
-                            </p>
-                            <p className="text-sm font-black text-ink">
-                              {quota.proposalQuotaBalance ?? 0}
-                            </p>
-                          </div>
+                        <div className="mt-3 space-y-2 rounded-2xl bg-slate-50 p-3">
+                          {session?.role !== "EXPERT" && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-bold text-slate-400">
+                                Lượt đăng Job
+                              </p>
+                              <p className="text-sm font-black text-ink">
+                                {quota.jobPostQuotaBalance ?? 0}
+                              </p>
+                            </div>
+                          )}
+                          {session?.role !== "BUSINESS" && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-bold text-slate-400">
+                                Lượt nộp Proposal
+                              </p>
+                              <p className="text-sm font-black text-ink">
+                                {quota.proposalQuotaBalance ?? 0}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1110,7 +1126,7 @@ export function AppShell() {
             )}
             {needsVerification && (
               <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Tai khoan dang o trang thai {accountStatus}. Hay hoan thien ho
+                Tai khoan đang o trang thai {accountStatus}. Hay hoan thien ho
                 so xac minh va doi staff duyet de mo khoa chuc nang.
               </div>
             )}
@@ -1178,15 +1194,7 @@ export function AppShell() {
             >
               Hủy
             </Button>
-            {topupPayment && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => syncTopupStatus(topupPayment.orderCode)}
-              >
-                Kiểm tra trạng thái
-              </Button>
-            )}
+
             <Button
               type="submit"
               form="wallet-topup-form"
@@ -1263,7 +1271,7 @@ export function AppShell() {
                   {topupQrDataUrl ? (
                     <img
                       src={topupQrDataUrl}
-                      alt={`QR thanh toán payOS đơn ${topupPayment.orderCode}`}
+                      alt={`QR thanh toán payOS dơn ${topupPayment.orderCode}`}
                       className="h-auto w-full rounded-xl"
                     />
                   ) : (
@@ -1275,7 +1283,7 @@ export function AppShell() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand-500">
-                      Quét QR để nạp ví
+                      Quét QR dể nạp ví
                     </p>
                     <p className="mt-1 text-2xl font-black text-ink">
                       {formatCurrency(topupPayment.amount)}
@@ -1283,7 +1291,7 @@ export function AppShell() {
                   </div>
                   <div className="grid gap-2 text-sm">
                     <PaymentFact
-                      label="Mã đơn"
+                      label="Mã dơn"
                       value={`#${topupPayment.orderCode}`}
                     />
                     <PaymentFact

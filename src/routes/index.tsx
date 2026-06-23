@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { AppShell } from "../layouts/AppLayout";
@@ -62,6 +62,13 @@ import { Card, LinkButton } from "../components/ui";
 function ProtectedRoute() {
   if (!getSession()) return <Navigate to="/login" replace />;
   return <AppShell />;
+}
+
+function RoleProtectedRoute({ roles }: { roles: string[] }) {
+  const session = getSession();
+  if (!session) return <Navigate to="/login" replace />;
+  if (!roles.includes(session.role)) return <Navigate to="/app" replace />;
+  return <Outlet />;
 }
 
 function PageTransition({ children }: { children: ReactNode }) {
@@ -130,55 +137,49 @@ export function AppRoutes() {
           }
         />
 
-        {/* Jobs */}
-        <Route
-          path="jobs"
-          element={
-            <PageTransition>
-              <MyJobsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="jobs/new"
-          element={
-            <PageTransition>
-              <CreateJobPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="jobs/:jobId/manage"
-          element={
-            <PageTransition>
-              <ManageJobPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="jobs/:jobId/proposal"
-          element={
-            <PageTransition>
-              <SubmitProposalPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="business/profile"
-          element={
-            <PageTransition>
-              <BusinessVerificationProfilePage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="business/public-profile"
-          element={
-            <PageTransition>
-              <MyPublicBusinessProfilePage />
-            </PageTransition>
-          }
-        />
+        {/* Jobs (BUSINESS only) */}
+        <Route element={<RoleProtectedRoute roles={["BUSINESS"]} />}>
+          <Route
+            path="jobs"
+            element={
+              <PageTransition>
+                <MyJobsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="jobs/new"
+            element={
+              <PageTransition>
+                <CreateJobPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="jobs/:jobId/manage"
+            element={
+              <PageTransition>
+                <ManageJobPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="business/profile"
+            element={
+              <PageTransition>
+                <BusinessVerificationProfilePage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="business/public-profile"
+            element={
+              <PageTransition>
+                <MyPublicBusinessProfilePage />
+              </PageTransition>
+            }
+          />
+        </Route>
         <Route
           path="businesses/:businessId"
           element={
@@ -188,47 +189,57 @@ export function AppRoutes() {
           }
         />
 
-        {/* Expert */}
-        <Route
-          path="opportunities"
-          element={
-            <PageTransition>
-              <OpportunitiesPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="proposals"
-          element={
-            <PageTransition>
-              <ProposalsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="expert/profile"
-          element={
-            <PageTransition>
-              <ExpertVerificationProfilePage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="expert/public-profile"
-          element={
-            <PageTransition>
-              <MyPublicExpertProfilePage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="expert/portfolio"
-          element={
-            <PageTransition>
-              <ExpertPortfolioPage />
-            </PageTransition>
-          }
-        />
+        {/* Expert (EXPERT only) */}
+        <Route element={<RoleProtectedRoute roles={["EXPERT"]} />}>
+          <Route
+            path="opportunities"
+            element={
+              <PageTransition>
+                <OpportunitiesPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="jobs/:jobId/proposal"
+            element={
+              <PageTransition>
+                <SubmitProposalPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="proposals"
+            element={
+              <PageTransition>
+                <ProposalsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="expert/profile"
+            element={
+              <PageTransition>
+                <ExpertVerificationProfilePage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="expert/public-profile"
+            element={
+              <PageTransition>
+                <MyPublicExpertProfilePage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="expert/portfolio"
+            element={
+              <PageTransition>
+                <ExpertPortfolioPage />
+              </PageTransition>
+            }
+          />
+        </Route>
         <Route
           path="experts/:expertId"
           element={
@@ -325,112 +336,116 @@ export function AppRoutes() {
         />
 
         {/* Staff */}
-        <Route
-          path="tickets"
-          element={
-            <PageTransition>
-              <DisputesPage staffMode />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="tickets/:disputeId"
-          element={
-            <PageTransition>
-              <DisputeDetailPage staffMode />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="verifications"
-          element={
-            <PageTransition>
-              <VerificationsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="verifications/:type/:id"
-          element={
-            <PageTransition>
-              <VerificationDetailPage />
-            </PageTransition>
-          }
-        />
+        <Route element={<RoleProtectedRoute roles={["STAFF", "ADMIN"]} />}>
+          <Route
+            path="tickets"
+            element={
+              <PageTransition>
+                <DisputesPage staffMode />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="tickets/:disputeId"
+            element={
+              <PageTransition>
+                <DisputeDetailPage staffMode />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="verifications"
+            element={
+              <PageTransition>
+                <VerificationsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="verifications/:type/:id"
+            element={
+              <PageTransition>
+                <VerificationDetailPage />
+              </PageTransition>
+            }
+          />
+        </Route>
 
         {/* Admin */}
-        <Route
-          path="admin/analytics"
-          element={
-            <PageTransition>
-              <AnalyticsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/wallet"
-          element={
-            <PageTransition>
-              <SystemWalletPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/withdrawals"
-          element={
-            <PageTransition>
-              <AdminWithdrawalPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/accounts"
-          element={
-            <PageTransition>
-              <AccountsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/staff"
-          element={
-            <PageTransition>
-              <StaffPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/settings"
-          element={
-            <PageTransition>
-              <SettingsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/master-data"
-          element={
-            <PageTransition>
-              <MasterDataPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/audit-logs"
-          element={
-            <PageTransition>
-              <AuditLogsPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="admin/reports"
-          element={
-            <PageTransition>
-              <ReportsPage />
-            </PageTransition>
-          }
-        />
+        <Route element={<RoleProtectedRoute roles={["ADMIN"]} />}>
+          <Route
+            path="admin/analytics"
+            element={
+              <PageTransition>
+                <AnalyticsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/wallet"
+            element={
+              <PageTransition>
+                <SystemWalletPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/withdrawals"
+            element={
+              <PageTransition>
+                <AdminWithdrawalPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/accounts"
+            element={
+              <PageTransition>
+                <AccountsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/staff"
+            element={
+              <PageTransition>
+                <StaffPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/settings"
+            element={
+              <PageTransition>
+                <SettingsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/master-data"
+            element={
+              <PageTransition>
+                <MasterDataPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/audit-logs"
+            element={
+              <PageTransition>
+                <AuditLogsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/reports"
+            element={
+              <PageTransition>
+                <ReportsPage />
+              </PageTransition>
+            }
+          />
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
@@ -447,7 +462,7 @@ function NotFoundPage() {
           Không tìm thấy giao diện
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Route này chưa được định nghĩa. Tất cả màn hình chính đều có trong
+          Route này chưa dược dịnh nghĩa. Tất cả màn hình chính dều có trong
           navigation theo role.
         </p>
         <div className="mt-6">

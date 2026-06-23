@@ -1,8 +1,6 @@
 import {
   ArrowRight,
   Building2,
-  ShieldCheck,
-  Sparkles,
   UserRoundCheck,
   CheckCircle2,
 } from "lucide-react";
@@ -17,7 +15,6 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { GoogleAuthButton } from "../../components/GoogleAuthButton";
 import { Logo } from "../../components/Logo";
 import {
-  Badge,
   Button,
   Card,
   Field,
@@ -50,9 +47,12 @@ export function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">("LOGIN");
+  const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">(
+    "LOGIN",
+  );
 
-  const login = async (event: FormEvent) => { //login bth
+  const login = async (event: FormEvent) => {
+    //login bth
     event.preventDefault();
     setLoading(true);
     setMessage("");
@@ -65,87 +65,95 @@ export function LoginPage() {
       navigate("/app"); // chuyển qua trang app
     } catch {
       setMessage(
-        "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
+        "Không thể dăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(null);
+  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(
+    null,
+  );
 
-  const loginWithGoogle = useCallback( //login bằng google
-  async (credential: string) => {
-    setLoading(true);
-    setMessage("");
-    try {
-      const payload = decodeGoogleCredential(credential);
-      const email = payload.email.trim().toLowerCase();
-      const emailExists = await authApi.checkEmail(email);
+  const loginWithGoogle = useCallback(
+    //login bằng google
+    async (credential: string) => {
+      setLoading(true);
+      setMessage("");
+      try {
+        const payload = decodeGoogleCredential(credential);
+        const email = payload.email.trim().toLowerCase();
+        const emailExists = await authApi.checkEmail(email);
 
-      if (emailExists) { //check email có tồn tại không
-        const session = await authApi.googleSignup({
+        if (emailExists) {
+          //check email có tồn tại không
+          const session = await authApi.googleSignup({
+            credential,
+            fullName: payload.name || nameFromEmail(email),
+            phone: "",
+            role: "BUSINESS",
+          });
+          saveSession(session); // có thì lưu session
+          navigate("/app"); //chuyển hướng qua giao diện app
+          return;
+        }
+
+        setGoogleSignup({
           credential,
+          email,
           fullName: payload.name || nameFromEmail(email),
           phone: "",
           role: "BUSINESS",
         });
-        saveSession(session); // có thì lưu session
-        navigate("/app"); //chuyển hướng qua giao diện app
-        return;
+        setLoginStep("GOOGLE_PROFILE");
+      } catch {
+        setMessage("Không thể dăng nhập bằng Google. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
       }
+    },
+    [navigate],
+  );
+  const submitGoogleSignup = async (event: FormEvent) => {
+    //chưa có tk thì dki
+    event.preventDefault();
+    if (!googleSignup) return;
 
-      setGoogleSignup({
-        credential,
-        email,
-        fullName: payload.name || nameFromEmail(email),
-        phone: "",
-        role: "BUSINESS",
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const session = await authApi.googleSignup({
+        credential: googleSignup.credential,
+        fullName:
+          googleSignup.fullName.trim() || nameFromEmail(googleSignup.email),
+        phone: googleSignup.phone.trim(),
+        role: googleSignup.role,
       });
-      setLoginStep("GOOGLE_PROFILE");
+
+      saveSession(session);
+      navigate("/app");
     } catch {
-      setMessage("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-  },
-  [navigate],
-);
-const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đki
-  event.preventDefault();
-  if (!googleSignup) return;
-
-  setLoading(true);
-  setMessage("");
-
-  try {
-    const session = await authApi.googleSignup({
-      credential: googleSignup.credential,
-      fullName:
-        googleSignup.fullName.trim() ||
-        nameFromEmail(googleSignup.email),
-      phone: googleSignup.phone.trim(),
-      role: googleSignup.role,
-    });
-
-    saveSession(session);
-    navigate("/app");
-  } catch {
-    setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (getSession()) return <Navigate to="/app" replace />;
 
   return (
     <AuthFrame
-      title={loginStep === "LOGIN" ? "Đăng nhập AITASKER" : "Hoàn tất thông tin Google"}
+      title={
+        loginStep === "LOGIN"
+          ? "Đăng nhập AITASKER"
+          : "Hoàn tất thông tin Google"
+      }
       description={
         loginStep === "LOGIN"
-          ? "JWT role sẽ quyết định dashboard: Business, Expert, Staff hoặc Admin."
-          : "Bổ sung thông tin liên hệ và vai trò để tiếp tục với Google."
+          ? "JWT role sẽ quyết dịnh dashboard: Business, Expert, Staff hoặc Admin."
+          : "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
       }
     >
       {loginStep === "LOGIN" ? (
@@ -168,7 +176,10 @@ const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đk
                 minLength={8}
                 value={form.password}
                 onChange={(event) =>
-                  setForm((value) => ({ ...value, password: event.target.value }))
+                  setForm((value) => ({
+                    ...value,
+                    password: event.target.value,
+                  }))
                 }
                 required
               />
@@ -193,7 +204,10 @@ const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đk
       ) : (
         <form onSubmit={submitGoogleSignup} className="grid gap-4">
           {message && <Notice tone="danger" title={message} />}
-          <Field label="Họ tên" hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google.">
+          <Field
+            label="Họ tên"
+            hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google."
+          >
             <Input
               value={googleSignup?.fullName || ""}
               onChange={(event) =>
@@ -203,7 +217,7 @@ const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đk
               }
             />
           </Field>
-          <Field label="Số điện thoại">
+          <Field label="Số diện thoại">
             <Input
               value={googleSignup?.phone || ""}
               onChange={(event) =>
@@ -244,7 +258,7 @@ const submitGoogleSignup = async (event: FormEvent) => { //chưa có tk thì đk
               setMessage("");
             }}
           >
-            Quay lại đăng nhập
+            Quay lại dăng nhập
           </Button>
         </form>
       )}
@@ -268,9 +282,11 @@ export function RegisterPage() {
   const [messageTone, setMessageTone] = useState<"danger" | "success">(
     "danger",
   );
-  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(null);
+  const [googleSignup, setGoogleSignup] = useState<GoogleSignupDraft | null>(
+    null,
+  );
 
-  // State lưu thời gian đếm ngược
+  // State lưu thời gian dếm ngược
   const [countdown, setCountdown] = useState(0);
 
   const registerWithGoogle = useCallback(
@@ -299,14 +315,15 @@ export function RegisterPage() {
         setGoogleSignup({
           credential,
           email,
-          fullName: form.fullName.trim() || payload.name || nameFromEmail(email),
+          fullName:
+            form.fullName.trim() || payload.name || nameFromEmail(email),
           phone: form.phone.trim(),
           role: form.role,
         });
         setStep("GOOGLE_PROFILE");
       } catch {
         setMessageTone("danger");
-        setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
+        setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -339,7 +356,7 @@ export function RegisterPage() {
       );
     } catch {
       setMessageTone("danger");
-      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -366,19 +383,19 @@ export function RegisterPage() {
     event.preventDefault();
     setLoading(true);
     setMessage("");
-    
+
     const normalizedEmail = form.email.trim().toLowerCase();
 
     try {
       // 1. Gọi API kiểm tra email trước
-      // LƯU Ý: Đảm bảo authApi.checkEmail trả về đúng giá trị data từ axios
+      // LƯU Ý: Đảm bảo authApi.checkEmail trả về dúng giá trị data từ axios
       const emailExists = await authApi.checkEmail(normalizedEmail);
-      
-      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
+
+      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu dã có người dùng
       // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
       if (emailExists) {
         setMessageTone("danger");
-        setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
+        setMessage("Email này dã dược sử dụng. Vui lòng chọn email khác.");
         setLoading(false);
         return; // Dừng lại, không gửi OTP
       }
@@ -399,19 +416,19 @@ export function RegisterPage() {
 
       setMessageTone("success");
       setMessage(
-        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
+        `Mã OTP dã dược gửi dến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
       );
     } catch {
       setMessageTone("danger");
       setMessage(
-        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end.",
+        "Không thể gửi mã OTP. Kiểm tra xem email dã tồn tại hoặc trạng thái back-end.",
       );
     } finally {
       setLoading(false);
     }
   };
   // =========================================================================
-  // X? L� G?I L?I M� OTP
+  // X? L�G?I L?I M�OTP
   // =========================================================================
   const handleResendOtp = async () => {
     setLoading(true);
@@ -428,7 +445,7 @@ export function RegisterPage() {
       );
 
       setMessageTone("success");
-      setMessage("Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.");
+      setMessage("Mã OTP mới dã dược gửi. Vui lòng kiểm tra hộp thư.");
     } catch {
       setMessageTone("danger");
       setMessage("Lỗi khi gửi lại mã OTP. Vui lòng thử lại sau.");
@@ -452,7 +469,7 @@ export function RegisterPage() {
         otp: form.otp.trim(),
       });
 
-      // 2. Nếu OTP đúng, gọi API đăng ký
+      // 2. Nếu OTP dúng, gọi API dăng ký
       const session = await authApi.register({
         email: form.email.trim().toLowerCase(),
         fullName: form.fullName.trim(),
@@ -470,7 +487,7 @@ export function RegisterPage() {
     } catch {
       setMessageTone("danger");
       setMessage(
-        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email đã tồn tại.",
+        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email dã tồn tại.",
       );
     } finally {
       setLoading(false);
@@ -490,10 +507,10 @@ export function RegisterPage() {
       }
       description={
         step === "FORM"
-          ? "REG-01 yêu cầu khóa chặt email với một vai trò đã chọn."
+          ? "REG-01 yêu cầu khóa chặt email với một vai trò dã chọn."
           : step === "GOOGLE_PROFILE"
-            ? "Bổ sung thông tin liên hệ và vai trò để tiếp tục với Google."
-            : "Vui lòng nhập mã gồm 6 chữ số vừa được gửi tới email của bạn."
+            ? "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
+            : "Vui lòng nhập mã gồm 6 chữ số vừa dược gửi tới email của bạn."
       }
     >
       {message && (
@@ -551,7 +568,7 @@ export function RegisterPage() {
                   required
                 />
               </Field>
-              <Field label="Số điện thoại">
+              <Field label="Số diện thoại">
                 <Input
                   value={form.phone}
                   onChange={(event) =>
@@ -618,7 +635,10 @@ export function RegisterPage() {
         </>
       ) : step === "GOOGLE_PROFILE" ? (
         <form onSubmit={submitGoogleSignup} className="grid gap-4">
-          <Field label="Họ tên" hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google.">
+          <Field
+            label="Họ tên"
+            hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google."
+          >
             <Input
               value={googleSignup?.fullName || ""}
               onChange={(event) =>
@@ -628,7 +648,7 @@ export function RegisterPage() {
               }
             />
           </Field>
-          <Field label="Số điện thoại">
+          <Field label="Số diện thoại">
             <Input
               value={googleSignup?.phone || ""}
               onChange={(event) =>
@@ -698,11 +718,11 @@ export function RegisterPage() {
               Xác thực Email <CheckCircle2 className="h-4 w-4 ml-2" />
             </Button>
 
-            {/* Khối hiển thị Đồng hồ đếm ngược hoặc Nút gửi lại */}
+            {/* Khối hiển thị Đồng hồ dếm ngược hoặc Nút gửi lại */}
             <div className="text-center text-sm my-1">
               {countdown > 0 ? (
                 <span className="text-slate-500">
-                  Chưa nhận được mã? Gửi lại sau{" "}
+                  Chưa nhận dược mã? Gửi lại sau{" "}
                   <strong className="text-slate-700">{countdown}s</strong>
                 </span>
               ) : (
@@ -767,18 +787,10 @@ function AuthFrame({
           <div className="relative z-10">
             <div className="flex flex-wrap items-center gap-4">
               <Logo className="[&_*]:text-white" />
-              <Badge tone="mint" className="mt-0">
-                <Sparkles className="h-3.5 w-3.5" />
-                Role-based workspace
-              </Badge>
             </div>
             <h1 className="mt-6 font-display text-3xl font-black leading-tight tracking-[-0.02em] lg:text-4xl">
-              Một tài khoản, một vai trò, một luồng nghiệp vụ rõ ràng.
+              Một tài khoản, một vai trò, một luồng xử lý rõ ràng.
             </h1>
-            <p className="mt-4 max-w-md text-[14px] leading-6 text-blue-50/90 lg:text-[15px] lg:leading-7">
-              Sau đăng nhập, app tự điều hướng tới dashboard đúng role để tránh
-              gọi chéo API sai thẩm quyền.
-            </p>
           </div>
           <div className="relative z-10 mt-6 lg:mt-8">
             <img
@@ -796,10 +808,6 @@ function AuthFrame({
             </LinkButton>
           </div>
           <div className="mb-6">
-            <Badge tone="brand">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              JWT + RBAC
-            </Badge>
             <h2 className="mt-4 font-display text-2xl font-black tracking-tight text-ink lg:text-3xl">
               {title}
             </h2>
@@ -807,9 +815,7 @@ function AuthFrame({
               {description}
             </p>
           </div>
-          <div className="flex-1">
-            {children}
-          </div>
+          <div className="flex-1">{children}</div>
         </Card>
       </div>
     </main>
@@ -847,4 +853,3 @@ function RoleCard({
     </button>
   );
 }
-

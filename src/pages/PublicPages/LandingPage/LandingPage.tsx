@@ -31,11 +31,11 @@ const workflowSteps = [
   },
   {
     title: "Matching",
-    description: "Hệ thống AI tự động đề xuất top chuyên gia phù hợp.",
+    description: "Hệ thống AI tự động dề xuất top chuyên gia phù hợp.",
   },
   {
     title: "Proposal",
-    description: "Nhận và đánh giá các đề xuất chi tiết từ ứng viên.",
+    description: "Nhận và dánh giá các dề xuất chi tiết từ ứng viên.",
   },
   {
     title: "Hợp đồng & NDA",
@@ -43,7 +43,7 @@ const workflowSteps = [
   },
   {
     title: "Milestone & Thanh toán",
-    description: "Nghiệm thu từng giai đoạn và giải ngân minh bạch.",
+    description: "Nghiệm thu từng giai doạn và giải ngân minh bạch.",
   },
 ] as const;
 
@@ -52,7 +52,7 @@ const trustHighlights = [
     icon: ShieldCheck,
     title: "Bảo mật Escrow",
     description:
-      "Ngân sách dự án được giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc được hoàn thành.",
+      "Ngân sách dự án dược giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc dược hoàn thành.",
   },
   {
     icon: Gavel,
@@ -71,8 +71,8 @@ const trustCards = [
   },
   {
     icon: FileCheck2,
-    title: "Hợp đồng điện tử",
-    description: "Giá trị pháp lý tương đương văn bản giấy.",
+    title: "Hợp đồng diện tử",
+    description: "Giá trị pháp lý tương dương văn bản giấy.",
     offset: true,
   },
   {
@@ -100,53 +100,53 @@ const useCases = [
     icon: Sparkles,
     title: "AI Automation",
     description:
-      "Tự động hóa các quy trình nhập liệu, phân loại email và xử lý tác vụ lặp đi lặp lại.",
+      "Tự dộng hóa các quy trình nhập liệu, phân loại email và xử lý tác vụ lặp di lặp lại.",
   },
   {
     icon: ArrowRight,
     title: "Recommendation System",
     description:
-      "Hệ thống gợi ý sản phẩm hoặc nội dung cá nhân hóa để tăng tỷ lệ chuyển đổi bán hàng.",
+      "Hệ thống gợi ý sản phẩm hoặc nội dung cá nhân hóa dể tăng tỷ lệ chuyển dổi bán hàng.",
   },
   {
     icon: FileCheck2,
     title: "Document AI",
     description:
-      "Trích xuất thông tin từ hóa đơn, hợp đồng và số hóa kho tài liệu khổng lồ một cách chính xác.",
+      "Trích xuất thông tin từ hóa dơn, hợp đồng và số hóa kho tài liệu khổng lồ một cách chính xác.",
   },
   {
     icon: Workflow,
     title: "Data Dashboard",
     description:
-      "Phân tích dữ liệu lớn và trực quan hóa xu hướng để hỗ trợ ra quyết định kinh doanh.",
+      "Phân tích dữ liệu lớn và trực quan hóa xu hướng dể hỗ trợ ra quyết dịnh kinh doanh.",
   },
 ] as const;
 
 const faqs = [
   {
-    question: "Làm thế nào để chọn được chuyên gia phù hợp nhất?",
+    question: "Làm thế nào dể chọn dược chuyên gia phù hợp nhất?",
     answer:
-      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 3 ứng viên sát nhất với yêu cầu của bạn.",
+      "Bạn có thể dựa vào diểm dánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 3 ứng viên sát nhất với yêu cầu của bạn.",
   },
   {
-    question: "Tiền của tôi có được an toàn khi thanh toán trước không?",
+    question: "Tiền của tôi có dược an toàn khi thanh toán trước không?",
     answer:
-      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
+      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ dược hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn dã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
   },
   {
     question: "Dự án của tôi yêu cầu bảo mật cao, AITASKER hỗ trợ như thế nào?",
     answer:
-      "Tất cả các dự án trên nền tảng đều được áp dụng thỏa thuận bảo mật NDA tiêu chuẩn. Bạn cũng có thể đăng tải bản NDA riêng của công ty để chuyên gia ký kết điện tử trước khi bắt đầu dự án.",
+      "Tất cả các dự án trên nền tảng dều dược áp dụng thỏa thuận bảo mật NDA tiêu chuẩn. Bạn cũng có thể dăng tải bản NDA riêng của công ty dể chuyên gia ký kết diện tử trước khi bắt dầu dự án.",
   },
   {
-    question: "Nếu dự án không đạt yêu cầu như cam kết thì sao?",
+    question: "Nếu dự án không dạt yêu cầu như cam kết thì sao?",
     answer:
-      "Bạn có quyền yêu cầu chuyên gia chỉnh sửa theo đúng mô tả ban đầu. Nếu vẫn không đạt được thỏa thuận, bạn có thể kích hoạt quy trình tranh chấp để đội ngũ AITASKER xem xét hoàn tiền hoặc bồi thường dựa trên bằng chứng.",
+      "Bạn có quyền yêu cầu chuyên gia chỉnh sửa theo dúng mô tả ban dầu. Nếu vẫn không dạt dược thỏa thuận, bạn có thể kích hoạt quy trình tranh chấp dể dội ngũ AITASKER xem xét hoàn tiền hoặc bồi thường dựa trên bằng chứng.",
   },
   {
     question: "Tôi có thể thuê chuyên gia dài hạn không?",
     answer:
-      "Hoàn toàn được. Nền tảng hỗ trợ cả dự án theo gói và thuê theo thời gian cho các nhu cầu hợp tác dài hạn.",
+      "Hoàn toàn dược. Nền tảng hỗ trợ cả dự án theo gói và thuê theo thời gian cho các nhu cầu hợp tác dài hạn.",
   },
 ] as const;
 
@@ -215,7 +215,7 @@ export function LandingPage() {
 
               <p className="mt-3 max-w-xl text-[18px] leading-9 text-[#594048]">
                 AITASKER giúp bạn tìm kiếm, thuê và quản lý dự án AI trọn vẹn từ
-                hợp đồng đến thanh toán trên một hệ thống minh bạch.
+                hợp đồng dến thanh toán trên một hệ thống minh bạch.
               </p>
             </div>
 
@@ -261,17 +261,17 @@ export function LandingPage() {
               <p className="text-[18px] text-[#594048]">
                 Hơn{" "}
                 <span className="font-extrabold text-[#27171d]">5,000+</span>{" "}
-                chuyên gia đã tham gia
+                chuyên gia dã tham gia
               </p>
             </div>
           </div>
 
           <div className="relative hidden lg:block">
-            <div className="rounded-[1.75rem] border border-[#e1bdc8]/30 bg-[rgba(255,240,243,0.7)] p-2 shadow-[0_18px_40px_rgba(61,44,49,.12)] backdrop-blur-[10px]">
+            <div className="rounded-[1.75rem] border border-[#e1bdc8]/30 bg-[rgba(255,240,243,0.7)] p-2 shadow-[0_18px_40px_rgba(61,44,49,.12)] backdrop-blur-[10px] transition-all duration-500 hover:-translate-y-3 hover:shadow-[0_28px_60px_rgba(61,44,49,.2)]">
               <img
                 src={heroImage}
                 alt="Minh họa cộng tác AI"
-                className="h-[25rem] w-full rounded-[1.25rem] object-cover"
+                className="h-[25rem] w-full rounded-[1.25rem] object-cover transition-transform duration-500"
               />
             </div>
           </div>
@@ -292,7 +292,7 @@ export function LandingPage() {
 
           <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 md:auto-rows-[250px]">
             <ScrollReveal delay={0.1}>
-              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-colors hover:bg-[#ffe8ee] h-full">
+              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-all duration-300 hover:bg-[#ffe8ee] hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 h-full">
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-lg bg-[#df0e84] text-white">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
@@ -300,52 +300,52 @@ export function LandingPage() {
                   Hồ sơ xác minh
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  100% chuyên gia trên nền tảng đều trải qua quy trình kiểm tra
+                  100% chuyên gia trên nền tảng dều trải qua quy trình kiểm tra
                   năng lực và danh tính nghiêm ngặt.
                 </p>
               </Card>
             </ScrollReveal>
 
             <ScrollReveal delay={0.2}>
-              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-colors hover:bg-[#ffe8ee] h-full">
+              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-all duration-300 hover:bg-[#ffe8ee] hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 h-full">
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-lg bg-white text-[#b30069] shadow-sm">
                   <WalletCards className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Ví điện tử & Thanh toán
+                  Ví diện tử & Thanh toán
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân
+                  Bảo mật tuyệt dối với hệ thống Escrow. Tiền chỉ dược giải ngân
                   khi bạn hài lòng với kết quả nghiệm thu.
                 </p>
               </Card>
             </ScrollReveal>
 
             <ScrollReveal delay={0.3}>
-              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-colors hover:bg-[#ffe8ee] h-full">
+              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-all duration-300 hover:bg-[#ffe8ee] hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 h-full">
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-lg bg-[#2e7e94] text-white">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Quản lý tiến độ
+                  Quản lý tiến dộ
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và đánh
-                  giá từng giai đoạn.
+                  Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và dánh
+                  giá từng giai doạn.
                 </p>
               </Card>
             </ScrollReveal>
 
             <ScrollReveal delay={0.4}>
-              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-colors hover:bg-[#ffe8ee] h-full">
+              <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-8 shadow-none transition-all duration-300 hover:bg-[#ffe8ee] hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 h-full">
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-lg bg-white text-[#df0e84] shadow-sm">
                   <FileCheck2 className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Hợp đồng & NDA điện tử
+                  Hợp đồng & NDA diện tử
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính
+                  Ký kết văn bản pháp lý trực tuyến nhanh chóng, dảm bảo tính
                   bảo mật và quyền sở hữu trí tuệ.
                 </p>
               </Card>
@@ -361,7 +361,7 @@ export function LandingPage() {
               Quy trình vận hành của AITASKER
             </h2>
             <p className="mt-4 text-[18px] leading-8 text-[#594048]">
-              Quy trình chuyên nghiệp được tinh gọn để tối ưu thời gian cho cả
+              Quy trình chuyên nghiệp dược tinh gọn dể tối ưu thời gian cho cả
               doanh nghiệp và chuyên gia.
             </p>
           </ScrollReveal>
@@ -369,7 +369,7 @@ export function LandingPage() {
           <div className="mt-16 grid gap-6 lg:grid-cols-5">
             {workflowSteps.map((step, index) => (
               <ScrollReveal key={step.title} delay={(index + 1) * 0.1}>
-                <Card className="rounded-[1.75rem] border border-[#f0dbe3] bg-white p-7 shadow-none h-full">
+                <Card className="rounded-[1.75rem] border border-[#f0dbe3] bg-white p-7 shadow-none h-full transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 hover:bg-[#fff0f3]/50">
                   <div className="flex h-full flex-col gap-5">
                     <div className="flex items-center justify-between">
                       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#fff0f3] text-lg font-bold text-[#b30069]">
@@ -396,12 +396,12 @@ export function LandingPage() {
       <section className="bg-white px-4 py-24 md:px-10">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2 relative z-10">
           <ScrollReveal delay={0.1} className="h-full">
-            <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-10 shadow-none h-full flex flex-col">
+            <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-10 shadow-none h-full flex flex-col transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:border-[#df0e84]/30">
               <h3 className="text-[2rem] font-bold text-[#27171d]">
                 Dành cho Doanh nghiệp
               </h3>
               <p className="mt-4 text-[17px] leading-8 text-[#594048]">
-                Tăng tốc chuyển đổi số với đội ngũ chuyên gia AI phù hợp, quy
+                Tăng tốc chuyển dổi số với dội ngũ chuyên gia AI phù hợp, quy
                 trình rõ ràng và hệ thống kiểm soát rủi ro minh bạch.
               </p>
               <ul className="mt-8 space-y-4 flex-1">
@@ -429,7 +429,7 @@ export function LandingPage() {
           </ScrollReveal>
 
           <ScrollReveal delay={0.2} className="h-full">
-            <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-10 shadow-none h-full flex flex-col">
+            <Card className="rounded-[2rem] border-2 border-[#f0dbe3] bg-white p-10 shadow-none h-full flex flex-col transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:border-[#df0e84]/30">
               <h3 className="text-[2rem] font-bold text-[#27171d]">
                 Dành cho Chuyên gia
               </h3>
@@ -470,7 +470,7 @@ export function LandingPage() {
               Hợp tác minh bạch & Tin cậy
             </h2>
             <p className="mt-6 text-[18px] leading-8 text-[#594048]">
-              Chúng tôi xây dựng các lớp bảo vệ để đảm bảo mọi dự án đều kết
+              Chúng tôi xây dựng các lớp bảo vệ dể dảm bảo mọi dự án dều kết
               thúc thành công với sự hài lòng từ cả hai phía.
             </p>
 
@@ -500,7 +500,7 @@ export function LandingPage() {
                 delay={(index + 1) * 0.1}
                 className={item.offset ? "sm:translate-y-8" : ""}
               >
-                <Card className="rounded-[1.75rem] border border-white bg-white p-6 shadow-[0_12px_28px_rgba(61,44,49,.08)] h-full">
+                <Card className="rounded-[1.75rem] border border-white bg-white p-6 shadow-[0_12px_28px_rgba(61,44,49,.08)] h-full transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(61,44,49,.15)] hover:border-[#df0e84]/20">
                   <item.icon className="mb-4 h-8 w-8 text-[#0070ea]" />
                   <h3 className="text-lg font-bold text-[#27171d]">
                     {item.title}
@@ -522,7 +522,7 @@ export function LandingPage() {
               Tình huống sử dụng thực tế
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-[18px] leading-8 text-[#594048]">
-              Khám phá các loại hình dự án AI phổ biến đang được triển khai
+              Khám phá các loại hình dự án AI phổ biến đang dược triển khai
               thành công trên AITASKER.
             </p>
           </ScrollReveal>
@@ -530,7 +530,7 @@ export function LandingPage() {
           <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {useCases.map((item, index) => (
               <ScrollReveal key={item.title} delay={(index + 1) * 0.1}>
-                <Card className="rounded-[1.75rem] border border-[#f1e4e8] bg-white p-8 shadow-none h-full">
+                <Card className="rounded-[1.75rem] border border-[#f1e4e8] bg-white p-8 shadow-none h-full transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/30 hover:bg-[#fff0f3]/50">
                   <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#fff0f3] text-[#b30069]">
                     <item.icon className="h-5 w-5" />
                   </div>
@@ -545,10 +545,10 @@ export function LandingPage() {
             ))}
 
             <ScrollReveal delay={(useCases.length + 1) * 0.1}>
-              <Card className="flex h-full rounded-[1.75rem] border-2 border-dashed border-[#e4cad5] bg-[#fff8f8] p-8 shadow-none">
+              <Card className="flex h-full rounded-[1.75rem] border-2 border-dashed border-[#e4cad5] bg-[#fff8f8] p-8 shadow-none transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/50 hover:bg-[#ffe8ee]/80">
                 <div className="flex flex-1 flex-col items-center justify-center text-center">
                   <p className="text-[15px] italic leading-7 text-[#594048]">
-                    Dự án của bạn đặc thù hơn?
+                    Dự án của bạn dặc thù hơn?
                   </p>
                   <LinkButton
                     to="/about"
@@ -572,7 +572,7 @@ export function LandingPage() {
               Câu hỏi thường gặp
             </h2>
             <p className="mt-4 text-[18px] leading-8 text-[#594048]">
-              Mọi thông tin bạn cần để bắt đầu hành trình cùng AITASKER.
+              Mọi thông tin bạn cần dể bắt dầu hành trình cùng AITASKER.
             </p>
           </ScrollReveal>
 
@@ -615,11 +615,11 @@ export function LandingPage() {
 
           <div className="relative z-10">
             <h2 className="text-[2.2rem] font-bold leading-tight md:text-[2.8rem]">
-              Sẵn sàng để đưa dự án AI của bạn lên tầm cao mới?
+              Sẵn sàng dể dưa dự án AI của bạn lên tầm cao mới?
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-[18px] leading-8 text-white/90">
-              Tham gia cùng hàng nghìn doanh nghiệp đang chuyển đổi số thành
-              công bằng sức mạnh của AI và mạng lưới chuyên gia hàng đầu.
+              Tham gia cùng hàng nghìn doanh nghiệp đang chuyển dổi số thành
+              công bằng sức mạnh của AI và mạng lưới chuyên gia hàng dầu.
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
@@ -646,17 +646,17 @@ export function LandingPage() {
         <ScrollReveal className="relative z-10 mx-auto grid max-w-7xl gap-8 rounded-[2rem] border border-[#f0dbe3] bg-[#fff8f8] p-8 lg:grid-cols-[1.2fr_.8fr] lg:p-10">
           <div>
             <h2 className="text-[2rem] font-bold text-[#27171d]">
-              AITASKER dành cho hệ sinh thái AI chuyên nghiệp
+              AITASKER dành cho hệ sinh thái AI
             </h2>
             <p className="mt-4 text-[17px] leading-8 text-[#594048]">
-              Từ startup đang thử nghiệm MVP đến doanh nghiệp cần chuẩn hóa quy
-              trình AI, AITASKER tạo ra một nơi làm việc đủ nhanh, đủ an toàn và
-              đủ minh bạch để hợp tác lâu dài.
+              Từ startup đang thử nghiệm MVP dến doanh nghiệp cần chuẩn hóa quy
+              trình AI, AITASKER tạo ra một nơi làm việc dủ nhanh, dủ an toàn và
+              dủ minh bạch dể hợp tác lâu dài.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl bg-white p-5">
+            <div className="rounded-2xl bg-white p-5 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
               <Globe className="h-6 w-6 text-[#0070ea]" />
               <p className="mt-3 text-sm font-bold text-[#27171d]">
                 Mạng lưới toàn cầu
@@ -665,13 +665,13 @@ export function LandingPage() {
                 Kết nối với chuyên gia AI ở nhiều thị trường và lĩnh vực.
               </p>
             </div>
-            <div className="rounded-2xl bg-white p-5">
+            <div className="rounded-2xl bg-white p-5 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
               <ShieldCheck className="h-6 w-6 text-[#b30069]" />
               <p className="mt-3 text-sm font-bold text-[#27171d]">
                 Vận hành an toàn
               </p>
               <p className="mt-1 text-sm leading-6 text-[#594048]">
-                Quy trình có Escrow, NDA và đánh giá hai chiều rõ ràng.
+                Quy trình có Escrow, NDA và dánh giá hai chiều rõ ràng.
               </p>
             </div>
           </div>

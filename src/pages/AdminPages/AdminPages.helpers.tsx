@@ -57,7 +57,6 @@ export function AnalyticsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-02"
         title="Analytics & Revenue"
         description="Gọi `/api/v1/admin/analytics/overview`, hiển thị KPI và biểu đồ nhẹ bằng CSS để tránh phụ thuộc chart nặng."
         actions={
@@ -244,7 +243,6 @@ export function SystemWalletPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-WALLET"
         title="System Wallet"
         description="Live aggregate from transactions and disputes. Admin owns fund-flow monitoring."
         actions={
@@ -545,7 +543,6 @@ export function AccountsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-ACCOUNTS"
         title="Account Management"
         description="Admin can create, update, activate, and deactivate every role account."
         actions={
@@ -783,7 +780,6 @@ export function StaffPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="STF-01"
         title="Quản lý Staff"
         description="Admin tạo hồ sơ staff nội bộ và khai báo specialization để auto-routing dispute."
         actions={
@@ -941,7 +937,6 @@ export function SettingsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-03"
         title="System Settings"
         description="Cấu hình phí nền tảng, SLA và auto assign staff không cần sửa code."
       />
@@ -1194,7 +1189,6 @@ export function MasterDataPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-01"
         title="Catalog Management"
         description="Quan ly domain va skill dung cho job, staff specialization va ho so chuyen gia."
         actions={
@@ -1523,7 +1517,6 @@ export function AuditLogsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-01"
         title="Nhật ký audit"
         description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
       />
@@ -1588,7 +1581,7 @@ export function AuditLogsPage() {
                   {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
                 </p>
                 <div className="space-y-1 pt-1">
-                  <p className="font-bold text-slate-700">{log.entityOwner || "Chưa xác định tài khoản"}</p>
+                  <p className="font-bold text-slate-700">{log.entityOwner || "Chưa xác dịnh tài khoản"}</p>
                   <p className="break-all text-xs text-slate-500">{log.entityOwnerEmail || "Không có email"}</p>
                   {log.entityOwnerRole ? (
                     <Badge tone={log.entityOwnerRole === "ADMIN" ? "rose" : log.entityOwnerRole === "STAFF" ? "amber" : "brand"}>{log.entityOwnerRole}</Badge>
@@ -1620,7 +1613,6 @@ export function ReportsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="ADM-02"
         title="Reports & Export"
         description="Giao diện xuất báo cáo tuần/tháng/quý. API export hiện chưa có, UI giữ đủ filter và preview."
         actions={

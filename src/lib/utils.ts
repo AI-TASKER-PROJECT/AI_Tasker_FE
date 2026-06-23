@@ -28,7 +28,7 @@ export function formatDate(value?: string) {
 }
 
 export function formatDateTime(value?: string) {
-  if (!value) return 'ChÆ°a cáº­p nháº­t';
+  if (!value) return 'Chưa cập nhật';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: '2-digit',

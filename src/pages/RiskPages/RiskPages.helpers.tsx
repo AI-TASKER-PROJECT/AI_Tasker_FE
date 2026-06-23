@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircle2,
   FileSearch,
   Gavel,
@@ -74,14 +74,13 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow={staffMode ? "STF-02 / STF-03 / STF-04" : "RSK-01 / RSK-02"}
-        title={staffMode ? "Ticket tranh chấp" : "Tranh chấp của dự án"}
-        description={
-          staffMode
-            ? "Staff/Admin tiếp nhận, demo testing, viết technical report và đề xuất xử lý."
-            : "Doanh nghiệp/chuyên gia tạo dispute để khóa dòng tiền và yêu cầu can thiệp."
-        }
-      />
+          title={staffMode ? "Ticket tranh chấp" : "Tranh chấp của dự án"}
+          description={
+            staffMode
+              ? "Staff/Admin tiếp nhận, demo testing, viết technical report và đề xuất xử lý."
+              : "Doanh nghiệp/chuyên gia tạo dispute để khóa dòng tiền và yêu cầu can thiệp."
+          }
+        />
       </div>
       <Card className="p-4">
         <SearchInput
@@ -195,22 +194,21 @@ export function DisputeDetailPage({
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="DISPUTE FLOW"
-        title={dispute.title || `Dispute #${dispute.disputeId}`}
-        description="Single source of truth là acceptance criteria và deliverables trong workspace."
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => setAssignOpen(true)}>
-              <Users className="h-4 w-4" />
-              Assign staff
-            </Button>
-            <Button onClick={resolve}>
-              <CheckCircle2 className="h-4 w-4" />
-              Resolve
-            </Button>
-          </>
-        }
-      />
+          title={dispute.title || `Dispute #${dispute.disputeId}`}
+          description="Single source of truth là acceptance criteria và deliverables trong workspace."
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => setAssignOpen(true)}>
+                <Users className="h-4 w-4" />
+                Assign staff
+              </Button>
+              <Button onClick={resolve}>
+                <CheckCircle2 className="h-4 w-4" />
+                Resolve
+              </Button>
+            </>
+          }
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <Card className="p-6">
@@ -342,15 +340,15 @@ export function DisputeDetailPage({
   );
 }
 
-//Trang xác thực định danh
+//Trang xác thực dịnh danh
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
 
   useEffect(() => {
-    profileApi.listBusinesses().then(setBusinesses);//api lấy ds DN
-    profileApi.listExperts().then(setExperts);// api lấy ds CG
+    profileApi.listBusinesses().then(setBusinesses); //api lấy ds DN
+    profileApi.listExperts().then(setExperts); // api lấy ds CG
   }, []);
 
   const list = tab === "business" ? businesses : experts;
@@ -359,10 +357,9 @@ export function VerificationsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="REG-02 / ADM-01"
-        title="Duyệt hồ sơ KYC/KYB"
-        description="Admin/Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
-      />
+          title="Duyệt hồ sơ KYC/KYB"
+          description="Admin/Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
+        />
       </div>
       <Card className="p-5">
         <Tabs
@@ -507,7 +504,7 @@ export function VerificationDetailPage() {
     setTaxCheckError("");
     try {
       const business = profile as BusinessProfile;
-      const lookup = await profileApi.checkTaxCode(business.taxCode);//api check mã số thuế
+      const lookup = await profileApi.checkTaxCode(business.taxCode); //api check mã số thuế
       setTaxCheckResult({
         provided: {
           companyName: business.companyName,
@@ -577,15 +574,15 @@ export function VerificationDetailPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow={isBusiness ? "Business KYB" : "Expert KYC"}
-        title={title}
-        description="Kiểm tra thông tin định danh và ra quyết định duyệt."
-        actions={
-          <LinkButton to="/app/verifications" variant="secondary">
-            ← Danh sách
-          </LinkButton>
-        }
-      />
+          eyebrow={isBusiness ? "Business KYB" : "Expert KYC"}
+          title={title}
+          description="Kiểm tra thông tin dịnh danh và ra quyết dịnh duyệt."
+          actions={
+            <LinkButton to="/app/verifications" variant="secondary">
+              â† Danh sách
+            </LinkButton>
+          }
+        />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
@@ -639,7 +636,7 @@ export function VerificationDetailPage() {
           </div>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Quyết định" />
+          <SectionHeading title="Quyết dịnh" />
           <div className="mt-5 rounded-3xl bg-slate-50 p-4">
             <p className="text-sm font-bold text-slate-500">Status hiện tại</p>
             <div className="mt-2">
@@ -669,10 +666,6 @@ export function VerificationDetailPage() {
               </ul>
             </Notice>
           )}
-          <Notice tone="info" title="Audit trail" className="mt-4">
-            Back-end ghi audit log khi duyệt. UI quản trị audit nằm ở module
-            Admin.
-          </Notice>
         </Card>
         {isBusiness && (
           <Card className="p-6">
@@ -857,10 +850,9 @@ export function NewDisputePage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="RSK-01"
-        title="Tạo tranh chấp"
-        description="Dùng khi một bên khiếu nại và cần đóng băng dòng tiền milestone."
-      />
+          title="Tạo tranh chấp"
+          description="Dùng khi một bên khiếu nại và cần đóng băng dòng tiền milestone."
+        />
       </div>
       <Card className="p-6">
         <form onSubmit={submit} className="grid gap-4">

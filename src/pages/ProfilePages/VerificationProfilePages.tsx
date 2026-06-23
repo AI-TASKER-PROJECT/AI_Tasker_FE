@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+﻿import { type FormEvent, useEffect, useState } from "react";
 import { Building2, IdCard, Save, ShieldCheck } from "lucide-react";
 import { profileApi } from "../../lib/api";
 import { getSession, saveSession } from "../../lib/session";
@@ -42,7 +42,7 @@ export function BusinessVerificationProfilePage() {
   };
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="REG-02 / KYB" title="Hồ sơ xác minh doanh nghiệp" description="Doanh nghiệp nộp mã số thuế và giấy phép kinh doanh để được xét duyệt." />
+    <PageHeader title="Hồ sơ xác minh doanh nghiệp" description="Doanh nghiệp nộp mã số thuế và giấy phép kinh doanh để được xét duyệt." />
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <Card className="p-6"><form onSubmit={submit} className="grid gap-4">
         {message && <Notice tone="success" title={message} />}{error && <Notice tone="danger" title={error} />}
@@ -79,7 +79,7 @@ export function ExpertVerificationProfilePage() {
   };
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="REG-02 / KYC" title="Hồ sơ xác minh chuyên gia" description="Chuyên gia nộp CCCD/hộ chiếu và tệp portfolio để được xét duyệt." />
+    <PageHeader title="Hồ sơ xác minh chuyên gia" description="Chuyên gia nộp CCCD/hộ chiếu và tệp portfolio để được xét duyệt." />
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <Card className="p-6"><form onSubmit={submit} className="grid gap-4">
         {message && <Notice tone="success" title={message} />}{error && <Notice tone="danger" title={error} />}

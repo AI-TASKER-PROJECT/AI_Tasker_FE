@@ -7,6 +7,7 @@
   Sparkles,
   Star,
   XCircle,
+  Heart,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,7 +24,12 @@ import {
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
+import {
+  cn,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
   ExpertProfile,
@@ -184,12 +190,14 @@ export function ManageJobPage() {
           result.generatedByAi
             ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
             : (result.message ??
-                "Đề xuất được tạo bằng rule-based ranking (AI không khả dụng)."),
+                "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
     } catch (error) {
-      setAiMessage(`Không gọi được AI: ${getApiErrorMessage(error)}`);
+      setAiMessage(
+        `Tài khoản chưa dăng kí prenium: ${getApiErrorMessage(error)}`,
+      );
       setAiMessageTone("danger");
     } finally {
       setAiLoading(false);
@@ -233,7 +241,9 @@ export function ManageJobPage() {
   const createContract = async () => {
     if (!contractModal) return;
     if (jobInProgress) {
-      setContractError("Job đang IN_PROGRESS nên không thể tạo hoặc thay đổi hợp đồng.");
+      setContractError(
+        "Job đang IN_PROGRESS nên không thể tạo hoặc thay dổi hợp đồng.",
+      );
       return;
     }
     if (contractModal.status !== "Accepted") {
@@ -241,7 +251,9 @@ export function ManageJobPage() {
       return;
     }
     if (milestones.length === 0) {
-      setContractError("Job cần có ít nhất một milestone để tạo contract draft.");
+      setContractError(
+        "Job cần có ít nhất một milestone dể tạo contract draft.",
+      );
       return;
     }
     if (!timelineValid) {
@@ -275,22 +287,26 @@ export function ManageJobPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="MATCH-01 / MATCH-02"
-        title={job.title}
-        description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
-        actions={
-          <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-            Xem public detail
-          </LinkButton>
-        }
-      />
+          title={job.title}
+          description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
+          actions={
+            <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+              Xem public detail
+            </LinkButton>
+          }
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card className="p-6">
           <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
             <Button
               variant={proposalTab === "ai" ? "primary" : "secondary"}
-              onClick={() => setProposalTab("ai")}
+              onClick={() => {
+                setProposalTab("ai");
+                if (!recommendationResult && !aiLoading) {
+                  generateRecommendations();
+                }
+              }}
             >
               <Sparkles className="h-4 w-4" />
               AI đề xuất chuyên gia
@@ -309,7 +325,7 @@ export function ManageJobPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <SectionHeading
                   title="AI đề xuất chuyên gia"
-                  description="Backend lọc top 20 candidate theo skill/domain/kinh nghiệm, sau đó OpenAI chọn top 5 phù hợp nhất với SoW của job."
+                  description="Top 5 chuyên gia phù hợp nhất với yêu cầu của dự án"
                 />
                 <div className="flex gap-2">
                   {recommendationResult && (
@@ -323,39 +339,14 @@ export function ManageJobPage() {
                         : "Rule-based"}
                     </Badge>
                   )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    loading={aiLoading}
-                    onClick={generateRecommendations}
-                  >
-                    <BrainCircuit className="h-4 w-4" />
-                    {recommendationResult
-                      ? "Tạo lại đề xuất"
-                      : "Sinh đề xuất AI"}
-                  </Button>
+
                 </div>
               </div>
 
               {/* Notice after generate */}
               {aiMessage && <Notice tone={aiMessageTone} title={aiMessage} />}
 
-              {/* Empty / loading state */}
-              {!recommendationResult && !aiLoading && (
-                <div className="rounded-3xl border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/60 to-indigo-50/40 px-6 py-12 text-center">
-                  <span className="grid h-14 w-14 place-items-center rounded-3xl bg-white text-brand-500 shadow-sm mx-auto">
-                    <BrainCircuit className="h-6 w-6" />
-                  </span>
-                  <p className="mt-4 font-extrabold text-ink">
-                    Chưa có đề xuất nào
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Nhấn "Sinh đề xuất AI" để backend phân tích SoW và matching
-                    chuyên gia.
-                  </p>
-                </div>
-              )}
+
 
               {/* Skeleton while loading */}
               {aiLoading && (
@@ -373,21 +364,41 @@ export function ManageJobPage() {
               )}
 
               {/* Recommendation cards */}
-              {!aiLoading &&
-                recommendationResult?.recommendations?.map((rec) => (
-                  <ExpertRecommendationCard key={rec.expertId} rec={rec} />
-                ))}
+              {!aiLoading && (
+                <div className="grid gap-4">
+                  {recommendationResult?.recommendations?.map((rec) => (
+                    <ExpertRecommendationCard
+                      key={rec.expertId}
+                      rec={rec}
+                      jobId={job.jobId}
+                      onRefresh={() => {
+                        setRecommendationResult((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            recommendations: prev.recommendations.map((r) =>
+                              r.expertId === rec.expertId
+                                ? { ...r, businessSelected: true }
+                                : r,
+                            ),
+                          };
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
             <SectionHeading
               title="Proposal của chuyên gia"
-              description="Danh sách proposal được chuyên gia gửi trực tiếp cho job này."
+              description="Danh sách proposal dược chuyên gia gửi cho dự án này."
             />
             {jobInProgress && (
               <Notice
                 tone="info"
-                title="Job đang IN_PROGRESS, các thao tác đổi proposal và tạo hợp đồng đã bị khóa."
+                title="Job đang IN_PROGRESS, các thao tác dổi proposal và tạo hợp đồng đã bị khóa."
                 className="mt-4"
               />
             )}
@@ -426,11 +437,8 @@ export function ManageJobPage() {
         <Card className="p-6">
           <div className="grid justify-items-start gap-3">
             <JobDomainBadge label={jobDomainLabel(jobDomains, domains)} />
-            <SectionHeading title="Tóm tắt SoW" />
+            <SectionHeading title="Tóm tắt dự án" />
           </div>
-          <p className="mt-4 break-words text-sm leading-7 text-slate-600">
-            {job.structuredSow || job.rawRequirements}
-          </p>
           <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
               <span className="text-slate-500">Ngân sách</span>
@@ -455,10 +463,6 @@ export function ManageJobPage() {
               <span className="font-extrabold text-ink">
                 {skillCountLabel(jobSkills.length)}
               </span>
-            </div>
-            <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-500">Trạng thái</span>
-              <StatusBadge status={job.status} />
             </div>
             <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-500">Ngày tạo job</span>
@@ -539,7 +543,7 @@ export function ManageJobPage() {
           {contractModal?.status !== "Accepted" && (
             <Notice
               tone="warning"
-              title="Proposal cần được Accepted trước khi tạo contract draft."
+              title="Proposal cần dược Accepted trước khi tạo contract draft."
             />
           )}
           {milestones.length === 0 && (
@@ -594,8 +598,8 @@ export function ManageJobPage() {
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
-              title="Ngân sách sẽ đưa vào hợp đồng"
-              description="Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi."
+              title="Ngân sách sẽ dưa vào hợp đồng"
+              description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
             />
             <div className="mt-4 grid gap-3">
               {milestones
@@ -606,7 +610,8 @@ export function ManageJobPage() {
                     contractModal?.proposalMilestone,
                   ).find((item) => item.milestoneId === milestone.milestoneId);
                   const finalBudget =
-                    proposalMilestone?.proposedBudget ?? milestone.fundsAllocated;
+                    proposalMilestone?.proposedBudget ??
+                    milestone.fundsAllocated;
                   const changed = finalBudget !== milestone.fundsAllocated;
                   return (
                     <div
@@ -678,7 +683,13 @@ export function ManageJobPage() {
   );
 }
 
-function ContractPreviewMetric({ label, value }: { label: string; value: string }) {
+function ContractPreviewMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-2xl bg-white p-3">
       <p className="text-xs font-bold text-slate-400">{label}</p>
@@ -753,7 +764,7 @@ function ProposalCard({
         expertsResult.status === "rejected" ||
         portfoliosResult.status === "rejected"
       ) {
-        setDetailMessage("Một số thông tin chưa lấy được từ API hiện tại.");
+        setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
       }
     }
 
@@ -780,8 +791,11 @@ function ProposalCard({
     "skillName",
   );
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
-  const proposalMilestones = parseProposalMilestones(proposal.proposalMilestone);
-  const canCreateContract = proposal.status === "Accepted" && !contract && !statusLocked;
+  const proposalMilestones = parseProposalMilestones(
+    proposal.proposalMilestone,
+  );
+  const canCreateContract =
+    proposal.status === "Accepted" && !contract && !statusLocked;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
@@ -864,14 +878,14 @@ function ProposalCard({
               </div>
             ) : (
               <p className="mt-2 text-sm font-semibold text-slate-400">
-                Chuyên gia giữ ngân sách milestone mặc định hoặc chưa gửi đề
+                Chuyên gia giữ ngân sách milestone mặc dịnh hoặc chưa gửi đề
                 xuất chi tiết.
               </p>
             )}
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
             <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-              File đính kèm
+              File dính kèm
             </p>
             <FirebaseFileLink
               path={proposal.proposalFileUrl}
@@ -896,7 +910,11 @@ function ProposalCard({
               variant="success"
               size="sm"
               onClick={onAccept}
-              disabled={statusLocked || proposal.status === "Accepted" || Boolean(contract)}
+              disabled={
+                statusLocked ||
+                proposal.status === "Accepted" ||
+                Boolean(contract)
+              }
             >
               <CheckCircle2 className="h-4 w-4" />
               Accept
@@ -905,7 +923,11 @@ function ProposalCard({
               variant="danger"
               size="sm"
               onClick={onReject}
-              disabled={statusLocked || proposal.status === "Rejected" || Boolean(contract)}
+              disabled={
+                statusLocked ||
+                proposal.status === "Rejected" ||
+                Boolean(contract)
+              }
             >
               <XCircle className="h-4 w-4" />
               Reject
@@ -928,8 +950,8 @@ function ProposalCard({
                   canCreateContract
                     ? "Tạo contract draft"
                     : statusLocked
-                      ? "Job đang IN_PROGRESS nên không thể thay đổi"
-                    : "Chỉ tạo contract sau khi proposal được Accepted"
+                      ? "Job đang IN_PROGRESS nên không thể thay dổi"
+                      : "Chỉ tạo contract sau khi proposal dược Accepted"
                 }
               >
                 <FileCheck2 className="h-4 w-4" />
@@ -967,7 +989,7 @@ function ProposalCard({
 
           <div className="grid gap-3 md:grid-cols-2">
             <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
-            <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
+            <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
           </div>
 
           <SectionHeading
@@ -1147,9 +1169,32 @@ function ExpertInfoBlock({
 // ─── Expert Recommendation Card ───────────────────────────────────────────────
 function ExpertRecommendationCard({
   rec,
+  jobId,
+  onRefresh,
 }: {
   rec: ExpertRecommendationResponse;
+  jobId: number;
+  onRefresh: () => void;
 }) {
+  const [selecting, setSelecting] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const handleSelect = async () => {
+    try {
+      setSelecting(true);
+      setError("");
+      setSuccessMessage("");
+      await expertRecommendationApi.select(jobId, rec.expertId);
+      setSuccessMessage("Đã gửi lời mời đến với chuyên gia!");
+      onRefresh();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   const rankColors = [
     "from-amber-400 to-yellow-300", // #1 gold
     "from-slate-400 to-slate-300", // #2 silver
@@ -1255,6 +1300,37 @@ function ExpertRecommendationCard({
             <p className="text-sm leading-6 text-slate-700">{rec.reason}</p>
           </div>
         )}
+
+        {/* Notifications */}
+        {error && <Notice tone="danger" title={error} />}
+        {successMessage && <Notice tone="success" title={successMessage} />}
+      </div>
+
+      {/* Footer / Actions */}
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-4">
+        <p className="text-xs font-semibold text-slate-500">
+          {rec.businessSelected
+            ? "Bạn đã gửi lời mời đến chuyên gia này. Hệ thống sẽ thông báo cho họ."
+            : "Chọn chuyên gia này nếu bạn thấy phù hợp với yêu cầu."}
+        </p>
+
+        <button
+          type="button"
+          onClick={handleSelect}
+          disabled={rec.businessSelected || selecting}
+          className={cn(
+            "rounded-full p-1.5 transition-all hover:bg-pink-50 active:scale-95 disabled:opacity-75 disabled:hover:bg-transparent",
+            selecting && "animate-pulse",
+          )}
+          title={rec.businessSelected ? "Đã chọn" : "Chọn chuyên gia"}
+        >
+          <Heart
+            className={cn(
+              "h-7 w-7 text-pink-500 transition-all",
+              rec.businessSelected && "fill-pink-500",
+            )}
+          />
+        </button>
       </div>
     </div>
   );

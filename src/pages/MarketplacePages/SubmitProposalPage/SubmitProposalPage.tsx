@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+﻿/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
@@ -177,7 +177,8 @@ export function SubmitProposalPage() {
           milestoneItems,
           portfolioResult,
           quotaItem,
-        ] = await Promise.all([ //api 
+        ] = await Promise.all([
+          //api
           marketplaceApi.getJob(numericJobId),
           catalogApi.listDomains(true),
           catalogApi.listSkills(true),
@@ -256,26 +257,29 @@ export function SubmitProposalPage() {
     : job?.budget || 0;
   const bidAmountDisplay = bidAmount > 0 ? String(bidAmount) : "";
 
-  const submit = async (event: FormEvent) => { //submit proposal
+  const submit = async (event: FormEvent) => {
+    //submit proposal
     event.preventDefault();
     if (session?.role !== "EXPERT") {
       setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
       return;
     }
     if (quota && (quota.proposalQuotaBalance ?? 0) <= 0) {
-      setMessage("Bạn đã hết lượt gửi Proposal. Vui lòng mua thêm credit hoặc gói thành viên.");
+      setMessage(
+        "Bạn đã hết lượt gửi Proposal. Vui lòng mua thêm credit hoặc gói thành viên.",
+      );
       return;
     }
     if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
-      setMessage("bid_amount phải là số lớn hơn 0.");
+      setMessage("Ngân sách đề xuất phải là số lớn hơn 0.");
       return;
     }
     if (!form.technicalSolution.trim()) {
-      setMessage("technical_solution không được để trống.");
+      setMessage("Kĩ năng không được để trống.");
       return;
     }
     if (!form.proposalDescription.trim()) {
-      setMessage("proposalDescription không được để trống.");
+      setMessage("Mô tả đề xuất không được để trống.");
       return;
     }
     if (!form.domainId || !form.skillId) {
@@ -298,7 +302,9 @@ export function SubmitProposalPage() {
       proposalMilestoneTotal > 0 &&
       proposalMilestoneTotal !== bidAmount
     ) {
-      setMessage("Tổng ngân sách milestone đề xuất phải bằng bid_amount.");
+      setMessage(
+        "Tổng ngân sách milestone đề xuất ít nhất phải bằng ngân sách.",
+      );
       return;
     }
 
@@ -318,7 +324,8 @@ export function SubmitProposalPage() {
               proposedBudget: Number(milestoneBudgets[milestone.milestoneId]),
             }))
           : undefined;
-      const proposal = await marketplaceApi.submitProposal({ //api cập nhật thông tin
+      const proposal = await marketplaceApi.submitProposal({
+        //api cập nhật thông tin
         jobId: numericJobId,
         domainId: Number(form.domainId),
         skillId: Number(form.skillId),
@@ -359,15 +366,14 @@ export function SubmitProposalPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="MATCH-02"
-        title="Nộp báo giá dự thầu"
-        description={job.title}
-        actions={
-          <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-            Quay lại job
-          </LinkButton>
-        }
-      />
+          title="Nộp báo giá dự thầu"
+          description={job.title}
+          actions={
+            <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+              Quay lại job
+            </LinkButton>
+          }
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <form onSubmit={submit} className="grid gap-5">
@@ -388,12 +394,6 @@ export function SubmitProposalPage() {
               </div>
             </div>
             <div className="grid gap-6 p-6">
-              {message && (
-                <Notice
-                  tone={savedProposal ? "success" : "warning"}
-                  title={message}
-                />
-              )}
               {session?.role !== "EXPERT" && (
                 <Notice
                   tone="danger"
@@ -560,7 +560,7 @@ export function SubmitProposalPage() {
                     setRequestBudgetChange(event.target.checked)
                   }
                 />
-                <span>Chọn nếu muốn đề xuất thay đổi ngân sách dự án</span>
+                <span>Chọn nếu muốn đề xuất thay dổi ngân sách dự án</span>
               </label>
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-600">
                 <span className="font-semibold text-ink">
@@ -588,7 +588,7 @@ export function SubmitProposalPage() {
                         </h3>
                         <p className="text-sm text-slate-500">
                           Tổng milestone đề xuất phải bằng ngân sách đề xuất nếu
-                          bạn muốn thay đổi.
+                          bạn muốn thay dổi.
                         </p>
                       </div>
                     </div>
@@ -643,12 +643,18 @@ export function SubmitProposalPage() {
                 <Button
                   type="submit"
                   loading={loading}
-                  disabled={session?.role !== "EXPERT"}
+                  disabled={session?.role !== "EXPERT" || !!savedProposal}
                 >
                   <Save className="h-4 w-4" />
                   Gửi proposal
                 </Button>
               </div>
+              {message && (
+                <Notice
+                  tone={savedProposal ? "success" : "warning"}
+                  title={message}
+                />
+              )}
             </div>
           </Card>
         </form>
@@ -686,12 +692,6 @@ export function SubmitProposalPage() {
           {savedProposal && (
             <Card className="p-5">
               <SectionHeading title="Proposal đã gửi" />
-              <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <p>
-                  <span className="font-bold text-ink">bid_amount:</span>{" "}
-                  {formatCurrency(savedProposal.bidAmount)}
-                </p>
-              </div>
               <div className="mt-4">
                 <LinkButton to="/app/proposals" variant="secondary">
                   Xem proposal của tôi

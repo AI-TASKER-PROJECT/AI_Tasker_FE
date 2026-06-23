@@ -97,8 +97,8 @@ function ReviewModal({
       onClose={handleClose}
       title={action === "approve" ? "Duyệt yêu cầu rút tiền" : "Từ chối yêu cầu rút tiền"}
       description={action === "approve"
-        ? "Xác nhận sau khi đã chuyển khoản thủ công ra ngân hàng người dùng."
-        : "Số tiền sẽ được hoàn trả về available balance của người dùng."}
+        ? "Xác nhận sau khi dã chuyển khoản thủ công ra ngân hàng người dùng."
+        : "Số tiền sẽ dược hoàn trả về available balance của người dùng."}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>
@@ -160,7 +160,7 @@ function ReviewModal({
 
         {action === "approve" && (
           <Notice tone="warning" title="Lưu ý trước khi duyệt">
-            Chỉ click "Duyệt" SAU KHI đã chuyển khoản thủ công thành công. Hành động này không thể hoàn tác.
+            Chỉ click "Duyệt" SAU KHI dã chuyển khoản thủ công thành công. Hành dộng này không thể hoàn tác.
           </Notice>
         )}
 
@@ -337,7 +337,7 @@ export function AdminWithdrawalPage() {
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
               <span className="w-28 text-right">Ngày tạo</span>
-              <span className="w-36 text-center">Hành động</span>
+              <span className="w-36 text-center">Hành dộng</span>
             </div>
 
             <div className="divide-y divide-slate-50">

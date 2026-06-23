@@ -42,7 +42,7 @@ function loadGoogleScript() {
   if (existing) {
     googleScriptPromise = new Promise<void>((resolve, reject) => {
       existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Không tải được Google Identity Services')), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Không tải dược Google Identity Services')), { once: true });
     });
     return googleScriptPromise;
   }
@@ -54,7 +54,7 @@ function loadGoogleScript() {
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Không tải được Google Identity Services'));
+    script.onerror = () => reject(new Error('Không tải dược Google Identity Services'));
 
     if (!existing) document.head.appendChild(script);
   });
@@ -105,7 +105,7 @@ export function GoogleAuthButton({
         });
       })
       .catch(() => {
-        const message = 'Không tải được Google Sign-In. Kiểm tra kết nối mạng hoặc cấu hình client ID.';
+        const message = 'Không tải dược Google Sign-In. Kiểm tra kết nối mạng hoặc cấu hình client ID.';
         setError(message);
         onError?.(message);
       });
