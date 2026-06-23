@@ -231,6 +231,11 @@ export function BusinessProfilePage() {
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Building2 className="h-5 w-5" /></span>
               <div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div>
             </div>
+            {rejectionReason && status === "Rejected" && (
+              <div className="mt-4">
+                <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>
+              </div>
+            )}
           </Card>
         </div>
       )}
@@ -407,6 +412,11 @@ export function ExpertProfilePage() {
           <Card className="p-6">
             <SectionHeading title="Trạng thái KYC" />
             <div className="mt-5 flex items-center gap-3 rounded-3xl bg-mint-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm"><IdCard className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div>
+            {rejectionReason && status === "Rejected" && (
+              <div className="mt-4">
+                <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>
+              </div>
+            )}
           </Card>
         </div>
       )}

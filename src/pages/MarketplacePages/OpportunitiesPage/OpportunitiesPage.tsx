@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
@@ -103,6 +103,7 @@ export function OpportunitiesPage() {
           <JobCard
             key={job.jobId}
             job={job}
+            hideStatus={true}
           />
         ))}
       </div>

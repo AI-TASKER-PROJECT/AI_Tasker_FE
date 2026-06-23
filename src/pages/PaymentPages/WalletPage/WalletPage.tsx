@@ -323,9 +323,11 @@ export function WalletPage() {
             tone="brand"
           />
           <MetricCard
-            label="Quỹ hợp đồng"
+            label={role === "EXPERT" ? "Doanh thu hợp đồng" : "Quỹ hợp đồng"}
             value={formatCurrency(wallet.escrowBalance)}
-            helper="Đang giữ cho hợp đồng"
+            helper={
+              role === "EXPERT" ? "Chờ nghiệm thu" : "Đang giữ cho hợp đồng"
+            }
             icon={<Shield className="h-5 w-5" />}
             tone="amber"
           />
@@ -351,9 +353,7 @@ export function WalletPage() {
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-4 bg-gradient-to-br from-brand-600 via-indigo-600 to-violet-700 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-100">
-                Tổng số dư ví
-              </p>
+              <p className="text-sm font-semibold text-blue-100">Tổng</p>
               <p className="mt-1 font-display text-4xl font-black tracking-tight">
                 {formatCurrency(wallet.currentBalance)}
               </p>

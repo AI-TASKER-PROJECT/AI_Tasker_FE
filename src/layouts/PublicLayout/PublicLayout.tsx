@@ -13,7 +13,7 @@ import { Avatar, Button, LinkButton } from "../../components/ui";
 
 const nav = [
   { label: "Trang chủ", to: "/home" },
-  { label: "Doanh nghiệp", to: "/jobs" },
+  { label: "Doanh nghiệp", to: "/business" },
   { label: "Chuyên gia", to: "/experts" },
   { label: "Về AITASKER", to: "/about" },
 ];
@@ -36,7 +36,8 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
   };
 
   return (
-    <div className="min-h-screen bg-[#fff8f8] text-ink">
+    <div className="relative min-h-screen bg-[#fff8f8] text-ink">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
       <header className="sticky top-0 z-40 border-b border-[#f0dbe4]/80 bg-[#fff8f8]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 py-2 md:px-6">
           <Logo />

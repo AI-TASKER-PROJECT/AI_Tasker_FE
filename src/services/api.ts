@@ -347,18 +347,19 @@ export const authApi = {
   },
 };
 
+//api profile
 export const profileApi = {
   upsertBusiness(payload: Partial<BusinessProfile>) {
     return call<BusinessProfile>({
       method: "POST",
-      url: "/api/v1/profiles/business",//Cập nhật hô sơ DN
+      url: "/api/v1/profiles/business", //Cập nhật/Tạo mới hồ sơ Doanh nghiệp.
       data: payload,
     });
   },
   getMyBusiness() {
     return call<BusinessProfile>({
       method: "GET",
-      url: "/api/v1/profiles/business/me", //lấy thông tin business hiện tại dựa trên access token
+      url: "/api/v1/profiles/business/me", //Lấy hồ sơ Doanh nghiệp của user hiện tại.
     });
   },
   uploadBusinessLicense(file: File) {

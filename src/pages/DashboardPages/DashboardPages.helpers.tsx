@@ -6,15 +6,19 @@ import {
   Clock3,
   FileCheck2,
   Gavel,
+  IdCard,
+  Layers3,
   WalletCards,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
+  catalogApi,
   contractApi,
   disputeApi,
   marketplaceApi,
   notificationApi,
+  profileApi,
 } from "../../services";
 import { roleLabel, useSession } from "../../context/sessionContext";
 import { connectNotificationSocket } from "../../lib/notificationSocket";
@@ -25,7 +29,13 @@ import {
   notificationHref,
   notificationTone,
 } from "../../lib/notifications";
-import type { Contract, Dispute, Job, NotificationItem } from "../../types";
+import type {
+  Contract,
+  Dispute,
+  Job,
+  NotificationItem,
+  Proposal,
+} from "../../types";
 import {
   Badge,
   Button,
@@ -46,6 +56,10 @@ export function DashboardPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [pendingVerifications, setPendingVerifications] = useState(0);
+  const [domainsCount, setDomainsCount] = useState(0);
+  const [myJobs, setMyJobs] = useState<Job[]>([]);
+  const [myProposals, setMyProposals] = useState<Proposal[]>([]);
 
   useEffect(() => {
     marketplaceApi
@@ -71,7 +85,40 @@ export function DashboardPage() {
       .list()
       .then(setNotifications)
       .catch(() => setNotifications([]));
-  }, []);
+
+    if (session?.role === "STAFF") {
+      Promise.all([profileApi.listBusinesses(), profileApi.listExperts()])
+        .then(([businesses, experts]) => {
+          const pendingB = businesses.filter(
+            (b) => b.kybStatus === "Pending",
+          ).length;
+          const pendingE = experts.filter(
+            (e) => e.kycStatus === "Pending",
+          ).length;
+          setPendingVerifications(pendingB + pendingE);
+        })
+        .catch(() => setPendingVerifications(0));
+
+      catalogApi
+        .listDomains()
+        .then((domains) => setDomainsCount(domains.length))
+        .catch(() => setDomainsCount(0));
+    }
+
+    if (session?.role === "BUSINESS") {
+      marketplaceApi
+        .listMyJobs()
+        .then(setMyJobs)
+        .catch(() => setMyJobs([]));
+    }
+
+    if (session?.role === "EXPERT") {
+      marketplaceApi
+        .listMyProposals()
+        .then(setMyProposals)
+        .catch(() => setMyProposals([]));
+    }
+  }, [session?.role]);
 
   if (!session) return null;
 
@@ -114,13 +161,22 @@ export function DashboardPage() {
     ],
   }[session.role];
 
+  const descriptionText =
+    session.role === "BUSINESS"
+      ? "Tổng hợp chung của doanh nghiệp"
+      : session.role === "EXPERT"
+        ? "Tổng hợp chung của chuyên gia"
+        : session.role === "ADMIN"
+          ? "Tổng hợp chung của hệ thống"
+          : "Tổng hợp chung các thông tin của nhân viên";
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           eyebrow={roleLabel(session.role)}
           title={`Xin chào, ${session.fullName}`}
-          description="Tổng hợp chung các thông tin của doanh nghiệp"
+          description={descriptionText}
           actions={
             <LinkButton to="/app/notifications" variant="secondary">
               <Bell className="h-4 w-4" />
@@ -131,35 +187,74 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Số bài dăng hiện có"
-          value={jobs.filter((job) => job.status === "OPEN").length}
-          helper="Từ thị trường"
-          icon={<BriefcaseBusiness className="h-5 w-5" />}
-        />
-        <MetricCard
-          label="Hợp đồng active"
-          value={
-            contracts.filter((contract) => contract.status === "Active").length
-          }
-          helper="Đang thực thi"
-          icon={<FileCheck2 className="h-5 w-5" />}
-          tone="mint"
-        />
-        <MetricCard
-          label="Giá trị hợp đồng hiện có"
-          value={formatCompactCurrency(
-            contracts.reduce(
-              (total, contract) => total + Number(contract.totalBudget || 0),
+        {session?.role === "STAFF" ? (
+          <MetricCard
+            label="Số hồ sơ cần duyệt"
+            value={pendingVerifications}
+            helper="KYC/KYB Pending"
+            icon={<IdCard className="h-5 w-5" />}
+          />
+        ) : (
+          <MetricCard
+            label="Số bài đăng hiện có"
+            value={jobs.filter((job) => job.status === "OPEN").length}
+            helper="Từ thị trường"
+            icon={<BriefcaseBusiness className="h-5 w-5" />}
+          />
+        )}
+        {session?.role === "BUSINESS" ? (
+          <MetricCard
+            label="Số proposal đã nhận"
+            value={myJobs.reduce(
+              (sum, job) => sum + (job.proposalsCount || 0),
               0,
-            ),
-          )}
-          helper="Từ hợp đồng"
-          icon={<WalletCards className="h-5 w-5" />}
-          tone="coral"
-        />
+            )}
+            helper="Từ các chuyên gia"
+            icon={<FileCheck2 className="h-5 w-5" />}
+            tone="mint"
+          />
+        ) : session?.role === "EXPERT" ? (
+          <MetricCard
+            label="Số proposal đã gửi"
+            value={myProposals.length}
+            helper="Đến doanh nghiệp"
+            icon={<FileCheck2 className="h-5 w-5" />}
+            tone="mint"
+          />
+        ) : (
+          <MetricCard
+            label="Báo cáo kĩ thuật"
+            value={
+              contracts.filter((contract) => contract.status === "Active")
+                .length
+            }
+            helper="Đang thực thi"
+            icon={<FileCheck2 className="h-5 w-5" />}
+            tone="mint"
+          />
+        )}
+        {session.role !== "STAFF" && (
+          <MetricCard
+            label={
+              session.role === "EXPERT"
+                ? "Doanh thu cá nhân"
+                : session.role === "BUSINESS"
+                  ? "Tổng chi dự án"
+                  : "Tổng chi các dự án"
+            }
+            value={formatCompactCurrency(
+              contracts.reduce(
+                (total, contract) => total + Number(contract.totalBudget || 0),
+                0,
+              ),
+            )}
+            helper="Từ hợp đồng"
+            icon={<WalletCards className="h-5 w-5" />}
+            tone="coral"
+          />
+        )}
         <MetricCard
-          label="Tranh chấp mở"
+          label="Tranh chấp hiện có"
           value={
             disputes.filter(
               (dispute) =>
@@ -170,6 +265,15 @@ export function DashboardPage() {
           icon={<Gavel className="h-5 w-5" />}
           tone="amber"
         />
+        {session?.role === "STAFF" && (
+          <MetricCard
+            label="Lĩnh vực chuyên môn"
+            value={domainsCount}
+            helper="Trên hệ thống"
+            icon={<Layers3 className="h-5 w-5" />}
+            tone="brand"
+          />
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_.9fr]">

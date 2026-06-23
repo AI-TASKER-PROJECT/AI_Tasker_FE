@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Building2, IdCard, Save, ShieldCheck } from "lucide-react";
 import { profileApi } from "../../lib/api";
 import { getSession, saveSession } from "../../lib/session";
@@ -14,6 +14,7 @@ export function BusinessVerificationProfilePage() {
   const [form, setForm] = useState({ taxCode: "", companyName: "", address: "", businessLicenseUrl: "" });
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [status, setStatus] = useState("Chưa gửi");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ export function BusinessVerificationProfilePage() {
     profileApi.getMyBusiness().then((profile) => {
       setForm({ taxCode: profile.taxCode || "", companyName: profile.companyName || "", address: profile.address || "", businessLicenseUrl: profile.businessLicenseUrl || "" });
       setStatus(profile.kybStatus || "Chưa gửi");
+      setRejectionReason(profile.rejectionReason || "");
     }).catch(() => undefined);
   }, []);
 
@@ -33,6 +35,7 @@ export function BusinessVerificationProfilePage() {
       const profile = await profileApi.upsertBusiness({ ...form, businessLicenseUrl });
       setForm({ taxCode: profile.taxCode || "", companyName: profile.companyName || "", address: profile.address || "", businessLicenseUrl: profile.businessLicenseUrl || "" });
       setStatus(profile.kybStatus);
+      setRejectionReason(profile.rejectionReason || "");
       const session = getSession();
       if (session) saveSession({ ...session, accountStatus: accountStatus(profile.kybStatus) });
       setMessage("Đã lưu hồ sơ doanh nghiệp.");
@@ -54,7 +57,13 @@ export function BusinessVerificationProfilePage() {
         <Field label="Tệp giấy phép kinh doanh" hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."><Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(e) => setLicenseFile(e.target.files?.[0] || null)} /><FirebaseFileLink path={form.businessLicenseUrl} emptyText="Chưa có giấy phép" buttonText="Xem giấy phép" className="mt-3" showPath={false} /></Field>
         <div className="flex justify-end"><Button type="submit" loading={loading}><Save className="h-4 w-4" />Lưu hồ sơ</Button></div>
       </form></Card>
-      <Card className="p-6"><SectionHeading title="Trạng thái KYB" /><div className="mt-5 flex items-center gap-3 rounded-3xl bg-brand-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600"><Building2 className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div></Card>
+      <Card className="p-6"><SectionHeading title="Trạng thái KYB" /><div className="mt-5 flex items-center gap-3 rounded-3xl bg-brand-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600"><Building2 className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div>
+        {rejectionReason && status === "Rejected" && (
+          <div className="mt-4">
+            <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>
+          </div>
+        )}
+      </Card>
     </div>
   </div>;
 }
@@ -63,17 +72,18 @@ export function ExpertVerificationProfilePage() {
   const [form, setForm] = useState({ nationalId: "", portfolioUrl: "", yearsOfExperience: "1" });
   const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
   const [status, setStatus] = useState("Chưa gửi");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { profileApi.getMyExpert().then((profile) => { setForm({ nationalId: profile.nationalId || "", portfolioUrl: profile.portfolioUrl || "", yearsOfExperience: String(profile.yearsOfExperience ?? 1) }); setStatus(profile.kycStatus || "Chưa gửi"); }).catch(() => undefined); }, []);
+  useEffect(() => { profileApi.getMyExpert().then((profile) => { setForm({ nationalId: profile.nationalId || "", portfolioUrl: profile.portfolioUrl || "", yearsOfExperience: String(profile.yearsOfExperience ?? 1) }); setStatus(profile.kycStatus || "Chưa gửi"); setRejectionReason(profile.rejectionReason || ""); }).catch(() => undefined); }, []);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setLoading(true); setMessage(""); setError("");
     try {
       const portfolioUrl = portfolioFile ? await profileApi.uploadExpertPortfolio(portfolioFile) : form.portfolioUrl;
       const profile = await profileApi.upsertExpert({ nationalId: form.nationalId, portfolioUrl, yearsOfExperience: Number(form.yearsOfExperience) });
-      setForm({ nationalId: profile.nationalId || "", portfolioUrl: profile.portfolioUrl || "", yearsOfExperience: String(profile.yearsOfExperience ?? 1) }); setStatus(profile.kycStatus);
+      setForm({ nationalId: profile.nationalId || "", portfolioUrl: profile.portfolioUrl || "", yearsOfExperience: String(profile.yearsOfExperience ?? 1) }); setStatus(profile.kycStatus); setRejectionReason(profile.rejectionReason || "");
       const session = getSession(); if (session) saveSession({ ...session, accountStatus: accountStatus(profile.kycStatus) }); setMessage("Đã lưu hồ sơ chuyên gia.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể lưu hồ sơ chuyên gia."); } finally { setLoading(false); }
   };
@@ -87,7 +97,13 @@ export function ExpertVerificationProfilePage() {
         <div className="grid gap-4 md:grid-cols-2"><Field label="Tệp Portfolio" hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."><Input type="file" accept="image/png,image/jpeg,application/pdf,.doc,.docx" onChange={(e) => setPortfolioFile(e.target.files?.[0] || null)} required={!form.portfolioUrl} /><FirebaseFileLink path={form.portfolioUrl} emptyText="Chưa có tệp Portfolio" buttonText="Xem Portfolio" className="mt-3" showPath={false} /></Field><Field label="Số năm kinh nghiệm"><Input type="number" min="0" value={form.yearsOfExperience} onChange={(e) => setForm((v) => ({ ...v, yearsOfExperience: e.target.value }))} required /></Field></div>
         <div className="flex justify-end"><Button type="submit" loading={loading}><ShieldCheck className="h-4 w-4" />Lưu hồ sơ</Button></div>
       </form></Card>
-      <Card className="p-6"><SectionHeading title="Trạng thái KYC" /><div className="mt-5 flex items-center gap-3 rounded-3xl bg-mint-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600"><IdCard className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div></Card>
+      <Card className="p-6"><SectionHeading title="Trạng thái KYC" /><div className="mt-5 flex items-center gap-3 rounded-3xl bg-mint-50 p-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600"><IdCard className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p><div className="mt-1"><StatusBadge status={status} /></div></div></div>
+        {rejectionReason && status === "Rejected" && (
+          <div className="mt-4">
+            <Notice tone="danger" title="Lý do từ chối">{rejectionReason}</Notice>
+          </div>
+        )}
+      </Card>
     </div>
   </div>;
 }

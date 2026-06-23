@@ -96,7 +96,7 @@ export function AppRoutes() {
         <Route path="home" element={<LandingPage />} />
         <Route path="how-it-works" element={<LandingPage />} />
         <Route path="about" element={<LandingPage />} />
-        <Route path="jobs" element={<JobsPage />} />
+        <Route path="business" element={<JobsPage />} />
         <Route path="jobs/:jobId" element={<JobDetailPage />} />
         <Route path="experts" element={<ExpertDirectoryPage />} />
         <Route
