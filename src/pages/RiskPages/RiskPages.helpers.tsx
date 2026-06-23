@@ -1,4 +1,4 @@
-﻿import {
+import {
   CheckCircle2,
   FileSearch,
   Gavel,
@@ -74,10 +74,10 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title={staffMode ? "Ticket tranh chấp" : "Tranh chấp của dự án"}
+          title={staffMode ? "Tranh chấp được giao" : "Tranh chấp của dự án"}
           description={
             staffMode
-              ? "Staff/Admin tiếp nhận, demo testing, viết technical report và đề xuất xử lý."
+              ? "Staff tiếp nhận, demo testing, viết technical report và đề xuất xử lý."
               : "Doanh nghiệp/chuyên gia tạo dispute để khóa dòng tiền và yêu cầu can thiệp."
           }
         />
@@ -343,6 +343,7 @@ export function DisputeDetailPage({
 //Trang xác thực dịnh danh
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
+  const [statusFilter, setStatusFilter] = useState("Pending");
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
 
@@ -351,14 +352,23 @@ export function VerificationsPage() {
     profileApi.listExperts().then(setExperts); // api lấy ds CG
   }, []);
 
+  const getStatus = (item: BusinessProfile | ExpertProfile) =>
+    tab === "business"
+      ? (item as BusinessProfile).kybStatus
+      : (item as ExpertProfile).kycStatus;
+
   const list = tab === "business" ? businesses : experts;
+  const filteredList =
+    statusFilter === "All"
+      ? list
+      : list.filter((item) => getStatus(item) === statusFilter);
 
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Duyệt hồ sơ KYC/KYB"
-          description="Admin/Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
+          description="Staff xem hồ sơ pending và approve/reject. Back-end có audit log khi duyệt."
         />
       </div>
       <Card className="p-5">
@@ -370,16 +380,41 @@ export function VerificationsPage() {
             { id: "expert", label: "Expert KYC", count: experts.length },
           ]}
         />
+        <div className="mt-4">
+          <Tabs
+            active={statusFilter}
+            onChange={setStatusFilter}
+            tabs={[
+              { id: "All", label: "All", count: list.length },
+              {
+                id: "Pending",
+                label: "Pending",
+                count: list.filter((item) => getStatus(item) === "Pending")
+                  .length,
+              },
+              {
+                id: "Approved",
+                label: "Approved",
+                count: list.filter((item) => getStatus(item) === "Approved")
+                  .length,
+              },
+              {
+                id: "Rejected",
+                label: "Rejected",
+                count: list.filter((item) => getStatus(item) === "Rejected")
+                  .length,
+              },
+            ]}
+          />
+        </div>
         <div className="mt-5 grid gap-3">
-          {list.map((item) => {
+          {filteredList.map((item) => {
             const isBusiness = tab === "business";
             const title = isBusiness
               ? (item as BusinessProfile).companyName
               : (item as ExpertProfile).fullName ||
                 `Expert #${(item as ExpertProfile).expertId}`;
-            const status = isBusiness
-              ? (item as BusinessProfile).kybStatus
-              : (item as ExpertProfile).kycStatus;
+            const status = getStatus(item);
             const id = isBusiness
               ? (item as BusinessProfile).businessId
               : (item as ExpertProfile).expertId;
@@ -412,7 +447,7 @@ export function VerificationsPage() {
               </div>
             );
           })}
-          {list.length === 0 && (
+          {filteredList.length === 0 && (
             <EmptyState
               title="Chưa có hồ sơ"
               description="Không có hồ sơ trong nhóm này."

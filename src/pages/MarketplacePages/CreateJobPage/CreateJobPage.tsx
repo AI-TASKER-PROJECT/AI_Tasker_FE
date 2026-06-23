@@ -679,9 +679,9 @@ export function CreateJobPage() {
     }
 
     const sowPayload = buildSowPayload();
-    if (!sowPayload && !savedJob.sow) {
+    if (!form.structuredSow.trim()) {
       setPublishError(
-        "Bạn cần tạo Statement of Work (bằng AI hoặc tự soạn) trước khi đăng bài.",
+        "Không thể đăng bài vì SoW và Milestones chưa được mô tả.",
       );
       return;
     }
@@ -1043,11 +1043,7 @@ export function CreateJobPage() {
 
               {/* Structured SoW Text — editable when not locked */}
               <Field
-                label={
-                  sowGeneratedLocked
-                    ? "Job Posting(complete)"
-                    : "Structured SoW"
-                }
+                label={sowGeneratedLocked ? "SoW-(complete)" : "Structured SoW"}
               >
                 <Textarea
                   value={form.structuredSow}

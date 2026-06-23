@@ -39,7 +39,7 @@ import {
 } from "../../lib/api";
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
-import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
+import { cn, formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../types";
 import { jobDomainLabel } from "./publicPages.utils";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
@@ -594,12 +594,12 @@ export function LandingPage() {
                 description="Dữ liệu dược tải trực tiếp từ API job hiện có dể giữ nguyên luồng public listing và diều hướng vào chi tiết job."
               />
               <LinkButton
-                to="/jobs"
+                to="/business"
                 variant="secondary"
                 size="sm"
                 className="rounded-xl"
               >
-                Xem tất cả
+                Khám phá ngay
               </LinkButton>
             </div>
             <div className="mt-6 grid gap-3">
@@ -959,15 +959,27 @@ export function JobsPage() {
   );
 }
 
+function getDomainTone(name: string): "brand" | "mint" | "coral" | "amber" | "rose" | "violet" {
+  const tones = ["brand", "mint", "coral", "amber", "rose", "violet"] as const;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return tones[Math.abs(hash) % tones.length];
+}
+
 export function JobCard({
   job,
   manage = false,
+  hideStatus = false,
 }: {
   job: Job;
   manage?: boolean;
+  hideStatus?: boolean;
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
+  const [domainName, setDomainName] = useState<string>("");
 
   const [businessName, setBusinessName] = useState(
     job.companyName || "Doanh nghiệp",
@@ -1004,6 +1016,20 @@ export function JobCard({
       })
       .catch(() => {});
 
+    Promise.all([
+      catalogApi.listDomains(true),
+      catalogApi.listJobDomains(job.jobId)
+    ])
+      .then(([allDomains, jobDomains]) => {
+        if (!ignore && jobDomains.length > 0) {
+          const matched = allDomains.find(
+            (d) => d.domainId === jobDomains[0].id.domainId
+          );
+          if (matched) setDomainName(matched.domainName);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       ignore = true;
     };
@@ -1012,9 +1038,21 @@ export function JobCard({
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex min-h-9 items-start justify-between gap-3">
-        <StatusBadge status={job.status} />
+        {domainName ? (
+          <Badge tone={getDomainTone(domainName)} className="w-fit border-0 px-3 py-1 text-[12px] font-semibold ring-0">
+            {domainName}
+          </Badge>
+        ) : (
+          <div /> /* Empty div to push StatusBadge to the right if we wanted, but let's keep StatusBadge on the left if no domain */
+        )}
+        {!hideStatus && <StatusBadge status={job.status} />}
       </div>
-      <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+      <h3
+        className={cn(
+          "min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700",
+          !hideStatus && "mt-4"
+        )}
+      >
         {job.title}
       </h3>
       <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
@@ -1034,6 +1072,7 @@ export function JobCard({
           </p>
         </div>
       </div>
+
       <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
@@ -1166,7 +1205,7 @@ export function JobDetailPage() {
           }
           className="text-sm font-bold text-brand-600"
         >
-          ← Quay lại trang quản lý dự án
+          ← Quay lại
         </Link>
         <div className="mt-5 flex flex-wrap gap-2">
           {jobDomainIds.map((domainId) => (
@@ -1234,6 +1273,16 @@ export function JobDetailPage() {
                 icon={<Clock3 className="h-4 w-4" />}
                 label="Thời lượng"
                 value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || "tuần"}`}
+              />
+              <InfoRow
+                icon={<Target className="h-4 w-4" />}
+                label="Lĩnh vực"
+                value={
+                  domains
+                    .filter((d) => jobDomainIds.includes(d.domainId))
+                    .map((d) => d.domainName)
+                    .join(", ") || "Chưa cập nhật"
+                }
               />
               <InfoRow
                 icon={<BriefcaseBusiness className="h-4 w-4" />}
@@ -1463,8 +1512,10 @@ export function ExpertDirectoryPage() {
   const session = useSession();
 
   return (
-    <div className="bg-[#f7faff] pb-24 pt-16">
-      <main className="mx-auto max-w-7xl px-4 md:px-6">
+    <div className="relative overflow-hidden bg-[#f7faff] pb-24 pt-16">
+      <div className="absolute inset-0 z-0 opacity-[0.03] [background-image:linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] [background-size:32px_32px]" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#f7faff] via-transparent to-transparent" />
+      <main className="relative z-10 mx-auto max-w-7xl px-4 md:px-6">
         {/* Section 1: Hero */}
         <ScrollReveal>
           <div className="grid items-center gap-12 lg:grid-cols-2">

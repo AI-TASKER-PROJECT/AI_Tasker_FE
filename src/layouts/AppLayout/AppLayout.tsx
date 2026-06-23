@@ -142,8 +142,8 @@ const commonNav: NavItem[] = [
 const roleNav: Record<Role, NavItem[]> = {
   BUSINESS: [
     {
-      label: "Trang cá nhân",
-      to: "/app/business/public-profile",
+      label: "Trang chủ",
+      to: "/home",
       icon: <Building2 className="h-4 w-4" />,
     },
     {
@@ -189,8 +189,8 @@ const roleNav: Record<Role, NavItem[]> = {
   ],
   EXPERT: [
     {
-      label: "Trang cá nhân",
-      to: "/app/expert/public-profile",
+      label: "Trang chủ",
+      to: "/home",
       icon: <IdCard className="h-4 w-4" />,
     },
     {
@@ -246,7 +246,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
-      label: "Ticket dược giao",
+      label: "Tranh chấp được giao",
       to: "/app/tickets",
       icon: <Gavel className="h-4 w-4" />,
     },
@@ -731,7 +731,8 @@ export function AppShell() {
   const activePackageName = quota?.activePackageName || activePackageTier;
 
   return (
-    <div className="min-h-screen bg-[#f7faff] text-ink">
+    <div className="relative min-h-screen bg-[#f7faff] text-ink">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden border-r border-slate-100 bg-white transition-all duration-300 lg:flex lg:flex-col",
@@ -1020,7 +1021,8 @@ export function AppShell() {
                         {session?.email}
                       </p>
                     </div>
-                    <div className="mt-2 rounded-2xl border border-slate-100 bg-white px-3 py-3">
+                    {session?.role !== "STAFF" && (
+                      <div className="mt-2 rounded-2xl border border-slate-100 bg-white px-3 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
                           Số dư
@@ -1033,10 +1035,10 @@ export function AppShell() {
                           {walletLoading ? "Đang tải..." : "Làm mới"}
                         </button>
                       </div>
-                      <div className={cn("mt-3 grid gap-2", session?.role === "EXPERT" ? "grid-cols-1" : "grid-cols-2")}>
+                      <div className="mt-3 grid gap-2 grid-cols-1">
                         <div className="rounded-2xl bg-slate-50 p-3">
                           <p className="text-[11px] font-bold text-slate-400">
-                            Khả dụng
+                            {session?.role === "ADMIN" ? "Tổng doanh thu" : "Khả dụng"}
                           </p>
                           <p className="mt-1 truncate text-sm font-black text-ink">
                             {wallet
@@ -1044,21 +1046,9 @@ export function AppShell() {
                               : "--"}
                           </p>
                         </div>
-                        {session?.role !== "EXPERT" && (
-                          <div className="rounded-2xl bg-slate-50 p-3">
-                            <p className="text-[11px] font-bold text-slate-400">
-                              Quỹ hợp đồng
-                            </p>
-                            <p className="mt-1 truncate text-sm font-black text-brand-700">
-                              {wallet
-                                ? formatCurrency(wallet.escrowBalance)
-                                : "--"}
-                            </p>
-                          </div>
-                        )}
                       </div>
 
-                      {quota && (
+                      {session?.role !== "ADMIN" && quota && (
                         <div className="mt-3 space-y-2 rounded-2xl bg-slate-50 p-3">
                           {session?.role !== "EXPERT" && (
                             <div className="flex items-center justify-between">
@@ -1083,16 +1073,19 @@ export function AppShell() {
                         </div>
                       )}
 
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="mt-3 w-full"
-                        onClick={() => openTopup()}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Nạp tiền
-                      </Button>
-                    </div>
+                      {session?.role !== "ADMIN" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="mt-3 w-full"
+                          onClick={() => openTopup()}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Nạp tiền
+                        </Button>
+                      )}
+                      </div>
+                    )}
                     <div className="my-2 border-t border-slate-100" />
                     <button
                       type="button"
@@ -1112,8 +1105,8 @@ export function AppShell() {
           <div className="mx-auto max-w-[1440px]">
             {needsVerification && (
               <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Tai khoan đang o trang thai {accountStatus}. Hay hoan thien ho
-                so xac minh va doi staff duyet de mo khoa chuc nang.
+                Tài khoản đang ở trạng thái {accountStatus}. Hãy hoàn thiện hồ
+                sơ xác minh và đợi nhân viên duyệt để mở khóa chức năng
               </div>
             )}
             <Outlet />
@@ -1212,22 +1205,25 @@ export function AppShell() {
           </div>
           <Field
             label="Số tiền nạp"
-            hint="Backend yêu cầu số tiền là số nguyên VND ít nhất 2.000."
+            hint="Yêu cầu số tiền ít nhất 2.000 VNĐ."
           >
             <Input
-              type="number"
-              min={2000}
-              step={1}
-              value={topupForm.amount}
+              type="text"
+              value={
+                topupForm.amount
+                  ? Number(topupForm.amount).toLocaleString("vi-VN")
+                  : ""
+              }
               onChange={(event) => {
                 setTopupPayment(null);
                 setTopupQrDataUrl("");
+                const rawValue = event.target.value.replace(/\D/g, "");
                 setTopupForm((value) => ({
                   ...value,
-                  amount: event.target.value,
+                  amount: rawValue,
                 }));
               }}
-              placeholder="Ví dụ: 500000"
+              placeholder="Ví dụ: 500.000"
               required
             />
           </Field>

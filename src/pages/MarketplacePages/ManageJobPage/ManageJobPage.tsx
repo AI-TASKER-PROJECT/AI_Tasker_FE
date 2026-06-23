@@ -283,14 +283,11 @@ export function ManageJobPage() {
                         : "Rule-based"}
                     </Badge>
                   )}
-
                 </div>
               </div>
 
               {/* Notice after generate */}
               {aiMessage && <Notice tone={aiMessageTone} title={aiMessage} />}
-
-
 
               {/* Skeleton while loading */}
               {aiLoading && (
@@ -1090,6 +1087,22 @@ function ExpertRecommendationCard({
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  const [expert, setExpert] = useState<ExpertProfile | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    profileApi
+      .getExpertById(rec.expertId)
+      .then((data) => {
+        if (!ignore) setExpert(data);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, [rec.expertId]);
+
   const handleSelect = async () => {
     try {
       setSelecting(true);
@@ -1130,11 +1143,14 @@ function ExpertRecommendationCard({
         {/* Expert info */}
         <div className="min-w-0">
           <p className="font-display text-base font-extrabold text-ink">
-            Expert #{rec.expertId}
+            {expert?.fullName || `Expert #${rec.expertId}`}
           </p>
           <p className="mt-0.5 text-xs font-semibold text-slate-400">
-            Expert ID: {rec.expertId}
-            {rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""}
+            {expert?.yearsOfExperience
+              ? `${expert.yearsOfExperience} năm kinh nghiệm`
+              : `Expert ID: ${rec.expertId}${
+                  rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""
+                }`}
           </p>
         </div>
 
@@ -1221,27 +1237,75 @@ function ExpertRecommendationCard({
         <p className="text-xs font-semibold text-slate-500">
           {rec.businessSelected
             ? "Bạn đã gửi lời mời đến chuyên gia này. Hệ thống sẽ thông báo cho họ."
-            : "Chọn chuyên gia này nếu bạn thấy phù hợp với yêu cầu."}
+            : "Yêu thích chuyên gia này nếu bạn thấy phù hợp với yêu cầu."}
         </p>
 
-        <button
-          type="button"
-          onClick={handleSelect}
-          disabled={rec.businessSelected || selecting}
-          className={cn(
-            "rounded-full p-1.5 transition-all hover:bg-pink-50 active:scale-95 disabled:opacity-75 disabled:hover:bg-transparent",
-            selecting && "animate-pulse",
-          )}
-          title={rec.businessSelected ? "Đã chọn" : "Chọn chuyên gia"}
-        >
-          <Heart
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setModalOpen(true)}
+          >
+            Xem chi tiết
+          </Button>
+          <button
+            type="button"
+            onClick={handleSelect}
+            disabled={rec.businessSelected || selecting}
             className={cn(
-              "h-7 w-7 text-pink-500 transition-all",
-              rec.businessSelected && "fill-pink-500",
+              "rounded-full p-1.5 transition-all hover:bg-pink-50 active:scale-95 disabled:opacity-75 disabled:hover:bg-transparent",
+              selecting && "animate-pulse",
             )}
-          />
-        </button>
+            title={rec.businessSelected ? "Đã chọn" : "Chọn chuyên gia"}
+          >
+            <Heart
+              className={cn(
+                "h-7 w-7 text-pink-500 transition-all",
+                rec.businessSelected && "fill-pink-500",
+              )}
+            />
+          </button>
+        </div>
       </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Chi tiết chuyên gia"
+        description="Thông tin hồ sơ chuyên gia được AI đề xuất"
+      >
+        <div className="grid gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar
+              name={expert?.fullName || ""}
+              size="xl"
+            />
+            <div>
+              <p className="text-lg font-bold text-ink">
+                {expert?.fullName || `Expert #${rec.expertId}`}
+              </p>
+              <p className="text-sm font-medium text-slate-500">
+                {expert?.title || "Chuyên gia AI"}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2 text-sm text-slate-600">
+            <p>
+              <strong>Kinh nghiệm:</strong>{" "}
+              {expert?.yearsOfExperience
+                ? `${expert.yearsOfExperience} năm`
+                : "Chưa cập nhật"}
+            </p>
+            <p>
+              <strong>Kỹ năng:</strong>{" "}
+              {expert?.skills?.join(", ") || "Chưa cập nhật"}
+            </p>
+            <p>
+              <strong>Mô tả:</strong> {expert?.description || "Chưa cập nhật"}
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

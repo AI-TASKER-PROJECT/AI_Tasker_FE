@@ -65,7 +65,7 @@ export function LoginPage() {
       navigate("/app"); // chuyển qua trang app
     } catch {
       setMessage(
-        "Không thể dăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
+        "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
       );
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export function LoginPage() {
         });
         setLoginStep("GOOGLE_PROFILE");
       } catch {
-        setMessage("Không thể dăng nhập bằng Google. Vui lòng thử lại.");
+        setMessage("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -123,6 +123,13 @@ export function LoginPage() {
     setLoading(true);
     setMessage("");
 
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(googleSignup.phone.trim())) {
+      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
+      setLoading(false);
+      return;
+    }
+
     try {
       const session = await authApi.googleSignup({
         credential: googleSignup.credential,
@@ -135,7 +142,7 @@ export function LoginPage() {
       saveSession(session);
       navigate("/app");
     } catch {
-      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -152,7 +159,7 @@ export function LoginPage() {
       }
       description={
         loginStep === "LOGIN"
-          ? "JWT role sẽ quyết dịnh dashboard: Business, Expert, Staff hoặc Admin."
+          ? "Đăng nhập vào hệ thống để sử dụng tính năng của nền tảng"
           : "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
       }
     >
@@ -217,7 +224,7 @@ export function LoginPage() {
               }
             />
           </Field>
-          <Field label="Số diện thoại">
+          <Field label="Số điện thoại">
             <Input
               value={googleSignup?.phone || ""}
               onChange={(event) =>
@@ -258,7 +265,7 @@ export function LoginPage() {
               setMessage("");
             }}
           >
-            Quay lại dăng nhập
+            Quay lại đăng nhập
           </Button>
         </form>
       )}
@@ -323,7 +330,7 @@ export function RegisterPage() {
         setStep("GOOGLE_PROFILE");
       } catch {
         setMessageTone("danger");
-        setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+        setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -338,6 +345,14 @@ export function RegisterPage() {
     setLoading(true);
     setMessage("");
     setMessageTone("danger");
+
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(googleSignup.phone.trim())) {
+      setMessageTone("danger");
+      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
+      setLoading(false);
+      return;
+    }
 
     try {
       const session = await authApi.googleSignup({
@@ -356,7 +371,7 @@ export function RegisterPage() {
       );
     } catch {
       setMessageTone("danger");
-      setMessage("Không thể dăng ký bằng Google. Vui lòng thử lại.");
+      setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -386,16 +401,24 @@ export function RegisterPage() {
 
     const normalizedEmail = form.email.trim().toLowerCase();
 
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(form.phone.trim())) {
+      setMessageTone("danger");
+      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Gọi API kiểm tra email trước
       // LƯU Ý: Đảm bảo authApi.checkEmail trả về dúng giá trị data từ axios
       const emailExists = await authApi.checkEmail(normalizedEmail);
 
-      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu dã có người dùng
+      // Giả sử BE trả về true nếu email hợp lệ (chưa tồn tại), false nếu đã có người dùng
       // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
       if (emailExists) {
         setMessageTone("danger");
-        setMessage("Email này dã dược sử dụng. Vui lòng chọn email khác.");
+        setMessage("Email này đã dược sử dụng. Vui lòng chọn email khác.");
         setLoading(false);
         return; // Dừng lại, không gửi OTP
       }
@@ -416,12 +439,12 @@ export function RegisterPage() {
 
       setMessageTone("success");
       setMessage(
-        `Mã OTP dã dược gửi dến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
+        `Mã OTP đã dược gửi dến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
       );
     } catch {
       setMessageTone("danger");
       setMessage(
-        "Không thể gửi mã OTP. Kiểm tra xem email dã tồn tại hoặc trạng thái back-end.",
+        "Không thể gửi mã OTP. Kiểm tra xem email đã tồn tại hoặc trạng thái back-end.",
       );
     } finally {
       setLoading(false);
@@ -445,7 +468,7 @@ export function RegisterPage() {
       );
 
       setMessageTone("success");
-      setMessage("Mã OTP mới dã dược gửi. Vui lòng kiểm tra hộp thư.");
+      setMessage("Mã OTP mới đã dược gửi. Vui lòng kiểm tra hộp thư.");
     } catch {
       setMessageTone("danger");
       setMessage("Lỗi khi gửi lại mã OTP. Vui lòng thử lại sau.");
@@ -469,7 +492,7 @@ export function RegisterPage() {
         otp: form.otp.trim(),
       });
 
-      // 2. Nếu OTP dúng, gọi API dăng ký
+      // 2. Nếu OTP dúng, gọi API đăng ký
       const session = await authApi.register({
         email: form.email.trim().toLowerCase(),
         fullName: form.fullName.trim(),
@@ -487,7 +510,7 @@ export function RegisterPage() {
     } catch {
       setMessageTone("danger");
       setMessage(
-        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email dã tồn tại.",
+        "Xác thực thất bại: Mã OTP không hợp lệ hoặc email đã tồn tại.",
       );
     } finally {
       setLoading(false);
@@ -507,7 +530,7 @@ export function RegisterPage() {
       }
       description={
         step === "FORM"
-          ? "REG-01 yêu cầu khóa chặt email với một vai trò dã chọn."
+          ? "Yêu cầu email với một vai trò duy nhất đã chọn."
           : step === "GOOGLE_PROFILE"
             ? "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
             : "Vui lòng nhập mã gồm 6 chữ số vừa dược gửi tới email của bạn."
@@ -568,7 +591,7 @@ export function RegisterPage() {
                   required
                 />
               </Field>
-              <Field label="Số diện thoại">
+              <Field label="Số điện thoại">
                 <Input
                   value={form.phone}
                   onChange={(event) =>
@@ -648,7 +671,7 @@ export function RegisterPage() {
               }
             />
           </Field>
-          <Field label="Số diện thoại">
+          <Field label="Số điện thoại">
             <Input
               value={googleSignup?.phone || ""}
               onChange={(event) =>
@@ -780,8 +803,9 @@ function AuthFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7faff] px-4 py-8">
-      <div className="mx-auto grid w-full max-w-6xl items-stretch gap-6 lg:grid-cols-2 lg:gap-8">
+    <main className="relative flex min-h-screen items-center justify-center bg-[#f7faff] px-4 py-8">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-stretch gap-6 lg:grid-cols-2 lg:gap-8">
         <Card className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-700 p-6 text-white lg:min-h-[560px] lg:p-8">
           <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/15 blur-3xl" />
           <div className="relative z-10">

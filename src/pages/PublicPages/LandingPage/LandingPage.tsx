@@ -131,7 +131,7 @@ const faqs = [
   {
     question: "Tiền của tôi có dược an toàn khi thanh toán trước không?",
     answer:
-      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ dược hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn dã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
+      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ dược hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
   },
   {
     question: "Dự án của tôi yêu cầu bảo mật cao, AITASKER hỗ trợ như thế nào?",
@@ -179,7 +179,6 @@ export function LandingPage() {
   return (
     <main className="overflow-x-hidden bg-[#fff8f8] text-[#27171d] relative">
       <section className="relative flex min-h-[80vh] items-center overflow-hidden px-4 pb-24 pt-20 md:px-10 md:pb-32">
-        <div className="absolute inset-0 z-0 bg-[#fff8f8] opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
         <div className="absolute right-[-10rem] top-0 h-[50rem] w-[50rem] rounded-full bg-[#ffb0cc]/30 blur-3xl" />
         <div className="absolute left-[-12rem] top-[-12rem] h-[38rem] w-[38rem] rounded-full bg-[#d8e2ff]/30 blur-3xl" />
 
@@ -198,18 +197,6 @@ export function LandingPage() {
                 Nền tảng kết nối doanh nghiệp với{" "}
                 <span className="relative inline-block text-[#b30069]">
                   chuyên gia AI
-                  <svg
-                    className="absolute -bottom-2 left-0 h-3 w-full text-[#0070ea]"
-                    viewBox="0 0 100 10"
-                    preserveAspectRatio="none"
-                  >
-                    <path
-                      d="M0 5 Q 50 10 100 5"
-                      fill="transparent"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                  </svg>
                 </span>
               </h1>
 
@@ -261,7 +248,7 @@ export function LandingPage() {
               <p className="text-[18px] text-[#594048]">
                 Hơn{" "}
                 <span className="font-extrabold text-[#27171d]">5,000+</span>{" "}
-                chuyên gia dã tham gia
+                chuyên gia đã tham gia
               </p>
             </div>
           </div>

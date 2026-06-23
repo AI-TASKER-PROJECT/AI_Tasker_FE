@@ -25,7 +25,7 @@ const guestExperience: PublicExperience = {
   primaryLabel: 'Bắt dầu dự án',
   primaryPath: '/register',
   secondaryLabel: 'Xem cơ hội',
-  secondaryPath: '/jobs',
+  secondaryPath: '/experts',
 };
 
 const roleExperience: Record<Role, PublicExperience> = {
@@ -56,7 +56,7 @@ const roleExperience: Record<Role, PublicExperience> = {
       'Bạn có thể kiểm tra hồ sơ KYB/KYC, tiếp nhận dispute, ghi nhận demo testing và chuẩn bị technical report cho từng ticket.',
     primaryLabel: 'Duyệt hồ sơ',
     primaryPath: '/app/verifications',
-    secondaryLabel: 'Ticket tranh chấp',
+    secondaryLabel: 'Tranh chấp được giao',
     secondaryPath: '/app/tickets',
   },
   ADMIN: {
