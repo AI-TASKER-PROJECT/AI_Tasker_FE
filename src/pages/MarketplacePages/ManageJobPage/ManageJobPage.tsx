@@ -1,6 +1,7 @@
-import {
+﻿import {
   Award,
   BrainCircuit,
+  ChevronDown,
   CheckCircle2,
   Eye,
   FileCheck2,
@@ -145,6 +146,7 @@ export function ManageJobPage() {
     contractTitle: "",
     timelineWeeks: "6",
   });
+  const [contractTermsOpen, setContractTermsOpen] = useState(false);
   const [contractError, setContractError] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
 
@@ -234,20 +236,18 @@ export function ManageJobPage() {
 
   const jobStatus = job.status.trim().toUpperCase();
   const jobInProgress = jobStatus === "IN_PROGRESS";
-  const timelineBufferWeeks = 2;
   const contractTimelineWeeks = Math.max(
     1,
     Number(contractForm.timelineWeeks) || 1,
   );
   const contractTimelineDays = contractTimelineWeeks * 7;
   const totalMilestoneWeeks = milestones.reduce(
-    (total, milestone) => total + Number(milestone.duration || 0),
+    (total, milestone) =>
+      total + Number(milestone.durationValue ?? milestone.duration ?? 0),
     0,
   );
-  const minimumTimelineWeeks = Math.max(
-    timelineBufferWeeks,
-    totalMilestoneWeeks + timelineBufferWeeks,
-  );
+  const minimumTimelineWeeks = Math.max(1, totalMilestoneWeeks);
+  const totalMilestoneDays = totalMilestoneWeeks * 7;
   const timelineValid = contractTimelineWeeks >= minimumTimelineWeeks;
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
@@ -284,7 +284,7 @@ export function ManageJobPage() {
     }
     if (!timelineValid) {
       setContractError(
-        `Timeline hợp đồng phải bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần) cộng thêm ${timelineBufferWeeks} tuần dự phòng. Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuần.`,
+        `Timeline hop dong phai lon hon hoac bang tong thoi gian milestone (${totalMilestoneWeeks} tuan). Vui long nhap it nhat ${minimumTimelineWeeks} tuan.`,
       );
       return;
     }
@@ -439,6 +439,7 @@ export function ManageJobPage() {
                   statusLocked={jobInProgress}
                   onContract={() => {
                     setContractError("");
+                    setContractTermsOpen(false);
                     setContractModal(proposal);
                     setContractForm((value) => ({
                       ...value,
@@ -598,31 +599,39 @@ export function ManageJobPage() {
                 }))
               }
             />
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Ban co the thay doi thoi gian hop dong lon hon tong thoi gian
+              milestones.
+            </p>
           </Field>
           {!timelineValid && (
             <Notice
               tone="warning"
-              title={`Timeline phải lấy tổng thời gian milestone (${totalMilestoneWeeks} tuần) cộng thêm ${timelineBufferWeeks} tuần. Tối thiểu ${minimumTimelineWeeks} tuần.`}
+              title={`Timeline phải lớn hơn hoặc bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
             />
           )}
-          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-4">
             <ContractPreviewMetric
-              label="Ngay bat dau du kien"
+              label="Tổng milestone"
+              value={`${totalMilestoneWeeks} tuan (${totalMilestoneDays} ngày)`}
+            />
+            <ContractPreviewMetric
+              label="Ngày bắt đầu dự kiến"
               value={formatDate(contractStartDate.toISOString())}
             />
             <ContractPreviewMetric
-              label="Ngay ket thuc du kien"
+              label="Ngày kết thúc dự kiến"
               value={formatDate(contractEndDate.toISOString())}
             />
             <ContractPreviewMetric
-              label="Tong thoi gian"
+              label="Tổng thời gian"
               value={`${contractTimelineWeeks} tuần (${contractTimelineDays} ngày)`}
             />
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Ngân sách sẽ dưa vào hợp đồng"
-              description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
+              // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
             />
             <div className="mt-4 grid gap-3">
               {milestones
@@ -682,23 +691,41 @@ export function ManageJobPage() {
             </div>
           </div>
           <div className="rounded-3xl border border-slate-100 bg-white p-4">
-            <SectionHeading
-              title="Điều khoản hợp đồng"
-              description="Nội dung mẫu đang lưu cứng trên FE để đưa vào bước tạo hợp đồng nháp."
-            />
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {CONTRACT_TERM_SECTIONS.map((section) => (
-                <div
-                  key={section.title}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-                >
-                  <p className="font-extrabold text-ink">{section.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {section.content}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setContractTermsOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-left transition hover:bg-slate-100"
+            >
+              <span>
+                <span className="block font-extrabold text-ink">
+                  Điều khoản hợp đồng
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-slate-500">
+                  Bấm để {contractTermsOpen ? "thu gọn" : "xem"} điều khoản mẫu
+                </span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-5 w-5 shrink-0 text-slate-500 transition-transform",
+                  contractTermsOpen && "rotate-180",
+                )}
+              />
+            </button>
+            {contractTermsOpen && (
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {CONTRACT_TERM_SECTIONS.map((section) => (
+                  <div
+                    key={section.title}
+                    className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                  >
+                    <p className="font-extrabold text-ink">{section.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {section.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </Modal>

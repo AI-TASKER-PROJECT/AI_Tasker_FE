@@ -320,6 +320,20 @@ export const authApi = {
       data: payload,
     });
   },
+  forgotPassword(payload: { email: string }) {
+    return call<void>({
+      method: "POST",
+      url: "/api/auth/forgot-password",
+      data: payload,
+    });
+  },
+  resetPassword(payload: { token: string; newPassword: string }) {
+    return call<void>({
+      method: "POST",
+      url: "/api/auth/reset-password",
+      data: payload,
+    });
+  },
   register(payload: {
     email: string;
     password: string;
