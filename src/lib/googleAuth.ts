@@ -1,6 +1,7 @@
+import { GOOGLE_CLIENT_ID } from "../config/app";
 import type { Role, SessionUser } from "../types";
 
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+export { GOOGLE_CLIENT_ID };
 
 export interface GoogleCredentialPayload {
   email: string;
