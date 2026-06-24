@@ -1,15 +1,23 @@
-import { ArrowLeft, ChevronDown, LogOut, Menu, X } from "lucide-react";
-import { useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, ChevronDown, LogOut, Menu, X, Plus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { getPublicStartPath, getWorkspacePath } from "../../lib/roleExperience";
 import {
   clearSession,
   roleLabel,
   useSession,
 } from "../../context/sessionContext";
-import { cn } from "../../lib/utils";
+import { cn, formatCurrency } from "../../lib/utils";
 import { Logo } from "../../components/Logo";
 import { Avatar, Button, LinkButton } from "../../components/ui";
+import { walletApi, userQuotaApi } from "../../services";
+import type { SystemWallet, UserQuota } from "../../types";
 
 const nav = [
   { label: "Trang chủ", to: "/home" },
@@ -26,8 +34,38 @@ export function PublicShell() {
   const location = useLocation();
   const startPath = getPublicStartPath(session);
   const workspacePath = getWorkspacePath(session);
+
+  const [wallet, setWallet] = useState<SystemWallet | null>(null);
+  const [quota, setQuota] = useState<UserQuota | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const loadWallet = useCallback(async () => {
+    if (!session?.accessToken) return;
+    setWalletLoading(true);
+    try {
+      const isExternal =
+        session.role === "BUSINESS" || session.role === "EXPERT";
+      const [walletRes, quotaRes] = await Promise.allSettled([
+        walletApi.current(),
+        isExternal ? userQuotaApi.getCurrent() : Promise.reject(),
+      ]);
+      setWallet(walletRes.status === "fulfilled" ? walletRes.value : null);
+      setQuota(quotaRes.status === "fulfilled" ? quotaRes.value : null);
+    } catch {
+      setWallet(null);
+      setQuota(null);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    void Promise.resolve().then(loadWallet);
+  }, [loadWallet, accountOpen]);
   const publicNav = nav;
-const showBackButton = location.pathname !== "/" && location.pathname !== "/home";
+  const showBackButton =
+    location.pathname !== "/" && location.pathname !== "/home";
   const logout = () => {
     clearSession();
     setAccountOpen(false);
@@ -91,18 +129,85 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
                         <p className="truncate text-sm font-extrabold text-[#b8006c]">
                           {session.fullName}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs font-semibold text-[#b8006c]/80">
                           {roleLabel(session.role)}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {session.email}
                         </p>
                       </div>
                       <div className="my-2 border-t border-slate-100" />
-                      <Link
-                        to={workspacePath}
-                        className="block rounded-2xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-[#faf3f8] hover:text-ink"
-                        onClick={() => setAccountOpen(false)}
-                      >
-                        Vào không gian làm việc
-                      </Link>
+                      
+                      {session?.role !== "STAFF" && (
+                        <div className="mt-2 rounded-2xl border border-slate-100 bg-white px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                              Số dư
+                            </p>
+                            <button
+                              type="button"
+                              onClick={loadWallet}
+                              className="text-xs font-bold text-[#b8006c] hover:text-[#8a0050]"
+                            >
+                              {walletLoading ? "Đang tải..." : "Làm mới"}
+                            </button>
+                          </div>
+                          <div className="mt-3 grid gap-2 grid-cols-1">
+                            <div className="rounded-2xl bg-[#fff8fb] p-3">
+                              <p className="text-[11px] font-bold text-slate-400">
+                                {session?.role === "ADMIN" ? "Tổng doanh thu" : "Khả dụng"}
+                              </p>
+                              <p className="mt-1 truncate text-sm font-black text-ink">
+                                {wallet
+                                  ? formatCurrency(wallet.availableBalance)
+                                  : "--"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {session?.role !== "ADMIN" && quota && (
+                            <div className="mt-3 space-y-2 rounded-2xl bg-[#fff8fb] p-3">
+                              {session?.role !== "EXPERT" && (
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[11px] font-bold text-slate-400">
+                                    Lượt đăng Job
+                                  </p>
+                                  <p className="text-sm font-black text-ink">
+                                    {quota.jobPostQuotaBalance ?? 0}
+                                  </p>
+                                </div>
+                              )}
+                              {session?.role !== "BUSINESS" && (
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[11px] font-bold text-slate-400">
+                                    Lượt nộp Proposal
+                                  </p>
+                                  <p className="text-sm font-black text-ink">
+                                    {quota.proposalQuotaBalance ?? 0}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {session?.role !== "ADMIN" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="mt-3 w-full bg-[#b30069] text-white hover:bg-[#b8006c]"
+                              onClick={() => {
+                                setAccountOpen(false);
+                                navigate("/app/wallet");
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                              Nạp tiền
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="my-2 border-t border-slate-100" />
                       <button
                         type="button"
                         onClick={logout}
@@ -173,8 +278,11 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
                       <p className="truncate text-sm font-extrabold text-ink">
                         {session.fullName}
                       </p>
-                      <p className="text-xs font-medium text-slate-400">
+                      <p className="mt-0.5 text-xs font-semibold text-slate-600">
                         {roleLabel(session.role)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {session.email}
                       </p>
                     </div>
                     <ChevronDown className="ml-auto h-4 w-4 text-slate-400" />
@@ -228,8 +336,9 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
           <div>
             <Logo className="opacity-80" />
             <p className="mt-4 max-w-xs text-sm leading-7 text-[#594048]">
-              © 2026 AITASKER. Nền tảng kết nối AI hàng dầu.
+              © 2026 AITASKER. Nền tảng kết nối AI hàng đầu.
             </p>
+
             <div className="mt-4 flex items-center gap-4 text-[#594048]">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px]">
                 G
@@ -239,20 +348,20 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
               </span>
             </div>
           </div>
+
           <FooterColumn
             title="Về chúng tôi"
-            links={[
-              { label: "Về chúng tôi", to: "/about" },
-              { label: "Liên hệ" },
-            ]}
+            links={[{ label: "Về chúng tôi" }, { label: "Liên hệ" }]}
           />
+
           <FooterColumn
             title="Hỗ trợ"
             links={[
               { label: "Câu hỏi thường gặp" },
-              { label: "Hướng dẫn sử dụng", to: "/how-it-works" },
+              { label: "Hướng dẫn sử dụng" },
             ]}
           />
+
           <FooterColumn
             title="Pháp lý"
             links={[
@@ -266,37 +375,24 @@ const showBackButton = location.pathname !== "/" && location.pathname !== "/home
   );
 }
 
-function FooterColumn({
-  title,
-  links,
-}: {
+type FooterColumnProps = {
   title: string;
-  links: Array<{ label: string; to?: string }>;
-}) {
+  links: {
+    label: string;
+  }[];
+};
+
+function FooterColumn({ title, links }: FooterColumnProps) {
   return (
     <div>
-      <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wider text-ink">
-        {title}
-      </h3>
-      <div className="grid gap-3">
-        {links.map((link) =>
-          link.to ? (
-            <Link
-              key={link.label}
-              to={link.to}
-              className="text-sm text-[#594048] underline opacity-80 transition-opacity hover:text-[#0059bb] hover:opacity-100"
-            >
-              {link.label}
-            </Link>
-          ) : (
-            <span
-              key={link.label}
-              className="text-sm text-[#594048] underline opacity-80"
-            >
-              {link.label}
-            </span>
-          ),
-        )}
+      <h3 className="text-sm font-semibold text-[#3f2a32]">{title}</h3>
+
+      <div className="mt-4 space-y-3">
+        {links.map((item) => (
+          <p key={item.label} className="text-sm text-[#594048]">
+            {item.label}
+          </p>
+        ))}
       </div>
     </div>
   );

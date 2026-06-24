@@ -1,4 +1,4 @@
-﻿import {
+import {
   Award,
   BrainCircuit,
   CheckCircle2,
@@ -63,6 +63,32 @@ import {
   skillCountLabel,
 } from "../marketplacePages.utils";
 import { CompactMilestones } from "../marketplacePages.helpers";
+
+export function translateStatus(status: string) {
+  switch (status.trim().toUpperCase()) {
+    case "PENDING":
+      return "Đang chờ";
+    case "UNDER_REVIEW":
+    case "UNDERREVIEW":
+      return "Chờ phản hồi";
+    case "ACCEPTED":
+      return "Chấp nhận";
+    case "REJECTED":
+      return "Bị từ chối";
+    case "DRAFT":
+      return "Nháp";
+    case "OPEN":
+      return "Đang mở";
+    case "IN_PROGRESS":
+      return "Đang thực hiện";
+    case "CLOSED":
+      return "Đã đóng";
+    case "CANCELLED":
+      return "Đã hủy";
+    default:
+      return status;
+  }
+}
 
 const CONTRACT_TERM_SECTIONS = [
   {
@@ -804,7 +830,7 @@ function ProposalCard({
               <p className="break-words font-display text-lg font-black text-ink">
                 {proposal.expertName || `Expert #${proposal.expertId}`}
               </p>
-              <StatusBadge status={proposal.status} />
+              <StatusBadge status={translateStatus(proposal.status)} />
             </div>
             <p className="mt-1 text-sm font-semibold text-slate-500">
               {proposal.expertTitle || "Chuyên gia AI"}
@@ -991,7 +1017,6 @@ function ProposalCard({
 
           <SectionHeading
             title="Portfolio"
-            description="Các thuộc tính trong bảng portfolios của chuyên gia tương ứng."
           />
           <div className="grid gap-3">
             <ExpertInfoItem

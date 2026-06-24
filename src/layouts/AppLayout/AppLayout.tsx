@@ -1019,7 +1019,10 @@ export function AppShell() {
                           </>
                         )}
                       </div>
-                      <p className="mt-1 truncate text-xs text-slate-500">
+                      <p className="mt-1 text-xs font-semibold text-brand-600/80">
+                        {roleLabel(session?.role || "BUSINESS")}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
                         {session?.email}
                       </p>
                     </div>

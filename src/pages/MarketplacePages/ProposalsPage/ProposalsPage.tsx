@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
@@ -24,7 +24,12 @@ import {
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
+import {
+  cn,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
@@ -81,6 +86,8 @@ export function ProposalsPage() {
   const [proposalStatusFilter, setProposalStatusFilter] = useState<
     "ALL" | "ACCEPTED" | "PENDING" | "REJECTED"
   >("ALL");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -159,14 +166,27 @@ export function ProposalsPage() {
   }, []);
 
   const proposalStatusTabs = [
-    { value: "ALL", label: "All" },
-    { value: "ACCEPTED", label: "Accepted" },
-    { value: "PENDING", label: "Pending" },
-    { value: "REJECTED", label: "Rejected" },
+    { value: "ALL", label: "Tất cả" },
+    { value: "ACCEPTED", label: "Chấp nhận" },
+    { value: "PENDING", label: "Chờ phản hồi" },
+    { value: "REJECTED", label: "Từ chối" },
   ] as const;
 
   const normalizedProposalStatus = (status?: string) =>
     (status || "").trim().toUpperCase();
+
+  const translateStatus = (status?: string) => {
+    switch (normalizedProposalStatus(status)) {
+      case "ACCEPTED":
+        return "Chấp nhận";
+      case "PENDING":
+        return "Chờ phản hồi";
+      case "REJECTED":
+        return "Từ chối";
+      default:
+        return status;
+    }
+  };
 
   const proposalStatusCounts = proposalStatusTabs.reduce(
     (counts, tab) => ({
@@ -182,55 +202,115 @@ export function ProposalsPage() {
     {} as Record<(typeof proposalStatusTabs)[number]["value"], number>,
   );
 
-  const filteredProposals = proposals.filter(
-    (proposal) =>
+  const filteredProposals = proposals.filter((proposal) => {
+    const matchStatus =
       proposalStatusFilter === "ALL" ||
-      normalizedProposalStatus(proposal.status) === proposalStatusFilter,
-  );
+      normalizedProposalStatus(proposal.status) === proposalStatusFilter;
+
+    const matchDate = (() => {
+      if (!startDateFilter && !endDateFilter) return true;
+      if (!proposal.createdAt) return false;
+
+      const pDateStr = (() => {
+        const pDate = new Date(proposal.createdAt);
+        const year = pDate.getFullYear();
+        const month = String(pDate.getMonth() + 1).padStart(2, "0");
+        const day = String(pDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      })();
+
+      if (startDateFilter && endDateFilter) {
+        return pDateStr >= startDateFilter && pDateStr <= endDateFilter;
+      } else if (startDateFilter) {
+        return pDateStr >= startDateFilter;
+      } else if (endDateFilter) {
+        return pDateStr <= endDateFilter;
+      }
+      return true;
+    })();
+
+    return matchStatus && matchDate;
+  });
 
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Proposal của tôi"
-        description="Theo dõi proposal đã gửi, trạng thái xét duyệt, bid amount và nội dung giải pháp đã nộp."
-        actions={
-          <LinkButton to="/app/opportunities" variant="secondary">
-            <RefreshCw className="h-4 w-4" /> Tìm job mới
-          </LinkButton>
-        }
-      />
+          title="Proposal của tôi"
+          description="Theo dõi proposal đã gửi, trạng thái xét duyệt và nội dung giải pháp đã nộp."
+          actions={
+            <LinkButton to="/app/opportunities" variant="secondary">
+              <RefreshCw className="h-4 w-4" /> Tìm job mới
+            </LinkButton>
+          }
+        />
       </div>
       <Card className="p-3">
-        <div className="flex flex-wrap gap-2">
-          {proposalStatusTabs.map((tab) => {
-            const isActive = proposalStatusFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setProposalStatusFilter(tab.value)}
-                className={cn(
-                  "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
-                  isActive
-                    ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
-                    : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
-                )}
-              >
-                {tab.label}
-                <span
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {proposalStatusTabs.map((tab) => {
+              const isActive = proposalStatusFilter === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setProposalStatusFilter(tab.value)}
                   className={cn(
-                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                    "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
                     isActive
-                      ? "bg-mint-50 text-mint-600"
-                      : "bg-slate-100 text-slate-500",
+                      ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
+                      : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
                   )}
                 >
-                  {proposalStatusCounts[tab.value]}
-                </span>
-              </button>
-            );
-          })}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                      isActive
+                        ? "bg-mint-50 text-mint-600"
+                        : "bg-slate-100 text-slate-500",
+                    )}
+                  >
+                    {proposalStatusCounts[tab.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 px-2">
+            <span className="text-sm font-semibold text-slate-500">
+              Tìm kiếm proposal:
+            </span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="h-10 w-auto"
+                placeholder="Từ ngày"
+              />
+              <span className="text-slate-400">-</span>
+              <Input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="h-10 w-auto"
+                placeholder="Đến ngày"
+              />
+            </div>
+            {(startDateFilter || endDateFilter) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setStartDateFilter("");
+                  setEndDateFilter("");
+                }}
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
       {loading && <Notice tone="info" title="Đang tải proposal..." />}
@@ -244,7 +324,7 @@ export function ProposalsPage() {
           const contract = contractsByProposalId[proposal.proposalId];
           return (
             <Card key={proposal.proposalId} className="overflow-hidden">
-              <div className="grid gap-4 bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5 lg:grid-cols-[1fr_240px]">
+              <div className="grid gap-4 bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5 lg:grid-cols-[1fr_auto]">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <JobDomainBadge
@@ -253,103 +333,41 @@ export function ProposalsPage() {
                         domains,
                       )}
                     />
-                    <StatusBadge status={proposal.status} />
+                    <StatusBadge status={translateStatus(proposal.status)} />
                   </div>
-                  <h3 className="mt-3 font-display text-xl font-black text-ink">
-                    {job?.title || `Job #${proposal.jobId}`}
-                  </h3>
+                  <Link to={`/jobs/${proposal.jobId}`} className="group">
+                    <h3 className="mt-3 font-display text-xl font-black text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-pink-600">
+                      {job?.title || `Job #${proposal.jobId}`}
+                    </h3>
+                  </Link>
                   <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
                     {proposal.proposalDescription || proposal.technicalSolution}
                   </p>
                 </div>
-                <div className="rounded-3xl bg-white/85 px-5 py-4 text-left shadow-sm lg:text-right">
-                  <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                    Bid amount
+                <div className="flex flex-col justify-center rounded-3xl bg-white/85 px-6 py-4 text-left shadow-sm lg:text-right min-w-[180px]">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
+                    Ngân sách
                   </p>
                   <p className="font-display text-2xl font-black text-brand-700">
                     {formatCompactCurrency(proposal.bidAmount)}
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-400">
-                    Proposal #{proposal.proposalId}
-                  </p>
                 </div>
               </div>
-              <div className="grid gap-4 p-5">
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <ProposalSnapshot title="Giải pháp công nghệ">
-                    {proposal.technicalSolution}
-                  </ProposalSnapshot>
-                  <ProposalSnapshot title="Proposal description">
-                    {proposal.proposalDescription || "Chưa có mô tả proposal."}
-                  </ProposalSnapshot>
-                </div>
-                <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                      Proposal milestone
-                    </p>
-                    {proposalMilestones.length > 0 ? (
-                      <div className="mt-3 grid gap-2">
-                        {proposalMilestones.map((item) => (
-                          <div
-                            key={item.milestoneId}
-                            className="grid gap-3 rounded-xl bg-white px-3 py-3 text-sm md:grid-cols-[82px_1fr_auto] md:items-center"
-                          >
-                            <span className="font-extrabold text-brand-600">
-                              {formatProposalMilestoneOrder(
-                                item.milestoneId,
-                                milestones,
-                              )}
-                            </span>
-                            <span className="font-bold text-slate-600">
-                              {formatProposalMilestoneTitle(
-                                item.milestoneId,
-                                milestones,
-                              )}
-                              <span className="mt-1 block text-xs font-semibold text-slate-400">
-                                {formatProposalMilestoneStatus(
-                                  item.milestoneId,
-                                  milestones,
-                                )}
-                              </span>
-                            </span>
-                            <span className="font-extrabold text-ink">
-                              {formatCompactCurrency(item.proposedBudget)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm font-semibold text-slate-400">
-                        Chưa gửi ngân sách milestone riêng.
-                      </p>
-                    )}
-                  </div>
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                    <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                      File đính kèm
-                    </p>
-                    <FirebaseFileLink
-                      path={proposal.proposalFileUrl}
-                      emptyText="Chưa có file proposal"
-                      buttonText="Xem file"
-                      showPath={false}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                  <p className="text-xs font-bold text-slate-400">
-                    Gửi lúc: {proposal.createdAt || "Chưa có dữ liệu"}
-                  </p>
-                  {job && (
-                    <LinkButton
-                      to={`/jobs/${job.jobId}`}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Xem job
-                    </LinkButton>
-                  )}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white p-5 pt-4">
+                <p className="text-xs font-bold text-slate-400">
+                  Gửi lúc:{" "}
+                  {proposal.createdAt
+                    ? formatDate(proposal.createdAt).replace(/\//g, "-")
+                    : "Chưa có dữ liệu"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <LinkButton
+                    to={`/app/proposals/${proposal.proposalId}`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Xem chi tiết
+                  </LinkButton>
                   {contract && (
                     <LinkButton
                       to={`/app/contracts/${contract.contractId}`}

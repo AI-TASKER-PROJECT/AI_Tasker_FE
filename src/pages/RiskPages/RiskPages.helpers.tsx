@@ -219,10 +219,7 @@ export function DisputeDetailPage({
               <Badge tone="amber">Milestone #{dispute.milestoneId}</Badge>
             )}
           </div>
-          <SectionHeading
-            title="Bằng chứng và báo cáo"
-            description=""
-          />
+          <SectionHeading title="Bằng chứng và báo cáo" description="" />
           <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-7 text-slate-700">
             {dispute.evidenceReport || "Chưa có báo cáo."}
           </div>
@@ -366,10 +363,7 @@ export function VerificationsPage() {
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader
-          title="Duyệt hồ sơ KYC/KYB"
-          description=""
-        />
+        <PageHeader title="Duyệt hồ sơ KYC/KYB" description="" />
       </div>
       <Card className="p-5">
         <Tabs
@@ -477,6 +471,7 @@ export function VerificationDetailPage() {
     [],
   );
   const [rejectError, setRejectError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (isBusiness) {
@@ -512,12 +507,7 @@ export function VerificationDetailPage() {
   }, [id, isBusiness]);
 
   if (!profile)
-    return (
-      <EmptyState
-        title="Không tìm thấy hồ sơ"
-        description=""
-      />
-    );
+    return <EmptyState title="Không tìm thấy hồ sơ" description="" />;
 
   const title = isBusiness
     ? (profile as BusinessProfile).companyName
@@ -579,6 +569,13 @@ export function VerificationDetailPage() {
       reason,
     );
     setProfile(updated);
+    if (statusValue === "Approved") {
+      setMessage(
+        `Đã chấp nhận hồ sơ của ${isBusiness ? "doanh nghiệp" : "chuyên gia"} ${title}`,
+      );
+    } else {
+      setMessage("");
+    }
   };
 
   const toggleRejectReason = (reason: string) => {
@@ -701,6 +698,7 @@ export function VerificationDetailPage() {
               </ul>
             </Notice>
           )}
+          {message && <Notice tone="success" title={message} className="mt-4" />}
         </Card>
         {isBusiness && (
           <Card className="p-6">

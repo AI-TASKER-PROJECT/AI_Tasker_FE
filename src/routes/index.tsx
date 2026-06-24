@@ -31,8 +31,10 @@ import {
   MyJobsPage,
   OpportunitiesPage,
   ProposalsPage,
+  ProposalDetailPage,
   SubmitProposalPage,
 } from "../pages/MarketplacePages";
+import { MyJobDetailPage } from "../pages/MarketplacePages/MyJobsPage/MyJobDetailPage";
 import {
   ExpertPortfolioPage,
   MyPublicBusinessProfilePage,
@@ -156,6 +158,22 @@ export function AppRoutes() {
             }
           />
           <Route
+            path="jobs/:jobId/detail"
+            element={
+              <PageTransition>
+                <MyJobDetailPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="jobs/:jobId/edit"
+            element={
+              <PageTransition>
+                <CreateJobPage />
+              </PageTransition>
+            }
+          />
+          <Route
             path="jobs/:jobId/manage"
             element={
               <PageTransition>
@@ -212,6 +230,14 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <ProposalsPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="proposals/:proposalId"
+            element={
+              <PageTransition>
+                <ProposalDetailPage />
               </PageTransition>
             }
           />

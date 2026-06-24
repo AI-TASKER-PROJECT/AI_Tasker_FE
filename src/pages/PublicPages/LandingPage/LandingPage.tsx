@@ -30,20 +30,20 @@ const workflowSteps = [
     description: "Mô tả dự án AI và yêu cầu kỹ năng cần thiết.",
   },
   {
-    title: "Matching",
-    description: "Hệ thống AI tự động dề xuất top chuyên gia phù hợp.",
+    title: "Tìm kiếm",
+    description: "Hệ thống AI tự động đề xuất top chuyên gia phù hợp.",
   },
   {
-    title: "Proposal",
-    description: "Nhận và dánh giá các dề xuất chi tiết từ ứng viên.",
+    title: "Đề xuất",
+    description: "Nhận và đánh giá các đề xuất chi tiết từ ứng viên.",
   },
   {
-    title: "Hợp đồng & NDA",
+    title: "Hợp đồng",
     description: "Ký kết trực tuyến an toàn và bảo mật thông tin.",
   },
   {
-    title: "Milestone & Thanh toán",
-    description: "Nghiệm thu từng giai doạn và giải ngân minh bạch.",
+    title: "Thanh toán",
+    description: "Nghiệm thu từng giai đoạn và giải ngân minh bạch.",
   },
 ] as const;
 
@@ -52,7 +52,7 @@ const trustHighlights = [
     icon: ShieldCheck,
     title: "Bảo mật Escrow",
     description:
-      "Ngân sách dự án dược giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc dược hoàn thành.",
+      "Ngân sách dự án được giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc được hoàn thành.",
   },
   {
     icon: Gavel,
@@ -71,8 +71,8 @@ const trustCards = [
   },
   {
     icon: FileCheck2,
-    title: "Hợp đồng diện tử",
-    description: "Giá trị pháp lý tương dương văn bản giấy.",
+    title: "Hợp đồng điện tử",
+    description: "Giá trị pháp lý tương đương văn bản giấy.",
     offset: true,
   },
   {
@@ -92,7 +92,7 @@ const trustCards = [
 const useCases = [
   {
     icon: MessageSquareText,
-    title: "Chatbot nội bộ",
+    title: "Chatbot",
     description:
       "Xây dựng trợ lý ảo trả lời chính sách, tra cứu tài liệu nội bộ dựa trên dữ liệu riêng của công ty.",
   },
@@ -100,53 +100,53 @@ const useCases = [
     icon: Sparkles,
     title: "AI Automation",
     description:
-      "Tự dộng hóa các quy trình nhập liệu, phân loại email và xử lý tác vụ lặp di lặp lại.",
+      "Tự động hóa các quy trình nhập liệu, phân loại email và xử lý tác vụ lặp đi lặp lại.",
   },
   {
     icon: ArrowRight,
     title: "Recommendation System",
     description:
-      "Hệ thống gợi ý sản phẩm hoặc nội dung cá nhân hóa dể tăng tỷ lệ chuyển dổi bán hàng.",
+      "Hệ thống gợi ý sản phẩm hoặc nội dung cá nhân hóa để tăng tỷ lệ chuyển đổi bán hàng.",
   },
   {
     icon: FileCheck2,
     title: "Document AI",
     description:
-      "Trích xuất thông tin từ hóa dơn, hợp đồng và số hóa kho tài liệu khổng lồ một cách chính xác.",
+      "Trích xuất thông tin từ hóa đơn, hợp đồng và số hóa kho tài liệu khổng lồ một cách chính xác.",
   },
   {
     icon: Workflow,
     title: "Data Dashboard",
     description:
-      "Phân tích dữ liệu lớn và trực quan hóa xu hướng dể hỗ trợ ra quyết dịnh kinh doanh.",
+      "Phân tích dữ liệu lớn và trực quan hóa xu hướng để hỗ trợ ra quyết định kinh doanh.",
   },
 ] as const;
 
 const faqs = [
   {
-    question: "Làm thế nào dể chọn dược chuyên gia phù hợp nhất?",
+    question: "Làm thế nào để chọn được chuyên gia phù hợp nhất?",
     answer:
-      "Bạn có thể dựa vào diểm dánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 3 ứng viên sát nhất với yêu cầu của bạn.",
+      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 5 ứng viên sát nhất với yêu cầu của bạn.",
   },
   {
-    question: "Tiền của tôi có dược an toàn khi thanh toán trước không?",
+    question: "Tiền của tôi có được an toàn khi thanh toán trước không?",
     answer:
-      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ dược hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
+      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
   },
   {
     question: "Dự án của tôi yêu cầu bảo mật cao, AITASKER hỗ trợ như thế nào?",
     answer:
-      "Tất cả các dự án trên nền tảng dều dược áp dụng thỏa thuận bảo mật NDA tiêu chuẩn. Bạn cũng có thể dăng tải bản NDA riêng của công ty dể chuyên gia ký kết diện tử trước khi bắt dầu dự án.",
+      "Tất cả các dự án trên nền tảng đều được áp dụng thỏa thuận bảo mật NDA tiêu chuẩn. Bạn cũng có thể đăng tải bản NDA riêng của công ty để chuyên gia ký kết điện tử trước khi bắt đầu dự án.",
   },
   {
-    question: "Nếu dự án không dạt yêu cầu như cam kết thì sao?",
+    question: "Nếu dự án không đạt yêu cầu như cam kết thì sao?",
     answer:
-      "Bạn có quyền yêu cầu chuyên gia chỉnh sửa theo dúng mô tả ban dầu. Nếu vẫn không dạt dược thỏa thuận, bạn có thể kích hoạt quy trình tranh chấp dể dội ngũ AITASKER xem xét hoàn tiền hoặc bồi thường dựa trên bằng chứng.",
+      "Bạn có quyền yêu cầu chuyên gia chỉnh sửa theo đúng mô tả ban đầu. Nếu vẫn không đạt được thỏa thuận, bạn có thể kích hoạt quy trình tranh chấp để đội ngũ AITASKER xem xét hoàn tiền hoặc bồi thường dựa trên bằng chứng.",
   },
   {
     question: "Tôi có thể thuê chuyên gia dài hạn không?",
     answer:
-      "Hoàn toàn dược. Nền tảng hỗ trợ cả dự án theo gói và thuê theo thời gian cho các nhu cầu hợp tác dài hạn.",
+      "Hoàn toàn được. Nền tảng hỗ trợ cả dự án theo gói và thuê theo thời gian cho các nhu cầu hợp tác dài hạn.",
   },
 ] as const;
 
@@ -202,7 +202,7 @@ export function LandingPage() {
 
               <p className="mt-3 max-w-xl text-[18px] leading-9 text-[#594048]">
                 AITASKER giúp bạn tìm kiếm, thuê và quản lý dự án AI trọn vẹn từ
-                hợp đồng dến thanh toán trên một hệ thống minh bạch.
+                hợp đồng đến thanh toán trên một hệ thống minh bạch.
               </p>
             </div>
 
@@ -287,7 +287,7 @@ export function LandingPage() {
                   Hồ sơ xác minh
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  100% chuyên gia trên nền tảng dều trải qua quy trình kiểm tra
+                  100% chuyên gia trên nền tảng đều trải qua quy trình kiểm tra
                   năng lực và danh tính nghiêm ngặt.
                 </p>
               </Card>
@@ -299,10 +299,10 @@ export function LandingPage() {
                   <WalletCards className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Ví diện tử & Thanh toán
+                  Ví điện tử & Thanh toán
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Bảo mật tuyệt dối với hệ thống Escrow. Tiền chỉ dược giải ngân
+                  Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân
                   khi bạn hài lòng với kết quả nghiệm thu.
                 </p>
               </Card>
@@ -314,11 +314,11 @@ export function LandingPage() {
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Quản lý tiến dộ
+                  Quản lý tiến độ
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và dánh
-                  giá từng giai doạn.
+                  Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và đánh
+                  giá từng giai đoạn.
                 </p>
               </Card>
             </ScrollReveal>
@@ -329,10 +329,10 @@ export function LandingPage() {
                   <FileCheck2 className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-[2rem] font-bold text-[#27171d]">
-                  Hợp đồng & NDA diện tử
+                  Hợp đồng & Ký kết minh bạch
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Ký kết văn bản pháp lý trực tuyến nhanh chóng, dảm bảo tính
+                  Ký kết văn bản pháp lý trực tuyến nhanh chóng, đảm bảo tính
                   bảo mật và quyền sở hữu trí tuệ.
                 </p>
               </Card>
@@ -348,7 +348,7 @@ export function LandingPage() {
               Quy trình vận hành của AITASKER
             </h2>
             <p className="mt-4 text-[18px] leading-8 text-[#594048]">
-              Quy trình chuyên nghiệp dược tinh gọn dể tối ưu thời gian cho cả
+              Quy trình chuyên nghiệp được tinh gọn để tối ưu thời gian cho cả
               doanh nghiệp và chuyên gia.
             </p>
           </ScrollReveal>
@@ -388,7 +388,7 @@ export function LandingPage() {
                 Dành cho Doanh nghiệp
               </h3>
               <p className="mt-4 text-[17px] leading-8 text-[#594048]">
-                Tăng tốc chuyển dổi số với dội ngũ chuyên gia AI phù hợp, quy
+                Tăng tốc chuyển đổi số với đội ngũ chuyên gia AI phù hợp, quy
                 trình rõ ràng và hệ thống kiểm soát rủi ro minh bạch.
               </p>
               <ul className="mt-8 space-y-4 flex-1">
@@ -457,7 +457,7 @@ export function LandingPage() {
               Hợp tác minh bạch & Tin cậy
             </h2>
             <p className="mt-6 text-[18px] leading-8 text-[#594048]">
-              Chúng tôi xây dựng các lớp bảo vệ dể dảm bảo mọi dự án dều kết
+              Chúng tôi xây dựng các lớp bảo vệ để đảm bảo mọi dự án đều kết
               thúc thành công với sự hài lòng từ cả hai phía.
             </p>
 
@@ -509,7 +509,7 @@ export function LandingPage() {
               Tình huống sử dụng thực tế
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-[18px] leading-8 text-[#594048]">
-              Khám phá các loại hình dự án AI phổ biến đang dược triển khai
+              Khám phá các loại hình dự án AI phổ biến đang được triển khai
               thành công trên AITASKER.
             </p>
           </ScrollReveal>
@@ -534,15 +534,12 @@ export function LandingPage() {
             <ScrollReveal delay={(useCases.length + 1) * 0.1}>
               <Card className="flex h-full rounded-[1.75rem] border-2 border-dashed border-[#e4cad5] bg-[#fff8f8] p-8 shadow-none transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:border-[#df0e84]/50 hover:bg-[#ffe8ee]/80">
                 <div className="flex flex-1 flex-col items-center justify-center text-center">
-                  <p className="text-[15px] italic leading-7 text-[#594048]">
-                    Dự án của bạn dặc thù hơn?
-                  </p>
                   <LinkButton
-                    to="/about"
+                    to="/register"
                     variant="ghost"
                     className="mt-3 h-auto px-0 text-[15px] font-bold text-[#b30069] transition-transform hover:-translate-y-1 hover:bg-transparent"
                   >
-                    Liên hệ tư vấn
+                    Tham gia ngay
                     <ArrowRight className="h-4 w-4" />
                   </LinkButton>
                 </div>
@@ -559,7 +556,7 @@ export function LandingPage() {
               Câu hỏi thường gặp
             </h2>
             <p className="mt-4 text-[18px] leading-8 text-[#594048]">
-              Mọi thông tin bạn cần dể bắt dầu hành trình cùng AITASKER.
+              Mọi thông tin bạn cần để bắt đầu hành trình cùng AITASKER.
             </p>
           </ScrollReveal>
 
@@ -602,11 +599,11 @@ export function LandingPage() {
 
           <div className="relative z-10">
             <h2 className="text-[2.2rem] font-bold leading-tight md:text-[2.8rem]">
-              Sẵn sàng dể dưa dự án AI của bạn lên tầm cao mới?
+              Sẵn sàng để đưa dự án AI của bạn lên tầm cao mới?
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-[18px] leading-8 text-white/90">
-              Tham gia cùng hàng nghìn doanh nghiệp đang chuyển dổi số thành
-              công bằng sức mạnh của AI và mạng lưới chuyên gia hàng dầu.
+              Tham gia cùng hàng nghìn doanh nghiệp đang chuyển đổi số thành
+              công bằng sức mạnh của AI và mạng lưới chuyên gia hàng đầu.
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
@@ -633,12 +630,12 @@ export function LandingPage() {
         <ScrollReveal className="relative z-10 mx-auto grid max-w-7xl gap-8 rounded-[2rem] border border-[#f0dbe3] bg-[#fff8f8] p-8 lg:grid-cols-[1.2fr_.8fr] lg:p-10">
           <div>
             <h2 className="text-[2rem] font-bold text-[#27171d]">
-              AITASKER dành cho hệ sinh thái AI
+              AITASKER dành cho hệ sinh thái doanh nghiệp
             </h2>
             <p className="mt-4 text-[17px] leading-8 text-[#594048]">
-              Từ startup đang thử nghiệm MVP dến doanh nghiệp cần chuẩn hóa quy
-              trình AI, AITASKER tạo ra một nơi làm việc dủ nhanh, dủ an toàn và
-              dủ minh bạch dể hợp tác lâu dài.
+              Từ startup đang thử nghiệm MVP đến doanh nghiệp cần chuẩn hóa quy
+              trình AI, AITASKER tạo ra một nơi làm việc đủ nhanh, đủ an toàn và
+              đủ minh bạch để hợp tác lâu dài.
             </p>
           </div>
 
@@ -658,7 +655,7 @@ export function LandingPage() {
                 Vận hành an toàn
               </p>
               <p className="mt-1 text-sm leading-6 text-[#594048]">
-                Quy trình có Escrow, NDA và dánh giá hai chiều rõ ràng.
+                Quy trình có Escrow, NDA và đánh giá hai chiều rõ ràng.
               </p>
             </div>
           </div>

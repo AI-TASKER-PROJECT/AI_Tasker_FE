@@ -1,4 +1,4 @@
-import type { Domain, GeneratedSow, GeneratedSowMilestone, Skill } from "../../services";
+import type { Domain, GeneratedSow, Skill } from "../../services";
 
 export type SkillAssignment = {
   skillId: number;

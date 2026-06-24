@@ -39,7 +39,12 @@ import {
 } from "../../lib/api";
 import { getPublicExperience } from "../../lib/roleExperience";
 import { useSession } from "../../lib/session";
-import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../lib/utils";
+import {
+  cn,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../types";
 import { jobDomainLabel } from "./publicPages.utils";
 import { FirebaseFileLink } from "../../components/FirebaseFileLink";
@@ -959,7 +964,9 @@ export function JobsPage() {
   );
 }
 
-function getDomainTone(name: string): "brand" | "mint" | "coral" | "amber" | "rose" | "violet" {
+function getDomainTone(
+  name: string,
+): "brand" | "mint" | "coral" | "amber" | "rose" | "violet" {
   const tones = ["brand", "mint", "coral", "amber", "rose", "violet"] as const;
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -1018,12 +1025,12 @@ export function JobCard({
 
     Promise.all([
       catalogApi.listDomains(true),
-      catalogApi.listJobDomains(job.jobId)
+      catalogApi.listJobDomains(job.jobId),
     ])
       .then(([allDomains, jobDomains]) => {
         if (!ignore && jobDomains.length > 0) {
           const matched = allDomains.find(
-            (d) => d.domainId === jobDomains[0].id.domainId
+            (d) => d.domainId === jobDomains[0].id.domainId,
           );
           if (matched) setDomainName(matched.domainName);
         }
@@ -1039,7 +1046,10 @@ export function JobCard({
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex min-h-9 items-start justify-between gap-3">
         {domainName ? (
-          <Badge tone={getDomainTone(domainName)} className="w-fit border-0 px-3 py-1 text-[12px] font-semibold ring-0">
+          <Badge
+            tone={getDomainTone(domainName)}
+            className="w-fit border-0 px-3 py-1 text-[12px] font-semibold ring-0"
+          >
             {domainName}
           </Badge>
         ) : (
@@ -1047,14 +1057,16 @@ export function JobCard({
         )}
         {!hideStatus && <StatusBadge status={job.status} />}
       </div>
-      <h3
-        className={cn(
-          "min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700",
-          !hideStatus && "mt-4"
-        )}
-      >
-        {job.title}
-      </h3>
+      <Link to={`/jobs/${job.jobId}`} className="group">
+        <h3
+          className={cn(
+            "min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-pink-600",
+            !hideStatus && "mt-4",
+          )}
+        >
+          {job.title}
+        </h3>
+      </Link>
       <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
         {job.structuredSow || job.rawRequirements}
       </p>
@@ -1080,13 +1092,13 @@ export function JobCard({
         </p>
       </div>
       <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Milestone</p>
+        <p className="text-xs font-bold text-slate-400">Mốc nghiệm thu</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {milestoneCount} mốc
         </p>
       </div>
       <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Ngay tao job</p>
+        <p className="text-xs font-bold text-slate-400">Ngày đăng bài</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {formatDate(job.createdAt)}
         </p>
@@ -1203,16 +1215,6 @@ export function JobDetailPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
       <div className="mb-8">
-        <Link
-          to={
-            session?.role === "BUSINESS"
-              ? `/app/jobs/${job.jobId}/manage`
-              : "/app/opportunities"
-          }
-          className="text-sm font-bold text-brand-600"
-        >
-          ← Quay lại
-        </Link>
         <div className="mt-5 flex flex-wrap gap-2">
           {jobDomainIds.map((domainId) => (
             <Badge key={domainId} tone="brand">
@@ -1440,7 +1442,7 @@ function ChipRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-function MilestoneList({ milestones }: { milestones: Milestone[] }) {
+export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <EmptyState

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
   Eye,
@@ -24,7 +24,12 @@ import {
   type JobSkill,
   type Skill,
 } from "../../../services";
-import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
+import {
+  cn,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
@@ -64,6 +69,7 @@ import {
   type SkillAssignment,
 } from "../marketplacePages.utils";
 import { MilestoneCount, SkillCount } from "../marketplacePages.helpers";
+import { translateStatus } from "../ManageJobPage/ManageJobPage";
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -147,11 +153,11 @@ export function MyJobsPage() {
   }, [jobs]);
 
   const statusTabs = [
-    { value: "ALL", label: "All" },
-    { value: "DRAFT", label: "Draft" },
-    { value: "OPEN", label: "Open" },
-    { value: "IN_PROGRESS", label: "In progress" },
-    { value: "CLOSED", label: "Close" },
+    { value: "ALL", label: "Tất cả" },
+    { value: "DRAFT", label: "Nháp" },
+    { value: "OPEN", label: "Đang mở" },
+    { value: "IN_PROGRESS", label: "Đang thực hiện" },
+    { value: "CLOSED", label: "Đã đóng" },
   ] as const;
 
   const statusCounts = statusTabs.reduce(
@@ -185,15 +191,15 @@ export function MyJobsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Dự án của doanh nghiệp"
-        description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
-        actions={
-          <LinkButton to="/app/jobs/new">
-            <Plus className="h-4 w-4" />
-            Tạo job mới
-          </LinkButton>
-        }
-      />
+          title="Dự án của doanh nghiệp"
+          description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
+          actions={
+            <LinkButton to="/app/jobs/new">
+              <Plus className="h-4 w-4" />
+              Tạo job mới
+            </LinkButton>
+          }
+        />
       </div>
       <Card className="p-3">
         <div className="flex flex-wrap gap-2">
@@ -241,74 +247,82 @@ export function MyJobsPage() {
           const canOpenJob = ["DRAFT", "CLOSED"].includes(jobStatus);
           const canCloseJob = jobStatus === "OPEN";
           return (
-          <Card key={job.jobId} className="group flex h-full flex-col p-5">
-            <div className="flex min-h-9 items-start justify-between gap-3">
-              <JobDomainBadge
-                label={jobDomainLabel(
-                  jobDomainIdsByJobId[job.jobId] || [],
-                  domains,
-                )}
+            <Card key={job.jobId} className="group flex h-full flex-col p-5">
+              <div className="flex min-h-9 items-start justify-between gap-3">
+                <JobDomainBadge
+                  label={jobDomainLabel(
+                    jobDomainIdsByJobId[job.jobId] || [],
+                    domains,
+                  )}
+                />
+                <StatusBadge status={translateStatus(job.status)} />
+              </div>
+              <Link to={`/jobs/${job.jobId}`} className="group">
+                <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+                  {job.title}
+                </h3>
+              </Link>
+              <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
+                {job.structuredSow}
+              </p>
+              <p className="mt-2 text-xs font-bold text-slate-400">
+                Ngày tạo: {formatDate(job.createdAt)}
+              </p>
+              <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Ngân sách</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {formatCompactCurrency(job.budget)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Proposal</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {job.proposalsCount || 0}
+                  </p>
+                </div>
+              </div>
+              <SkillCount count={(jobSkillsByJobId[job.jobId] || []).length} />
+              <MilestoneCount
+                count={(milestonesByJobId[job.jobId] || []).length}
               />
-              <StatusBadge status={job.status} />
-            </div>
-            <Link to={`/jobs/${job.jobId}`} className="group">
-              <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
-                {job.title}
-              </h3>
-            </Link>
-            <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
-              {job.structuredSow}
-            </p>
-            <p className="mt-2 text-xs font-bold text-slate-400">
-              Ngày tạo: {formatDate(job.createdAt)}
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
-              <div>
-                <p className="text-xs font-bold text-slate-400">Ngân sách</p>
-                <p className="mt-1 text-sm font-extrabold text-ink">
-                  {formatCompactCurrency(job.budget)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400">Proposal</p>
-                <p className="mt-1 text-sm font-extrabold text-ink">
-                  {job.proposalsCount || 0}
-                </p>
-              </div>
-            </div>
-            <SkillCount count={(jobSkillsByJobId[job.jobId] || []).length} />
-            <MilestoneCount
-              count={(milestonesByJobId[job.jobId] || []).length}
-            />
-            <div className="mt-auto flex flex-wrap gap-2 pt-5">
-              <LinkButton
-                to={`/app/jobs/${job.jobId}/manage`}
-                variant="secondary"
-                size="sm"
-              >
-                Quản lý
-              </LinkButton>
-              {isInProgress && <Badge tone="mint">Đang thực thi</Badge>}
-              {canOpenJob && (
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => updateStatus(job.jobId, "OPEN")}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <LinkButton
+                  to={`/app/jobs/${job.jobId}/detail`}
+                  className="w-full justify-center"
+                  variant="secondary"
                 >
-                  Mở job
-                </Button>
-              )}
-              {canCloseJob && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => updateStatus(job.jobId, "CLOSED")}
+                  Chi tiết dự án
+                </LinkButton>
+                <LinkButton
+                  to={`/app/jobs/${job.jobId}/manage`}
+                  className="w-full justify-center"
                 >
-                  Đóng job
-                </Button>
-              )}
-            </div>
-          </Card>
+                  Quản lý dự án
+                </LinkButton>
+              </div>
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
+                {isInProgress && <Badge tone="mint">Đang thực thi</Badge>}
+                {canOpenJob && (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => updateStatus(job.jobId, "OPEN")}
+                  >
+                    Mở job
+                  </Button>
+                )}
+                {canCloseJob && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateStatus(job.jobId, "CLOSED")}
+                  >
+                    Đóng job
+                  </Button>
+                )}
+              </div>
+            </Card>
           );
         })}
       </div>

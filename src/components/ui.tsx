@@ -164,7 +164,13 @@ export function StatusBadge({ status }: { status?: string }) {
     normalized.includes('released') ||
     normalized.includes('completed') ||
     normalized.includes('dãduyệt') ||
-    normalized.includes('thànhcông')
+    normalized.includes('thànhcông') ||
+    normalized.includes('chấpnhận') ||
+    normalized.includes('hoànthành') ||
+    normalized.includes('đanghoạtđộng') ||
+    normalized.includes('đãthanhtoán') ||
+    normalized.includes('đangmở') ||
+    normalized.includes('open')
       ? 'mint'
       : normalized.includes('rejected') ||
           normalized.includes('failed') ||
@@ -172,17 +178,27 @@ export function StatusBadge({ status }: { status?: string }) {
           normalized.includes('cancelled') ||
           normalized.includes('bịtừchối') ||
           normalized.includes('thấtbại') ||
-          normalized.includes('dãhủy')
+          normalized.includes('dãhủy') ||
+          normalized.includes('đãhủy') ||
+          normalized.includes('từchối') ||
+          normalized.includes('kếtthúcsớm') ||
+          normalized.includes('đãđóng') ||
+          normalized.includes('closed')
         ? 'rose'
         : normalized.includes('pending') ||
-            normalized.includes('draft') ||
             normalized.includes('underreview') ||
-            normalized.includes('open') ||
-            normalized.includes('dangchờ')
+            normalized.includes('dangchờ') ||
+            normalized.includes('đangchờ') ||
+            normalized.includes('chờphảnhồi') ||
+            normalized.includes('chờnghiệmthu') ||
+            normalized.includes('đangthựchiện') ||
+            normalized.includes('inprogress')
           ? 'amber'
           : normalized.includes('escalated')
             ? 'violet'
-            : 'slate';
+            : normalized.includes('draft') || normalized.includes('nháp')
+              ? 'slate'
+              : 'slate';
   return <Badge tone={tone}>{status || 'Chưa cập nhật'}</Badge>;
 }
 

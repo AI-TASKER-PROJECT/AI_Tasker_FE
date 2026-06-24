@@ -1,0 +1,353 @@
+import { ListChecks, Sparkles, Target, FileCheck2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import {
+  catalogApi,
+  contractApi,
+  marketplaceApi,
+  type Domain,
+  type Skill,
+  type Technology,
+} from "../../../services";
+import { formatCurrency } from "../../../lib/utils";
+import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
+import type { Job, Milestone, Proposal } from "../../../types";
+import {
+  Field,
+  Input,
+  Textarea,
+  PageHeader,
+  EmptyState,
+  StatusBadge,
+} from "../../../components/ui";
+import { resolveDomainName } from "../marketplacePages.utils";
+
+export function ProposalDetailPage() {
+  const { proposalId } = useParams();
+
+  const [loading, setLoading] = useState(true);
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
+  const [jobSkillIds, setJobSkillIds] = useState<number[]>([]);
+  const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const proposalsData = await marketplaceApi.listMyProposals();
+        const foundProposal = proposalsData.find(
+          (p) => p.proposalId === Number(proposalId),
+        );
+
+        if (ignore) return;
+
+        if (!foundProposal) {
+          setLoading(false);
+          return;
+        }
+
+        setProposal(foundProposal);
+
+        const [
+          jobData,
+          milestonesData,
+          domainsData,
+          skillsData,
+          techData,
+          jobDomainsData,
+          jobSkillsData,
+          jobTechsData,
+        ] = await Promise.all([
+          marketplaceApi.getJob(foundProposal.jobId).catch(() => null),
+          contractApi.listJobMilestones(foundProposal.jobId).catch(() => []),
+          catalogApi.listDomains(true).catch(() => []),
+          catalogApi.listSkills(true).catch(() => []),
+          catalogApi.listTechnologies(true).catch(() => []),
+          catalogApi.listJobDomains(foundProposal.jobId).catch(() => []),
+          catalogApi.listJobSkills(foundProposal.jobId).catch(() => []),
+          catalogApi.listJobTechnologies(foundProposal.jobId).catch(() => []),
+        ]);
+
+        if (ignore) return;
+
+        setJob(jobData);
+        setMilestones(milestonesData);
+        setDomains(domainsData);
+        setSkills(skillsData);
+        setTechnologies(techData);
+        setJobDomainIds(jobDomainsData.map((d) => d.id.domainId));
+        setJobSkillIds(jobSkillsData.map((s) => s.id.skillId));
+        setJobTechnologyIds(jobTechsData.map((t) => t.id.technologyId));
+      } catch {
+        // error handling
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [proposalId]);
+
+  if (loading) {
+    return <div className="p-8 text-center text-slate-500">Đang tải...</div>;
+  }
+
+  if (!proposal || !job) {
+    return (
+      <EmptyState
+        title="Không tìm thấy bản đề xuất"
+        description="Bản đề xuất này không tồn tại hoặc bạn không có quyền xem."
+      />
+    );
+  }
+
+  const parsedMilestones = (() => {
+    try {
+      const parsed =
+        typeof proposal.proposalMilestone === "string"
+          ? JSON.parse(proposal.proposalMilestone)
+          : proposal.proposalMilestone;
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item) => ({
+        milestoneId: Number(item.milestoneId),
+        proposedBudget: Number(item.proposedBudget),
+      }));
+    } catch {
+      return [];
+    }
+  })();
+
+  const bidAmountDisplay =
+    proposal.bidAmount > 0 ? proposal.bidAmount.toLocaleString("vi-VN") : "";
+
+  const translateStatus = (status: string) => {
+    switch (status) {
+      case "ACCEPTED":
+        return "Chấp nhận";
+      case "PENDING":
+        return "Chờ phản hồi";
+      case "REJECTED":
+        return "Từ chối";
+      default:
+        return status;
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+      <div className="flex items-center gap-4">
+        <h1 className="font-display text-2xl font-black text-ink">
+          Bản đề xuất chi tiết
+        </h1>
+      </div>
+
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+        <PageHeader 
+          title={job.title} 
+          actions={<StatusBadge status={translateStatus(proposal.status)} />}
+        />
+      </div>
+
+      <div className="grid gap-5">
+        <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
+              <Target className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-extrabold text-ink">
+                Yêu cầu công việc
+              </h3>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Lĩnh vực">
+              <div className="flex h-11 items-center rounded-2xl border border-slate-300 bg-slate-100 px-3 text-sm font-semibold text-slate-800 shadow-sm">
+                <span className="truncate">
+                  {jobDomainIds.length > 0
+                    ? resolveDomainName(jobDomainIds[0], domains)
+                    : "Chưa chọn lĩnh vực"}
+                </span>
+              </div>
+            </Field>
+            <Field label="Công nghệ">
+              <div className="rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm min-h-[3rem]">
+                <div className="flex flex-wrap gap-2">
+                  {jobTechnologyIds.length > 0 ? (
+                    jobTechnologyIds.map((technologyId) => (
+                      <span
+                        key={technologyId}
+                        className="inline-flex items-center rounded-full border border-mint-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
+                      >
+                        {technologies.find(
+                          (technology) =>
+                            technology.technologyId === technologyId,
+                        )?.technologyName || `Technology #${technologyId}`}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-400 mt-1">
+                      Chưa có công nghệ
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Field>
+            <Field label="Kỹ năng" className="md:col-span-2">
+              <div className="rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm min-h-[3rem]">
+                <div className="flex flex-wrap gap-2">
+                  {jobSkillIds.length > 0 ? (
+                    jobSkillIds.map((skillId) => (
+                      <span
+                        key={skillId}
+                        className="inline-flex items-center rounded-full border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
+                      >
+                        {skills.find((skill) => skill.skillId === skillId)
+                          ?.skillName || `Skill #${skillId}`}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-400 mt-1">
+                      Chưa có kỹ năng
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Field>
+          </div>
+        </section>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-mint-50 text-mint-600">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-extrabold text-ink">
+                Giải pháp công nghệ
+              </h3>
+            </div>
+          </div>
+          <Field label="Giải pháp">
+            <Textarea
+              value={proposal.technicalSolution}
+              readOnly
+              className="min-h-36 bg-slate-50"
+            />
+          </Field>
+          <Field label="Đề xuất">
+            <Textarea
+              value={proposal.proposalDescription || ""}
+              readOnly
+              className="min-h-32 bg-slate-50"
+            />
+          </Field>
+        </section>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-500 shadow-sm">
+              <FileCheck2 className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-extrabold text-ink">
+                Ngân sách
+              </h3>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Ngân sách">
+              <Input type="text" value={bidAmountDisplay} readOnly />
+            </Field>
+            <Field label="Proposal file">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm h-11 flex items-center">
+                <FirebaseFileLink
+                  path={proposal.proposalFileUrl}
+                  emptyText="Không có file đính kèm"
+                  buttonText="Tải xuống / Xem file"
+                  showPath={false}
+                />
+              </div>
+            </Field>
+          </div>
+        </section>
+
+        {milestones.length > 0 && (
+          <section className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+                  <ListChecks className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-extrabold text-ink">
+                    Proposal milestone
+                  </h3>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {milestones.map((milestone) => {
+                const proposedVal =
+                  parsedMilestones.find(
+                    (m: any) => m.milestoneId === milestone.milestoneId,
+                  )?.proposedBudget || milestone.fundsAllocated;
+                return (
+                  <div
+                    key={milestone.milestoneId}
+                    className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-[1fr_180px_180px]"
+                  >
+                    <div>
+                      <p className="font-extrabold text-ink">
+                        {milestone.milestoneName}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Mốc {milestone.orderIndex} ·{" "}
+                        {milestone.durationValue ?? milestone.duration ?? 0}{" "}
+                        {milestone.durationUnit || "WEEK"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                        Ngân sách gốc
+                      </p>
+                      <Input
+                        type="text"
+                        value={formatCurrency(milestone.fundsAllocated)}
+                        readOnly
+                        className="bg-slate-100/50 text-slate-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                        Ngân sách đề xuất
+                      </p>
+                      <Input
+                        type="text"
+                        value={Number(proposedVal).toLocaleString("vi-VN")}
+                        readOnly
+                        className="bg-slate-100/50"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}

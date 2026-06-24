@@ -22,7 +22,7 @@ import {
 } from "../../services";
 import { roleLabel, useSession } from "../../context/sessionContext";
 import { connectNotificationSocket } from "../../lib/notificationSocket";
-import { cn, formatCompactCurrency } from "../../lib/utils";
+import { cn, formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import {
   formatNotificationTime,
   mergeNotification,
@@ -133,7 +133,7 @@ export function DashboardPage() {
       ["Theo dõi escrow", "/app/finance", "Ký quỹ, PayOS"],
     ],
     EXPERT: [
-      ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho job phù hợp"],
+      ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho dự án phù hợp"],
       [
         "Cập nhật portfolio",
         "/app/expert/portfolio",
@@ -239,16 +239,19 @@ export function DashboardPage() {
               session.role === "EXPERT"
                 ? "Doanh thu cá nhân"
                 : session.role === "BUSINESS"
-                  ? "Tổng chi dự án"
+                  ? "Tổng đầu tư cho tất cả dự án"
                   : "Tổng chi các dự án"
             }
-            value={formatCompactCurrency(
-              contracts.reduce(
-                (total, contract) => total + Number(contract.totalBudget || 0),
-                0,
-              ),
+            value={formatCurrency(
+              contracts
+                .filter((contract) => contract.status === "Completed")
+                .reduce(
+                  (total, contract) =>
+                    total + Number(contract.totalBudget || 0),
+                  0,
+                ),
             )}
-            helper="Từ hợp đồng"
+            helper="Từ tất cả các hợp đồng đã hoàn thành"
             icon={<WalletCards className="h-5 w-5" />}
             tone="coral"
           />
@@ -450,14 +453,12 @@ export function NotificationsPage() {
             Đang tải thông báo...
           </Card>
         ) : notifications.length === 0 ? (
-          <EmptyState
-            title="Chua co thong bao"
-            description=""
-          />
+          <EmptyState title="Chua co thong bao" description="" />
         ) : (
           notifications.map((item) => {
             const tone = notificationTone(item);
-            const isSelected = selectedNotification?.notificationId === item.notificationId;
+            const isSelected =
+              selectedNotification?.notificationId === item.notificationId;
             const targetHref = notificationHref(item.targetUrl, item);
 
             return (

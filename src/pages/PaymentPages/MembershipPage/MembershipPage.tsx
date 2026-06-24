@@ -106,7 +106,6 @@ function PackageCard({
             <p className="font-display text-3xl font-black">
               {formatCurrency(pkg.price)}
             </p>
-            <p className="mt-0.5 text-xs font-semibold opacity-75">một lần</p>
           </div>
         </div>
       </div>
@@ -190,7 +189,7 @@ function CreditPurchaseModal({
     msg: string;
   } | null>(null);
 
-  const unitPrice = role === "BUSINESS" ? 100_000 : 50_000;
+  const unitPrice = role === "BUSINESS" ? 100: 50;
   const creditType =
     role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
   const total = (Number(quantity) || 0) * unitPrice;
@@ -459,8 +458,8 @@ export function MembershipPage() {
                   <p className="font-bold text-ink">{creditType} Credit</p>
                   <p className="text-sm text-slate-500">
                     {role === "BUSINESS"
-                      ? "100,000 VND / credit"
-                      : "50,000 VND / credit"}
+                      ? "100 VND / 1 credit"
+                      : "50 VND / 1 credit"}
                   </p>
                 </div>
               </div>

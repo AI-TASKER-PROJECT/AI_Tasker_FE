@@ -38,6 +38,15 @@ function validatePhone(phone: string) {
   return phoneRegex.test(phone);
 }
 
+function validateEmail(email: string) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validatePassword(password: string) {
+  return password.length >= 8;
+}
+
 type GoogleSignupDraft = {
   credential: string; //mã nhận từ gg
   email?: string;
@@ -52,6 +61,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">(
     "LOGIN",
   );
@@ -59,6 +70,14 @@ export function LoginPage() {
   const login = async (event: FormEvent) => {
     //login bth
     event.preventDefault();
+    if (!validateEmail(form.email.trim())) {
+      setEmailError("Email không đúng định dạng (VD: example@email.com).");
+      return;
+    }
+    if (!validatePassword(form.password)) {
+      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
     setLoading(true);
     setMessage("");
     try {
@@ -125,18 +144,13 @@ export function LoginPage() {
     event.preventDefault();
     if (!googleSignup) return;
     if (!validatePhone(googleSignup.phone.trim())) {
-      setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      setPhoneError(
+        "Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09)",
+      );
       return;
     }
     setLoading(true);
     setMessage("");
-
-    const phoneRegex = /^0[35789]\d{8}$/;
-    if (!phoneRegex.test(googleSignup.phone.trim())) {
-      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
-      setLoading(false);
-      return;
-    }
 
     try {
       const session = await authApi.googleSignup({
@@ -173,31 +187,59 @@ export function LoginPage() {
     >
       {loginStep === "LOGIN" ? (
         <>
-          <form onSubmit={login} className="grid gap-4">
+          <form onSubmit={login} className="grid gap-4" noValidate>
             {message && <Notice tone="danger" title={message} />}
             <Field label="Email">
               <Input
                 type="email"
                 value={form.email}
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, email: event.target.value }))
-                }
+                onChange={(event) => {
+                  setForm((value) => ({ ...value, email: event.target.value }));
+                  if (emailError) setEmailError("");
+                }}
+                onBlur={(event) => {
+                  const val = event.target.value.trim();
+                  if (!val) {
+                    setEmailError("Email không được để trống.");
+                  } else if (!validateEmail(val)) {
+                    setEmailError("Email không đúng định dạng (VD: example@email.com).");
+                  }
+                }}
                 required
               />
+              {emailError && (
+                <span className="text-xs text-red-500 mt-1 block">
+                  {emailError}
+                </span>
+              )}
             </Field>
             <Field label="Mật khẩu">
               <Input
                 type="password"
                 minLength={8}
                 value={form.password}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((value) => ({
                     ...value,
                     password: event.target.value,
-                  }))
-                }
+                  }));
+                  if (passwordError) setPasswordError("");
+                }}
+                onBlur={(event) => {
+                  const val = event.target.value;
+                  if (!val) {
+                    setPasswordError("Mật khẩu không được để trống.");
+                  } else if (!validatePassword(val)) {
+                    setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+                  }
+                }}
                 required
               />
+              {passwordError && (
+                <span className="text-xs text-red-500 mt-1 block">
+                  {passwordError}
+                </span>
+              )}
             </Field>
             <Button type="submit" size="lg" loading={loading}>
               Đăng nhập <ArrowRight className="h-4 w-4" />
@@ -217,7 +259,7 @@ export function LoginPage() {
           </p>
         </>
       ) : (
-        <form onSubmit={submitGoogleSignup} className="grid gap-4">
+        <form onSubmit={submitGoogleSignup} className="grid gap-4" noValidate>
           {message && <Notice tone="danger" title={message} />}
           <Field
             label="Họ tên"
@@ -252,7 +294,7 @@ export function LoginPage() {
                   setPhoneError("Số điện thoại không được để trống.");
                 } else if (!validatePhone(val)) {
                   setPhoneError(
-                    "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                    "Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09)",
                   );
                 }
               }}
@@ -306,6 +348,9 @@ export function LoginPage() {
 export function RegisterPage() {
   const navigate = useNavigate();
   const [phoneError, setPhoneError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [nameError, setNameError] = useState("");
   const [step, setStep] = useState<"FORM" | "OTP" | "GOOGLE_PROFILE">("FORM");
   const [form, setForm] = useState({
     email: "",
@@ -373,20 +418,14 @@ export function RegisterPage() {
     event.preventDefault();
     if (!googleSignup) return;
     if (!validatePhone(googleSignup.phone.trim())) {
-      setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      setPhoneError(
+        "Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09)",
+      );
       return;
     }
     setLoading(true);
     setMessage("");
     setMessageTone("danger");
-
-    const phoneRegex = /^0[35789]\d{8}$/;
-    if (!phoneRegex.test(googleSignup.phone.trim())) {
-      setMessageTone("danger");
-      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
-      setLoading(false);
-      return;
-    }
 
     try {
       const session = await authApi.googleSignup({
@@ -430,22 +469,26 @@ export function RegisterPage() {
   // =========================================================================
   const handleRegisterSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!form.fullName.trim()) {
+      setNameError("Họ tên không được để trống.");
+      return;
+    }
+    if (!validateEmail(form.email.trim())) {
+      setEmailError("Email không đúng định dạng (VD: example@email.com).");
+      return;
+    }
     if (!validatePhone(form.phone.trim())) {
       setPhoneError("Số điện thoại không đúng định dạng (VD: 0912345678).");
+      return;
+    }
+    if (!validatePassword(form.password)) {
+      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
       return;
     }
     setLoading(true);
     setMessage("");
 
     const normalizedEmail = form.email.trim().toLowerCase();
-
-    const phoneRegex = /^0[35789]\d{8}$/;
-    if (!phoneRegex.test(form.phone.trim())) {
-      setMessageTone("danger");
-      setMessage("Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).");
-      setLoading(false);
-      return;
-    }
 
     try {
       // 1. Gọi API kiểm tra email trước
@@ -602,32 +645,61 @@ export function RegisterPage() {
             />
           </div>
 
-          <form onSubmit={handleRegisterSubmit} className="grid gap-4">
+          <form
+            onSubmit={handleRegisterSubmit}
+            className="grid gap-4"
+            noValidate
+          >
             <Field label="Họ tên">
               <Input
                 value={form.fullName}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((value) => ({
                     ...value,
                     fullName: event.target.value,
-                  }))
-                }
+                  }));
+                  if (nameError) setNameError("");
+                }}
+                onBlur={(event) => {
+                  if (!event.target.value.trim()) {
+                    setNameError("Họ tên không được để trống.");
+                  }
+                }}
                 required
               />
+              {nameError && (
+                <span className="text-xs text-red-500 mt-1 block">
+                  {nameError}
+                </span>
+              )}
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Email">
                 <Input
                   type="email"
                   value={form.email}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((value) => ({
                       ...value,
                       email: event.target.value,
-                    }))
-                  }
+                    }));
+                    if (emailError) setEmailError("");
+                  }}
+                  onBlur={(event) => {
+                    const val = event.target.value.trim();
+                    if (!val) {
+                      setEmailError("Email không được để trống.");
+                    } else if (!validateEmail(val)) {
+                      setEmailError("Email không đúng định dạng (VD: example@email.com).");
+                    }
+                  }}
                   required
                 />
+                {emailError && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {emailError}
+                  </span>
+                )}
               </Field>
               <Field label="Số điện thoại">
                 <Input
@@ -645,7 +717,7 @@ export function RegisterPage() {
                       setPhoneError("Số điện thoại không được để trống.");
                     } else if (!validatePhone(val)) {
                       setPhoneError(
-                        "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                        "Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09)",
                       );
                     }
                   }}
@@ -665,14 +737,28 @@ export function RegisterPage() {
                   type="password"
                   minLength={8}
                   value={form.password}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((value) => ({
                       ...value,
                       password: event.target.value,
-                    }))
-                  }
+                    }));
+                    if (passwordError) setPasswordError("");
+                  }}
+                  onBlur={(event) => {
+                    const val = event.target.value;
+                    if (!val) {
+                      setPasswordError("Mật khẩu không được để trống.");
+                    } else if (!validatePassword(val)) {
+                      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+                    }
+                  }}
                   required
                 />
+                {passwordError && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {passwordError}
+                  </span>
+                )}
               </Field>
               <Field label="Vai trò">
                 <Select
@@ -712,7 +798,7 @@ export function RegisterPage() {
           </p>
         </>
       ) : step === "GOOGLE_PROFILE" ? (
-        <form onSubmit={submitGoogleSignup} className="grid gap-4">
+        <form onSubmit={submitGoogleSignup} className="grid gap-4" noValidate>
           <Field
             label="Họ tên"
             hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google."
@@ -728,11 +814,11 @@ export function RegisterPage() {
           </Field>
           <Field label="Số điện thoại">
             <Input
-              value={form.phone}
+              value={googleSignup?.phone || ""}
               onChange={(event) => {
                 const val = event.target.value;
                 if (/^\d*$/.test(val)) {
-                  setForm((value) => ({ ...value, phone: val }));
+                  setGoogleSignup((value) => value ? { ...value, phone: val } : value);
                   if (phoneError) setPhoneError("");
                 }
               }}
@@ -742,7 +828,7 @@ export function RegisterPage() {
                   setPhoneError("Số điện thoại không được để trống.");
                 } else if (!validatePhone(val)) {
                   setPhoneError(
-                    "Số điện thoại không đúng định dạng (VD: 0912345678).",
+                    "Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09)",
                   );
                 }
               }}
@@ -793,7 +879,7 @@ export function RegisterPage() {
         // ---------------------------------------------------------------------
         // GIAO DIỆN BƯỚC 2: NHẬP OTP (CÓ ĐỒNG HỒ & NÚT GỬI LẠI)
         // ---------------------------------------------------------------------
-        <form onSubmit={handleVerifyOtp} className="grid gap-4">
+        <form onSubmit={handleVerifyOtp} className="grid gap-4" noValidate>
           <Field label="Mã xác thực (OTP)" hint="Mã có 6 chữ số">
             <Input
               type="text"
@@ -886,7 +972,7 @@ function AuthFrame({
               <Logo className="[&_*]:text-white" />
             </div>
             <h1 className="mt-6 font-display text-3xl font-black leading-tight tracking-[-0.02em] lg:text-4xl">
-              Một tài khoản, một vai trò, một luồng xử lý rõ ràng.
+              Một tài khoản - Một vai trò Một luồng xử lý rõ ràng
             </h1>
           </div>
           <div className="relative z-10 mt-6 lg:mt-8">

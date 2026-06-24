@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import { useParams } from "react-router-dom";
 import {
   catalogApi,
   getApiErrorMessage,
@@ -224,6 +225,7 @@ function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function CreateJobPage() {
+  const { jobId } = useParams();
   const [form, setForm] = useState({
     title: "",
     rawRequirements: "",
@@ -307,9 +309,54 @@ export function CreateJobPage() {
         setTechnologies(technologyItems);
         setAcceptanceCriteria(criteriaItems);
         setQuota(quotaItem);
+
+        if (jobId) {
+          const id = Number(jobId);
+          marketplaceApi.getJob(id).then((job) => {
+            setSavedJob(job);
+            setForm((prev) => ({
+              ...prev,
+              title: job.title || "",
+              rawRequirements: job.rawRequirements || "",
+              structuredSow: job.structuredSow || "",
+              budgetAmount: job.budget ? String(job.budget) : "",
+              plannedDurationValue: job.plannedDurationValue ? String(job.plannedDurationValue) : "",
+            }));
+          });
+
+          import('../../../services').then(mod => {
+            mod.contractApi.listJobMilestones(id).then(ms => {
+              if (ms.length > 0) {
+                setMilestones(ms.map(m => ({
+                  milestoneName: m.milestoneName,
+                  description: m.description || "",
+                  fundsAllocated: m.fundsAllocated ? String(m.fundsAllocated) : "",
+                  orderIndex: m.orderIndex ? String(m.orderIndex) : "1",
+                  durationValue: m.durationValue ? String(m.durationValue) : "",
+                  criteriaIds: [],
+                  criteriaSearch: "",
+                })));
+              }
+            });
+            mod.catalogApi.listJobDomains(id).then(jds => {
+              if (jds.length > 0) {
+                setSelectedDomainId(jds[0].id.domainId);
+              }
+            });
+            mod.catalogApi.listJobSkills(id).then(jss => {
+              setSkillAssignments(jss.map(js => ({
+                skillId: js.id.skillId,
+                isMandatory: js.isMandatory
+              })));
+            });
+            mod.catalogApi.listJobTechnologies(id).then(jts => {
+              setSelectedTechnologyIds(jts.map(jt => jt.id.technologyId));
+            });
+          });
+        }
       },
     );
-  }, []);
+  }, [jobId]);
 
   const selectedDomainIdList =
     selectedDomainId !== null ? [selectedDomainId] : [];

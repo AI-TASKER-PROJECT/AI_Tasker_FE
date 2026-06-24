@@ -5,7 +5,6 @@ import {
   FileText,
   Gavel,
   LockKeyhole,
-  Plus,
   ReceiptText,
   ShieldCheck,
   Star,
@@ -60,38 +59,31 @@ import {
 const NDA_TERMS = [
   {
     title: "1. Phạm vi thông tin bảo mật",
-    body:
-      "Thông tin bảo mật bao gồm tài liệu dự án, mã nguồn (source code), dữ liệu nghiệp vụ, tài khoản truy cập, quy trình vận hành, báo giá và mọi thông tin được chia sẻ trong quá trình hợp tác mà chưa công khai.",
+    body: "Thông tin bảo mật bao gồm tài liệu dự án, mã nguồn (source code), dữ liệu nghiệp vụ, tài khoản truy cập, quy trình vận hành, báo giá và mọi thông tin được chia sẻ trong quá trình hợp tác mà chưa công khai.",
   },
   {
     title: "2. Mục đích sử dụng",
-    body:
-      "Mọi thông tin chỉ được phép sử dụng để đánh giá, thực hiện, nghiệm thu và vận hành các công việc liên quan đến hợp đồng (contract) trên nền tảng AI Tasker. Không bên nào được sử dụng cho mục đích cá nhân hoặc chuyển giao cho bên thứ ba.",
+    body: "Mọi thông tin chỉ được phép sử dụng để đánh giá, thực hiện, nghiệm thu và vận hành các công việc liên quan đến hợp đồng (contract) trên nền tảng AI Tasker. Không bên nào được sử dụng cho mục đích cá nhân hoặc chuyển giao cho bên thứ ba.",
   },
   {
     title: "3. Nghĩa vụ bảo vệ",
-    body:
-      "Hai bên cam kết bảo mật thông tin bằng các biện pháp hợp lý, giới hạn quyền truy cập theo nhu cầu công việc, không sao chép, phát tán, công bố hoặc cho phép người không có thẩm quyền tiếp cận.",
+    body: "Hai bên cam kết bảo mật thông tin bằng các biện pháp hợp lý, giới hạn quyền truy cập theo nhu cầu công việc, không sao chép, phát tán, công bố hoặc cho phép người không có thẩm quyền tiếp cận.",
   },
   {
     title: "4. Ngoại lệ",
-    body:
-      "Nghĩa vụ bảo mật không áp dụng với thông tin đã công khai hợp pháp, thông tin đã nắm giữ hợp lệ trước khi nhận, hoặc thông tin buộc phải cung cấp theo yêu cầu của cơ quan có thẩm quyền.",
+    body: "Nghĩa vụ bảo mật không áp dụng với thông tin đã công khai hợp pháp, thông tin đã nắm giữ hợp lệ trước khi nhận, hoặc thông tin buộc phải cung cấp theo yêu cầu của cơ quan có thẩm quyền.",
   },
   {
     title: "5. Hoàn trả và hủy dữ liệu",
-    body:
-      "Khi hợp đồng (contract) kết thúc hoặc khi bên cung cấp thông tin yêu cầu, bên nhận thông tin phải ngừng sử dụng, hoàn trả hoặc hủy các tài liệu và bản sao nằm ngoài phạm vi lưu trữ bắt buộc theo quy định pháp luật.",
+    body: "Khi hợp đồng (contract) kết thúc hoặc khi bên cung cấp thông tin yêu cầu, bên nhận thông tin phải ngừng sử dụng, hoàn trả hoặc hủy các tài liệu và bản sao nằm ngoài phạm vi lưu trữ bắt buộc theo quy định pháp luật.",
   },
   {
     title: "6. Thời hạn ràng buộc",
-    body:
-      "Cam kết bảo mật có hiệu lực từ thời điểm xác nhận ký NDA trên hệ thống và tiếp tục duy trì trong 24 tháng kể từ ngày hợp đồng (contract) kết thúc, trừ khi hai bên có thỏa thuận khác bằng văn bản.",
+    body: "Cam kết bảo mật có hiệu lực từ thời điểm xác nhận ký NDA trên hệ thống và tiếp tục duy trì trong 24 tháng kể từ ngày hợp đồng (contract) kết thúc, trừ khi hai bên có thỏa thuận khác bằng văn bản.",
   },
   {
     title: "7. Vi phạm",
-    body:
-      "Bên vi phạm phải chịu trách nhiệm đối với các thiệt hại phát sinh và phối hợp xử lý sự cố bảo mật theo quy trình của nền tảng và thỏa thuận giữa hai bên.",
+    body: "Bên vi phạm phải chịu trách nhiệm đối với các thiệt hại phát sinh và phối hợp xử lý sự cố bảo mật theo quy trình của nền tảng và thỏa thuận giữa hai bên.",
   },
 ];
 
@@ -140,11 +132,11 @@ export function ContractsPage() {
       <Card className="p-4">
         <div className="flex flex-wrap gap-2">
           {[
-            { id: "ALL", label: "All", count: contracts.length },
-            { id: "DRAFT", label: "Draft", count: draftCount },
-            { id: "PENDING", label: "Negotiate", count: pendingCount },
-            { id: "ACTIVE", label: "Active", count: activeCount },
-            { id: "COMPLETED", label: "Completed", count: completedCount },
+            { id: "ALL", label: "Tất cả", count: contracts.length },
+            { id: "DRAFT", label: "Nháp", count: draftCount },
+            { id: "PENDING", label: "Chờ phản hồi", count: pendingCount },
+            { id: "ACTIVE", label: "Đang hoạt động", count: activeCount },
+            { id: "COMPLETED", label: "Hoàn thành", count: completedCount },
           ].map((item) => (
             <Button
               key={item.id}
@@ -166,7 +158,7 @@ export function ContractsPage() {
           <Card key={contract.contractId} hover className="p-5">
             <div className="flex items-start justify-between gap-3">
               <Badge tone="brand">#{contract.contractId}</Badge>
-              <StatusBadge status={contract.status} />
+              <StatusBadge status={translateContractStatus(contract.status)} />
             </div>
             <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">
               {contract.contractTitle ||
@@ -248,7 +240,9 @@ export function ContractDetailPage() {
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
   const [terminateOpen, setTerminateOpen] = useState(false);
-  const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(null);
+  const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
+    null,
+  );
   const [ndaSubmitting, setNdaSubmitting] = useState(false);
   const [reason, setReason] = useState("CLIENT_STOP_PROJECT");
 
@@ -487,13 +481,13 @@ export function ContractDetailPage() {
         : "bên tham gia";
   const ndaModalOpen = ndaModalMode !== null;
   const ndaModalTitle =
-  ndaModalMode === "sign"
-    ? "Điều khoản NDA và xác nhận ký"
-    : "Nội dung NDA của hợp đồng";
-const ndaModalDescription =
-  ndaModalMode === "sign"
-    ? "Vui lòng đọc điều khoản bảo mật trước khi xác nhận ký NDA trên hệ thống."
-    : "Bạn đang xem lại bộ điều khoản NDA được lưu trên hệ thống cho hợp đồng này.";
+    ndaModalMode === "sign"
+      ? "Điều khoản NDA và xác nhận ký"
+      : "Nội dung NDA của hợp đồng";
+  const ndaModalDescription =
+    ndaModalMode === "sign"
+      ? "Vui lòng đọc điều khoản bảo mật trước khi xác nhận ký NDA trên hệ thống."
+      : "Bạn đang xem lại bộ điều khoản NDA được lưu trên hệ thống cho hợp đồng này.";
   const openNdaPreview = () => setNdaModalMode("view");
   const openNdaSigning = () => setNdaModalMode("sign");
   const closeNdaModal = () => {
@@ -515,27 +509,27 @@ const ndaModalDescription =
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="CONTRACT DETAIL"
-        title={contractTitle}
-        description="Điểm điều phối cho đàm phán, activate, NDA, termination và các luồng con."
-        actions={
-          <>
-            <Button variant="secondary" onClick={openNdaPreview}>
-              <FileText className="h-4 w-4" />
-              Xem NDA
-            </Button>
-            <LinkButton
-              to={`/app/contracts/${contract.contractId}/workspace`}
-              variant="secondary"
-            >
-              Workspace
-            </LinkButton>
-            <LinkButton to="/app/finance" variant="secondary">
-              Escrow
-            </LinkButton>
-          </>
-        }
-      />
+          eyebrow="CONTRACT DETAIL"
+          title={contractTitle}
+          description="Điểm điều phối cho đàm phán, activate, NDA, termination và các luồng con."
+          actions={
+            <>
+              <Button variant="secondary" onClick={openNdaPreview}>
+                <FileText className="h-4 w-4" />
+                Xem NDA
+              </Button>
+              <LinkButton
+                to={`/app/contracts/${contract.contractId}/workspace`}
+                variant="secondary"
+              >
+                Workspace
+              </LinkButton>
+              <LinkButton to="/app/finance" variant="secondary">
+                Escrow
+              </LinkButton>
+            </>
+          }
+        />
       </div>
       {contractNotice && (
         <Notice tone={contractNotice.tone} title={contractNotice.title}>
@@ -566,7 +560,7 @@ const ndaModalDescription =
             />
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={contract.status} />
+            <StatusBadge status={translateContractStatus(contract.status)} />
             <Badge tone={ndaSigned ? "mint" : "amber"}>
               <LockKeyhole className="h-3.5 w-3.5" />
               NDA {ndaSigned ? "đã ký" : "chưa ký"}
@@ -769,7 +763,7 @@ const ndaModalDescription =
                   <p className="min-w-0 truncate font-extrabold text-ink">
                     {milestone.orderIndex}. {milestone.milestoneName}
                   </p>
-                  <StatusBadge status={milestone.status} />
+                  <StatusBadge status={translateContractStatus(milestone.status)} />
                 </div>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
                   {formatCurrency(milestone.fundsAllocated)}
@@ -813,9 +807,9 @@ const ndaModalDescription =
         }
       >
         <Notice tone="info" title={`Áp dụng cho ${contractTitle}`}>
-  NDA này ràng buộc {currentPartyLabel} trong việc bảo mật thông tin dự
-  án, tài liệu bàn giao và dữ liệu phát sinh trong quá trình hợp tác.
-</Notice>
+          NDA này ràng buộc {currentPartyLabel} trong việc bảo mật thông tin dự
+          án, tài liệu bàn giao và dữ liệu phát sinh trong quá trình hợp tác.
+        </Notice>
         <div className="mt-5 space-y-4">
           {NDA_TERMS.map((section) => (
             <div
@@ -839,12 +833,12 @@ const ndaModalDescription =
                 : "warning"
             }
             title={
-  currentPartyNdaSigned
-    ? "Bạn đã ký NDA cho hợp đồng này."
-    : currentPartyAccepted
-      ? "Sau khi xác nhận, hệ thống sẽ ghi nhận thời điểm ký NDA của bạn."
-      : "Bạn cần chấp nhận hợp đồng trước khi ký NDA."
-}
+              currentPartyNdaSigned
+                ? "Bạn đã ký NDA cho hợp đồng này."
+                : currentPartyAccepted
+                  ? "Sau khi xác nhận, hệ thống sẽ ghi nhận thời điểm ký NDA của bạn."
+                  : "Bạn cần chấp nhận hợp đồng trước khi ký NDA."
+            }
             className="mt-5"
           />
         )}
@@ -912,7 +906,8 @@ const ndaModalDescription =
               tone="danger"
               title={`Vì còn thiếu ${formatCurrency(depositMissingAmount)} de ky quy.`}
             >
-              Hãy nạp thêm vào ví trước, sau khi PayOS xác nhận số dư thì quay lại bấm xác nhận ký quỹ.
+              Hãy nạp thêm vào ví trước, sau khi PayOS xác nhận số dư thì quay
+              lại bấm xác nhận ký quỹ.
             </Notice>
           ) : (
             <Notice
@@ -988,6 +983,29 @@ function normalizeContractStatus(status?: string) {
   if (normalized === "TERMINATED" || normalized === "CANCELLED")
     return "CANCELLED";
   return normalized;
+}
+
+export function translateContractStatus(status?: string) {
+  const norm = (status || "").trim().toUpperCase();
+  switch (norm) {
+    case "DRAFT": return "Nháp";
+    case "PENDING": return "Chờ phản hồi";
+    case "PENDINGDEPOSIT": return "Chờ ký quỹ";
+    case "ACTIVE": return "Đang hoạt động";
+    case "IN_PROGRESS": return "Đang thực hiện";
+    case "COMPLETED": return "Hoàn thành";
+    case "CANCELLED": return "Đã hủy";
+    case "TERMINATED": return "Kết thúc sớm";
+    case "REJECTED": return "Bị từ chối";
+    case "UNDER_REVIEW": return "Chờ nghiệm thu";
+    case "RELEASED": return "Đã thanh toán";
+    case "SUCCESS": return "Thành công";
+    case "FAILED": return "Thất bại";
+    case "OPEN": return "Mở";
+    case "CLOSED": return "Đóng";
+    case "RESOLVED": return "Đã giải quyết";
+    default: return status;
+  }
 }
 
 function calculateSecurityDeposit(totalBudget?: number) {
@@ -1398,7 +1416,8 @@ export function WorkspacePage() {
         ...current,
         [sourceMilestoneId]: {
           tone: "success",
-          title: "Đã nộp deliverable. Trạng thái milestone lấy theo phản hồi từ backend.",
+          title:
+            "Đã nộp deliverable. Trạng thái milestone lấy theo phản hồi từ backend.",
         },
       }));
     } catch (error) {
@@ -1471,7 +1490,9 @@ export function WorkspacePage() {
             ? milestoneNotices[sourceMilestoneId]
             : null;
           const canSubmitDeliverable = session?.role === "EXPERT";
-          const reviewableByBackend = canBackendReviewMilestone(milestone.status);
+          const reviewableByBackend = canBackendReviewMilestone(
+            milestone.status,
+          );
           const canCompleteMilestone =
             session?.role === "BUSINESS" &&
             milestoneDeliverables.length > 0 &&
@@ -1479,14 +1500,18 @@ export function WorkspacePage() {
 
           return (
             <Card
-              key={sourceMilestoneId || getContractMilestoneId(milestone) || milestone.orderIndex}
+              key={
+                sourceMilestoneId ||
+                getContractMilestoneId(milestone) ||
+                milestone.orderIndex
+              }
               className="p-5"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="brand">Mốc {milestone.orderIndex}</Badge>
-                    <StatusBadge status={milestone.status} />
+                    <StatusBadge status={translateContractStatus(milestone.status)} />
                   </div>
                   <h3 className="mt-3 font-display text-xl font-extrabold text-ink">
                     {milestone.milestoneName}
@@ -1500,7 +1525,10 @@ export function WorkspacePage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {canSubmitDeliverable && (
-                    <Button size="sm" onClick={() => setDeliverableOpen(milestone)}>
+                    <Button
+                      size="sm"
+                      onClick={() => setDeliverableOpen(milestone)}
+                    >
                       <UploadCloud className="h-4 w-4" /> Submit deliverable
                     </Button>
                   )}
@@ -1523,18 +1551,22 @@ export function WorkspacePage() {
 
               {milestoneNotice && (
                 <div className="mt-4">
-                  <Notice tone={milestoneNotice.tone} title={milestoneNotice.title} />
-                </div>
-              )}
-
-              {session?.role === "BUSINESS" && milestoneDeliverables.length === 0 && (
-                <div className="mt-4">
                   <Notice
-                    tone="info"
-                    title="Chưa có deliverable từ backend nên chưa thể nghiệm thu milestone này."
+                    tone={milestoneNotice.tone}
+                    title={milestoneNotice.title}
                   />
                 </div>
               )}
+
+              {session?.role === "BUSINESS" &&
+                milestoneDeliverables.length === 0 && (
+                  <div className="mt-4">
+                    <Notice
+                      tone="info"
+                      title="Chưa có deliverable từ backend nên chưa thể nghiệm thu milestone này."
+                    />
+                  </div>
+                )}
               {session?.role === "BUSINESS" &&
                 milestoneDeliverables.length > 0 &&
                 !reviewableByBackend && (
@@ -1575,7 +1607,9 @@ export function WorkspacePage() {
 
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-extrabold text-ink">Deliverables</p>
+                    <p className="text-sm font-extrabold text-ink">
+                      Deliverables
+                    </p>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-500">
                       {milestoneDeliverables.length} sản phẩm
                     </span>
@@ -1619,7 +1653,9 @@ export function WorkspacePage() {
                           )}
                         </div>
                         {item.submissionNotes && (
-                          <p className="mt-2 leading-6">{item.submissionNotes}</p>
+                          <p className="mt-2 leading-6">
+                            {item.submissionNotes}
+                          </p>
                         )}
                       </div>
                     ))}
@@ -1893,7 +1929,7 @@ export function FinancePage() {
             <span className="font-extrabold text-ink">
               {formatCompactCurrency(tx.amount)}
             </span>
-            <StatusBadge status={tx.status} />
+            <StatusBadge status={translateContractStatus(tx.status)} />
             <div className="flex flex-wrap gap-2">
               {isAdmin ? (
                 <>

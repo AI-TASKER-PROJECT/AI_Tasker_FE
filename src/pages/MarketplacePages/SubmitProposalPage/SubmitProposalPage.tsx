@@ -1,6 +1,8 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
+  Briefcase,
   CheckCircle2,
+  Clock,
   Eye,
   FileCheck2,
   ListChecks,
@@ -365,15 +367,7 @@ export function SubmitProposalPage() {
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader
-          title="Nộp báo giá dự thầu"
-          description={job.title}
-          actions={
-            <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-              Quay lại job
-            </LinkButton>
-          }
-        />
+        <PageHeader title="Nộp báo giá dự thầu" description={job.title} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <form onSubmit={submit} className="grid gap-5">
@@ -516,7 +510,7 @@ export function SubmitProposalPage() {
                       Ngân sách & tài liệu
                     </h3>
                     <p className="text-sm text-slate-500">
-                      Đính kèm proposal file và chốt ngân sách tổng trước khi
+                      Đính kèm proposal_file và chốt ngân sách dự án trước khi
                       gửi.
                     </p>
                   </div>
@@ -524,11 +518,10 @@ export function SubmitProposalPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Ngân sách">
                     <Input
-                      type="number"
-                      min={1}
-                      value={bidAmountDisplay}
+                      type="text"
+                      value={bidAmount > 0 ? bidAmount.toLocaleString("vi-VN") : ""}
                       readOnly
-                      placeholder="Ví dụ: 165000000"
+                      placeholder="Ví dụ: 165.000.000"
                       required
                     />
                   </Field>
@@ -560,13 +553,13 @@ export function SubmitProposalPage() {
                     setRequestBudgetChange(event.target.checked)
                   }
                 />
-                <span>Chọn nếu muốn đề xuất thay dổi ngân sách dự án</span>
+                <span>Tích chọn nếu muốn đề xuất thay đổi ngân sách dự án</span>
               </label>
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-600">
                 <span className="font-semibold text-ink">
-                  Ngân sách hiện tại:{" "}
+                  {requestBudgetChange ? "Ngân sách đề xuất: " : "Ngân sách hiện tại: "}
                 </span>
-                {formatCurrency(job.budget)}
+                {formatCurrency(requestBudgetChange ? proposalMilestoneTotal : job.budget)}
                 {requestBudgetChange && (
                   <span className="ml-2 text-brand-600">
                     · Hãy nhập số tiền đề xuất từng milestone và ngân sách sẽ
@@ -588,7 +581,7 @@ export function SubmitProposalPage() {
                         </h3>
                         <p className="text-sm text-slate-500">
                           Tổng milestone đề xuất phải bằng ngân sách đề xuất nếu
-                          bạn muốn thay dổi.
+                          bạn muốn thay đổi.
                         </p>
                       </div>
                     </div>
@@ -597,35 +590,51 @@ export function SubmitProposalPage() {
                         bidAmount === proposalMilestoneTotal ? "mint" : "amber"
                       }
                     >
-                      {formatCompactCurrency(proposalMilestoneTotal)}
+                      {formatCurrency(proposalMilestoneTotal)}
                     </Badge>
                   </div>
                   <div className="grid gap-3">
                     {milestones.map((milestone) => (
                       <div
                         key={milestone.milestoneId}
-                        className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-[1fr_180px]"
+                        className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-[1fr_180px_180px]"
                       >
                         <div>
                           <p className="font-extrabold text-ink">
                             {milestone.milestoneName}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
-                            Mốc {milestone.orderIndex} · gốc{" "}
-                            {formatCompactCurrency(milestone.fundsAllocated)}
+                            Mốc {milestone.orderIndex} · {milestone.durationValue ?? milestone.duration ?? 0} {milestone.durationUnit || "WEEK"}
                           </p>
                         </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={milestoneBudgets[milestone.milestoneId] || ""}
-                          onChange={(event) =>
-                            setMilestoneBudgets((value) => ({
-                              ...value,
-                              [milestone.milestoneId]: event.target.value,
-                            }))
-                          }
-                        />
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                            Ngân sách gốc
+                          </p>
+                          <Input
+                            type="text"
+                            value={formatCurrency(milestone.fundsAllocated)}
+                            readOnly
+                            className="bg-slate-100/50 text-slate-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                            Ngân sách đề xuất
+                          </p>
+                          <Input
+                            type="text"
+                            value={milestoneBudgets[milestone.milestoneId] ? Number(milestoneBudgets[milestone.milestoneId]).toLocaleString("vi-VN") : ""}
+                            onChange={(event) => {
+                              const raw = event.target.value.replace(/\D/g, "");
+                              setMilestoneBudgets((value) => ({
+                                ...value,
+                                [milestone.milestoneId]: raw,
+                              }));
+                            }}
+                            placeholder="Nhập số tiền"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -662,30 +671,72 @@ export function SubmitProposalPage() {
         <aside className="space-y-4">
           <Card className="p-5">
             <div className="grid justify-items-start gap-3">
-              <JobDomainBadge label={jobDomainLabel(jobDomainIds, domains)} />
               <SectionHeading title="Tóm tắt dự án" />
             </div>
-            <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-slate-500">Ngân sách</span>
-                <span className="font-extrabold text-ink">
-                  {formatCurrency(job.budget)}
-                </span>
+            <div className="mt-5 grid gap-3">
+              <div className="flex items-center gap-4 rounded-3xl bg-slate-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white shadow-sm">
+                  <WalletCards className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Ngân sách</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {formatCurrency(job.budget)}
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-slate-500">Lĩnh vực</span>
-                <span className="text-right font-extrabold text-ink">
-                  {jobDomainIds.length} lĩnh vực
-                </span>
+
+              <div className="flex items-center gap-4 rounded-3xl bg-slate-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white shadow-sm">
+                  <Clock className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Thời lượng</p>
+                  <p className="mt-1 text-sm font-extrabold uppercase text-ink">
+                    {job.plannedDurationValue || 0} {job.plannedDurationUnit || "WEEK"}
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-slate-500">Kỹ năng</span>
-                <span className="font-extrabold text-ink">
-                  {skillCountLabel(jobSkillIds.length)}
-                </span>
+
+              <div className="flex items-center gap-4 rounded-3xl bg-slate-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white shadow-sm">
+                  <Target className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Lĩnh vực</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {jobDomainIds.length > 0
+                      ? resolveDomainName(jobDomainIds[0], domains)
+                      : "Chưa cập nhật"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-3xl bg-slate-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white shadow-sm">
+                  <Briefcase className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Doanh nghiệp</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {job.companyName || "Chưa cập nhật"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-3xl bg-slate-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white shadow-sm">
+                  <CheckCircle2 className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400">Milestone</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">
+                    {milestones.length} mốc
+                  </p>
+                </div>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
               {job.structuredSow || job.rawRequirements}
             </p>
           </Card>
