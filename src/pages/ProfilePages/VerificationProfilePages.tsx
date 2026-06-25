@@ -201,7 +201,14 @@ export function BusinessVerificationProfilePage() {
           {rejectionReason && status === "Rejected" && (
             <div className="mt-4">
               <Notice tone="danger" title="Lý do từ chối">
-                {rejectionReason}
+                <ul className="list-disc ml-5 mt-1 space-y-1">
+                  {rejectionReason.split(";").map((reason, index) => {
+                    const trimmedReason = reason.trim();
+                    return trimmedReason ? (
+                      <li key={index}>{trimmedReason}</li>
+                    ) : null;
+                  })}
+                </ul>
               </Notice>
             </div>
           )}
@@ -411,7 +418,14 @@ export function ExpertVerificationProfilePage() {
           {rejectionReason && status === "Rejected" && (
             <div className="mt-4">
               <Notice tone="danger" title="Lý do từ chối">
-                {rejectionReason}
+                <ul className="list-disc ml-5 mt-1 space-y-1">
+                  {rejectionReason.split(";").map((reason, index) => {
+                    const trimmedReason = reason.trim();
+                    return trimmedReason ? (
+                      <li key={index}>{trimmedReason}</li>
+                    ) : null;
+                  })}
+                </ul>
               </Notice>
             </div>
           )}

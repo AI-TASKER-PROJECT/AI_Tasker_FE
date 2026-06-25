@@ -222,7 +222,7 @@ export function ManageJobPage() {
       }
     } catch (error) {
       setAiMessage(
-        `Tài khoản chưa dăng kí prenium: ${getApiErrorMessage(error)}`,
+        `Tài khoản chưa đăng kí gói Premium. Vui lòng đăng kí để sử dụng tính năng này !`,
       );
       setAiMessageTone("danger");
     } finally {
@@ -842,13 +842,10 @@ function ProposalCard({
         </div>
         <div className="rounded-3xl bg-white/85 p-4 text-left shadow-sm lg:text-right">
           <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-            Bid amount
+            Ngân sách
           </p>
           <p className="mt-1 font-display text-2xl font-black text-brand-700">
             {formatCompactCurrency(proposal.bidAmount)}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-400">
-            Proposal #{proposal.proposalId}
           </p>
         </div>
       </div>
@@ -1015,9 +1012,7 @@ function ProposalCard({
             <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
           </div>
 
-          <SectionHeading
-            title="Portfolio"
-          />
+          <SectionHeading title="Portfolio" />
           <div className="grid gap-3">
             <ExpertInfoItem
               label="Lĩnh vực"
@@ -1391,10 +1386,7 @@ function ExpertRecommendationCard({
       >
         <div className="grid gap-4">
           <div className="flex items-center gap-4">
-            <Avatar
-              name={expert?.fullName || ""}
-              size="xl"
-            />
+            <Avatar name={expert?.fullName || ""} size="xl" />
             <div>
               <p className="text-lg font-bold text-ink">
                 {expert?.fullName || `Expert #${rec.expertId}`}

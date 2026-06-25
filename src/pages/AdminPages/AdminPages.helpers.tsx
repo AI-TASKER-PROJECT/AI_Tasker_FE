@@ -18,10 +18,17 @@ import {
   adminApi,
   catalogApi,
   contractApi,
+  walletTransactionApi,
   type Domain,
   type Skill,
 } from "../../lib/api";
-import { formatCompactCurrency, formatDate, formatTime } from "../../lib/utils";
+import {
+  formatCurrency,
+  formatCompactCurrency,
+  formatDate,
+  formatTime,
+  formatDateTime,
+} from "../../lib/utils";
 import type {
   AccountStatus,
   AdminAccount,
@@ -32,6 +39,7 @@ import type {
   Staff,
   SystemSetting,
   SystemWallet,
+  WalletTransaction,
 } from "../../types";
 import {
   Badge,
@@ -57,14 +65,14 @@ export function AnalyticsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Analytics & Revenue"
-        description="Gọi `/api/v1/admin/analytics/overview`, hiển thị KPI và biểu đồ nhẹ bằng CSS để tránh phụ thuộc chart nặng."
-        actions={
-          <Button variant="secondary">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
-        }
-      />
+          title="Analytics & Revenue"
+          description="Gọi `/api/v1/admin/analytics/overview`, hiển thị KPI và biểu đồ nhẹ bằng CSS để tránh phụ thuộc chart nặng."
+          actions={
+            <Button variant="secondary">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+          }
+        />
       </div>
       {value && (
         <>
@@ -188,7 +196,11 @@ function DateTimeCell({ value }: { value?: string }) {
   return (
     <span className="grid gap-1 text-center font-bold text-slate-500">
       <span>{formatDate(value)}</span>
-      {value && <span className="text-xs font-semibold text-slate-400">{formatTime(value)}</span>}
+      {value && (
+        <span className="text-xs font-semibold text-slate-400">
+          {formatTime(value)}
+        </span>
+      )}
     </span>
   );
 }
@@ -220,16 +232,23 @@ function Funnel({
 
 export function SystemWalletPage() {
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
+  const [history, setHistory] = useState<WalletTransaction[]>([]);
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async (sync = false) => {
     setLoading(true);
     try {
-      setWallet(
+      const [w, h, accs] = await Promise.all([
         sync
-          ? await adminApi.syncSystemWallet()
-          : await adminApi.getSystemWallet(),
-      );
+          ? adminApi.syncSystemWallet()
+          : adminApi.getSystemWallet(),
+        walletTransactionApi.list(),
+        adminApi.listAccounts(),
+      ]);
+      setWallet(w);
+      setHistory(h);
+      setAccounts(accs);
     } finally {
       setLoading(false);
     }
@@ -243,88 +262,150 @@ export function SystemWalletPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="System Wallet"
-        description="Live aggregate from transactions and disputes. Admin owns fund-flow monitoring."
-        actions={
-          <Button onClick={() => load(true)} disabled={loading}>
-            <RefreshCw className="h-4 w-4" /> Sync
-          </Button>
-        }
-      />
+          title="Quản lý ví"
+          description="Dữ liệu được cập nhật tự động từ hệ thống mỗi khi có giao dịch hoặc biến động tranh chấp."
+          actions={
+            <Button onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className="h-4 w-4" /> Đồng bộ
+            </Button>
+          }
+        />
       </div>
       {wallet && (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetric
-              label="Current balance"
-              value={formatCompactCurrency(wallet.currentBalance)}
+              label="Số dư hiện tại"
+              value={formatCurrency(wallet.currentBalance)}
               icon={<WalletCards className="h-5 w-5" />}
               tone="mint"
             />
             <AdminMetric
-              label="Escrow balance"
-              value={formatCompactCurrency(wallet.escrowBalance)}
+              label="Số dư ký quỹ"
+              value={formatCurrency(wallet.escrowBalance)}
               icon={<ShieldAlert className="h-5 w-5" />}
               tone="amber"
             />
             <AdminMetric
-              label="Total revenue"
-              value={formatCompactCurrency(wallet.totalRevenue)}
+              label="Tổng doanh thu"
+              value={formatCurrency(wallet.totalRevenue)}
               icon={<TrendingUp className="h-5 w-5" />}
             />
             <AdminMetric
-              label="Disputed balance"
-              value={formatCompactCurrency(wallet.disputedBalance)}
+              label="Số dư tranh chấp"
+              value={formatCurrency(wallet.disputedBalance)}
               icon={<ShieldAlert className="h-5 w-5" />}
               tone="coral"
             />
           </div>
-          <Card className="p-6">
-            <SectionHeading
-              title="Wallet ledger snapshot"
-              description="Values are recalculated by backend whenever transaction or dispute data changes."
-            />
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <WalletFact label="Currency" value={wallet.currency} />
-              <WalletFact label="Wallet type" value={wallet.walletType} />
-              <WalletFact
-                label="Available balance"
-                value={formatCompactCurrency(wallet.availableBalance)}
+          <div className="grid gap-6">
+            <Card className="p-6">
+              <SectionHeading
+                title="Thông tin tổng quan"
+                description="Các số liệu chung của sổ cái."
               />
-              <WalletFact
-                label="Deposited businesses"
-                value={wallet.depositedBusinessCount}
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <WalletFact label="Loại ví" value={wallet.walletType} />
+                <WalletFact
+                  label="Khả dụng"
+                  value={formatCurrency(wallet.availableBalance)}
+                  tone="mint"
+                />
+                <WalletFact
+                  label="Doanh nghiệp ký quỹ"
+                  value={wallet.depositedBusinessCount}
+                  tone="brand"
+                />
+                <WalletFact
+                  label="Giao dịch thành công"
+                  value={wallet.successfulDepositCount}
+                  tone="mint"
+                />
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <SectionHeading
+                title="Lịch sử ký quỹ"
+                description="Lịch sử các giao dịch ký quỹ của hệ thống."
               />
-              <WalletFact
-                label="Successful deposits"
-                value={wallet.successfulDepositCount}
-              />
-              <WalletFact
-                label="Latest transaction"
-                value={
-                  wallet.transactionId ? `#${wallet.transactionId}` : "None"
-                }
-              />
-              <WalletFact
-                label="Admin account"
-                value={`#${wallet.accountId}`}
-              />
-              <WalletFact
-                label="Last synced"
-                value={
-                  wallet.lastSyncedAt
-                    ? formatDate(wallet.lastSyncedAt)
-                    : "Pending"
-                }
-              />
-              <WalletFact
-                label="Updated at"
-                value={
-                  wallet.updatedAt ? formatDate(wallet.updatedAt) : "Pending"
-                }
-              />
-            </div>
-          </Card>
+              <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-100">
+                <table className="min-w-full divide-y divide-slate-100 text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold text-slate-500">
+                        Mã giao dịch
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-slate-500">
+                        Ngày giờ
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-slate-500">
+                        Tài khoản
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-slate-500">
+                        Số tiền
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-slate-500">
+                        Trạng thái
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {history.map((t) => (
+                      <tr key={t.id}>
+                        <td className="px-4 py-3 font-semibold text-slate-700">
+                          #{t.id}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col font-medium text-slate-500">
+                            {(() => {
+                              const dt = formatDateTime(t.createdAt);
+                              const [time, date] = dt.split(" ");
+                              return (
+                                <>
+                                  <span>{time}</span>
+                                  <span>{date}</span>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {t.accountId ? (accounts.find(a => a.accountId === t.accountId)?.fullName ?? `#${t.accountId}`) : "-"}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-brand-600">
+                          {formatCurrency(t.amount)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            tone={
+                              t.status === "SUCCESS"
+                                ? "mint"
+                                : t.status === "PENDING"
+                                  ? "amber"
+                                  : "coral"
+                            }
+                          >
+                            {t.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                    {history.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-8 text-center text-slate-400"
+                        >
+                          Chưa có lịch sử ký quỹ.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
         </>
       )}
     </div>
@@ -334,13 +415,26 @@ export function SystemWalletPage() {
 function WalletFact({
   label,
   value,
+  tone = "slate",
 }: {
   label: string;
   value: string | number;
+  tone?: "slate" | "brand" | "mint" | "coral" | "amber";
 }) {
+  const tones = {
+    slate: "bg-slate-50 text-slate-400",
+    brand: "bg-brand-50 text-brand-600",
+    mint: "bg-mint-50 text-mint-600",
+    coral: "bg-coral-50 text-coral-600",
+    amber: "bg-amber-50 text-amber-600",
+  };
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
-      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+    <div
+      className={`rounded-2xl p-4 ${tone === "slate" ? "bg-slate-50" : tones[tone].split(" ")[0]}`}
+    >
+      <p
+        className={`text-xs font-extrabold uppercase tracking-wide ${tone === "slate" ? "text-slate-400" : tones[tone].split(" ")[1]}`}
+      >
         {label}
       </p>
       <p className="mt-2 text-lg font-black text-ink">{value}</p>
@@ -457,7 +551,10 @@ export function AccountsPage() {
 
   useEffect(() => {
     void Promise.resolve().then(() => load());
-    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
+    catalogApi
+      .listDomains(true)
+      .then(setDomains)
+      .catch(() => setDomains([]));
   }, []);
 
   const visibleAccounts = accounts.filter((account) =>
@@ -543,14 +640,14 @@ export function AccountsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Account Management"
-        description="Admin can create, update, activate, and deactivate every role account."
-        actions={
-          <Button onClick={beginCreate}>
-            <Plus className="h-4 w-4" /> Create account
-          </Button>
-        }
-      />
+          title="Account Management"
+          description="Admin can create, update, activate, and deactivate every role account."
+          actions={
+            <Button onClick={beginCreate}>
+              <Plus className="h-4 w-4" /> Create account
+            </Button>
+          }
+        />
       </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
@@ -694,11 +791,13 @@ export function AccountsPage() {
               }}
               className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
             >
-              {(accountTab === "internal" ? internalRoles : externalRoles).map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
+              {(accountTab === "internal" ? internalRoles : externalRoles).map(
+                (role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ),
+              )}
             </select>
           </Field>
           <Field label="Status">
@@ -748,12 +847,17 @@ export function StaffPage() {
 
   useEffect(() => {
     adminApi.listStaffs().then(setStaffs);
-    catalogApi.listDomains(true).then(setDomains).catch(() => setDomains([]));
+    catalogApi
+      .listDomains(true)
+      .then(setDomains)
+      .catch(() => setDomains([]));
   }, []);
 
   const beginEditStaff = (staff: Staff) => {
     setEditing(staff);
-    setDomainIds(selectedDomainIdsFromSpecialization(staff.specialization, domains));
+    setDomainIds(
+      selectedDomainIdsFromSpecialization(staff.specialization, domains),
+    );
   };
 
   const saveStaff = async () => {
@@ -780,14 +884,14 @@ export function StaffPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Quản lý Staff"
-        description="Admin tạo hồ sơ staff nội bộ và khai báo specialization để auto-routing dispute."
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" /> Tạo staff
-          </Button>
-        }
-      />
+          title="Quản lý Staff"
+          description="Admin tạo hồ sơ staff nội bộ và khai báo specialization để auto-routing dispute."
+          actions={
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" /> Tạo staff
+            </Button>
+          }
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {staffs.map((staff) => (
@@ -937,9 +1041,9 @@ export function SettingsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="System Settings"
-        description="Cấu hình phí nền tảng, SLA và auto assign staff không cần sửa code."
-      />
+          title="System Settings"
+          description="Cấu hình phí nền tảng, SLA và auto assign staff không cần sửa code."
+        />
       </div>
       <div className="grid gap-4">
         {settings.map((setting) => (
@@ -1087,7 +1191,8 @@ export function MasterDataPage() {
       domainName: "",
       description: "",
       isActive: true,
-      sortOrder: Math.max(0, ...domains.map((domain) => domain.sortOrder || 0)) + 1,
+      sortOrder:
+        Math.max(0, ...domains.map((domain) => domain.sortOrder || 0)) + 1,
     });
     setOpen(true);
   };
@@ -1117,7 +1222,7 @@ export function MasterDataPage() {
       : await catalogApi.createDomain(payload);
     setDomains((items) =>
       editing
-        ? items.map((item) => item.domainId === saved.domainId ? saved : item)
+        ? items.map((item) => (item.domainId === saved.domainId ? saved : item))
         : [...items, saved],
     );
     setOpen(false);
@@ -1157,7 +1262,7 @@ export function MasterDataPage() {
       : await catalogApi.createSkill(payload);
     setSkills((items) =>
       editingSkill
-        ? items.map((item) => item.skillId === saved.skillId ? saved : item)
+        ? items.map((item) => (item.skillId === saved.skillId ? saved : item))
         : [...items, saved],
     );
     setSkillOpen(false);
@@ -1168,7 +1273,8 @@ export function MasterDataPage() {
       criteriaCode: "",
       description: "",
       isActive: true,
-      sortOrder: Math.max(0, ...criteria.map((item) => item.sortOrder || 0)) + 1,
+      sortOrder:
+        Math.max(0, ...criteria.map((item) => item.sortOrder || 0)) + 1,
     });
     setCriteriaOpen(true);
   };
@@ -1189,20 +1295,23 @@ export function MasterDataPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Catalog Management"
-        description="Quan ly domain va skill dung cho job, staff specialization va ho so chuyen gia."
-        actions={
-          tab === "criteria" ? (
-            <Button onClick={beginCreateCriteria}>
-              <Plus className="h-4 w-4" /> Create criteria
-            </Button>
-          ) : (
-            <Button onClick={tab === "domains" ? beginCreate : beginCreateSkill}>
-              <Plus className="h-4 w-4" /> {tab === "domains" ? "Create domain" : "Create skill"}
-            </Button>
-          )
-        }
-      />
+          title="Catalog Management"
+          description="Quan ly domain va skill dung cho job, staff specialization va ho so chuyen gia."
+          actions={
+            tab === "criteria" ? (
+              <Button onClick={beginCreateCriteria}>
+                <Plus className="h-4 w-4" /> Create criteria
+              </Button>
+            ) : (
+              <Button
+                onClick={tab === "domains" ? beginCreate : beginCreateSkill}
+              >
+                <Plus className="h-4 w-4" />{" "}
+                {tab === "domains" ? "Create domain" : "Create skill"}
+              </Button>
+            )
+          }
+        />
       </div>
       <Card className="flex flex-wrap gap-2 p-3">
         <Button
@@ -1224,128 +1333,158 @@ export function MasterDataPage() {
           Acceptance criteria
         </Button>
       </Card>
-      {error && <Notice tone="danger" title="Khong tai duoc catalog">{error}</Notice>}
-      {tab === "domains" && <Card className="overflow-hidden">
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
-          <span>ID</span>
-          <span>Code</span>
-          <span>Description</span>
-          <span className="text-center">Created</span>
-          <span className="text-center">Updated</span>
-          <span>Actions</span>
-        </div>
-        {loading && (
-          <div className="px-5 py-6 text-sm font-bold text-slate-500">
-            Dang tai domain...
+      {error && (
+        <Notice tone="danger" title="Khong tai duoc catalog">
+          {error}
+        </Notice>
+      )}
+      {tab === "domains" && (
+        <Card className="overflow-hidden">
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
+            <span>ID</span>
+            <span>Code</span>
+            <span>Description</span>
+            <span className="text-center">Created</span>
+            <span className="text-center">Updated</span>
+            <span>Actions</span>
           </div>
-        )}
-        {!loading && sortedDomains.length === 0 && (
-          <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co domain.
-          </div>
-        )}
-        {!loading && sortedDomains.map((domain) => (
-          <div
-            key={domain.domainId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
-          >
-            <span className="font-extrabold text-slate-500">#{domain.domainId}</span>
-            <span className="font-mono text-xs font-bold text-brand-700">{domain.domainCode}</span>
-            <div>
-              <p className="font-extrabold text-ink">{domain.domainName}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                {domain.description || "Chua co mo ta"}
-              </p>
+          {loading && (
+            <div className="px-5 py-6 text-sm font-bold text-slate-500">
+              Dang tai domain...
             </div>
-            <DateTimeCell value={domain.createdAt} />
-            <DateTimeCell value={domain.updatedAt} />
-            <div className="flex flex-wrap justify-start gap-2">
-              <Button variant="secondary" onClick={() => beginEdit(domain)}>
-                Edit
-              </Button>
+          )}
+          {!loading && sortedDomains.length === 0 && (
+            <div className="px-5 py-8 text-sm font-bold text-slate-500">
+              Chua co domain.
             </div>
+          )}
+          {!loading &&
+            sortedDomains.map((domain) => (
+              <div
+                key={domain.domainId}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
+              >
+                <span className="font-extrabold text-slate-500">
+                  #{domain.domainId}
+                </span>
+                <span className="font-mono text-xs font-bold text-brand-700">
+                  {domain.domainCode}
+                </span>
+                <div>
+                  <p className="font-extrabold text-ink">{domain.domainName}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {domain.description || "Chua co mo ta"}
+                  </p>
+                </div>
+                <DateTimeCell value={domain.createdAt} />
+                <DateTimeCell value={domain.updatedAt} />
+                <div className="flex flex-wrap justify-start gap-2">
+                  <Button variant="secondary" onClick={() => beginEdit(domain)}>
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            ))}
+        </Card>
+      )}
+      {tab === "skills" && (
+        <Card className="overflow-hidden">
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
+            <span>ID</span>
+            <span>Code</span>
+            <span>Description</span>
+            <span className="text-center">Created</span>
+            <span className="text-center">Updated</span>
+            <span>Actions</span>
           </div>
-        ))}
-      </Card>}
-      {tab === "skills" && <Card className="overflow-hidden">
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
-          <span>ID</span>
-          <span>Code</span>
-          <span>Description</span>
-          <span className="text-center">Created</span>
-          <span className="text-center">Updated</span>
-          <span>Actions</span>
-        </div>
-        {loading && (
-          <div className="px-5 py-6 text-sm font-bold text-slate-500">
-            Dang tai skill...
-          </div>
-        )}
-        {!loading && sortedSkills.length === 0 && (
-          <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co skill.
-          </div>
-        )}
-        {!loading && sortedSkills.map((skill) => (
-          <div
-            key={skill.skillId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
-          >
-            <span className="font-extrabold text-slate-500">#{skill.skillId}</span>
-            <span className="font-mono text-xs font-bold text-brand-700">{skill.skillCode}</span>
-            <div>
-              <p className="font-extrabold text-ink">{skill.skillName}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                {skill.description || "Chua co mo ta"}
-              </p>
+          {loading && (
+            <div className="px-5 py-6 text-sm font-bold text-slate-500">
+              Dang tai skill...
             </div>
-            <DateTimeCell value={skill.createdAt} />
-            <DateTimeCell value={skill.updatedAt} />
-            <div className="flex flex-wrap justify-start gap-2">
-              <Button variant="secondary" onClick={() => beginEditSkill(skill)}>
-                Edit
-              </Button>
+          )}
+          {!loading && sortedSkills.length === 0 && (
+            <div className="px-5 py-8 text-sm font-bold text-slate-500">
+              Chua co skill.
             </div>
+          )}
+          {!loading &&
+            sortedSkills.map((skill) => (
+              <div
+                key={skill.skillId}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
+              >
+                <span className="font-extrabold text-slate-500">
+                  #{skill.skillId}
+                </span>
+                <span className="font-mono text-xs font-bold text-brand-700">
+                  {skill.skillCode}
+                </span>
+                <div>
+                  <p className="font-extrabold text-ink">{skill.skillName}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {skill.description || "Chua co mo ta"}
+                  </p>
+                </div>
+                <DateTimeCell value={skill.createdAt} />
+                <DateTimeCell value={skill.updatedAt} />
+                <div className="flex flex-wrap justify-start gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => beginEditSkill(skill)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            ))}
+        </Card>
+      )}
+      {tab === "criteria" && (
+        <Card className="overflow-hidden">
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px]">
+            <span>ID</span>
+            <span>Code</span>
+            <span>Description</span>
+            <span>Status</span>
+            <span className="text-center">Created</span>
+            <span className="text-center">Updated</span>
           </div>
-        ))}
-      </Card>}
-      {tab === "criteria" && <Card className="overflow-hidden">
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px]">
-          <span>ID</span>
-          <span>Code</span>
-          <span>Description</span>
-          <span>Status</span>
-          <span className="text-center">Created</span>
-          <span className="text-center">Updated</span>
-        </div>
-        {loading && (
-          <div className="px-5 py-6 text-sm font-bold text-slate-500">
-            Dang tai acceptance criteria...
-          </div>
-        )}
-        {!loading && sortedCriteria.length === 0 && (
-          <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chua co acceptance criteria.
-          </div>
-        )}
-        {!loading && sortedCriteria.map((item) => (
-          <div
-            key={item.criteriaId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px] md:items-start"
-          >
-            <span className="font-extrabold text-slate-500">#{item.criteriaId}</span>
-            <span className="font-mono text-xs font-bold text-brand-700">{item.criteriaCode}</span>
-            <p className="text-sm font-semibold leading-6 text-slate-600">{item.description}</p>
-            <div className="flex justify-start">
-              <Badge tone={item.isActive ? "mint" : "rose"}>
-                {item.isActive ? "Active" : "Inactive"}
-              </Badge>
+          {loading && (
+            <div className="px-5 py-6 text-sm font-bold text-slate-500">
+              Dang tai acceptance criteria...
             </div>
-            <DateTimeCell value={item.createdAt} />
-            <DateTimeCell value={item.updatedAt} />
-          </div>
-        ))}
-      </Card>}
+          )}
+          {!loading && sortedCriteria.length === 0 && (
+            <div className="px-5 py-8 text-sm font-bold text-slate-500">
+              Chua co acceptance criteria.
+            </div>
+          )}
+          {!loading &&
+            sortedCriteria.map((item) => (
+              <div
+                key={item.criteriaId}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px] md:items-start"
+              >
+                <span className="font-extrabold text-slate-500">
+                  #{item.criteriaId}
+                </span>
+                <span className="font-mono text-xs font-bold text-brand-700">
+                  {item.criteriaCode}
+                </span>
+                <p className="text-sm font-semibold leading-6 text-slate-600">
+                  {item.description}
+                </p>
+                <div className="flex justify-start">
+                  <Badge tone={item.isActive ? "mint" : "rose"}>
+                    {item.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <DateTimeCell value={item.createdAt} />
+                <DateTimeCell value={item.updatedAt} />
+              </div>
+            ))}
+        </Card>
+      )}
       <Modal
         open={open}
         onClose={() => setOpen(false)}
@@ -1367,7 +1506,10 @@ export function MasterDataPage() {
             <Input
               value={form.domainCode}
               onChange={(event) =>
-                setForm((value) => ({ ...value, domainCode: event.target.value }))
+                setForm((value) => ({
+                  ...value,
+                  domainCode: event.target.value,
+                }))
               }
             />
           </Field>
@@ -1375,7 +1517,10 @@ export function MasterDataPage() {
             <Input
               value={form.domainName}
               onChange={(event) =>
-                setForm((value) => ({ ...value, domainName: event.target.value }))
+                setForm((value) => ({
+                  ...value,
+                  domainName: event.target.value,
+                }))
               }
             />
           </Field>
@@ -1383,7 +1528,10 @@ export function MasterDataPage() {
             <textarea
               value={form.description}
               onChange={(event) =>
-                setForm((value) => ({ ...value, description: event.target.value }))
+                setForm((value) => ({
+                  ...value,
+                  description: event.target.value,
+                }))
               }
               rows={4}
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-brand-200 focus:ring-4 focus:ring-brand-50"
@@ -1412,7 +1560,10 @@ export function MasterDataPage() {
             <Input
               value={skillForm.skillCode}
               onChange={(event) =>
-                setSkillForm((value) => ({ ...value, skillCode: event.target.value }))
+                setSkillForm((value) => ({
+                  ...value,
+                  skillCode: event.target.value,
+                }))
               }
             />
           </Field>
@@ -1420,7 +1571,10 @@ export function MasterDataPage() {
             <Input
               value={skillForm.skillName}
               onChange={(event) =>
-                setSkillForm((value) => ({ ...value, skillName: event.target.value }))
+                setSkillForm((value) => ({
+                  ...value,
+                  skillName: event.target.value,
+                }))
               }
             />
           </Field>
@@ -1428,7 +1582,10 @@ export function MasterDataPage() {
             <textarea
               value={skillForm.description}
               onChange={(event) =>
-                setSkillForm((value) => ({ ...value, description: event.target.value }))
+                setSkillForm((value) => ({
+                  ...value,
+                  description: event.target.value,
+                }))
               }
               rows={4}
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-brand-200 focus:ring-4 focus:ring-brand-50"
@@ -1457,7 +1614,10 @@ export function MasterDataPage() {
             <Input
               value={criteriaForm.criteriaCode}
               onChange={(event) =>
-                setCriteriaForm((value) => ({ ...value, criteriaCode: event.target.value }))
+                setCriteriaForm((value) => ({
+                  ...value,
+                  criteriaCode: event.target.value,
+                }))
               }
             />
           </Field>
@@ -1465,7 +1625,10 @@ export function MasterDataPage() {
             <select
               value={criteriaForm.isActive ? "active" : "inactive"}
               onChange={(event) =>
-                setCriteriaForm((value) => ({ ...value, isActive: event.target.value === "active" }))
+                setCriteriaForm((value) => ({
+                  ...value,
+                  isActive: event.target.value === "active",
+                }))
               }
               className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
             >
@@ -1477,7 +1640,10 @@ export function MasterDataPage() {
             <textarea
               value={criteriaForm.description}
               onChange={(event) =>
-                setCriteriaForm((value) => ({ ...value, description: event.target.value }))
+                setCriteriaForm((value) => ({
+                  ...value,
+                  description: event.target.value,
+                }))
               }
               rows={5}
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-brand-200 focus:ring-4 focus:ring-brand-50"
@@ -1490,22 +1656,28 @@ export function MasterDataPage() {
 }
 
 export function AuditLogsPage() {
-  const [tab, setTab] = useState<NonNullable<AuditLog["actorGroup"]>>("EXTERNAL");
+  const [tab, setTab] =
+    useState<NonNullable<AuditLog["actorGroup"]>>("EXTERNAL");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (actorGroup = tab) => {
-    setLoading(true);
-    setError("");
-    try {
-      setLogs(await adminApi.auditLogs(actorGroup));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không tải được audit log.");
-    } finally {
-      setLoading(false);
-    }
-  }, [tab]);
+  const load = useCallback(
+    async (actorGroup = tab) => {
+      setLoading(true);
+      setError("");
+      try {
+        setLogs(await adminApi.auditLogs(actorGroup));
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Không tải được audit log.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [tab],
+  );
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -1517,9 +1689,9 @@ export function AuditLogsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Nhật ký audit"
-        description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
-      />
+          title="Nhật ký audit"
+          description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
+        />
       </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
@@ -1563,45 +1735,76 @@ export function AuditLogsPage() {
             Chưa có audit log cho nhóm này.
           </div>
         )}
-        {!loading && !error && logs.map((log) => {
-          const timestamp = formatAuditTimestamp(log.createdAt);
-          return (
-            <div
-              key={log.logId}
-              className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[150px_1.1fr_1.2fr_1fr] md:items-center"
-            >
-              <div className="space-y-1">
-                <p className="font-bold text-slate-600">{timestamp.date}</p>
-                <p className="text-xs font-semibold text-slate-400">{timestamp.time}</p>
-              </div>
-              <span className="font-extrabold text-ink">{log.action}</span>
-              <div className="space-y-1">
-                <p className="font-extrabold text-ink">{log.entityDisplayName || `${log.entityName} ${log.entityId ? `#${log.entityId}` : ""}`}</p>
-                <p className="text-xs font-semibold text-slate-500">
-                  {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
-                </p>
-                <div className="space-y-1 pt-1">
-                  <p className="font-bold text-slate-700">{log.entityOwner || "Chưa xác dịnh tài khoản"}</p>
-                  <p className="break-all text-xs text-slate-500">{log.entityOwnerEmail || "Không có email"}</p>
-                  {log.entityOwnerRole ? (
-                    <Badge tone={log.entityOwnerRole === "ADMIN" ? "rose" : log.entityOwnerRole === "STAFF" ? "amber" : "brand"}>{log.entityOwnerRole}</Badge>
-                  ) : (
-                    <Badge tone="slate">Không có role</Badge>
+        {!loading &&
+          !error &&
+          logs.map((log) => {
+            const timestamp = formatAuditTimestamp(log.createdAt);
+            return (
+              <div
+                key={log.logId}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[150px_1.1fr_1.2fr_1fr] md:items-center"
+              >
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-600">{timestamp.date}</p>
+                  <p className="text-xs font-semibold text-slate-400">
+                    {timestamp.time}
+                  </p>
+                </div>
+                <span className="font-extrabold text-ink">{log.action}</span>
+                <div className="space-y-1">
+                  <p className="font-extrabold text-ink">
+                    {log.entityDisplayName ||
+                      `${log.entityName} ${log.entityId ? `#${log.entityId}` : ""}`}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-500">
+                    {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
+                  </p>
+                  <div className="space-y-1 pt-1">
+                    <p className="font-bold text-slate-700">
+                      {log.entityOwner || "Chưa xác dịnh tài khoản"}
+                    </p>
+                    <p className="break-all text-xs text-slate-500">
+                      {log.entityOwnerEmail || "Không có email"}
+                    </p>
+                    {log.entityOwnerRole ? (
+                      <Badge
+                        tone={
+                          log.entityOwnerRole === "ADMIN"
+                            ? "rose"
+                            : log.entityOwnerRole === "STAFF"
+                              ? "amber"
+                              : "brand"
+                        }
+                      >
+                        {log.entityOwnerRole}
+                      </Badge>
+                    ) : (
+                      <Badge tone="slate">Không có role</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-extrabold text-ink">{log.actor}</p>
+                  <p className="break-all text-xs text-slate-500">
+                    {log.actorEmail || "Không có email"}
+                  </p>
+                  {log.actorRole && (
+                    <Badge
+                      tone={
+                        log.actorRole === "ADMIN"
+                          ? "rose"
+                          : log.actorRole === "STAFF"
+                            ? "amber"
+                            : "brand"
+                      }
+                    >
+                      {log.actorRole}
+                    </Badge>
                   )}
                 </div>
               </div>
-              <div className="space-y-1">
-                <p className="font-extrabold text-ink">{log.actor}</p>
-                <p className="break-all text-xs text-slate-500">{log.actorEmail || "Không có email"}</p>
-                {log.actorRole && (
-                  <Badge tone={log.actorRole === "ADMIN" ? "rose" : log.actorRole === "STAFF" ? "amber" : "brand"}>
-                    {log.actorRole}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </Card>
     </div>
   );
@@ -1613,14 +1816,14 @@ export function ReportsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        title="Reports & Export"
-        description="Giao diện xuất báo cáo tuần/tháng/quý. API export hiện chưa có, UI giữ đủ filter và preview."
-        actions={
-          <Button>
-            <Download className="h-4 w-4" /> Xuất báo cáo
-          </Button>
-        }
-      />
+          title="Reports & Export"
+          description="Giao diện xuất báo cáo tuần/tháng/quý. API export hiện chưa có, UI giữ đủ filter và preview."
+          actions={
+            <Button>
+              <Download className="h-4 w-4" /> Xuất báo cáo
+            </Button>
+          }
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card className="p-6">

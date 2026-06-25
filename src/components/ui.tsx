@@ -81,15 +81,17 @@ export function LinkButton({
   size = 'md',
   className,
   children,
+  onClick,
 }: {
   to: string;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   className?: string;
   children: ReactNode;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
-    <Link to={to} className={buttonClasses({ variant, size, className })}>
+    <Link to={to} onClick={onClick} className={buttonClasses({ variant, size, className })}>
       {children}
     </Link>
   );

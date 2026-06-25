@@ -174,7 +174,7 @@ export function LandingPage() {
   }, [location.pathname]);
 
   const primaryLabel = session ? experience.primaryLabel : "Đăng dự án ngay";
-  const secondaryLabel = session ? experience.secondaryLabel : "Tìm việc AI";
+  const secondaryLabel = session ? experience.secondaryLabel : "Tìm kiếm cơ hội";
 
   return (
     <main className="overflow-x-hidden bg-[#fff8f8] text-[#27171d] relative">

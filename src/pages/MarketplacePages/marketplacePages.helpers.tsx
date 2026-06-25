@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "../../lib/utils";
 import type { Milestone } from "../../types";
 import { skillCountLabel } from "./marketplacePages.utils";
@@ -39,6 +40,24 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
                   })()}
                 </span>
               </div>
+              {milestone.criteria && milestone.criteria.length > 0 && (
+                <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Tiêu chí nghiệm thu
+                  </p>
+                  <ul className="grid gap-1.5">
+                    {milestone.criteria.map((c, i) => (
+                      <li
+                        key={c.criteriaId || i}
+                        className="flex items-start gap-2 text-sm text-slate-600"
+                      >
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                        <span>{c.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <p className="font-extrabold text-ink md:text-right">
               {formatCurrency(milestone.fundsAllocated)}

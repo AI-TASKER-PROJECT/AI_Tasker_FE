@@ -206,7 +206,7 @@ export function PublicShell() {
                           )}
                         </div>
                       )}
-                      
+
                       <div className="my-2 border-t border-slate-100" />
                       <button
                         type="button"

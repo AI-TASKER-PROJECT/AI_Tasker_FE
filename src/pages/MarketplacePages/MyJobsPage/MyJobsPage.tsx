@@ -87,6 +87,42 @@ export function MyJobsPage() {
     "ALL" | "DRAFT" | "OPEN" | "IN_PROGRESS" | "CLOSED"
   >("ALL");
 
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+
+  const [restrictedActionNotices, setRestrictedActionNotices] = useState<
+    Record<number, string>
+  >({});
+
+  const handleManageClick = (
+    e: React.MouseEvent,
+    jobId: number,
+    status: string,
+  ) => {
+    if (status === "CLOSED") {
+      e.preventDefault();
+      setRestrictedActionNotices((prev) => ({
+        ...prev,
+        [jobId]:
+          "Bài đăng đã bị gỡ xuống nên hệ thống không hỗ trợ tìm kiếm chuyên gia",
+      }));
+    } else if (status === "DRAFT") {
+      e.preventDefault();
+      setRestrictedActionNotices((prev) => ({
+        ...prev,
+        [jobId]:
+          "Vui lòng đăng tải thông tin của dự án để hệ thống tìm kiếm chuyên gia phù hợp",
+      }));
+    }
+
+    // Automatically scroll to the bottom of the card after the notice renders
+    setTimeout(() => {
+      document
+        .getElementById(`job-card-${jobId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 50);
+  };
+
   useEffect(() => {
     marketplaceApi
       .listMyJobs()
@@ -156,7 +192,7 @@ export function MyJobsPage() {
     { value: "ALL", label: "Tất cả" },
     { value: "DRAFT", label: "Nháp" },
     { value: "OPEN", label: "Đang mở" },
-    { value: "IN_PROGRESS", label: "Đang thực hiện" },
+    { value: "IN_PROGRESS", label: "Đang thực thi" },
     { value: "CLOSED", label: "Đã đóng" },
   ] as const;
 
@@ -177,7 +213,30 @@ export function MyJobsPage() {
         .toLowerCase()
         .includes(query.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || job.status === statusFilter;
-    return matchesQuery && matchesStatus;
+
+    const matchDate = (() => {
+      if (!startDateFilter && !endDateFilter) return true;
+      if (!job.createdAt) return false;
+
+      const pDateStr = (() => {
+        const pDate = new Date(job.createdAt);
+        const year = pDate.getFullYear();
+        const month = String(pDate.getMonth() + 1).padStart(2, "0");
+        const day = String(pDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      })();
+
+      if (startDateFilter && endDateFilter) {
+        return pDateStr >= startDateFilter && pDateStr <= endDateFilter;
+      } else if (startDateFilter) {
+        return pDateStr >= startDateFilter;
+      } else if (endDateFilter) {
+        return pDateStr <= endDateFilter;
+      }
+      return true;
+    })();
+
+    return matchesQuery && matchesStatus && matchDate;
   });
 
   const updateStatus = async (jobId: number, status: string) => {
@@ -192,45 +251,83 @@ export function MyJobsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Dự án của doanh nghiệp"
-          description="Tạo job, mở/đóng job, kiểm tra milestone và proposal chuyên gia gửi."
+          description="Tạo dự án mới, đăng tải, xem thông tin dự án và đánh giá proposal được gửi từ chuyên gia"
           actions={
             <LinkButton to="/app/jobs/new">
               <Plus className="h-4 w-4" />
-              Tạo job mới
+              Tạo dự án mới
             </LinkButton>
           }
         />
       </div>
       <Card className="p-3">
-        <div className="flex flex-wrap gap-2">
-          {statusTabs.map((tab) => {
-            const isActive = statusFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setStatusFilter(tab.value)}
-                className={cn(
-                  "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
-                  isActive
-                    ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
-                    : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
-                )}
-              >
-                {tab.label}
-                <span
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {statusTabs.map((tab) => {
+              const isActive = statusFilter === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.value)}
                   className={cn(
-                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                    "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
                     isActive
-                      ? "bg-mint-50 text-mint-600"
-                      : "bg-slate-100 text-slate-500",
+                      ? "border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.2)]"
+                      : "border-slate-200 bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50",
                   )}
                 >
-                  {statusCounts[tab.value]}
-                </span>
-              </button>
-            );
-          })}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-black",
+                      isActive
+                        ? "bg-mint-50 text-mint-600"
+                        : "bg-slate-100 text-slate-500",
+                    )}
+                  >
+                    {statusCounts[tab.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 px-2">
+            <span className="text-sm font-semibold text-slate-500">
+              Tìm kiếm dự án:
+            </span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="h-10 w-auto"
+                placeholder="Từ ngày"
+              />
+              <span className="text-slate-400">-</span>
+              <Input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="h-10 w-auto"
+                placeholder="Đến ngày"
+              />
+            </div>
+            {(startDateFilter || endDateFilter) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStartDateFilter("");
+                  setEndDateFilter("");
+                }}
+                className="text-slate-500"
+              >
+                Xoá bộ lọc
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
       <Card className="p-4">
@@ -247,7 +344,11 @@ export function MyJobsPage() {
           const canOpenJob = ["DRAFT", "CLOSED"].includes(jobStatus);
           const canCloseJob = jobStatus === "OPEN";
           return (
-            <Card key={job.jobId} className="group flex h-full flex-col p-5">
+            <Card
+              id={`job-card-${job.jobId}`}
+              key={job.jobId}
+              className="group flex h-full flex-col p-5"
+            >
               <div className="flex min-h-9 items-start justify-between gap-3">
                 <JobDomainBadge
                   label={jobDomainLabel(
@@ -287,38 +388,48 @@ export function MyJobsPage() {
                 count={(milestonesByJobId[job.jobId] || []).length}
               />
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <LinkButton
+                <Link
                   to={`/app/jobs/${job.jobId}/detail`}
-                  className="w-full justify-center"
-                  variant="secondary"
+                  className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
                 >
                   Chi tiết dự án
-                </LinkButton>
-                <LinkButton
+                </Link>
+                <Link
                   to={`/app/jobs/${job.jobId}/manage`}
-                  className="w-full justify-center"
+                  onClick={(e) => handleManageClick(e, job.jobId, jobStatus)}
+                  className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
                 >
-                  Quản lý dự án
-                </LinkButton>
+                  Lựa chọn chuyên gia
+                </Link>
               </div>
+              {restrictedActionNotices[job.jobId] && (
+                <Notice
+                  tone="warning"
+                  title="Không thể thực hiện"
+                  className="mt-3"
+                >
+                  <p>{restrictedActionNotices[job.jobId]}</p>
+                </Notice>
+              )}
+
               <div className="mt-auto flex flex-wrap gap-2 pt-5">
-                {isInProgress && <Badge tone="mint">Đang thực thi</Badge>}
+                {isInProgress && <Badge tone="amber">Đang thực thi</Badge>}
                 {canOpenJob && (
                   <Button
-                    variant="success"
                     size="sm"
                     onClick={() => updateStatus(job.jobId, "OPEN")}
+                    className="bg-green-600 text-white hover:bg-green-700 transition-all hover:-translate-y-1"
                   >
-                    Mở job
+                    Mở dự án
                   </Button>
                 )}
                 {canCloseJob && (
                   <Button
-                    variant="ghost"
                     size="sm"
                     onClick={() => updateStatus(job.jobId, "CLOSED")}
+                    className="bg-red-600 text-white hover:bg-red-700 transition-all hover:-translate-y-1"
                   >
-                    Đóng job
+                    Đóng dự án
                   </Button>
                 )}
               </div>

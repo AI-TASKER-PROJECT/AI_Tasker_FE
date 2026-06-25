@@ -196,9 +196,9 @@ export function DashboardPage() {
           />
         ) : (
           <MetricCard
-            label="Số bài đăng hiện có"
+            label={session.role === "ADMIN" ? "Dự án đang mở" : "Số bài đăng hiện có"}
             value={jobs.filter((job) => job.status === "OPEN").length}
-            helper="Từ thị trường"
+            helper={session.role === "ADMIN" ? "Trên hệ thống" : "Từ thị trường"}
             icon={<BriefcaseBusiness className="h-5 w-5" />}
           />
         )}
@@ -223,12 +223,12 @@ export function DashboardPage() {
           />
         ) : (
           <MetricCard
-            label="Báo cáo kĩ thuật"
+            label={session.role === "ADMIN" ? "Hợp đồng đang thực thi" : "Báo cáo kĩ thuật"}
             value={
-              contracts.filter((contract) => contract.status === "Active")
+              contracts.filter((contract) => ["ACTIVE", "IN_PROGRESS"].includes((contract.status || "").toUpperCase()))
                 .length
             }
-            helper="Đang thực thi"
+            helper={session.role === "ADMIN" ? "Đang hoạt động" : "Đang thực thi"}
             icon={<FileCheck2 className="h-5 w-5" />}
             tone="mint"
           />
@@ -240,11 +240,11 @@ export function DashboardPage() {
                 ? "Doanh thu cá nhân"
                 : session.role === "BUSINESS"
                   ? "Tổng đầu tư cho tất cả dự án"
-                  : "Tổng chi các dự án"
+                  : "Tổng giá trị giao dịch"
             }
             value={formatCurrency(
               contracts
-                .filter((contract) => contract.status === "Completed")
+                .filter((contract) => ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()))
                 .reduce(
                   (total, contract) =>
                     total + Number(contract.totalBudget || 0),

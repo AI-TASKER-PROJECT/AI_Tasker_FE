@@ -39,12 +39,12 @@ import {
 // ── Package Card ─────────────────────────────────────────────────────────────
 
 const packageGradients: Record<string, string> = {
-  BUSINESS_STANDARD: "from-slate-400 to-slate-600",
-  BUSINESS_PLUS: "from-brand-500 to-indigo-600",
-  BUSINESS_PREMIUM: "from-amber-400 via-orange-500 to-rose-500",
-  EXPERT_STANDARD: "from-slate-400 to-slate-600",
-  EXPERT_PLUS: "from-mint-500 to-emerald-600",
-  EXPERT_PREMIUM: "from-violet-500 via-purple-500 to-indigo-600",
+  BUSINESS_STANDARD: "from-violet-400 to-violet-600",
+  BUSINESS_PLUS: "from-brand-400 to-brand-600",
+  BUSINESS_PREMIUM: "from-amber-400 to-amber-600",
+  EXPERT_STANDARD: "from-violet-400 to-violet-600",
+  EXPERT_PLUS: "from-brand-400 to-brand-600",
+  EXPERT_PREMIUM: "from-amber-400 to-amber-600",
 };
 
 const packageIcons: Record<string, typeof Star> = {
@@ -189,7 +189,7 @@ function CreditPurchaseModal({
     msg: string;
   } | null>(null);
 
-  const unitPrice = role === "BUSINESS" ? 100: 50;
+  const unitPrice = role === "BUSINESS" ? 100 : 50;
   const creditType =
     role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
   const total = (Number(quantity) || 0) * unitPrice;
@@ -384,7 +384,7 @@ export function MembershipPage() {
   if (!session) return null;
   const role = session.role;
   const isExternalRole = role === "BUSINESS" || role === "EXPERT";
-  const creditType = role === "BUSINESS" ? "Job-post" : "Proposal";
+  const creditType = role === "BUSINESS" ? "lượt đăng bài" : "lượt nộp đề xuất";
 
   return (
     <div className="space-y-6">
@@ -406,9 +406,6 @@ export function MembershipPage() {
                 {formatCurrency(wallet.availableBalance)}
               </span>
             </div>
-            <p className="text-sm text-slate-500">
-              Thanh toán dược khấu trừ trực tiếp từ số dư ví.
-            </p>
           </div>
         </Card>
       )}
@@ -441,7 +438,7 @@ export function MembershipPage() {
       {isExternalRole && (
         <Card className="p-6">
           <SectionHeading
-            title={`Mua thêm ${creditType} credits`}
+            title={`Mua thêm ${creditType}`}
             description="Credits không di kèm gói thành viên. Mua lẻ theo nhu cầu thực tế."
           />
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -455,7 +452,6 @@ export function MembershipPage() {
                   )}
                 </span>
                 <div>
-                  <p className="font-bold text-ink">{creditType} Credit</p>
                   <p className="text-sm text-slate-500">
                     {role === "BUSINESS"
                       ? "100 VND / 1 credit"
@@ -465,8 +461,8 @@ export function MembershipPage() {
               </div>
               <p className="mt-3 text-xs text-slate-400">
                 {role === "BUSINESS"
-                  ? "Dùng dể dăng job mới. Mỗi job publish tiêu tốn 1 credit."
-                  : "Dùng dể nộp proposal. Mỗi proposal tiêu tốn 1 credit."}
+                  ? "Dùng dể đăng dự án mới. Mỗi 1 lần đăng tiêu tốn 1 credit."
+                  : "Dùng dể nộp proposal. Mỗi 1 lần nộp proposal tiêu tốn 1 credit."}
               </p>
             </div>
             <div className="flex items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4">
@@ -475,7 +471,7 @@ export function MembershipPage() {
                 className="h-12 w-full rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
               >
                 <ShoppingCart className="h-4 w-4" />
-                Mua {creditType} credits
+                Mua {creditType}
               </Button>
             </div>
           </div>

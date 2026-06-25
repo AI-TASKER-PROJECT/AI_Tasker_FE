@@ -2,12 +2,13 @@ import {
   Building,
   CheckCircle2,
   Clock,
+  Eye,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getApiErrorMessage, withdrawalApi } from "../../../services";
-import { cn, formatCurrency, formatDate } from "../../../lib/utils";
+import { cn, formatCurrency, formatDateTime } from "../../../lib/utils";
 import type { WithdrawalRequest } from "../../../types";
 import {
   Badge,
@@ -75,10 +76,19 @@ function ReviewModal({
     setNotice(null);
     try {
       if (action === "approve") {
-        await withdrawalApi.approve(withdrawal.withdrawalId, adminNote.trim() || undefined);
-        setNotice({ tone: "success", msg: "Đã duyệt yêu cầu rút tiền thành công." });
+        await withdrawalApi.approve(
+          withdrawal.withdrawalId,
+          adminNote.trim() || undefined,
+        );
+        setNotice({
+          tone: "success",
+          msg: "Đã duyệt yêu cầu rút tiền thành công.",
+        });
       } else {
-        await withdrawalApi.reject(withdrawal.withdrawalId, adminNote.trim() || undefined);
+        await withdrawalApi.reject(
+          withdrawal.withdrawalId,
+          adminNote.trim() || undefined,
+        );
         setNotice({ tone: "success", msg: "Đã từ chối yêu cầu rút tiền." });
       }
       onDone();
@@ -95,10 +105,16 @@ function ReviewModal({
     <Modal
       open={open}
       onClose={handleClose}
-      title={action === "approve" ? "Duyệt yêu cầu rút tiền" : "Từ chối yêu cầu rút tiền"}
-      description={action === "approve"
-        ? "Xác nhận sau khi dã chuyển khoản thủ công ra ngân hàng người dùng."
-        : "Số tiền sẽ dược hoàn trả về available balance của người dùng."}
+      title={
+        action === "approve"
+          ? "Duyệt yêu cầu rút tiền"
+          : "Từ chối yêu cầu rút tiền"
+      }
+      description={
+        action === "approve"
+          ? "Xác nhận sau khi dã chuyển khoản thủ công ra ngân hàng người dùng."
+          : "Số tiền sẽ dược hoàn trả về available balance của người dùng."
+      }
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>
@@ -108,7 +124,9 @@ function ReviewModal({
             variant={action === "approve" ? "success" : "danger"}
             onClick={submit}
             loading={loading}
-            disabled={loading || !!notice?.tone === true && notice.tone === "success"}
+            disabled={
+              loading || (!!notice?.tone === true && notice.tone === "success")
+            }
           >
             {action === "approve" ? (
               <>
@@ -133,11 +151,15 @@ function ReviewModal({
           <div className="grid gap-3 text-sm">
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Người dùng</span>
-              <span className="font-bold text-ink">#{withdrawal.accountId}</span>
+              <span className="font-bold text-ink">
+                #{withdrawal.accountId}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Số tiền</span>
-              <span className="font-extrabold text-brand-700">{formatCurrency(withdrawal.amount)}</span>
+              <span className="font-extrabold text-brand-700">
+                {formatCurrency(withdrawal.amount)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Ngân hàng</span>
@@ -145,35 +167,85 @@ function ReviewModal({
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Số TK</span>
-              <span className="font-bold text-ink font-mono">{withdrawal.bankAccountNumber}</span>
+              <span className="font-bold text-ink font-mono">
+                {withdrawal.bankAccountNumber}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Chủ TK</span>
-              <span className="font-bold text-ink">{withdrawal.bankAccountHolder}</span>
+              <span className="font-bold text-ink">
+                {withdrawal.bankAccountHolder}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-slate-500">Ngày tạo</span>
-              <span className="font-semibold text-slate-700">{formatDate(withdrawal.requestedAt ?? withdrawal.createdAt)}</span>
+              <span className="font-semibold text-slate-700">
+                {formatDateTime(withdrawal.requestedAt ?? withdrawal.createdAt)}
+              </span>
             </div>
           </div>
         </div>
 
         {action === "approve" && (
           <Notice tone="warning" title="Lưu ý trước khi duyệt">
-            Chỉ click "Duyệt" SAU KHI dã chuyển khoản thủ công thành công. Hành dộng này không thể hoàn tác.
+            Chỉ click "Duyệt" SAU KHI dã chuyển khoản thủ công thành công. Hành
+            dộng này không thể hoàn tác.
           </Notice>
         )}
 
         <Field label={`Ghi chú Admin (tùy chọn)`}>
           <textarea
             className="min-h-[80px] w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
-            placeholder={action === "approve"
-              ? "VD: Đã chuyển khoản lúc 14:30 ngày 20/06/2026..."
-              : "VD: Thông tin ngân hàng không hợp lệ..."}
+            placeholder={
+              action === "approve"
+                ? "VD: Đã chuyển khoản lúc 14:30 ngày 20/06/2026..."
+                : "VD: Thông tin ngân hàng không hợp lệ..."
+            }
             value={adminNote}
             onChange={(e) => setAdminNote(e.target.value)}
           />
         </Field>
+      </div>
+    </Modal>
+  );
+}
+
+// ── View Details Modal ────────────────────────────────────────────────────────
+
+function ViewDetailsModal({
+  open,
+  withdrawal,
+  onClose,
+}: {
+  open: boolean;
+  withdrawal: WithdrawalRequest | null;
+  onClose: () => void;
+}) {
+  if (!withdrawal) return null;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Chi tiết giao dịch"
+      size="sm"
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          Đóng
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold text-slate-500">
+              Ghi chú của Admin
+            </span>
+            <div className="mt-1 max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-all rounded-xl border border-slate-200 bg-white p-3 text-ink">
+              {withdrawal.adminNote || "Không có ghi chú"}
+            </div>
+          </div>
+        </div>
       </div>
     </Modal>
   );
@@ -185,10 +257,16 @@ export function AdminWithdrawalPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [tab, setTab] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">(
+    "PENDING",
+  );
   const [selected, setSelected] = useState<WithdrawalRequest | null>(null);
   const [action, setAction] = useState<"approve" | "reject" | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [viewSelected, setViewSelected] = useState<WithdrawalRequest | null>(
+    null,
+  );
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -210,6 +288,11 @@ export function AdminWithdrawalPage() {
     setSelected(wr);
     setAction(act);
     setModalOpen(true);
+  };
+
+  const openViewDetails = (wr: WithdrawalRequest) => {
+    setViewSelected(wr);
+    setViewModalOpen(true);
   };
 
   const handleDone = () => {
@@ -245,16 +328,16 @@ export function AdminWithdrawalPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-        eyebrow="Admin · Payments"
-        title="Quản lý rút tiền"
-        description="Duyệt hoặc từ chối các yêu cầu rút tiền. Nhớ chuyển khoản thủ công trước khi nhấn Duyệt."
-        actions={
-          <Button variant="secondary" onClick={load} disabled={loading}>
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-            Làm mới
-          </Button>
-        }
-      />
+          eyebrow="Admin · Payments"
+          title="Quản lý rút tiền"
+          description="Duyệt hoặc từ chối các yêu cầu rút tiền. Nhớ chuyển khoản thủ công trước khi nhấn Duyệt."
+          actions={
+            <Button variant="secondary" onClick={load} disabled={loading}>
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Làm mới
+            </Button>
+          }
+        />
       </div>
 
       {/* Summary */}
@@ -266,7 +349,9 @@ export function AdminWithdrawalPage() {
             </span>
             <div>
               <p className="text-sm font-bold text-slate-500">Đang chờ duyệt</p>
-              <p className="font-display text-2xl font-black text-ink">{counts.PENDING}</p>
+              <p className="font-display text-2xl font-black text-ink">
+                {counts.PENDING}
+              </p>
             </div>
           </div>
         </Card>
@@ -276,8 +361,12 @@ export function AdminWithdrawalPage() {
               <Building className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-bold text-slate-500">Tổng cần chuyển</p>
-              <p className="font-display text-2xl font-black text-amber-700">{formatCurrency(totalPending)}</p>
+              <p className="text-sm font-bold text-slate-500">
+                Tổng cần chuyển
+              </p>
+              <p className="font-display text-2xl font-black text-amber-700">
+                {formatCurrency(totalPending)}
+              </p>
             </div>
           </div>
         </Card>
@@ -288,7 +377,9 @@ export function AdminWithdrawalPage() {
             </span>
             <div>
               <p className="text-sm font-bold text-slate-500">Đã duyệt</p>
-              <p className="font-display text-2xl font-black text-ink">{counts.APPROVED}</p>
+              <p className="font-display text-2xl font-black text-ink">
+                {counts.APPROVED}
+              </p>
             </div>
           </div>
         </Card>
@@ -306,10 +397,10 @@ export function AdminWithdrawalPage() {
             />
             <Tabs
               tabs={[
-                { id: "PENDING", label: "Chờ duyệt", count: counts.PENDING },
                 { id: "ALL", label: "Tất cả", count: counts.ALL },
-                { id: "APPROVED", label: "Đã duyệt" },
-                { id: "REJECTED", label: "Từ chối" },
+                { id: "PENDING", label: "Chờ duyệt", count: counts.PENDING },
+                { id: "APPROVED", label: "Đã duyệt", count: counts.APPROVED },
+                { id: "REJECTED", label: "Từ chối", count: counts.REJECTED },
               ]}
               active={tab}
               onChange={(id) => setTab(id as typeof tab)}
@@ -356,7 +447,10 @@ export function AdminWithdrawalPage() {
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-ink">
-                        {wr.bankName} · <span className="font-mono">{wr.bankAccountNumber}</span>
+                        {wr.bankName} ·{" "}
+                        <span className="font-mono">
+                          {wr.bankAccountNumber}
+                        </span>
                       </p>
                       <p className="text-xs text-slate-400">
                         {wr.bankAccountHolder} · Account #{wr.accountId}
@@ -374,9 +468,18 @@ export function AdminWithdrawalPage() {
                     </Badge>
                   </span>
 
-                  <span className="w-28 text-right text-xs font-semibold text-slate-400">
-                    {formatDate(wr.requestedAt ?? wr.createdAt)}
-                  </span>
+                  <div className="flex w-28 flex-col items-end text-xs font-semibold text-slate-400">
+                    {(() => {
+                      const dt = formatDateTime(wr.requestedAt ?? wr.createdAt);
+                      const [time, date] = dt.split(" ");
+                      return (
+                        <>
+                          <span>{time}</span>
+                          <span>{date}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
 
                   <div className="flex w-36 justify-center gap-2">
                     {wr.status === "PENDING" ? (
@@ -399,9 +502,15 @@ export function AdminWithdrawalPage() {
                         </Button>
                       </>
                     ) : (
-                      <span className="text-xs font-semibold text-slate-400">
-                        {wr.adminNote ? `Note: ${wr.adminNote}` : "—"}
-                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openViewDetails(wr)}
+                        className="text-slate-500 hover:text-brand-600 hover:bg-brand-50"
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -418,6 +527,11 @@ export function AdminWithdrawalPage() {
         action={action}
         onClose={() => setModalOpen(false)}
         onDone={handleDone}
+      />
+      <ViewDetailsModal
+        open={viewModalOpen}
+        withdrawal={viewSelected}
+        onClose={() => setViewModalOpen(false)}
       />
     </div>
   );

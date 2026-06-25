@@ -19,7 +19,7 @@ import {
   withdrawalApi,
 } from "../../../services";
 import { useSession } from "../../../context/sessionContext";
-import { cn, formatCurrency, formatDate } from "../../../lib/utils";
+import { cn, formatCurrency } from "../../../lib/utils";
 import type {
   PaymentActionResponse,
   SystemWallet,
@@ -42,6 +42,27 @@ import {
 } from "../../../components/ui";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function SplitDateTime({ value }: { value?: string }) {
+  if (!value) return <span>—</span>;
+  const dateObj = new Date(value);
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(dateObj);
+  const date = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(dateObj);
+  return (
+    <div className="flex flex-col items-end leading-tight gap-0.5">
+      <span>{time}</span>
+      <span>{date}</span>
+    </div>
+  );
+}
 
 function txTypeLabel(type: WalletTransaction["transactionType"]) {
   const map: Record<WalletTransaction["transactionType"], string> = {
@@ -73,7 +94,19 @@ function withdrawStatusLabel(status: string) {
     APPROVED: "Đã duyệt",
     REJECTED: "Bị từ chối",
   };
-  return map[status] ?? status;
+  return map[status?.toUpperCase()] ?? status;
+}
+
+function transactionStatusLabel(status?: string) {
+  if (!status) return "";
+  const map: Record<string, string> = {
+    SUCCESS: "Thành công",
+    POSTED: "Thành công",
+    PENDING: "Đang xử lý",
+    FAILED: "Thất bại",
+    CANCELLED: "Đã huỷ",
+  };
+  return map[status.toUpperCase()] ?? status;
 }
 
 // ── WithdrawalModal ───────────────────────────────────────────────────────────
@@ -178,7 +211,7 @@ function WithdrawalModal({
       open={open}
       onClose={handleClose}
       title="Yêu cầu rút tiền"
-      description="Số tiền sẽ dược Admin chuyển khoản thủ công ra tài khoản ngân hàng của bạn."
+      description="Số tiền sẽ được Admin kiểm duyệt và thanh toán cho tài khoản ngân hàng của bạn."
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>
@@ -211,11 +244,17 @@ function WithdrawalModal({
 
         <Field label="Số tiền rút (VND)">
           <Input
-            type="number"
+            type="text"
             placeholder="Nhập số tiền..."
-            value={form.amount}
-            onChange={(e) => setForm((v) => ({ ...v, amount: e.target.value }))}
-            min={1}
+            value={
+              form.amount
+                ? Number(form.amount).toLocaleString("vi-VN")
+                : ""
+            }
+            onChange={(e) => {
+              const rawValue = e.target.value.replace(/\D/g, "");
+              setForm((v) => ({ ...v, amount: rawValue }));
+            }}
           />
         </Field>
 
@@ -251,8 +290,7 @@ function WithdrawalModal({
         </Field>
 
         <Notice tone="info" title="Lưu ý về rút tiền">
-          Chỉ có thể rút từ số dư khả dụng. Không thể rút từ escrow, holding
-          hoặc disputed balance. Không có phí rút tiền.
+          Chỉ có thể rút từ số dư khả dụng.
         </Notice>
       </div>
     </Modal>
@@ -494,10 +532,10 @@ export function WalletPage() {
                       {formatCurrency(tx.amount)}
                     </span>
                     <span className="w-24 text-center">
-                      <StatusBadge status={tx.status} />
+                      <StatusBadge status={transactionStatusLabel(tx.status)} />
                     </span>
                     <span className="w-28 text-right text-xs font-semibold text-slate-400">
-                      {formatDate(tx.createdAt)}
+                      <SplitDateTime value={tx.createdAt} />
                     </span>
                   </div>
                 );
@@ -552,10 +590,10 @@ export function WalletPage() {
                   <StatusBadge status={withdrawStatusLabel(wr.status)} />
                 </span>
                 <span className="w-28 text-right text-xs font-semibold text-slate-400">
-                  {formatDate(wr.requestedAt ?? wr.createdAt)}
+                  <SplitDateTime value={wr.requestedAt ?? wr.createdAt} />
                 </span>
                 <span className="w-28 text-right text-xs font-semibold text-slate-400">
-                  {wr.reviewedAt ? formatDate(wr.reviewedAt) : "—"}
+                  <SplitDateTime value={wr.reviewedAt} />
                 </span>
               </div>
             ))}

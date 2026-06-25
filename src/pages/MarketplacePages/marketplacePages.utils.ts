@@ -24,7 +24,6 @@ export function formatGeneratedSow(sow?: GeneratedSow) {
   if (!sow) return "";
   
   const sowParts = [
-    sow.title ? `Tiêu dề: ${sow.title}` : "",
     sow.overview ? `Tổng quan: ${sow.overview}` : "",
     renderListSection("Mục tiêu", sow.objectives),
     renderListSection("Phạm vi công việc", sow.scopeOfWork),

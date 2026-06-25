@@ -37,6 +37,7 @@ import {
   Field,
   Input,
   LinkButton,
+  Modal,
   Notice,
   PageHeader,
   SectionHeading,
@@ -68,6 +69,8 @@ export function BusinessProfilePage() {
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const session = getSession();
 
   const isOwner = session?.role === "BUSINESS";
@@ -95,9 +98,19 @@ export function BusinessProfilePage() {
       .catch(() => setJobs([]));
   }, []);
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     //khi submit
     event.preventDefault();
+    if (status?.toLowerCase() === "approved") {
+      setConfirmModalOpen(true);
+      return;
+    }
+    executeSubmit();
+  };
+
+  const executeSubmit = async () => {
+    setConfirmModalOpen(false);
+    setIsEditing(false);
     setLoading(true);
     setMessage("");
     setError("");
@@ -136,7 +149,7 @@ export function BusinessProfilePage() {
     }
   };
 
-  const isApproved = status === "Approved";
+  const isApproved = status?.toLowerCase() === "approved";
 
   const canEdit = isOwner;
 
@@ -215,7 +228,14 @@ export function BusinessProfilePage() {
               </p>
               {rejectionReason && status === "Rejected" && (
                 <Notice tone="danger" title="Lý do từ chối">
-                  {rejectionReason}
+                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                    {rejectionReason.split(";").map((reason, index) => {
+                      const trimmedReason = reason.trim();
+                      return trimmedReason ? (
+                        <li key={index}>{trimmedReason}</li>
+                      ) : null;
+                    })}
+                  </ul>
                 </Notice>
               )}
             </div>
@@ -286,8 +306,6 @@ export function BusinessProfilePage() {
               <Field label="Mã số thuế">
                 <Input
                   value={form.taxCode}
-                  disabled={isApproved}
-                  className={isApproved ? "!bg-brand-50" : ""}
                   onChange={(event) =>
                     setForm((value) => ({
                       ...value,
@@ -340,10 +358,17 @@ export function BusinessProfilePage() {
                 />
               </Field>
               <div className="flex justify-end">
-                <Button type="submit" loading={loading}>
-                  <Save className="h-4 w-4" />
-                  Lưu hồ sơ
-                </Button>
+                {isApproved && !isEditing ? (
+                  <Button type="button" onClick={() => setIsEditing(true)}>
+                    <Edit3 className="h-4 w-4" />
+                    Chỉnh sửa
+                  </Button>
+                ) : (
+                  <Button type="submit" loading={loading}>
+                    <Save className="h-4 w-4" />
+                    Lưu hồ sơ
+                  </Button>
+                )}
               </div>
             </form>
           </Card>
@@ -365,13 +390,41 @@ export function BusinessProfilePage() {
             {rejectionReason && status === "Rejected" && (
               <div className="mt-4">
                 <Notice tone="danger" title="Lý do từ chối">
-                  {rejectionReason}
+                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                    {rejectionReason.split(";").map((reason, index) => {
+                      const trimmedReason = reason.trim();
+                      return trimmedReason ? (
+                        <li key={index}>{trimmedReason}</li>
+                      ) : null;
+                    })}
+                  </ul>
                 </Notice>
               </div>
             )}
           </Card>
         </div>
       )}
+      <Modal
+        open={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        title="Xác nhận chỉnh sửa"
+        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmModalOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button onClick={executeSubmit} loading={loading}>
+              Xác nhận
+            </Button>
+          </>
+        }
+      >
+        {null}
+      </Modal>
     </div>
   );
 }
@@ -394,6 +447,8 @@ export function ExpertProfilePage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const session = getSession();
   const canEdit = session?.role === "EXPERT";
 
@@ -460,9 +515,19 @@ export function ExpertProfilePage() {
     [technologies, portfolio?.technologyIds],
   );
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     // bấm submit
     event.preventDefault();
+    if (status?.toLowerCase() === "approved") {
+      setConfirmModalOpen(true);
+      return;
+    }
+    executeSubmit();
+  };
+
+  const executeSubmit = async () => {
+    setConfirmModalOpen(false);
+    setIsEditing(false);
     setLoading(true);
     setMessage("");
     setError("");
@@ -499,7 +564,7 @@ export function ExpertProfilePage() {
     }
   };
 
-  const isApproved = status === "Approved";
+  const isApproved = status?.toLowerCase() === "approved";
 
   return (
     <div className="space-y-6">
@@ -569,7 +634,14 @@ export function ExpertProfilePage() {
               </p>
               {rejectionReason && status === "Rejected" && (
                 <Notice tone="danger" title="Lý do từ chối">
-                  {rejectionReason}
+                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                    {rejectionReason.split(";").map((reason, index) => {
+                      const trimmedReason = reason.trim();
+                      return trimmedReason ? (
+                        <li key={index}>{trimmedReason}</li>
+                      ) : null;
+                    })}
+                  </ul>
                 </Notice>
               )}
             </div>
@@ -647,8 +719,6 @@ export function ExpertProfilePage() {
               <Field label="Số CCCD / Hộ chiếu">
                 <Input
                   value={form.nationalId}
-                  disabled={isApproved}
-                  className={isApproved ? "!bg-brand-50" : ""}
                   onChange={(event) =>
                     setForm((value) => ({
                       ...value,
@@ -695,10 +765,17 @@ export function ExpertProfilePage() {
                 </Field>
               </div>
               <div className="flex justify-end">
-                <Button type="submit" loading={loading}>
-                  <ShieldCheck className="h-4 w-4" />
-                  Lưu hồ sơ
-                </Button>
+                {isApproved && !isEditing ? (
+                  <Button type="button" onClick={() => setIsEditing(true)}>
+                    <Edit3 className="h-4 w-4" />
+                    Chỉnh sửa
+                  </Button>
+                ) : (
+                  <Button type="submit" loading={loading}>
+                    <ShieldCheck className="h-4 w-4" />
+                    Lưu hồ sơ
+                  </Button>
+                )}
               </div>
             </form>
           </Card>
@@ -720,13 +797,41 @@ export function ExpertProfilePage() {
             {rejectionReason && status === "Rejected" && (
               <div className="mt-4">
                 <Notice tone="danger" title="Lý do từ chối">
-                  {rejectionReason}
+                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                    {rejectionReason.split(";").map((reason, index) => {
+                      const trimmedReason = reason.trim();
+                      return trimmedReason ? (
+                        <li key={index}>{trimmedReason}</li>
+                      ) : null;
+                    })}
+                  </ul>
                 </Notice>
               </div>
             )}
           </Card>
         </div>
       )}
+      <Modal
+        open={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        title="Xác nhận chỉnh sửa"
+        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmModalOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button onClick={executeSubmit} loading={loading}>
+              Xác nhận
+            </Button>
+          </>
+        }
+      >
+        {null}
+      </Modal>
     </div>
   );
 }
@@ -757,29 +862,42 @@ export function ExpertPortfolioPage() {
       catalogApi.listSkills(true),
       catalogApi.listTechnologies(true),
       profileApi.getMyPortfolio().catch(() => null),
-    ]).then(([domainItems, skillItems, technologyItems, portfolio]) => {
-      setDomains(domainItems);
-      setSkills(skillItems);
-      setTechnologies(technologyItems);
-      if (portfolio) {
-        setForm({
-          yearsExperience: String(portfolio.yearsExperience ?? 1),
-          certificates: portfolio.certificates || "",
-          selfDescription: portfolio.selfDescription || "",
-        });
-        setSelectedDomainIds(parseCatalogIds(portfolio.domainIds));
-        setSelectedSkillIds(parseCatalogIds(portfolio.skillIds));
-        setSelectedTechnologyIds(parseCatalogIds(portfolio.technologyIds));
-      } else {
-        setSelectedDomainIds(
-          domainItems.slice(0, 2).map((item) => item.domainId),
-        );
-        setSelectedSkillIds(skillItems.slice(0, 4).map((item) => item.skillId));
-        setSelectedTechnologyIds(
-          technologyItems.slice(0, 4).map((item) => item.technologyId),
-        );
-      }
-    });
+      profileApi.getMyExpert().catch(() => null),
+    ]).then(
+      ([
+        domainItems,
+        skillItems,
+        technologyItems,
+        portfolio,
+        expertProfile,
+      ]) => {
+        setDomains(domainItems);
+        setSkills(skillItems);
+        setTechnologies(technologyItems);
+        if (portfolio) {
+          setForm({
+            yearsExperience: String(
+              portfolio.yearsExperience ??
+                expertProfile?.yearsOfExperience ??
+                1,
+            ),
+            certificates: portfolio.certificates || "",
+            selfDescription: portfolio.selfDescription || "",
+          });
+          setSelectedDomainIds(parseCatalogIds(portfolio.domainIds));
+          setSelectedSkillIds(parseCatalogIds(portfolio.skillIds));
+          setSelectedTechnologyIds(parseCatalogIds(portfolio.technologyIds));
+        } else {
+          setForm((f) => ({
+            ...f,
+            yearsExperience: String(expertProfile?.yearsOfExperience ?? 1),
+          }));
+          setSelectedDomainIds([]);
+          setSelectedSkillIds([]);
+          setSelectedTechnologyIds([]);
+        }
+      },
+    );
   }, []);
 
   const selectedDomains = useMemo(
@@ -874,11 +992,6 @@ export function ExpertPortfolioPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
         <form onSubmit={submit} className="space-y-6">
           {error && <Notice tone="danger" title={error} />}
-          {saved && (
-            <Notice tone="success" title="Đã lưu portfolio">
-              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
-            </Notice>
-          )}
 
           <Card className="p-6">
             <SectionHeading
@@ -953,7 +1066,7 @@ export function ExpertPortfolioPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-[180px_1fr]">
               <Field label="Số năm kinh nghiệm">
                 <Input
-                  type="number"
+                  type="text"
                   min="0"
                   value={form.yearsExperience}
                   disabled
@@ -1073,6 +1186,12 @@ export function ExpertPortfolioPage() {
               </div>
             </div>
           </Card>
+
+          {saved && (
+            <Notice tone="success" title="Đã lưu portfolio">
+              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
+            </Notice>
+          )}
         </aside>
       </div>
     </div>

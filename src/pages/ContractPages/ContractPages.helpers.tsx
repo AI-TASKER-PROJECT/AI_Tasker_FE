@@ -126,7 +126,7 @@ export function ContractsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Hợp đồng"
-          description="Danh sách contract để đi vào đàm phán, NDA, workspace milestone, escrow và review."
+          description="Danh sách hợp đồng để đi vào đàm phán, kí quỹ, nghiệm thu và quản lý tiến độ dự án."
         />
       </div>
       <Card className="p-4">
@@ -763,7 +763,9 @@ export function ContractDetailPage() {
                   <p className="min-w-0 truncate font-extrabold text-ink">
                     {milestone.orderIndex}. {milestone.milestoneName}
                   </p>
-                  <StatusBadge status={translateContractStatus(milestone.status)} />
+                  <StatusBadge
+                    status={translateContractStatus(milestone.status)}
+                  />
                 </div>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
                   {formatCurrency(milestone.fundsAllocated)}
@@ -988,23 +990,40 @@ function normalizeContractStatus(status?: string) {
 export function translateContractStatus(status?: string) {
   const norm = (status || "").trim().toUpperCase();
   switch (norm) {
-    case "DRAFT": return "Nháp";
-    case "PENDING": return "Chờ phản hồi";
-    case "PENDINGDEPOSIT": return "Chờ ký quỹ";
-    case "ACTIVE": return "Đang hoạt động";
-    case "IN_PROGRESS": return "Đang thực hiện";
-    case "COMPLETED": return "Hoàn thành";
-    case "CANCELLED": return "Đã hủy";
-    case "TERMINATED": return "Kết thúc sớm";
-    case "REJECTED": return "Bị từ chối";
-    case "UNDER_REVIEW": return "Chờ nghiệm thu";
-    case "RELEASED": return "Đã thanh toán";
-    case "SUCCESS": return "Thành công";
-    case "FAILED": return "Thất bại";
-    case "OPEN": return "Mở";
-    case "CLOSED": return "Đóng";
-    case "RESOLVED": return "Đã giải quyết";
-    default: return status;
+    case "DRAFT":
+      return "Nháp";
+    case "PENDING":
+      return "Chờ phản hồi";
+    case "PENDINGDEPOSIT":
+      return "Chờ ký quỹ";
+    case "ACTIVE":
+      return "Đang hoạt động";
+    case "IN_PROGRESS":
+      return "Đang thực hiện";
+    case "COMPLETED":
+      return "Hoàn thành";
+    case "CANCELLED":
+      return "Đã hủy";
+    case "TERMINATED":
+      return "Kết thúc sớm";
+    case "REJECTED":
+      return "Bị từ chối";
+    case "UNDER_REVIEW":
+      return "Chờ nghiệm thu";
+    case "RELEASED":
+      return "Đã thanh toán";
+    case "SUCCESS":
+      return "Thành công";
+    case "FAILED":
+      return "Thất bại";
+    case "OPEN":
+      return "Mở";
+    case "CLOSED":
+      return "Đóng";
+    case "RESOLVED":
+      return "Đã giải quyết";
+    default:
+      return status;
   }
 }
 
@@ -1511,7 +1530,9 @@ export function WorkspacePage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="brand">Mốc {milestone.orderIndex}</Badge>
-                    <StatusBadge status={translateContractStatus(milestone.status)} />
+                    <StatusBadge
+                      status={translateContractStatus(milestone.status)}
+                    />
                   </div>
                   <h3 className="mt-3 font-display text-xl font-extrabold text-ink">
                     {milestone.milestoneName}
@@ -1732,6 +1753,7 @@ export function FinancePage() {
   const isAdmin = session?.role === "ADMIN";
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
   const [lookupMilestoneId, setLookupMilestoneId] = useState("");
   const [transactionOpen, setTransactionOpen] = useState(false);
@@ -1749,6 +1771,19 @@ export function FinancePage() {
       .current()
       .then(setWallet)
       .catch(() => setWallet(null));
+
+    contractApi
+      .listContracts()
+      .then((list) => {
+        setContracts(
+          list.filter((c) =>
+            ["ACTIVE", "IN_PROGRESS", "COMPLETED", "RELEASED"].includes(
+              (c.status || "").toUpperCase(),
+            ),
+          ),
+        );
+      })
+      .catch(() => setContracts([]));
   }, []);
 
   const loadTransactions = async (milestoneIdValue = lookupMilestoneId) => {
@@ -1814,48 +1849,44 @@ export function FinancePage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Ví thanh toán & ký quỹ"
-          description="Nạp số dư qua payOS để sử dụng trong nền tảng, đồng thời theo dõi giao dịch ký quỹ theo từng milestone."
+          title={
+            session?.role === "EXPERT"
+              ? "Quản lý doanh thu hợp đồng"
+              : "Quản lý quỹ & chi phí dự án"
+          }
+          description={
+            session?.role === "EXPERT"
+              ? "Theo dõi doanh thu từ các dự án và số tiền đang được chờ nghiệm thu."
+              : "Nạp số dư để sử dụng những tính năng của nền tảng và theo dõi giao dịch ký quỹ theo từng giai đoạn."
+          }
           actions={null}
         />
       </div>
-      <Card className="overflow-hidden border-brand-100 bg-gradient-to-br from-brand-50 via-white to-indigo-50">
-        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <Badge tone="brand">PAYOS · NẠP VÍ</Badge>
-            <h2 className="mt-3 font-display text-2xl font-black tracking-tight text-ink">
-              Nạp tiền nhanh, hệ thống tự đối soát
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Nhập số tiền nguyên VND từ 2.000d, quét QR hoặc mở trang payOS.
-              Khi payOS xác nhận, số dư khả dụng được cập nhật tự động qua
-              wallet ledger.
-            </p>
-          </div>
-        </div>
-      </Card>
+
       <Card className="p-5">
         {wallet && (
           <div className="mb-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Available wallet
+                Số dư khả dụng
               </p>
               <p className="mt-2 font-display text-2xl font-black text-ink">
-                {formatCompactCurrency(wallet.availableBalance)}
+                {formatCurrency(wallet.availableBalance)}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Escrow balance
+                {session?.role === "EXPERT"
+                  ? "Chờ nghiệm thu"
+                  : "Số tiền kí quỹ"}
               </p>
               <p className="mt-2 font-display text-2xl font-black text-amber-700">
-                {formatCompactCurrency(wallet.escrowBalance)}
+                {formatCurrency(wallet.escrowBalance)}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Wallet type
+                Ví
               </p>
               <p className="mt-2 font-display text-2xl font-black text-brand-700">
                 {wallet.walletType}
@@ -1863,104 +1894,196 @@ export function FinancePage() {
             </div>
           </div>
         )}
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field label="Tải giao dịch theo Milestone ID">
-            <Input
-              type="number"
-              min={1}
-              value={lookupMilestoneId}
-              onChange={(event) => setLookupMilestoneId(event.target.value)}
-            />
-          </Field>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => loadTransactions()}
-          >
-            Tải từ API
-          </Button>
-        </div>
+        {isAdmin && (
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+            <Field label="Tải giao dịch theo Milestone ID">
+              <Input
+                type="number"
+                min={1}
+                value={lookupMilestoneId}
+                onChange={(event) => setLookupMilestoneId(event.target.value)}
+              />
+            </Field>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => loadTransactions()}
+            >
+              Tải từ API
+            </Button>
+          </div>
+        )}
         {message && <Notice tone="danger" title={message} className="mt-4" />}
       </Card>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-5">
-          <p className="text-sm font-bold text-slate-500">Tổng lưu chuyển</p>
-          <p className="mt-2 font-display text-3xl font-black text-ink">
-            {formatCompactCurrency(
-              transactions.reduce((sum, item) => sum + item.amount, 0),
-            )}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm font-bold text-slate-500">Phí nền tảng</p>
-          <p className="mt-2 font-display text-3xl font-black text-mint-600">
-            {formatCompactCurrency(
-              transactions.reduce((sum, item) => sum + item.commissionFee, 0),
-            )}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm font-bold text-slate-500">Giao dịch pending</p>
-          <p className="mt-2 font-display text-3xl font-black text-coral-600">
-            {transactions.filter((item) => item.status === "Pending").length}
-          </p>
-        </Card>
-      </div>
-      <Card className="overflow-hidden">
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_120px_120px_130px_260px]">
-          <span>Milestone</span>
-          <span>Loại</span>
-          <span>Số tiền</span>
-          <span>Status</span>
-          <span>Action</span>
-        </div>
-        {transactions.map((tx) => (
-          <div
-            key={tx.transactionId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_120px_120px_130px_260px] md:items-center"
-          >
-            <div>
-              <p className="font-extrabold text-ink">#{tx.transactionId}</p>
-              <p className="mt-1 text-slate-500">
-                {tx.milestoneName || `Milestone #${tx.milestoneId}`}
-              </p>
-            </div>
-            <Badge tone="brand">{tx.transactionType}</Badge>
-            <span className="font-extrabold text-ink">
-              {formatCompactCurrency(tx.amount)}
-            </span>
-            <StatusBadge status={translateContractStatus(tx.status)} />
-            <div className="flex flex-wrap gap-2">
-              {isAdmin ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="success"
-                    onClick={() => webhook(tx.transactionId)}
-                  >
-                    Webhook
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => updateStatus(tx.transactionId, "Failed")}
-                  >
-                    Fail
-                  </Button>
-                </>
-              ) : (
-                <Badge tone="slate">View only</Badge>
+      {isAdmin && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="p-5">
+            <p className="text-sm font-bold text-slate-500">Tổng lưu chuyển</p>
+            <p className="mt-2 font-display text-3xl font-black text-ink">
+              {formatCurrency(
+                transactions.reduce((sum, item) => sum + item.amount, 0),
               )}
-            </div>
+            </p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-sm font-bold text-slate-500">Phí nền tảng</p>
+            <p className="mt-2 font-display text-3xl font-black text-mint-600">
+              {formatCurrency(
+                transactions.reduce((sum, item) => sum + item.commissionFee, 0),
+              )}
+            </p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-sm font-bold text-slate-500">
+              Giao dịch pending
+            </p>
+            <p className="mt-2 font-display text-3xl font-black text-coral-600">
+              {transactions.filter((item) => item.status === "Pending").length}
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {isAdmin && (
+        <Card className="overflow-hidden">
+          <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_120px_120px_130px_260px]">
+            <span>Milestone</span>
+            <span>Loại</span>
+            <span>Số tiền</span>
+            <span>Status</span>
+            <span>Action</span>
           </div>
-        ))}
-        {transactions.length === 0 && (
-          <EmptyState
-            title="Chưa có giao dịch"
-            description="Nhập Milestone ID thật để tải transaction từ back-end."
-          />
-        )}
-      </Card>
+          {transactions.map((tx) => (
+            <div
+              key={tx.transactionId}
+              className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_120px_120px_130px_260px] md:items-center"
+            >
+              <div>
+                <p className="font-extrabold text-ink">#{tx.transactionId}</p>
+                <p className="mt-1 text-slate-500">
+                  {tx.milestoneName || `Milestone #${tx.milestoneId}`}
+                </p>
+              </div>
+              <Badge tone="brand">{tx.transactionType}</Badge>
+              <span className="font-extrabold text-ink">
+                {formatCurrency(tx.amount)}
+              </span>
+              <StatusBadge status={translateContractStatus(tx.status)} />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => webhook(tx.transactionId)}
+                >
+                  Webhook
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => updateStatus(tx.transactionId, "Failed")}
+                >
+                  Fail
+                </Button>
+              </div>
+            </div>
+          ))}
+          {transactions.length === 0 && (
+            <EmptyState
+              title="Chưa có giao dịch"
+              description="Nhập Milestone ID thật để tải transaction từ back-end."
+            />
+          )}
+        </Card>
+      )}
+
+      {!isAdmin && (
+        <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">
+                {session?.role === "EXPERT"
+                  ? "Tổng doanh thu"
+                  : "Tổng ngân sách đã cọc"}
+              </p>
+              <p className="mt-2 font-display text-3xl font-black text-ink">
+                {formatCurrency(
+                  contracts.reduce((sum, item) => sum + item.totalBudget, 0),
+                )}
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">
+                Dự án đang thực thi
+              </p>
+              <p className="mt-2 font-display text-3xl font-black text-mint-600">
+                {
+                  contracts.filter((c) =>
+                    ["ACTIVE", "IN_PROGRESS"].includes(
+                      (c.status || "").toUpperCase(),
+                    ),
+                  ).length
+                }
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">
+                Dự án đã hoàn thành
+              </p>
+              <p className="mt-2 font-display text-3xl font-black text-coral-600">
+                {
+                  contracts.filter((c) =>
+                    ["COMPLETED", "RELEASED"].includes(
+                      (c.status || "").toUpperCase(),
+                    ),
+                  ).length
+                }
+              </p>
+            </Card>
+          </div>
+          <Card className="overflow-hidden">
+            <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_150px_150px_150px]">
+              <span>Dự án</span>
+              <span>
+                {session?.role === "EXPERT" ? "Doanh thu" : "Ngân sách"}
+              </span>
+              <span>Thời gian</span>
+              <span>Trạng thái</span>
+            </div>
+            {contracts.map((contract) => (
+              <div
+                key={contract.contractId}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_150px_150px_150px] md:items-center"
+              >
+                <div>
+                  <p className="font-extrabold text-ink">
+                    {contract.contractTitle ||
+                      contract.title ||
+                      `Hợp đồng #${contract.contractId}`}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Hợp đồng ID: {contract.contractId}
+                  </p>
+                </div>
+                <span className="font-extrabold text-brand-700">
+                  {formatCurrency(contract.totalBudget)}
+                </span>
+                <span className="text-slate-600">
+                  {contract.timelineDays} ngày
+                </span>
+                <StatusBadge
+                  status={translateContractStatus(contract.status)}
+                />
+              </div>
+            ))}
+            {contracts.length === 0 && (
+              <EmptyState
+                title="Chưa có dự án"
+                description="Chưa có dự án nào được cọc."
+              />
+            )}
+          </Card>
+        </>
+      )}
 
       <Modal
         open={transactionOpen}

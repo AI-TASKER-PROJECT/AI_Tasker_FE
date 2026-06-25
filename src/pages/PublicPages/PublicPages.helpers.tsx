@@ -682,6 +682,14 @@ export function LandingPage() {
 export function JobsPage() {
   const session = useSession();
   const publicExperience = getPublicExperience(session);
+  const [jobs, setJobs] = useState<Job[]>([]);
+
+  useEffect(() => {
+    marketplaceApi
+      .listJobs()
+      .then((data) => setJobs(data || []))
+      .catch(() => setJobs([]));
+  }, []);
 
   return (
     <div className="relative overflow-x-hidden bg-[#f7faff] pb-24 pt-16">
@@ -758,6 +766,31 @@ export function JobsPage() {
                 </p>
               </Card>
             ))}
+          </div>
+        </ScrollReveal>
+
+        {/* New Section: Job Listings */}
+        <ScrollReveal>
+          <div className="mt-32">
+            <div className="mb-12 text-center">
+              <h2 className="font-display text-3xl font-black text-ink">
+                Dự án đang nổi bật
+              </h2>
+              <p className="mt-4 text-lg text-slate-600">
+                Khám phá các dự án AI đang tuyển dụng chuyên gia trên nền tảng.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {jobs.length > 0 ? (
+                jobs.map((job) => (
+                  <JobCard key={job.jobId} job={job} hideStatus={true} />
+                ))
+              ) : (
+                <div className="col-span-full py-10 text-center text-slate-500">
+                  Chưa có dự án nào để hiển thị.
+                </div>
+              )}
+            </div>
           </div>
         </ScrollReveal>
 
@@ -964,15 +997,27 @@ export function JobsPage() {
   );
 }
 
-function getDomainTone(
-  name: string,
-): "brand" | "mint" | "coral" | "amber" | "rose" | "violet" {
-  const tones = ["brand", "mint", "coral", "amber", "rose", "violet"] as const;
+const domainTones = [
+  "brand",
+  "mint",
+  "coral",
+  "amber",
+  "rose",
+  "violet",
+] as const;
+
+type DomainTone = (typeof domainTones)[number];
+
+export function getDomainTone(name: string): DomainTone {
   let hash = 0;
+
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return tones[Math.abs(hash) % tones.length];
+
+  const index = Math.abs(hash) % domainTones.length;
+
+  return domainTones[index]!;
 }
 
 export function JobCard({
@@ -987,6 +1032,7 @@ export function JobCard({
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
   const [domainName, setDomainName] = useState<string>("");
+  const [isLoadingDomain, setIsLoadingDomain] = useState(true);
 
   const [businessName, setBusinessName] = useState(
     job.companyName || "Doanh nghiệp",
@@ -1028,14 +1074,19 @@ export function JobCard({
       catalogApi.listJobDomains(job.jobId),
     ])
       .then(([allDomains, jobDomains]) => {
-        if (!ignore && jobDomains.length > 0) {
-          const matched = allDomains.find(
-            (d) => d.domainId === jobDomains[0].id.domainId,
-          );
-          if (matched) setDomainName(matched.domainName);
+        if (!ignore) {
+          if (jobDomains.length > 0) {
+            const matched = allDomains.find(
+              (d) => d.domainId === jobDomains[0].id.domainId,
+            );
+            if (matched) setDomainName(matched.domainName);
+          }
+          setIsLoadingDomain(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!ignore) setIsLoadingDomain(false);
+      });
 
     return () => {
       ignore = true;
@@ -1045,15 +1096,10 @@ export function JobCard({
   return (
     <Card hover className="flex h-full flex-col p-5">
       <div className="flex min-h-9 items-start justify-between gap-3">
-        {domainName ? (
-          <Badge
-            tone={getDomainTone(domainName)}
-            className="w-fit border-0 px-3 py-1 text-[12px] font-semibold ring-0"
-          >
-            {domainName}
-          </Badge>
+        {!isLoadingDomain ? (
+          <JobDomainBadge label={domainName || "Chưa có lĩnh vực"} />
         ) : (
-          <div /> /* Empty div to push StatusBadge to the right if we wanted, but let's keep StatusBadge on the left if no domain */
+          <div className="h-6 w-24 animate-pulse rounded-full bg-slate-200" />
         )}
         {!hideStatus && <StatusBadge status={job.status} />}
       </div>
@@ -1215,13 +1261,6 @@ export function JobDetailPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
       <div className="mb-8">
-        <div className="mt-5 flex flex-wrap gap-2">
-          {jobDomainIds.map((domainId) => (
-            <Badge key={domainId} tone="brand">
-              {resolveDomainName(domainId, domains)}
-            </Badge>
-          ))}
-        </div>
         <h1 className="mt-5 font-display text-4xl font-black tracking-[-0.045em] text-ink">
           {job.title}
         </h1>
@@ -1479,9 +1518,25 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
                     : "Chưa xác định";
                 })()}
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-400">
-                Thời gian: {formatMilestoneDuration(milestone)}
-              </p>
+
+              {milestone.criteria && milestone.criteria.length > 0 && (
+                <div className="mt-3 space-y-1.5 border-t border-slate-200/60 pt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Tiêu chí nghiệm thu
+                  </p>
+                  <ul className="grid gap-1.5">
+                    {milestone.criteria.map((c, i) => (
+                      <li
+                        key={c.criteriaId || i}
+                        className="flex items-start gap-2 text-sm text-slate-600"
+                      >
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                        <span>{c.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <p className="text-sm font-extrabold text-ink md:text-right">
               {formatCurrency(milestone.fundsAllocated)}
@@ -1490,14 +1545,6 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
         ))}
     </div>
   );
-}
-
-function formatMilestoneDuration(milestone: Milestone) {
-  const duration = Number(milestone.duration || 0);
-  if (!Number.isFinite(duration) || duration <= 0) {
-    return "Chưa có thời gian";
-  }
-  return `${duration} ${milestone.durationUnit || "tuần"}`;
 }
 
 function BusinessInfoItem({

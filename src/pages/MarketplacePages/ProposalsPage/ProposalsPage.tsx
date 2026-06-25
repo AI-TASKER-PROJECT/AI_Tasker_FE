@@ -349,7 +349,7 @@ export function ProposalsPage() {
                     Ngân sách
                   </p>
                   <p className="font-display text-2xl font-black text-brand-700">
-                    {formatCompactCurrency(proposal.bidAmount)}
+                    {formatCurrency(proposal.bidAmount)}
                   </p>
                 </div>
               </div>

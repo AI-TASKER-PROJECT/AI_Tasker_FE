@@ -264,7 +264,7 @@ const roleNav: Record<Role, NavItem[]> = {
   ],
   ADMIN: [
     {
-      label: "System Wallet",
+      label: "Ví nền tảng",
       to: "/app/admin/wallet",
       icon: <WalletCards className="h-4 w-4" />,
     },
@@ -274,12 +274,12 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <ReceiptText className="h-4 w-4" />,
     },
     {
-      label: "Accounts",
+      label: "Tài khoản",
       to: "/app/admin/accounts",
       icon: <Users className="h-4 w-4" />,
     },
     {
-      label: "Analytics",
+      label: "Phân tích",
       to: "/app/admin/analytics",
       icon: <BarChart3 className="h-4 w-4" />,
     },
@@ -294,17 +294,17 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Gavel className="h-4 w-4" />,
     },
     {
-      label: "Quản lý Staff",
+      label: "Quản lý nhân viên",
       to: "/app/admin/staff",
       icon: <Users className="h-4 w-4" />,
     },
     {
-      label: "Master Data",
+      label: "Dữ liệu nền tảng",
       to: "/app/admin/master-data",
       icon: <BriefcaseBusiness className="h-4 w-4" />,
     },
     {
-      label: "Audit Logs",
+      label: "Nhật ký hệ thống",
       to: "/app/admin/audit-logs",
       icon: <ReceiptText className="h-4 w-4" />,
     },
@@ -314,7 +314,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <FileText className="h-4 w-4" />,
     },
     {
-      label: "System Settings",
+      label: "Cấu hình hệ thống",
       to: "/app/admin/settings",
       icon: <Settings2 className="h-4 w-4" />,
     },
@@ -1028,67 +1028,69 @@ export function AppShell() {
                     </div>
                     {session?.role !== "STAFF" && (
                       <div className="mt-2 rounded-2xl border border-slate-100 bg-white px-3 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
-                          Số dư
-                        </p>
-                        <button
-                          type="button"
-                          onClick={loadWallet}
-                          className="text-xs font-bold text-brand-600 hover:text-brand-700"
-                        >
-                          {walletLoading ? "Đang tải..." : "Làm mới"}
-                        </button>
-                      </div>
-                      <div className="mt-3 grid gap-2 grid-cols-1">
-                        <div className="rounded-2xl bg-slate-50 p-3">
-                          <p className="text-[11px] font-bold text-slate-400">
-                            {session?.role === "ADMIN" ? "Tổng doanh thu" : "Khả dụng"}
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                            Số dư
                           </p>
-                          <p className="mt-1 truncate text-sm font-black text-ink">
-                            {wallet
-                              ? formatCurrency(wallet.availableBalance)
-                              : "--"}
-                          </p>
+                          <button
+                            type="button"
+                            onClick={loadWallet}
+                            className="text-xs font-bold text-brand-600 hover:text-brand-700"
+                          >
+                            {walletLoading ? "Đang tải..." : "Làm mới"}
+                          </button>
                         </div>
-                      </div>
-
-                      {session?.role !== "ADMIN" && quota && (
-                        <div className="mt-3 space-y-2 rounded-2xl bg-slate-50 p-3">
-                          {session?.role !== "EXPERT" && (
-                            <div className="flex items-center justify-between">
-                              <p className="text-[11px] font-bold text-slate-400">
-                                Lượt đăng Job
-                              </p>
-                              <p className="text-sm font-black text-ink">
-                                {quota.jobPostQuotaBalance ?? 0}
-                              </p>
-                            </div>
-                          )}
-                          {session?.role !== "BUSINESS" && (
-                            <div className="flex items-center justify-between">
-                              <p className="text-[11px] font-bold text-slate-400">
-                                Lượt nộp Proposal
-                              </p>
-                              <p className="text-sm font-black text-ink">
-                                {quota.proposalQuotaBalance ?? 0}
-                              </p>
-                            </div>
-                          )}
+                        <div className="mt-3 grid gap-2 grid-cols-1">
+                          <div className="rounded-2xl bg-slate-50 p-3">
+                            <p className="text-[11px] font-bold text-slate-400">
+                              {session?.role === "ADMIN"
+                                ? "Tổng doanh thu"
+                                : "Khả dụng"}
+                            </p>
+                            <p className="mt-1 truncate text-sm font-black text-ink">
+                              {wallet
+                                ? formatCurrency(wallet.availableBalance)
+                                : "--"}
+                            </p>
+                          </div>
                         </div>
-                      )}
 
-                      {session?.role !== "ADMIN" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="mt-3 w-full"
-                          onClick={() => openTopup()}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Nạp tiền
-                        </Button>
-                      )}
+                        {session?.role !== "ADMIN" && quota && (
+                          <div className="mt-3 space-y-2 rounded-2xl bg-slate-50 p-3">
+                            {session?.role !== "EXPERT" && (
+                              <div className="flex items-center justify-between">
+                                <p className="text-[11px] font-bold text-slate-400">
+                                  Lượt đăng Job
+                                </p>
+                                <p className="text-sm font-black text-ink">
+                                  {quota.jobPostQuotaBalance ?? 0}
+                                </p>
+                              </div>
+                            )}
+                            {session?.role !== "BUSINESS" && (
+                              <div className="flex items-center justify-between">
+                                <p className="text-[11px] font-bold text-slate-400">
+                                  Lượt nộp Proposal
+                                </p>
+                                <p className="text-sm font-black text-ink">
+                                  {quota.proposalQuotaBalance ?? 0}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {session?.role !== "ADMIN" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="mt-3 w-full"
+                            onClick={() => openTopup()}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Nạp tiền
+                          </Button>
+                        )}
                       </div>
                     )}
                     <div className="my-2 border-t border-slate-100" />
@@ -1206,24 +1208,15 @@ export function AppShell() {
           className="grid gap-4"
           onSubmit={submitTopup}
         >
-          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
+          <div className="rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4 ring-1 ring-brand-100">
             <div>
-              <p className="text-xs font-bold text-slate-400">Số dư khả dụng</p>
-              <p className="mt-1 text-lg font-black text-ink">
+              <p className="text-xs font-bold text-brand-700 uppercase tracking-wide">Số dư khả dụng</p>
+              <p className="mt-1 text-lg font-black text-brand-700">
                 {wallet ? formatCurrency(wallet.availableBalance) : "--"}
               </p>
             </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400">Số dư hiện tại</p>
-              <p className="mt-1 text-lg font-black text-brand-700">
-                {wallet ? formatCurrency(wallet.currentBalance) : "--"}
-              </p>
-            </div>
           </div>
-          <Field
-            label="Số tiền nạp"
-            hint="Yêu cầu số tiền ít nhất 2.000 VNĐ."
-          >
+          <Field label="Số tiền nạp" hint="Yêu cầu số tiền ít nhất 2.000 VNĐ.">
             <Input
               type="text"
               value={
