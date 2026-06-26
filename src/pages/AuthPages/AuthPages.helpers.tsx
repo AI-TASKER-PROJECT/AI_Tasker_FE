@@ -11,7 +11,13 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { GoogleAuthButton } from "../../components/GoogleAuthButton";
 import { Logo } from "../../components/Logo";
 import {
@@ -55,21 +61,117 @@ type GoogleSignupDraft = {
   role: "BUSINESS" | "EXPERT";
 };
 
+const LOGIN_FAILED_ATTEMPT_LIMIT = 5;
+const LOGIN_LOCAL_LOCK_MS = 5 * 60 * 1000;
+const LOGIN_ATTEMPT_STORAGE_PREFIX = "aitasker:login-attempt:";
+
+type LoginAttemptState = {
+  attempts: number;
+  lockUntil?: number;
+};
+
+function loginAttemptKey(email: string) {
+  return `${LOGIN_ATTEMPT_STORAGE_PREFIX}${email.trim().toLowerCase()}`;
+}
+
+function readLoginAttemptState(email: string): LoginAttemptState {
+  if (!email) return { attempts: 0 };
+  try {
+    const raw = localStorage.getItem(loginAttemptKey(email));
+    if (!raw) return { attempts: 0 };
+    const parsed = JSON.parse(raw) as LoginAttemptState;
+    if (parsed.lockUntil && parsed.lockUntil <= Date.now()) {
+      localStorage.removeItem(loginAttemptKey(email));
+      return { attempts: 0 };
+    }
+    return {
+      attempts: Number.isFinite(parsed.attempts) ? parsed.attempts : 0,
+      lockUntil: parsed.lockUntil,
+    };
+  } catch {
+    return { attempts: 0 };
+  }
+}
+
+function writeLoginAttemptState(email: string, state: LoginAttemptState) {
+  if (!email) return;
+  localStorage.setItem(loginAttemptKey(email), JSON.stringify(state));
+}
+
+function clearLoginAttemptState(email: string) {
+  if (!email) return;
+  localStorage.removeItem(loginAttemptKey(email));
+}
+
+function recordFailedLoginAttempt(email: string): LoginAttemptState {
+  const current = readLoginAttemptState(email);
+  const attempts = current.attempts + 1;
+  const next: LoginAttemptState =
+    attempts >= LOGIN_FAILED_ATTEMPT_LIMIT
+      ? { attempts, lockUntil: Date.now() + LOGIN_LOCAL_LOCK_MS }
+      : { attempts };
+  writeLoginAttemptState(email, next);
+  return next;
+}
+
+function formatLockRemaining(lockUntil?: number) {
+  if (!lockUntil) return "0s";
+  const remainingSeconds = Math.max(
+    0,
+    Math.ceil((lockUntil - Date.now()) / 1000),
+  );
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialMessage =
+    (location.state as { message?: string } | null)?.message || "";
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage);
+  const [messageTone, setMessageTone] = useState<"danger" | "success">(
+    initialMessage ? "success" : "danger",
+  );
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(0);
+  const [loginLockUntil, setLoginLockUntil] = useState<number | undefined>();
+  const [loginLockClock, setLoginLockClock] = useState(() => Date.now());
   const [phoneError, setPhoneError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loginStep, setLoginStep] = useState<"LOGIN" | "GOOGLE_PROFILE">(
     "LOGIN",
   );
+  const normalizedLoginEmail = form.email.trim().toLowerCase();
+  const isLoginLocallyLocked =
+    Boolean(loginLockUntil) && Number(loginLockUntil) > loginLockClock;
+  const remainingLoginAttempts = Math.max(
+    0,
+    LOGIN_FAILED_ATTEMPT_LIMIT - failedLoginAttempts,
+  );
+
+  useEffect(() => {
+    if (!isLoginLocallyLocked) return;
+    const timer = window.setInterval(() => {
+      setLoginLockClock(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isLoginLocallyLocked]);
 
   const login = async (event: FormEvent) => {
     //login bth
     event.preventDefault();
+    if (isLoginLocallyLocked) {
+      setMessageTone("danger");
+      setMessage(
+        `Bạn đã nhập sai mật khẩu quá ${LOGIN_FAILED_ATTEMPT_LIMIT} lần. Vui lòng thử lại sau ${formatLockRemaining(loginLockUntil)}.`,
+      );
+      return;
+    }
     if (!validateEmail(form.email.trim())) {
       setEmailError("Email không đúng định dạng (VD: example@email.com).");
       return;
@@ -80,14 +182,48 @@ export function LoginPage() {
     }
     setLoading(true);
     setMessage("");
+    setMessageTone("danger");
+    let emailChecked = false;
     try {
+      const emailExists = await authApi.checkEmail(normalizedLoginEmail);
+      emailChecked = true;
+      if (!emailExists) {
+        clearLoginAttemptState(normalizedLoginEmail);
+        setFailedLoginAttempts(0);
+        setLoginLockUntil(undefined);
+        setMessage("Email không tồn tại trong hệ thống.");
+        return;
+      }
+
       const session = await authApi.login({
-        email: form.email.trim().toLowerCase(),
+        email: normalizedLoginEmail,
         password: form.password,
       });
+      clearLoginAttemptState(normalizedLoginEmail);
+      setFailedLoginAttempts(0);
+      setLoginLockUntil(undefined);
       saveSession(session); //lưu session user
       navigate("/app"); // chuyển qua trang app
-    } catch {
+    } catch (error) {
+      if (!emailChecked) {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Không thể kiểm tra email. Vui lòng thử lại.",
+        );
+        return;
+      }
+      const attemptState = recordFailedLoginAttempt(normalizedLoginEmail);
+      setFailedLoginAttempts(attemptState.attempts);
+      setLoginLockUntil(attemptState.lockUntil);
+      setLoginLockClock(Date.now());
+      const loginFailureMessage = attemptState.lockUntil
+        ? `Bạn đã nhập sai mật khẩu ${LOGIN_FAILED_ATTEMPT_LIMIT} lần. Tạm khóa đăng nhập trên trình duyệt này trong ${formatLockRemaining(attemptState.lockUntil)}.`
+        : `Mật khẩu không đúng. Còn ${
+            LOGIN_FAILED_ATTEMPT_LIMIT - attemptState.attempts
+          } lần thử trước khi tạm khóa.`;
+      queueMicrotask(() => setMessage(loginFailureMessage));
+      setMessageTone("danger");
       setMessage(
         "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
       );
@@ -105,6 +241,7 @@ export function LoginPage() {
     async (credential: string) => {
       setLoading(true);
       setMessage("");
+      setMessageTone("danger");
       try {
         const payload = decodeGoogleCredential(credential);
         const email = payload.email.trim().toLowerCase();
@@ -132,6 +269,7 @@ export function LoginPage() {
         });
         setLoginStep("GOOGLE_PROFILE");
       } catch {
+        setMessageTone("danger");
         setMessage("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
       } finally {
         setLoading(false);
@@ -151,6 +289,7 @@ export function LoginPage() {
     }
     setLoading(true);
     setMessage("");
+    setMessageTone("danger");
 
     try {
       const session = await authApi.googleSignup({
@@ -164,6 +303,7 @@ export function LoginPage() {
       saveSession(session);
       navigate("/app");
     } catch {
+      setMessageTone("danger");
       setMessage("Không thể đăng ký bằng Google. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -188,13 +328,29 @@ export function LoginPage() {
       {loginStep === "LOGIN" ? (
         <>
           <form onSubmit={login} className="grid gap-4" noValidate>
-            {message && <Notice tone="danger" title={message} />}
+            {message && <Notice tone={messageTone} title={message} />}
+            {isLoginLocallyLocked ? (
+              <Notice
+                tone="danger"
+                title={`Đang tạm khóa đăng nhập trên trình duyệt này. Thử lại sau ${formatLockRemaining(loginLockUntil)}.`}
+              />
+            ) : failedLoginAttempts > 0 && !message ? (
+              <Notice
+                tone="danger"
+                title={`Bạn đã nhập sai mật khẩu ${failedLoginAttempts} lần. Còn ${remainingLoginAttempts} lần thử trước khi tạm khóa.`}
+              />
+            ) : null}
             <Field label="Email">
               <Input
                 type="email"
                 value={form.email}
                 onChange={(event) => {
-                  setForm((value) => ({ ...value, email: event.target.value }));
+                  const nextEmail = event.target.value;
+                  const attemptState = readLoginAttemptState(nextEmail);
+                  setForm((value) => ({ ...value, email: nextEmail }));
+                  setFailedLoginAttempts(attemptState.attempts);
+                  setLoginLockUntil(attemptState.lockUntil);
+                  setLoginLockClock(Date.now());
                   if (emailError) setEmailError("");
                 }}
                 onBlur={(event) => {
@@ -241,7 +397,20 @@ export function LoginPage() {
                 </span>
               )}
             </Field>
-            <Button type="submit" size="lg" loading={loading}>
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-bold text-brand-600 transition hover:text-brand-700"
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              loading={loading}
+              disabled={isLoginLocallyLocked}
+            >
               Đăng nhập <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
@@ -249,7 +418,10 @@ export function LoginPage() {
           <GoogleAuthButton
             mode="login"
             onCredential={loginWithGoogle}
-            onError={(errorMessage) => setMessage(errorMessage)}
+            onError={(errorMessage) => {
+              setMessageTone("danger");
+              setMessage(errorMessage);
+            }}
           />
           <p className="mt-6 text-center text-sm text-slate-500">
             Chưa có tài khoản?{" "}
@@ -260,7 +432,7 @@ export function LoginPage() {
         </>
       ) : (
         <form onSubmit={submitGoogleSignup} className="grid gap-4" noValidate>
-          {message && <Notice tone="danger" title={message} />}
+          {message && <Notice tone={messageTone} title={message} />}
           <Field
             label="Họ tên"
             hint="Nếu bỏ trống, hệ thống sẽ lấy tên từ email Google."
@@ -341,6 +513,227 @@ export function LoginPage() {
           </Button>
         </form>
       )}
+    </AuthFrame>
+  );
+}
+
+export function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"danger" | "success">(
+    "success",
+  );
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!validateEmail(normalizedEmail)) {
+      setEmailError("Email không đúng định dạng (VD: example@email.com).");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setMessageTone("success");
+    try {
+      const emailExists = await authApi.checkEmail(normalizedEmail);
+      if (!emailExists) {
+        setMessageTone("danger");
+        setMessage("Email không tồn tại trong hệ thống.");
+        return;
+      }
+
+      await authApi.forgotPassword({ email: normalizedEmail });
+      setMessage(
+        "Hãy kiểm tra email của bạn để truy cập vào link đổi mật khẩu.",
+      );
+    } catch (error) {
+      setMessageTone("danger");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (getSession()) return <Navigate to="/app" replace />;
+
+  return (
+    <AuthFrame
+      title="Quên mật khẩu"
+      description="Nhập email tài khoản để đặt lại mật khẩu!."
+    >
+      <form onSubmit={submit} className="grid gap-4" noValidate>
+        {message && <Notice tone={messageTone} title={message} />}
+        <Field label="Email">
+          <Input
+            type="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              if (emailError) setEmailError("");
+            }}
+            onBlur={(event) => {
+              const value = event.target.value.trim();
+              if (!value) {
+                setEmailError("Email không được để trống.");
+              } else if (!validateEmail(value)) {
+                setEmailError("Email không đúng định dạng (VD: example@email.com).");
+              }
+            }}
+            required
+          />
+          {emailError && (
+            <span className="mt-1 block text-xs text-red-500">
+              {emailError}
+            </span>
+          )}
+        </Field>
+        <Button type="submit" size="lg" loading={loading}>
+          Gửi link đặt lại mật khẩu <ArrowRight className="h-4 w-4" />
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Đã nhớ mật khẩu?{" "}
+        <Link to="/login" className="font-bold text-brand-600">
+          Đăng nhập
+        </Link>
+      </p>
+    </AuthFrame>
+  );
+}
+
+export function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const [form, setForm] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"danger" | "success">(
+    "danger",
+  );
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!token) {
+      setMessageTone("danger");
+      setMessage("Link đặt lại mật khẩu không hợp lệ!");
+      return;
+    }
+    if (!validatePassword(form.newPassword)) {
+      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (form.confirmPassword !== form.newPassword) {
+      setConfirmError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setMessageTone("danger");
+    try {
+      await authApi.resetPassword({
+        token,
+        newPassword: form.newPassword,
+      });
+      navigate("/login", {
+        replace: true,
+        state: { message: "Mật khẩu đã được đặt lại. Vui lòng đăng nhập." },
+      });
+    } catch (error) {
+      setMessageTone("danger");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Không thể đặt lại mật khẩu. Link có thể đã hết hạn.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (getSession()) return <Navigate to="/app" replace />;
+
+  return (
+    <AuthFrame
+      title="Dat lai mat khau"
+      description="Nhập mật khẩu mới cho tài khoản của bạn."
+    >
+      <form onSubmit={submit} className="grid gap-4" noValidate>
+        {message && <Notice tone={messageTone} title={message} />}
+        {!token && (
+          <Notice
+            tone="danger"
+            title="Link đặt lại mật khẩu không hợp lệ."
+          />
+        )}
+        <Field label="Mật khẩu mới" hint="Tối thiểu 8 ký tự">
+          <Input
+            type="password"
+            minLength={8}
+            value={form.newPassword}
+            onChange={(event) => {
+              setForm((value) => ({
+                ...value,
+                newPassword: event.target.value,
+              }));
+              if (passwordError) setPasswordError("");
+            }}
+            required
+          />
+          {passwordError && (
+            <span className="mt-1 block text-xs text-red-500">
+              {passwordError}
+            </span>
+          )}
+        </Field>
+        <Field label="Xác nhận mật khẩu mới">
+          <Input
+            type="password"
+            minLength={8}
+            value={form.confirmPassword}
+            onChange={(event) => {
+              setForm((value) => ({
+                ...value,
+                confirmPassword: event.target.value,
+              }));
+              if (confirmError) setConfirmError("");
+            }}
+            required
+          />
+          {confirmError && (
+            <span className="mt-1 block text-xs text-red-500">
+              {confirmError}
+            </span>
+          )}
+        </Field>
+        <Button
+          type="submit"
+          size="lg"
+          loading={loading}
+          disabled={!token}
+        >
+          Dat lai mat khau <CheckCircle2 className="h-4 w-4" />
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Muon nhan link moi?{" "}
+        <Link to="/forgot-password" className="font-bold text-brand-600">
+          Quen mat khau
+        </Link>
+      </p>
     </AuthFrame>
   );
 }

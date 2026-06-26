@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import { AppShell } from "../layouts/AppLayout";
 import { PublicShell } from "../layouts/PublicLayout";
 import { getSession } from "../context/sessionContext";
-import { LoginPage, RegisterPage } from "../pages/AuthPages";
+import {
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  ResetPasswordPage,
+} from "../pages/AuthPages";
 import {
   AccountsPage,
   AdminWithdrawalPage,
@@ -120,6 +125,8 @@ export function AppRoutes() {
       </Route>
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
+      <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="reset-password" element={<ResetPasswordPage />} />
 
       <Route path="app" element={<ProtectedRoute />}>
         <Route
