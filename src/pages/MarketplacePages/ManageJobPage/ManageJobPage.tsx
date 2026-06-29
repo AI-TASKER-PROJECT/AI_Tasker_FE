@@ -317,7 +317,7 @@ export function ManageJobPage() {
           description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
           actions={
             <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-              Xem public detail
+              Xem bài đăng công khai
             </LinkButton>
           }
         />
@@ -348,12 +348,14 @@ export function ManageJobPage() {
           {proposalTab === "ai" && (
             <div className="grid gap-5">
               {/* Header row */}
+              {/* Header row */}
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <SectionHeading
                   title="AI đề xuất chuyên gia"
                   description="Top 5 chuyên gia phù hợp nhất với yêu cầu của dự án"
                 />
-                <div className="flex gap-2">
+
+                <div className="flex flex-wrap items-center gap-2">
                   {recommendationResult && (
                     <Badge
                       tone={
@@ -364,6 +366,18 @@ export function ManageJobPage() {
                         ? "✦ AI generated"
                         : "Rule-based"}
                     </Badge>
+                  )}
+
+                  {recommendationResult && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={generateRecommendations}
+                      disabled={aiLoading}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Tạo lại đề xuất
+                    </Button>
                   )}
                 </div>
               </div>
@@ -468,6 +482,15 @@ export function ManageJobPage() {
               <span className="text-slate-500">Ngân sách</span>
               <span className="min-w-0 break-words text-right font-extrabold text-ink">
                 {formatCurrency(job.budget)}
+              </span>
+            </div>
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
+              <span className="text-slate-500">Thời lượng</span>
+              <span className="min-w-0 break-words text-right font-extrabold text-ink">
+                {job.plannedDurationValue || 0}{" "}
+                {job.plannedDurationUnit === "WEEK"
+                  ? "TUẦN"
+                  : job.plannedDurationUnit || "TUẦN"}
               </span>
             </div>
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 text-sm">
@@ -766,6 +789,7 @@ function ProposalCard({
   onContract: () => void;
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
+  const [proposalDetailOpen, setProposalDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
   const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
@@ -776,14 +800,31 @@ function ProposalCard({
   const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
+    let ignore = false;
+
+    profileApi
+      .getExpertById(proposal.expertId)
+      .then((data) => {
+        if (!ignore) {
+          setExpertProfile(data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
+  }, [proposal.expertId]);
+
+  useEffect(() => {
     if (!expertOpen) return;
     let ignore = false;
 
     async function loadExpertDetail() {
       setDetailLoading(true);
       setDetailMessage("");
-      const [expertsResult, portfoliosResult] = await Promise.allSettled([
-        profileApi.listExperts(),
+      const [expertResult, portfoliosResult] = await Promise.allSettled([
+        profileApi.getExpertById(proposal.expertId),
         profileApi.listPortfolios(),
       ]);
       const [domainsResult, skillsResult] = await Promise.allSettled([
@@ -793,16 +834,15 @@ function ProposalCard({
 
       if (ignore) return;
 
-      const experts =
-        expertsResult.status === "fulfilled" ? expertsResult.value : [];
       const portfolios =
         portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
-      const profile =
-        experts.find((item) => item.expertId === proposal.expertId) || null;
       const matchedPortfolio =
         portfolios.find((item) => item.expertId === proposal.expertId) || null;
 
-      setExpertProfile(profile);
+      if (expertResult.status === "fulfilled") {
+        setExpertProfile(expertResult.value);
+      }
+
       setPortfolio(matchedPortfolio);
       setDomains(
         domainsResult.status === "fulfilled" ? domainsResult.value : [],
@@ -811,7 +851,7 @@ function ProposalCard({
       setDetailLoading(false);
 
       if (
-        expertsResult.status === "rejected" ||
+        expertResult.status === "rejected" ||
         portfoliosResult.status === "rejected"
       ) {
         setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
@@ -828,22 +868,27 @@ function ProposalCard({
     expertProfile?.fullName ||
     proposal.expertName ||
     `Expert #${proposal.expertId}`;
+
   const domainNames = resolveCatalogNames(
     portfolio?.domainIds,
     domains,
     "domainId",
     "domainName",
   );
+
   const skillNames = resolveCatalogNames(
     portfolio?.skillIds,
     skills,
     "skillId",
     "skillName",
   );
+
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
+
   const proposalMilestones = parseProposalMilestones(
     proposal.proposalMilestone,
   );
+
   const canCreateContract =
     proposal.status === "Accepted" && !contract && !statusLocked;
 
@@ -851,11 +896,11 @@ function ProposalCard({
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
       <div className="grid gap-4 bg-[linear-gradient(135deg,#f8fbff,#effcf7)] p-5 lg:grid-cols-[1fr_220px]">
         <div className="flex gap-3">
-          <Avatar name={proposal.expertName} size="lg" />
+          <Avatar name={expertName} size="lg" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="break-words font-display text-lg font-black text-ink">
-                {proposal.expertName || `Expert #${proposal.expertId}`}
+                {expertName}
               </p>
               <StatusBadge status={translateStatus(proposal.status)} />
             </div>
@@ -867,6 +912,7 @@ function ProposalCard({
             </p>
           </div>
         </div>
+
         <div className="rounded-3xl bg-white/85 p-4 text-left shadow-sm lg:text-right">
           <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
             Ngân sách
@@ -878,80 +924,39 @@ function ProposalCard({
       </div>
 
       <div className="grid gap-4 p-5">
-        <div className="grid gap-3 lg:grid-cols-2">
-          <ProposalInfoBlock title="Technical solution">
-            {proposal.technicalSolution}
-          </ProposalInfoBlock>
-          <ProposalInfoBlock title="Proposal description">
-            {proposal.proposalDescription || "Chưa có mô tả proposal."}
-          </ProposalInfoBlock>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-              Proposal milestone
-            </p>
-            {proposalMilestones.length > 0 ? (
-              <div className="mt-3 grid gap-2">
-                {proposalMilestones.map((item) => (
-                  <div
-                    key={item.milestoneId}
-                    className="grid gap-3 rounded-xl bg-white px-3 py-3 text-sm md:grid-cols-[82px_1fr_auto] md:items-center"
-                  >
-                    <span className="font-extrabold text-brand-600">
-                      {formatProposalMilestoneOrder(
-                        item.milestoneId,
-                        milestones,
-                      )}
-                    </span>
-                    <span className="font-bold text-slate-600">
-                      {formatProposalMilestoneTitle(
-                        item.milestoneId,
-                        milestones,
-                      )}
-                      <span className="mt-1 block text-xs font-semibold text-slate-400">
-                        {formatProposalMilestoneStatus(
-                          item.milestoneId,
-                          milestones,
-                        )}
-                      </span>
-                    </span>
-                    <span className="font-extrabold text-ink">
-                      {formatCompactCurrency(item.proposedBudget)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm font-semibold text-slate-400">
-                Chuyên gia giữ ngân sách milestone mặc dịnh hoặc chưa gửi đề
-                xuất chi tiết.
-              </p>
-            )}
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-              File dính kèm
-            </p>
-            <FirebaseFileLink
-              path={proposal.proposalFileUrl}
-              emptyText="Chưa có file proposal"
-              buttonText="Xem file"
-              showPath={false}
-            />
-          </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            File dính kèm
+          </p>
+          <FirebaseFileLink
+            path={proposal.proposalFileUrl}
+            emptyText="Chưa có file proposal"
+            buttonText="Xem file"
+            showPath={false}
+          />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setExpertOpen(true)}
-          >
-            <Eye className="h-4 w-4" />
-            Xem chuyên gia
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setExpertOpen(true)}
+            >
+              <Eye className="h-4 w-4" />
+              Xem chuyên gia
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setProposalDetailOpen(true)}
+            >
+              <FileCheck2 className="h-4 w-4" />
+              Xem chi tiết
+            </Button>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <Button
               variant="success"
@@ -966,6 +971,7 @@ function ProposalCard({
               <CheckCircle2 className="h-4 w-4" />
               Accept
             </Button>
+
             <Button
               variant="danger"
               size="sm"
@@ -979,6 +985,7 @@ function ProposalCard({
               <XCircle className="h-4 w-4" />
               Reject
             </Button>
+
             {contract ? (
               <LinkButton
                 to={`/app/contracts/${contract.contractId}`}
@@ -1008,6 +1015,120 @@ function ProposalCard({
           </div>
         </div>
       </div>
+
+      <Modal
+        open={proposalDetailOpen}
+        onClose={() => setProposalDetailOpen(false)}
+        title="Chi tiết proposal"
+        description="Thông tin đầy đủ về đề xuất của chuyên gia."
+        size="2xl"
+      >
+        <div className="grid gap-5">
+          <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
+            <Avatar name={expertName} size="xl" />
+            <div className="min-w-0">
+              <p className="font-display text-2xl font-black text-ink">
+                {expertName}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {proposal.expertTitle || "Chuyên gia AI"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
+            <ExpertInfoItem
+              label="Ngân sách đề xuất"
+              value={formatCurrency(proposal.bidAmount)}
+            />
+          </div>
+
+          <div className="grid gap-3">
+            <ProposalInfoBlock title="Technical solution">
+              {proposal.technicalSolution}
+            </ProposalInfoBlock>
+
+            <ProposalInfoBlock title="Proposal description">
+              {proposal.proposalDescription || "Chưa có mô tả proposal."}
+            </ProposalInfoBlock>
+
+            <div className="grid gap-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                  Proposal milestone
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Ngân sách đề xuất của chuyên gia theo từng milestone.
+                </p>
+              </div>
+
+              {milestones.length > 0 ? (
+                <div className="grid gap-4">
+                  {milestones
+                    .slice()
+                    .sort((a, b) => a.orderIndex - b.orderIndex)
+                    .map((milestone) => {
+                      const proposalMilestone = proposalMilestones.find(
+                        (item) => item.milestoneId === milestone.milestoneId,
+                      );
+
+                      const proposedBudget =
+                        proposalMilestone?.proposedBudget ??
+                        milestone.fundsAllocated;
+
+                      return (
+                        <div
+                          key={`${milestone.jobId}-${milestone.milestoneId}-${milestone.orderIndex}`}
+                          className="grid gap-5 rounded-3xl border border-slate-100 bg-slate-50/80 p-5 lg:grid-cols-[minmax(0,1fr)_270px_270px] lg:items-center"
+                        >
+                          <div className="min-w-0">
+                            <p className="break-words font-display text-xl font-black leading-7 text-ink">
+                              {milestone.milestoneName}
+                            </p>
+
+                            <p className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+                              Mốc {milestone.orderIndex} ·{" "}
+                              {milestone.durationValue ??
+                                milestone.duration ??
+                                0}{" "}
+                              {milestone.durationUnit === "WEEK"
+                                ? "TUẦN"
+                                : milestone.durationUnit || "TUẦN"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                              Ngân sách gốc
+                            </p>
+                            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-semibold text-slate-500">
+                              {formatCurrency(milestone.fundsAllocated)}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                              Ngân sách đề xuất
+                            </p>
+                            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-bold text-ink">
+                              {Number(proposedBudget).toLocaleString("vi-VN")}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+                  Job chưa có milestone để hiển thị.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         open={expertOpen}
         onClose={() => setExpertOpen(false)}
@@ -1017,6 +1138,7 @@ function ProposalCard({
       >
         <div className="grid gap-5">
           {detailMessage && <Notice tone="warning" title={detailMessage} />}
+
           <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
             <Avatar name={expertName} size="xl" />
             <div className="min-w-0">
@@ -1040,17 +1162,20 @@ function ProposalCard({
           </div>
 
           <SectionHeading title="Portfolio" />
+
           <div className="grid gap-3">
             <ExpertInfoItem
               label="Lĩnh vực"
               value={domainNames || "Chưa có dữ liệu"}
               multiline
             />
+
             <ExpertInfoItem
               label="Skill"
               value={skillNames || "Chưa có dữ liệu"}
               multiline
             />
+
             <ExpertInfoItem
               label="Số năm kinh nghiệm"
               value={
@@ -1059,6 +1184,7 @@ function ProposalCard({
                   : "Chưa có dữ liệu"
               }
             />
+
             <ExpertInfoBlock label="Chứng chỉ">
               <FirebaseFileLink
                 path={portfolio?.certificates}
@@ -1066,6 +1192,7 @@ function ProposalCard({
                 buttonText="Xem chứng chỉ"
               />
             </ExpertInfoBlock>
+
             <ExpertInfoItem
               label="Mô tả bản thân"
               value={portfolio?.selfDescription || "Chưa có dữ liệu"}
@@ -1115,33 +1242,6 @@ function parseProposalMilestones(value: unknown) {
   } catch {
     return [];
   }
-}
-
-function formatProposalMilestoneTitle(
-  milestoneId: number,
-  milestones: Milestone[],
-) {
-  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
-  if (!milestone) return `Milestone #${milestoneId}`;
-  return milestone.milestoneName;
-}
-
-function formatProposalMilestoneOrder(
-  milestoneId: number,
-  milestones: Milestone[],
-) {
-  const milestone = milestones.find((item) => item.milestoneId === milestoneId);
-  return milestone ? `Mốc ${milestone.orderIndex}` : "Milestone";
-}
-
-function formatProposalMilestoneStatus(
-  milestoneId: number,
-  milestones: Milestone[],
-) {
-  return (
-    milestones.find((item) => item.milestoneId === milestoneId)?.status ||
-    "Pending"
-  );
 }
 
 function resolveCatalogNames(
@@ -1211,6 +1311,7 @@ function ExpertInfoBlock({
 }
 
 // ─── Expert Recommendation Card ───────────────────────────────────────────────
+// ─── Expert Recommendation Card ───────────────────────────────────────────────
 function ExpertRecommendationCard({
   rec,
   jobId,
@@ -1226,6 +1327,14 @@ function ExpertRecommendationCard({
 
   const [expert, setExpert] = useState<ExpertProfile | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailMessage, setDetailMessage] = useState("");
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
+    null,
+  );
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -1239,6 +1348,56 @@ function ExpertRecommendationCard({
       ignore = true;
     };
   }, [rec.expertId]);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    let ignore = false;
+
+    async function loadExpertDetail() {
+      setDetailLoading(true);
+      setDetailMessage("");
+
+      const [expertResult, portfoliosResult] = await Promise.allSettled([
+        profileApi.getExpertById(rec.expertId),
+        profileApi.listPortfolios(),
+      ]);
+      const [domainsResult, skillsResult] = await Promise.allSettled([
+        catalogApi.listDomains(true),
+        catalogApi.listSkills(true),
+      ]);
+
+      if (ignore) return;
+
+      const portfolios =
+        portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
+      const matchedPortfolio =
+        portfolios.find((item) => item.expertId === rec.expertId) || null;
+
+      if (expertResult.status === "fulfilled") {
+        setExpertProfile(expertResult.value);
+        setExpert(expertResult.value);
+      }
+
+      setPortfolio(matchedPortfolio);
+      setDomains(
+        domainsResult.status === "fulfilled" ? domainsResult.value : [],
+      );
+      setSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
+      setDetailLoading(false);
+
+      if (
+        expertResult.status === "rejected" ||
+        portfoliosResult.status === "rejected"
+      ) {
+        setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
+      }
+    }
+
+    loadExpertDetail();
+    return () => {
+      ignore = true;
+    };
+  }, [modalOpen, rec.expertId]);
 
   const handleSelect = async () => {
     try {
@@ -1256,28 +1415,53 @@ function ExpertRecommendationCard({
   };
 
   const rankColors = [
-    "from-amber-400 to-yellow-300", // #1 gold
-    "from-slate-400 to-slate-300", // #2 silver
-    "from-orange-400 to-amber-300", // #3 bronze
-    "from-brand-400 to-indigo-400", // #4
-    "from-brand-300 to-violet-300", // #5
+    "from-amber-400 to-yellow-300",
+    "from-slate-400 to-slate-300",
+    "from-orange-400 to-amber-300",
+    "from-brand-400 to-indigo-400",
+    "from-brand-300 to-violet-300",
   ];
+
   const gradientClass =
     rankColors[(rec.rankPosition ?? 1) - 1] ?? rankColors[4];
+
   const score = rec.matchScore ?? 0;
+
+  const expertName =
+    expertProfile?.fullName || expert?.fullName || `Expert #${rec.expertId}`;
+
+  const expertPhone =
+    expertProfile?.phone || expert?.phone || "Chưa có dữ liệu";
+
+  const domainNames = resolveCatalogNames(
+    portfolio?.domainIds,
+    domains,
+    "domainId",
+    "domainName",
+  );
+
+  const skillNames = resolveCatalogNames(
+    portfolio?.skillIds,
+    skills,
+    "skillId",
+    "skillName",
+  );
+
+  const yearsExperience =
+    portfolio?.yearsExperience ??
+    expertProfile?.yearsOfExperience ??
+    expert?.yearsOfExperience;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:border-brand-100 hover:shadow-card">
       {/* Header */}
       <div className="grid gap-4 bg-gradient-to-r from-slate-50 to-brand-50/30 p-5 md:grid-cols-[56px_1fr_160px]">
-        {/* Rank badge */}
         <div
           className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${gradientClass} text-white shadow`}
         >
           <span className="text-xl font-black">#{rec.rankPosition}</span>
         </div>
 
-        {/* Expert info */}
         <div className="min-w-0">
           <p className="font-display text-base font-extrabold text-ink">
             {expert?.fullName || `Expert #${rec.expertId}`}
@@ -1291,7 +1475,6 @@ function ExpertRecommendationCard({
           </p>
         </div>
 
-        {/* Match score */}
         <div className="text-right">
           <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
             Match score
@@ -1319,7 +1502,6 @@ function ExpertRecommendationCard({
 
       {/* Body */}
       <div className="grid gap-4 p-5 pt-4">
-        {/* Skills & Domains */}
         <div className="grid gap-3 md:grid-cols-2">
           {(rec.matchedSkills?.length ?? 0) > 0 && (
             <div>
@@ -1336,6 +1518,7 @@ function ExpertRecommendationCard({
               </div>
             </div>
           )}
+
           {(rec.matchedDomains?.length ?? 0) > 0 && (
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
@@ -1353,7 +1536,6 @@ function ExpertRecommendationCard({
           )}
         </div>
 
-        {/* AI reasoning */}
         {rec.reason && (
           <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-600">
@@ -1364,7 +1546,6 @@ function ExpertRecommendationCard({
           </div>
         )}
 
-        {/* Notifications */}
         {error && <Notice tone="danger" title={error} />}
         {successMessage && <Notice tone="success" title={successMessage} />}
       </div>
@@ -1381,10 +1562,15 @@ function ExpertRecommendationCard({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setExpertProfile(expert);
+              setModalOpen(true);
+            }}
           >
+            <Eye className="h-4 w-4" />
             Xem chi tiết
           </Button>
+
           <button
             type="button"
             onClick={handleSelect}
@@ -1408,35 +1594,72 @@ function ExpertRecommendationCard({
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Chi tiết chuyên gia"
-        description="Thông tin hồ sơ chuyên gia được AI đề xuất"
+        title="Thông tin chuyên gia"
+        description="Profile và portfolio của chuyên gia gửi proposal."
+        size="lg"
       >
-        <div className="grid gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar name={expert?.fullName || ""} size="xl" />
-            <div>
-              <p className="text-lg font-bold text-ink">
-                {expert?.fullName || `Expert #${rec.expertId}`}
+        <div className="grid gap-5">
+          {detailMessage && <Notice tone="warning" title={detailMessage} />}
+
+          <div className="flex items-start gap-4 rounded-3xl bg-slate-50 p-4">
+            <Avatar name={expertName} size="xl" />
+            <div className="min-w-0">
+              <p className="font-display text-2xl font-black text-ink">
+                {expertName}
               </p>
-              <p className="text-sm font-medium text-slate-500">
-                {expert?.title || "Chuyên gia AI"}
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {expertPhone}
               </p>
+              {detailLoading && (
+                <p className="mt-2 text-xs font-bold text-brand-600">
+                  Đang tải hồ sơ...
+                </p>
+              )}
             </div>
           </div>
-          <div className="grid gap-2 text-sm text-slate-600">
-            <p>
-              <strong>Kinh nghiệm:</strong>{" "}
-              {expert?.yearsOfExperience
-                ? `${expert.yearsOfExperience} năm`
-                : "Chưa cập nhật"}
-            </p>
-            <p>
-              <strong>Kỹ năng:</strong>{" "}
-              {expert?.skills?.join(", ") || "Chưa cập nhật"}
-            </p>
-            <p>
-              <strong>Mô tả:</strong> {expert?.description || "Chưa cập nhật"}
-            </p>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
+            <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
+          </div>
+
+          <SectionHeading title="Portfolio" />
+
+          <div className="grid gap-3">
+            <ExpertInfoItem
+              label="Lĩnh vực"
+              value={domainNames || "Chưa có dữ liệu"}
+              multiline
+            />
+
+            <ExpertInfoItem
+              label="Skill"
+              value={skillNames || "Chưa có dữ liệu"}
+              multiline
+            />
+
+            <ExpertInfoItem
+              label="Số năm kinh nghiệm"
+              value={
+                yearsExperience != null
+                  ? `${yearsExperience} năm`
+                  : "Chưa có dữ liệu"
+              }
+            />
+
+            <ExpertInfoBlock label="Chứng chỉ">
+              <FirebaseFileLink
+                path={portfolio?.certificates}
+                emptyText="Chưa có chứng chỉ"
+                buttonText="Xem chứng chỉ"
+              />
+            </ExpertInfoBlock>
+
+            <ExpertInfoItem
+              label="Mô tả bản thân"
+              value={portfolio?.selfDescription || "Chưa có dữ liệu"}
+              multiline
+            />
           </div>
         </div>
       </Modal>
