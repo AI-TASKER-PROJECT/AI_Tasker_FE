@@ -516,10 +516,12 @@ export function SubmitProposalPage() {
                   </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Ngân sách">
+                  <Field label="Ngân sách(VNĐ)">
                     <Input
                       type="text"
-                      value={bidAmount > 0 ? bidAmount.toLocaleString("vi-VN") : ""}
+                      value={
+                        bidAmount > 0 ? bidAmount.toLocaleString("vi-VN") : ""
+                      }
                       readOnly
                       placeholder="Ví dụ: 165.000.000"
                       required
@@ -557,9 +559,13 @@ export function SubmitProposalPage() {
               </label>
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-600">
                 <span className="font-semibold text-ink">
-                  {requestBudgetChange ? "Ngân sách đề xuất: " : "Ngân sách hiện tại: "}
+                  {requestBudgetChange
+                    ? "Ngân sách đề xuất: "
+                    : "Ngân sách hiện tại: "}
                 </span>
-                {formatCurrency(requestBudgetChange ? proposalMilestoneTotal : job.budget)}
+                {formatCurrency(
+                  requestBudgetChange ? proposalMilestoneTotal : job.budget,
+                )}
                 {requestBudgetChange && (
                   <span className="ml-2 text-brand-600">
                     · Hãy nhập số tiền đề xuất từng milestone và ngân sách sẽ
@@ -604,12 +610,16 @@ export function SubmitProposalPage() {
                             {milestone.milestoneName}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
-                            Mốc {milestone.orderIndex} · {milestone.durationValue ?? milestone.duration ?? 0} {milestone.durationUnit || "WEEK"}
+                            Mốc {milestone.orderIndex} ·{" "}
+                            {milestone.durationValue ?? milestone.duration ?? 0}{" "}
+                            {milestone.durationUnit === "WEEK"
+                              ? "TUẦN"
+                              : milestone.durationUnit || "TUẦN"}
                           </p>
                         </div>
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                            Ngân sách gốc
+                            Ngân sách gốc(VNĐ)
                           </p>
                           <Input
                             type="text"
@@ -620,11 +630,17 @@ export function SubmitProposalPage() {
                         </div>
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                            Ngân sách đề xuất
+                            Ngân sách đề xuất(VNĐ)
                           </p>
                           <Input
                             type="text"
-                            value={milestoneBudgets[milestone.milestoneId] ? Number(milestoneBudgets[milestone.milestoneId]).toLocaleString("vi-VN") : ""}
+                            value={
+                              milestoneBudgets[milestone.milestoneId]
+                                ? Number(
+                                    milestoneBudgets[milestone.milestoneId],
+                                  ).toLocaleString("vi-VN")
+                                : ""
+                            }
                             onChange={(event) => {
                               const raw = event.target.value.replace(/\D/g, "");
                               setMilestoneBudgets((value) => ({
@@ -693,7 +709,10 @@ export function SubmitProposalPage() {
                 <div>
                   <p className="text-xs font-bold text-slate-400">Thời lượng</p>
                   <p className="mt-1 text-sm font-extrabold uppercase text-ink">
-                    {job.plannedDurationValue || 0} {job.plannedDurationUnit || "WEEK"}
+                    {job.plannedDurationValue || 0}{" "}
+                    {job.plannedDurationUnit === "WEEK"
+                      ? "TUẦN"
+                      : job.plannedDurationUnit || "TUẦN"}
                   </p>
                 </div>
               </div>
@@ -717,7 +736,9 @@ export function SubmitProposalPage() {
                   <Briefcase className="h-5 w-5 text-pink-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Doanh nghiệp</p>
+                  <p className="text-xs font-bold text-slate-400">
+                    Doanh nghiệp
+                  </p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {job.companyName || "Chưa cập nhật"}
                   </p>

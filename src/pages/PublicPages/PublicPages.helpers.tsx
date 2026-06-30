@@ -290,7 +290,7 @@ export function JobHoverPopover({
             <InfoRow
               icon={<Clock3 className="h-4 w-4" />}
               label="Thời lượng"
-              value={`${detail.plannedDurationValue || 0} ${detail.plannedDurationUnit || "tuần"}`}
+              value={`${detail.plannedDurationValue || 0} ${detail.plannedDurationUnit === "WEEK" ? "TUẦN" : (detail.plannedDurationUnit || "tuần")}`}
             />
             <InfoRow
               icon={<Star className="h-4 w-4" />}
@@ -1319,7 +1319,7 @@ export function JobDetailPage() {
               <InfoRow
                 icon={<Clock3 className="h-4 w-4" />}
                 label="Thời lượng"
-                value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || "tuần"}`}
+                value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit === "WEEK" ? "TUẦN" : (job.plannedDurationUnit || "TUẦN")}`}
               />
               <InfoRow
                 icon={<Target className="h-4 w-4" />}
@@ -1513,9 +1513,11 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
                 {(() => {
                   const dVal =
                     milestone.durationValue ?? (milestone as any).duration;
-                  return dVal && dVal > 0
-                    ? `${dVal} ${milestone.durationUnit || "WEEK"}`
-                    : "Chưa xác định";
+                  const unit =
+                    milestone.durationUnit === "WEEK"
+                      ? "TUẦN"
+                      : milestone.durationUnit || "TUẦN";
+                  return dVal && dVal > 0 ? `${dVal} ${unit}` : "Chưa xác định";
                 })()}
               </p>
 

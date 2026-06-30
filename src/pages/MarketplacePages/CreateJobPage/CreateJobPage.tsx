@@ -488,9 +488,9 @@ export function CreateJobPage() {
       );
       setSowGeneratedLocked(hasGeneratedContent);
       if (hasGeneratedContent)
-      setAiMessage(
-        "✓ AI đã tạo SoW và cập nhật Project milestones thành công.",
-      );
+        setAiMessage(
+          "✓ AI đã tạo SoW và cập nhật Project milestones thành công.",
+        );
       setAiMessageTone("success");
     } catch (error) {
       setSowGeneratedLocked(false);
@@ -1017,7 +1017,7 @@ export function CreateJobPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <Field label="Ngân sách dự kiến">
+                <Field label="Ngân sách dự kiến(VNĐ)">
                   <Input
                     placeholder="VND"
                     type="text"
@@ -1253,7 +1253,7 @@ export function CreateJobPage() {
 
                 <div className="mt-4 hidden grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
                   <span>Công việc</span>
-                  <span>Ngân sách</span>
+                  <span>Ngân sách(VNĐ)</span>
                   <span>Giai đoạn</span>
                   <span>Thời gian</span>
                   <span>Tiêu chí nghiệm thu</span>
@@ -1571,8 +1571,8 @@ export function CreateJobPage() {
                   <span className="text-slate-500">Thời lượng</span>
                   <span className="break-words text-right font-extrabold text-ink">
                     {savedJob.plannedDurationValue
-                      ? `${savedJob.plannedDurationValue} ${savedJob.plannedDurationUnit || "Week"}`
-                      : "Chưa xác dịnh"}
+                      ? `${savedJob.plannedDurationValue} ${savedJob.plannedDurationUnit === "WEEK" ? "TUẦN" : (savedJob.plannedDurationUnit || "TUẦN")}`
+                      : "Chưa xác định"}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">

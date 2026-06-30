@@ -217,7 +217,7 @@ export function MyJobDetailPage() {
               <InfoRow
                 icon={<Clock3 className="h-4 w-4" />}
                 label="Thời lượng"
-                value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit || "tuần"}`}
+                value={`${job.plannedDurationValue || 0} ${job.plannedDurationUnit === "WEEK" ? "TUẦN" : (job.plannedDurationUnit || "TUẦN")}`}
               />
               <InfoRow
                 icon={<Target className="h-4 w-4" />}

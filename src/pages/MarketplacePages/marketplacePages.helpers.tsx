@@ -36,7 +36,8 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
                 <span className="flex items-center gap-1">
                   • {(() => {
                     const dVal = milestone.durationValue ?? (milestone as any).duration;
-                    return dVal && dVal > 0 ? `${dVal} ${milestone.durationUnit || "WEEK"}` : "Chưa xác định";
+                    const unit = milestone.durationUnit === "WEEK" ? "TUẦN" : (milestone.durationUnit || "TUẦN");
+                    return dVal && dVal > 0 ? `${dVal} ${unit}` : "Chưa xác định";
                   })()}
                 </span>
               </div>

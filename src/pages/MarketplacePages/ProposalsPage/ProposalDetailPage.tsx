@@ -316,7 +316,7 @@ export function ProposalDetailPage() {
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         Mốc {milestone.orderIndex} ·{" "}
                         {milestone.durationValue ?? milestone.duration ?? 0}{" "}
-                        {milestone.durationUnit || "WEEK"}
+                        {milestone.durationUnit === "WEEK" ? "TUẦN" : (milestone.durationUnit || "TUẦN")}
                       </p>
                     </div>
                     <div className="space-y-1">
