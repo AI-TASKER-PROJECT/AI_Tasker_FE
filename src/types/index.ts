@@ -456,8 +456,9 @@ export interface UnreadNotificationCount {
 }
 
 export interface WalletTransaction {
-  id: number;
-  systemWalletId: number;
+  id?: number;
+  transactionId?: number;
+  systemWalletId?: number;
   accountId?: number;
   paymentOrderId?: number;
   transactionType:
@@ -468,16 +469,39 @@ export interface WalletTransaction {
     | 'DEPOSIT_REFUND'
     | 'WITHDRAW_HOLD'
     | 'WITHDRAW_APPROVED'
-    | 'WITHDRAW_REJECTED';
-  direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE';
-  balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE';
+    | 'WITHDRAW_REJECTED'
+    | string;
+  direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE' | string;
+  balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE' | string;
   amount: number;
   balanceBefore: number;
   balanceAfter: number;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
   referenceType?: string;
   referenceId?: number;
+  rawDescription?: string;
+  title?: string;
   description?: string;
+  actorName?: string;
+  counterpartyName?: string;
+  businessId?: number;
+  businessName?: string;
+  expertId?: number;
+  expertName?: string;
+  contractId?: number;
+  contractTitle?: string;
+  jobId?: number;
+  jobTitle?: string;
+  withdrawalId?: number;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  adminId?: number;
+  adminName?: string;
+  adminNote?: string;
+  packageId?: number;
+  packageName?: string;
+  providerOrderCode?: number;
   createdAt?: string;
 }
 

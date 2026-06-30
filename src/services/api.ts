@@ -1048,6 +1048,12 @@ export const adminApi = {
       url: "/api/v1/admin/wallet/sync",
     });
   },
+  listPlatformWalletTransactions() {
+    return call<WalletTransaction[]>({
+      method: "GET",
+      url: "/api/v1/admin/wallet/transactions",
+    });
+  },
   listAccounts() {
     return call<AdminAccount[]>({
       method: "GET",
