@@ -39,6 +39,7 @@ import type {
   Portfolio,
   Proposal,
   Contract,
+  BusinessProfile,
 } from "../../../types";
 import {
   Avatar,
@@ -147,7 +148,12 @@ export function ManageJobPage() {
     timelineWeeks: "6",
   });
   const [contractTermsOpen, setContractTermsOpen] = useState(false);
+  const [draftBusiness, setDraftBusiness] = useState<BusinessProfile | null>(
+    null,
+  );
+  const [draftExpert, setDraftExpert] = useState<ExpertProfile | null>(null);
   const [contractError, setContractError] = useState("");
+  const [proposalNotice, setProposalNotice] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
@@ -232,6 +238,35 @@ export function ManageJobPage() {
     }
   };
 
+  useEffect(() => {
+    if (!job || !contractModal) {
+      setDraftBusiness(null);
+      setDraftExpert(null);
+      return;
+    }
+    let ignore = false;
+
+    async function loadContractParties() {
+      if (!job || !contractModal) return;
+      const [businessResult, expertResult] = await Promise.allSettled([
+        profileApi.getBusinessByJob(job.jobId),
+        profileApi.getExpertById(contractModal.expertId),
+      ]);
+      if (ignore) return;
+      setDraftBusiness(
+        businessResult.status === "fulfilled" ? businessResult.value : null,
+      );
+      setDraftExpert(
+        expertResult.status === "fulfilled" ? expertResult.value : null,
+      );
+    }
+
+    void loadContractParties();
+    return () => {
+      ignore = true;
+    };
+  }, [contractModal, job]);
+
   if (!job) return <div>Đang tải job...</div>;
 
   const jobStatus = job.status.trim().toUpperCase();
@@ -252,12 +287,51 @@ export function ManageJobPage() {
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
   contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
+  const selectedProposalMilestones = parseProposalMilestones(
+    contractModal?.proposalMilestone,
+  );
+  const contractPreviewTotalBudget = milestones.reduce((total, milestone) => {
+    const proposalMilestone = selectedProposalMilestones.find(
+      (item) => item.milestoneId === milestone.milestoneId,
+    );
+    return (
+      total + (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated)
+    );
+  }, 0);
+  const contractSecurityDeposit =
+    Math.round(contractPreviewTotalBudget * 20) / 100;
+  const jobContracts = contracts.filter(
+    (contract) => contract.jobId === job.jobId,
+  );
+  const jobHasContract = jobContracts.length > 0;
+  const acceptedProposal = proposals.find(
+    (proposal) => proposal.status.trim().toUpperCase() === "ACCEPTED",
+  );
+  const selectedProposalId =
+    jobContracts[0]?.proposalId ?? acceptedProposal?.proposalId;
 
   const review = async (
     proposalId: number,
     status: "Accepted" | "Rejected",
   ) => {
     if (jobInProgress) return;
+    if (
+      status === "Accepted" &&
+      selectedProposalId &&
+      selectedProposalId !== proposalId
+    ) {
+      setProposalNotice(
+        "Job này đã có proposal được chọn. Không thể chọn thêm chuyên gia khác cho cùng một job.",
+      );
+      return;
+    }
+    if (status === "Accepted" && jobHasContract) {
+      setProposalNotice(
+        "Job này đã có hợp đồng. Không thể accept thêm proposal khác.",
+      );
+      return;
+    }
+    setProposalNotice("");
     const updated = await marketplaceApi.reviewProposal(proposalId, status);
     setProposals((items) =>
       items.map((item) => (item.proposalId === proposalId ? updated : item)),
@@ -269,6 +343,15 @@ export function ManageJobPage() {
     if (jobInProgress) {
       setContractError(
         "Job đang IN_PROGRESS nên không thể tạo hoặc thay dổi hợp đồng.",
+      );
+      return;
+    }
+    if (
+      jobHasContract ||
+      (selectedProposalId && selectedProposalId !== contractModal.proposalId)
+    ) {
+      setContractError(
+        "Job này đã có chuyên gia được chọn hoặc đã có hợp đồng. Không thể tạo thêm contract cho proposal khác.",
       );
       return;
     }
@@ -439,6 +522,9 @@ export function ManageJobPage() {
                 className="mt-4"
               />
             )}
+            {proposalNotice && (
+              <Notice tone="warning" title={proposalNotice} className="mt-4" />
+            )}
             <div className="mt-6 grid gap-4">
               {proposals.map((proposal) => (
                 <ProposalCard
@@ -451,6 +537,8 @@ export function ManageJobPage() {
                   onAccept={() => review(proposal.proposalId, "Accepted")}
                   onReject={() => review(proposal.proposalId, "Rejected")}
                   statusLocked={jobInProgress}
+                  jobHasContract={jobHasContract}
+                  selectedProposalId={selectedProposalId}
                   onContract={() => {
                     setContractError("");
                     setContractTermsOpen(false);
@@ -651,6 +739,17 @@ export function ManageJobPage() {
               value={`${contractTimelineWeeks} tuần (${contractTimelineDays} ngày)`}
             />
           </div>
+          <DraftContractDocument
+            title={contractForm.contractTitle.trim() || `Contract - ${job.title}`}
+            job={job}
+            proposal={contractModal}
+            business={draftBusiness}
+            expert={draftExpert}
+            totalBudget={contractPreviewTotalBudget}
+            securityDeposit={contractSecurityDeposit}
+            startDate={contractStartDate}
+            endDate={contractEndDate}
+          />
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Ngân sách sẽ dưa vào hợp đồng"
@@ -771,6 +870,154 @@ function ContractPreviewMetric({
   );
 }
 
+function DraftContractDocument({
+  title,
+  job,
+  proposal,
+  business,
+  expert,
+  totalBudget,
+  securityDeposit,
+  startDate,
+  endDate,
+}: {
+  title: string;
+  job: Job;
+  proposal: Proposal | null;
+  business: BusinessProfile | null;
+  expert: ExpertProfile | null;
+  totalBudget: number;
+  securityDeposit: number;
+  startDate: Date;
+  endDate: Date;
+}) {
+  const businessName =
+    business?.companyName || job.companyName || `Business #${job.businessId}`;
+  const expertName =
+    expert?.fullName || proposal?.expertName || `Expert #${proposal?.expertId ?? ""}`;
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="border-b border-slate-100 pb-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+          Dự thảo hợp đồng dịch vụ
+        </p>
+        <h3 className="mt-2 font-display text-2xl font-black text-ink">
+          {title}
+        </h3>
+        <p className="mt-2 text-sm font-semibold text-slate-500">
+          Căn cứ proposal #{proposal?.proposalId} đã được doanh nghiệp chấp nhận
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <ContractPartyBox
+          label="Bên A - Doanh nghiệp"
+          name={businessName}
+          rows={[
+            ["Mã số thuế", business?.taxCode],
+            ["Địa chỉ", business?.address],
+            ["Website", business?.website],
+            ["Email", business?.email],
+            ["Số điện thoại", business?.phone],
+          ]}
+        />
+        <ContractPartyBox
+          label="Bên B - Chuyên gia"
+          name={expertName}
+          rows={[
+            ["Chức danh", expert?.title || proposal?.expertTitle],
+            ["Số điện thoại", expert?.phone],
+            ["Email", expert?.email],
+            [
+              "Kinh nghiệm",
+              expert?.yearsOfExperience != null
+                ? `${expert.yearsOfExperience} năm`
+                : undefined,
+            ],
+            ["KYC", expert?.kycStatus],
+          ]}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <ContractPreviewMetric
+          label="Giá trị hợp đồng"
+          value={formatCurrency(totalBudget)}
+        />
+        <ContractPreviewMetric
+          label="Ký quỹ 20%"
+          value={formatCurrency(securityDeposit)}
+        />
+        <ContractPreviewMetric
+          label="Hiệu lực dự kiến"
+          value={`${formatDate(startDate.toISOString())} - ${formatDate(
+            endDate.toISOString(),
+          )}`}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        {CONTRACT_TERM_SECTIONS.map((section) => (
+          <div key={section.title} className="rounded-2xl bg-slate-50 p-4">
+            <p className="font-extrabold text-ink">{section.title}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {section.content}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-4 border-t border-slate-100 pt-5 md:grid-cols-2">
+        <SignatureBox title="Đại diện Bên A" name={businessName} />
+        <SignatureBox title="Đại diện Bên B" name={expertName} />
+      </div>
+    </div>
+  );
+}
+
+function ContractPartyBox({
+  label,
+  name,
+  rows,
+}: {
+  label: string;
+  name: string;
+  rows: Array<[string, string | undefined]>;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-black text-ink">{name}</p>
+      <div className="mt-3 grid gap-2 text-sm">
+        {rows.map(([rowLabel, value]) => (
+          <div
+            key={rowLabel}
+            className="grid grid-cols-[110px_minmax(0,1fr)] gap-3"
+          >
+            <span className="text-slate-500">{rowLabel}</span>
+            <span className="min-w-0 break-words font-bold text-slate-700">
+              {value || "Chưa có dữ liệu từ BE"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SignatureBox({ title, name }: { title: string; name: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-center">
+      <p className="text-sm font-extrabold text-ink">{title}</p>
+      <div className="mt-8 h-16 rounded-xl bg-slate-50" />
+      <p className="mt-3 text-sm font-black text-slate-700">{name}</p>
+    </div>
+  );
+}
+
 function ProposalCard({
   proposal,
   milestones,
@@ -778,6 +1025,8 @@ function ProposalCard({
   onAccept,
   onReject,
   statusLocked,
+  jobHasContract,
+  selectedProposalId,
   onContract,
 }: {
   proposal: Proposal;
@@ -786,6 +1035,8 @@ function ProposalCard({
   onAccept: () => void;
   onReject: () => void;
   statusLocked?: boolean;
+  jobHasContract?: boolean;
+  selectedProposalId?: number;
   onContract: () => void;
 }) {
   const [expertOpen, setExpertOpen] = useState(false);
@@ -821,11 +1072,11 @@ function ProposalCard({
     let ignore = false;
 
     async function loadExpertDetail() {
-      setDetailLoading(true);
+      if (expertOpen) setDetailLoading(true);
       setDetailMessage("");
-      const [expertResult, portfoliosResult] = await Promise.allSettled([
+      const [expertResult, portfolioResult] = await Promise.allSettled([
         profileApi.getExpertById(proposal.expertId),
-        profileApi.listPortfolios(),
+        profileApi.getPortfolioByExpert(proposal.expertId),
       ]);
       const [domainsResult, skillsResult] = await Promise.allSettled([
         catalogApi.listDomains(true),
@@ -834,25 +1085,22 @@ function ProposalCard({
 
       if (ignore) return;
 
-      const portfolios =
-        portfoliosResult.status === "fulfilled" ? portfoliosResult.value : [];
-      const matchedPortfolio =
-        portfolios.find((item) => item.expertId === proposal.expertId) || null;
-
-      if (expertResult.status === "fulfilled") {
-        setExpertProfile(expertResult.value);
-      }
-
-      setPortfolio(matchedPortfolio);
+      setExpertProfile(
+        expertResult.status === "fulfilled" ? expertResult.value : null,
+      );
+      setPortfolio(
+        portfolioResult.status === "fulfilled" ? portfolioResult.value : null,
+      );
       setDomains(
         domainsResult.status === "fulfilled" ? domainsResult.value : [],
       );
       setSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
-      setDetailLoading(false);
+      if (expertOpen) setDetailLoading(false);
 
       if (
-        expertResult.status === "rejected" ||
-        portfoliosResult.status === "rejected"
+        expertOpen &&
+        (expertResult.status === "rejected" ||
+          portfolioResult.status === "rejected")
       ) {
         setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
       }
@@ -888,9 +1136,14 @@ function ProposalCard({
   const proposalMilestones = parseProposalMilestones(
     proposal.proposalMilestone,
   );
-
+  const isSelectedProposal = selectedProposalId === proposal.proposalId;
+  const jobSelectionLocked = Boolean(selectedProposalId);
   const canCreateContract =
-    proposal.status === "Accepted" && !contract && !statusLocked;
+    proposal.status === "Accepted" &&
+    !contract &&
+    !statusLocked &&
+    !jobHasContract &&
+    isSelectedProposal;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white transition hover:border-brand-100 hover:shadow-card">
@@ -905,7 +1158,7 @@ function ProposalCard({
               <StatusBadge status={translateStatus(proposal.status)} />
             </div>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              {proposal.expertTitle || "Chuyên gia AI"}
+              {expertProfile?.title || proposal.expertTitle || "Chuyên gia AI"}
             </p>
             <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
               {proposal.proposalDescription || proposal.technicalSolution}
@@ -965,7 +1218,8 @@ function ProposalCard({
               disabled={
                 statusLocked ||
                 proposal.status === "Accepted" ||
-                Boolean(contract)
+                Boolean(contract) ||
+                (jobSelectionLocked && !isSelectedProposal)
               }
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -979,7 +1233,8 @@ function ProposalCard({
               disabled={
                 statusLocked ||
                 proposal.status === "Rejected" ||
-                Boolean(contract)
+                Boolean(contract) ||
+                Boolean(jobHasContract)
               }
             >
               <XCircle className="h-4 w-4" />
@@ -1005,7 +1260,11 @@ function ProposalCard({
                     ? "Tạo contract draft"
                     : statusLocked
                       ? "Job đang IN_PROGRESS nên không thể thay dổi"
-                      : "Chỉ tạo contract sau khi proposal dược Accepted"
+                      : jobHasContract
+                        ? "Job đã có hợp đồng, không thể tạo thêm contract"
+                        : jobSelectionLocked && !isSelectedProposal
+                          ? "Job đã chọn proposal khác"
+                          : "Chỉ tạo contract sau khi proposal dược Accepted"
                 }
               >
                 <FileCheck2 className="h-4 w-4" />

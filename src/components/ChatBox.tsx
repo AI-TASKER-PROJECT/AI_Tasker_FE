@@ -16,7 +16,7 @@ const starterMessages: ChatMessage[] = [
   {
     id: 1,
     sender: 'assistant',
-    text: 'Hi, I can help you review jobs, contracts, proposals, disputes, and account workflows.',
+    text: 'Chào bạn, tôi có thể giúp bạn xem xét các công việc, hợp đồng, đề xuất, tranh chấp và quy trình làm việc của tài khoản.',
   },
 ];
 

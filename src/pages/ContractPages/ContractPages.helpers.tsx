@@ -27,6 +27,7 @@ import { useSession } from "../../lib/session";
 import {
   formatCompactCurrency,
   formatCurrency,
+  formatDate,
   formatDateTime,
 } from "../../lib/utils";
 import type {
@@ -38,6 +39,8 @@ import type {
   Review,
   SystemWallet,
   Transaction,
+  BusinessProfile,
+  ExpertProfile,
 } from "../../types";
 import {
   Badge,
@@ -86,6 +89,40 @@ const NDA_TERMS = [
     body: "Bên vi phạm phải chịu trách nhiệm đối với các thiệt hại phát sinh và phối hợp xử lý sự cố bảo mật theo quy trình của nền tảng và thỏa thuận giữa hai bên.",
   },
 ];
+
+type ContactSource = {
+  email?: string;
+  phone?: string;
+  accountEmail?: string;
+  accountPhone?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  phoneNumber?: string;
+};
+
+function firstContactValue(...values: Array<string | undefined>) {
+  return values.find((value) => typeof value === "string" && value.trim())
+    ?.trim();
+}
+
+function contactEmail(profile?: ContactSource | null, fallback?: string) {
+  return firstContactValue(
+    profile?.email,
+    profile?.accountEmail,
+    profile?.contactEmail,
+    fallback,
+  );
+}
+
+function contactPhone(profile?: ContactSource | null, fallback?: string) {
+  return firstContactValue(
+    profile?.phone,
+    profile?.accountPhone,
+    profile?.contactPhone,
+    profile?.phoneNumber,
+    fallback,
+  );
+}
 
 export function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -226,10 +263,14 @@ export function ContractDetailPage() {
   const session = useSession();
   const [contract, setContract] = useState<Contract | null>(null);
   const [jobMilestones, setJobMilestones] = useState<Milestone[]>([]);
+  const [contractMilestones, setContractMilestones] = useState<Milestone[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [participantNames, setParticipantNames] = useState({
-    businessName: "",
-    expertName: "",
+  const [participants, setParticipants] = useState<{
+    business: BusinessProfile | null;
+    expert: ExpertProfile | null;
+  }>({
+    business: null,
+    expert: null,
   });
   const [contractNotice, setContractNotice] = useState<{
     tone: "success" | "danger" | "info";
@@ -261,16 +302,20 @@ export function ContractDetailPage() {
 
     async function loadOperationalData() {
       try {
-        const [milestoneItems, disputeItems] = await Promise.all([
+        const [jobMilestoneItems, contractMilestoneItems, disputeItems] =
+          await Promise.all([
           contractApi.listJobMilestones(jobId).catch(() => []),
+          contractApi.listMilestones(activeContractId).catch(() => []),
           disputeApi.listByContract(activeContractId).catch(() => []),
         ]);
         if (ignore) return;
-        setJobMilestones(milestoneItems);
+        setJobMilestones(jobMilestoneItems);
+        setContractMilestones(contractMilestoneItems);
         setDisputes(disputeItems);
       } catch {
         if (!ignore) {
           setJobMilestones([]);
+          setContractMilestones([]);
           setDisputes([]);
         }
       }
@@ -288,28 +333,26 @@ export function ContractDetailPage() {
     const businessId = contract.businessId;
     const expertId = contract.expertId;
 
-    async function loadParticipantNames() {
+    async function loadParticipants() {
       try {
-        const [businesses, experts] = await Promise.all([
-          profileApi.listBusinesses(),
-          profileApi.listExperts(),
+        const [businessResult, expertResult] = await Promise.allSettled([
+          profileApi.getBusinessById(businessId),
+          profileApi.getExpertById(expertId),
         ]);
         if (ignore) return;
-        setParticipantNames({
-          businessName:
-            businesses.find((item) => item.businessId === businessId)
-              ?.companyName || "",
-          expertName:
-            experts.find((item) => item.expertId === expertId)?.fullName || "",
+        setParticipants({
+          business:
+            businessResult.status === "fulfilled" ? businessResult.value : null,
+          expert: expertResult.status === "fulfilled" ? expertResult.value : null,
         });
       } catch {
         if (!ignore) {
-          setParticipantNames({ businessName: "", expertName: "" });
+          setParticipants({ business: null, expert: null });
         }
       }
     }
 
-    void loadParticipantNames();
+    void loadParticipants();
     return () => {
       ignore = true;
     };
@@ -341,10 +384,50 @@ export function ContractDetailPage() {
       />
     );
 
-  const signContract = async () =>
-    setContract(await contractApi.sign(contract.contractId));
-  const signNda = async () =>
-    setContract(await contractApi.signNda(contract.contractId));
+  const signContract = async () => {
+    setContractNotice(null);
+    try {
+      const updated = await contractApi.sign(contract.contractId);
+      setContract(updated);
+      setContractNotice({
+        tone: "success",
+        title: "Ký contract thành công.",
+        message:
+          "Hệ thống đã ghi nhận xác nhận hợp đồng của bạn. Khi hai bên ký đủ contract và NDA, contract sẽ sẵn sàng cho bước tiếp theo.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể ký contract. Vui lòng thử lại.",
+      });
+    }
+  };
+  const signNda = async () => {
+    setContractNotice(null);
+    try {
+      const updated = await contractApi.signNda(contract.contractId);
+      setContract(updated);
+      setContractNotice({
+        tone: "success",
+        title: "Ký NDA thành công.",
+        message:
+          "Hệ thống đã ghi nhận chữ ký NDA của bạn cho hợp đồng này.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể ký NDA. Vui lòng thử lại.",
+      });
+    }
+  };
   const rejectContract = async () =>
     setContract(await contractApi.reject(contract.contractId));
   const refreshContract = async () => {
@@ -352,6 +435,9 @@ export function ContractDetailPage() {
     setContract(updated);
     setJobMilestones(
       await contractApi.listJobMilestones(updated.jobId).catch(() => []),
+    );
+    setContractMilestones(
+      await contractApi.listMilestones(updated.contractId).catch(() => []),
     );
     return updated;
   };
@@ -449,6 +535,54 @@ export function ContractDetailPage() {
   const completedMilestoneCount = jobMilestones.filter((item) =>
     ["COMPLETED", "RELEASED"].includes(normalizeContractStatus(item.status)),
   ).length;
+  const renderedMilestones =
+    contract.contractMilestones && contract.contractMilestones.length > 0
+      ? contract.contractMilestones
+      : contractMilestones;
+  const totalMilestoneDurationLabel =
+    formatTotalMilestoneDuration(renderedMilestones);
+  const businessDisplayName =
+    contract.businessName ||
+    participants.business?.companyName ||
+    `Business #${contract.businessId}`;
+  const expertDisplayName =
+    contract.expertName ||
+    participants.expert?.fullName ||
+    `Expert #${contract.expertId}`;
+  const sessionPhone = session?.phone;
+  const isBusinessSession =
+    session?.role === "BUSINESS" &&
+    participants.business?.accountId === session.accountId;
+  const isExpertSession =
+    session?.role === "EXPERT" &&
+    participants.expert?.accountId === session.accountId;
+  const businessEmail = contactEmail(
+    participants.business,
+    isBusinessSession ? session?.email : undefined,
+  );
+  const businessPhone = contactPhone(
+    participants.business,
+    isBusinessSession ? sessionPhone : undefined,
+  );
+  const expertEmail = contactEmail(
+    participants.expert,
+    isExpertSession ? session?.email : undefined,
+  );
+  const expertPhone = contactPhone(
+    participants.expert,
+    isExpertSession ? sessionPhone : undefined,
+  );
+  const contractStartDate = contract.createdAt || contract.activatedAt;
+  const contractEndDate = contractStartDate
+    ? new Date(
+        new Date(contractStartDate).getTime() +
+          Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
+      ).toISOString()
+    : undefined;
+  const contractTimelineLabel =
+    contractStartDate && contractEndDate
+      ? `${formatDate(contractStartDate)} - ${formatDate(contractEndDate)}`
+      : "Chưa có timeline";
   const nextAction = getContractNextAction({
     contract,
     role: session?.role,
@@ -595,23 +729,82 @@ export function ContractDetailPage() {
             />
           </div>
           <div className="mt-6 rounded-3xl bg-slate-50 p-5">
-            <SectionHeading title="Hai bên tham gia" />
+            <SectionHeading
+              title="Hai bên tham gia"
+              description="Tên và thông tin liên hệ được lấy từ API profile nếu backend có dữ liệu."
+            />
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Participant
-                label="Doanh nghiệp"
-                value={
-                  contract.businessName ||
-                  participantNames.businessName ||
-                  `Business #${contract.businessId}`
-                }
+                label="Bên A - Doanh nghiệp"
+                value={businessDisplayName}
+                details={[
+                  ["Mã số thuế", participants.business?.taxCode],
+                  ["Địa chỉ", participants.business?.address],
+                  ["Website", participants.business?.website],
+                  ["Email", businessEmail],
+                  ["Số điện thoại", businessPhone],
+                ]}
               />
               <Participant
-                label="Chuyên gia"
-                value={
-                  contract.expertName ||
-                  participantNames.expertName ||
-                  `Expert #${contract.expertId}`
-                }
+                label="Bên B - Chuyên gia"
+                value={expertDisplayName}
+                details={[
+                  ["Chức danh", participants.expert?.title],
+                  ["Email", expertEmail],
+                  ["Số điện thoại", expertPhone],
+                  [
+                    "Kinh nghiệm",
+                    participants.expert?.yearsOfExperience != null
+                      ? `${participants.expert.yearsOfExperience} năm`
+                      : undefined,
+                  ],
+                  ["KYC", participants.expert?.kycStatus],
+                ]}
+              />
+            </div>
+          </div>
+          <div className="mt-6 rounded-3xl border border-slate-100 bg-white p-5">
+            <SectionHeading
+              title="Trang ký hợp đồng"
+              description="Bản trình bày một trang để hai bên kiểm tra trước khi ký contract và NDA."
+            />
+            <div className="mt-4 border-b border-slate-100 pb-4 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Hợp đồng dịch vụ AI Tasker
+              </p>
+              <h3 className="mt-2 font-display text-2xl font-black text-ink">
+                {contractTitle}
+              </h3>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <ContractMetric
+                label="Giá trị hợp đồng"
+                value={formatCurrency(contract.totalBudget)}
+              />
+              <ContractMetric
+                label="Ký quỹ 20%"
+                value={formatCurrency(securityDepositAmount)}
+              />
+              <ContractMetric
+                label="Thời hạn"
+                value={formatTimelineWeeks(contract.timelineDays)}
+              />
+              <ContractMetric label="Timeline" value={contractTimelineLabel} />
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <SignatureBlock
+                title="Đại diện doanh nghiệp"
+                name={businessDisplayName}
+                signedAt={contract.businessAcceptedAt}
+                ndaSigned={businessNdaSigned}
+                verified={readyToActivate}
+              />
+              <SignatureBlock
+                title="Chuyên gia thực hiện"
+                name={expertDisplayName}
+                signedAt={contract.expertAcceptedAt}
+                ndaSigned={expertNdaSigned}
+                verified={readyToActivate}
               />
             </div>
           </div>
@@ -659,12 +852,26 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
               title="Milestone trong draft"
-              description="Các ngân sách final được backend tạo từ job và proposal đã accepted."
+              description="Các ngân sách chốt được backend tạo từ job và proposal đã accepted."
+              action={
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
+                  <p className="text-xs font-bold text-slate-400">
+                    Tổng thời gian milestone
+                  </p>
+                  <p className="mt-1 font-display text-lg font-black text-ink">
+                    {totalMilestoneDurationLabel}
+                  </p>
+                </div>
+              }
             />
             <div className="mt-4 grid gap-3">
-              {(contract.contractMilestones || []).map((milestone) => (
+              {renderedMilestones.map((milestone) => (
                 <div
-                  key={milestone.contractMilestoneId}
+                  key={
+                    "contractMilestoneId" in milestone
+                      ? milestone.contractMilestoneId
+                      : milestone.milestoneId
+                  }
                   className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
                 >
                   <div className="min-w-0">
@@ -682,16 +889,19 @@ export function ContractDetailPage() {
                   </div>
                   <ContractMetric
                     label="Ngân sách gốc"
-                    value={formatCurrency(milestone.originalBudget)}
+                    value={formatCurrency(
+                      "originalBudget" in milestone
+                        ? milestone.originalBudget
+                        : milestone.fundsAllocated,
+                    )}
                   />
                   <ContractMetric
-                    label="Ngân sách final"
-                    value={formatCurrency(milestone.finalBudget)}
+                    label="Ngân sách chốt"
+                    value={formatCurrency(getMilestoneBudget(milestone))}
                   />
                 </div>
               ))}
-              {(!contract.contractMilestones ||
-                contract.contractMilestones.length === 0) && (
+              {renderedMilestones.length === 0 && (
                 <EmptyState
                   title="Chưa có milestone draft"
                   description="Backend chưa trả contractMilestones cho contract này."
@@ -891,7 +1101,7 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng contract"
+              label="Tổng ngân sách"
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
@@ -927,7 +1137,9 @@ export function ContractDetailPage() {
               description="Contract phai o trang thai PENDING, nghia la business va expert da chap nhan contract va da ky NDA."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600 md:grid-cols-2">
-              <span>Contract: #{contract.contractId}</span>
+              <span className="min-w-0 break-words">
+                Contract: {contractTitle}
+              </span>
               <span>Status: {contract.status}</span>
               <span>
                 Business accepted: {businessAccepted ? "Da xong" : "Chua"}
@@ -1062,6 +1274,28 @@ function getMilestoneDurationLabel(
   const duration = Number(milestone.duration || 0);
   if (!Number.isFinite(duration) || duration <= 0) return "Chưa có thời gian";
   return `${duration} ${milestone.durationUnit || "tuần"}`;
+}
+
+function formatTotalMilestoneDuration(
+  milestones: Array<
+    Partial<Milestone> & { duration?: number; durationUnit?: string }
+  >,
+) {
+  const totalWeeks = milestones.reduce((total, milestone) => {
+    const duration = Number(milestone.durationValue ?? milestone.duration ?? 0);
+    if (!Number.isFinite(duration) || duration <= 0) return total;
+    const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+    if (unit.includes("DAY") || unit.includes("NGAY")) {
+      return total + duration / 7;
+    }
+    if (unit.includes("MONTH") || unit.includes("THANG")) {
+      return total + duration * 4;
+    }
+    return total + duration;
+  }, 0);
+
+  if (totalWeeks <= 0) return "Chưa có thời gian";
+  return `${Number.isInteger(totalWeeks) ? totalWeeks : totalWeeks.toFixed(1)} tuần`;
 }
 
 function canBackendReviewMilestone(status?: string) {
@@ -1317,11 +1551,92 @@ function ContractFlowStep({
   );
 }
 
-function Participant({ label, value }: { label: string; value: string }) {
+function Participant({
+  label,
+  value,
+  details = [],
+}: {
+  label: string;
+  value: string;
+  details?: Array<[string, string | undefined]>;
+}) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <p className="text-xs font-bold text-slate-400">{label}</p>
       <p className="mt-1 font-extrabold text-ink">{value}</p>
+      {details.length > 0 && (
+        <div className="mt-3 grid gap-2 text-sm">
+          {details.map(([detailLabel, detailValue]) => (
+            <div
+              key={detailLabel}
+              className="grid grid-cols-[110px_minmax(0,1fr)] gap-3"
+            >
+              <span className="text-slate-500">{detailLabel}</span>
+              <span className="min-w-0 break-words font-bold text-slate-700">
+                {detailValue || "Chưa có dữ liệu từ BE"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SignatureBlock({
+  title,
+  name,
+  signedAt,
+  ndaSigned,
+  verified,
+}: {
+  title: string;
+  name: string;
+  signedAt?: string;
+  ndaSigned: boolean;
+  verified: boolean;
+}) {
+  const signed = Boolean(signedAt);
+  const waitingForNda = signed && !ndaSigned;
+  const waitingForOtherParty = signed && ndaSigned && !verified;
+  return (
+    <div
+      className={
+        verified
+          ? "rounded-2xl border border-mint-100 bg-mint-50 p-5 text-center"
+          : "rounded-2xl border border-amber-100 bg-amber-50 p-5 text-center"
+      }
+    >
+      <div
+        className={
+          verified
+            ? "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm"
+            : "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-amber-700 shadow-sm"
+        }
+      >
+        {verified ? (
+          <CheckCircle2 className="h-5 w-5" />
+        ) : (
+          <LockKeyhole className="h-5 w-5" />
+        )}
+      </div>
+      <p className="mt-3 text-sm font-extrabold text-ink">{title}</p>
+      <p className="mt-2 text-base font-black text-slate-700">{name}</p>
+      <p
+        className={
+          verified
+            ? "mt-1 text-xs font-bold text-mint-700"
+            : "mt-1 text-xs font-bold text-amber-700"
+        }
+      >
+        {verified
+          ? `Đã xác thực hợp đồng: ${formatDateTime(signedAt)}`
+          : waitingForNda
+            ? `Đã ký contract lúc ${formatDateTime(signedAt)}, chờ ký NDA`
+            : waitingForOtherParty
+              ? `Đã ký contract và NDA, chờ bên còn lại hoàn tất`
+            : "Đang chờ ký contract"}
+      </p>
     </div>
   );
 }

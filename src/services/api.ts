@@ -696,12 +696,6 @@ export const contractApi = {
       data: payload,
     });
   },
-  activate(contractId: number) {
-    return call<Contract>({
-      method: "POST",
-      url: `/api/v1/contracts/${contractId}/activate`,
-    });
-  },
   sign(contractId: number) {
     return call<Contract>({
       method: "POST",

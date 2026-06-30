@@ -162,8 +162,8 @@ export function LoginPage() {
     return () => window.clearInterval(timer);
   }, [isLoginLocallyLocked]);
 
+  //hàm login bình thường
   const login = async (event: FormEvent) => {
-    //login bth
     event.preventDefault();
     if (isLoginLocallyLocked) {
       setMessageTone("danger");
@@ -183,6 +183,7 @@ export function LoginPage() {
     setLoading(true);
     setMessage("");
     setMessageTone("danger");
+    //kiểm tra trùng email
     let emailChecked = false;
     try {
       const emailExists = await authApi.checkEmail(normalizedLoginEmail);
@@ -225,7 +226,7 @@ export function LoginPage() {
       queueMicrotask(() => setMessage(loginFailureMessage));
       setMessageTone("danger");
       setMessage(
-        "Không thể đăng nhập. Kiểm tra lại back-end hoặc thông tin tài khoản.",
+        "Không thể đăng nhập. Kiểm tra lại email hoặc mật khẩu.",
       );
     } finally {
       setLoading(false);
@@ -668,7 +669,7 @@ export function ResetPasswordPage() {
 
   return (
     <AuthFrame
-      title="Dat lai mat khau"
+      title="Đặt lại mật khẩu"
       description="Nhập mật khẩu mới cho tài khoản của bạn."
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
@@ -942,7 +943,7 @@ export function RegisterPage() {
       );
 
       setMessageTone("success");
-      setMessage("Mã OTP mới đã dược gửi. Vui lòng kiểm tra hộp thư.");
+      setMessage("Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.");
     } catch {
       setMessageTone("danger");
       setMessage("Lỗi khi gửi lại mã OTP. Vui lòng thử lại sau.");

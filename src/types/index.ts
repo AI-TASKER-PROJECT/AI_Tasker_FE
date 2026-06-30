@@ -16,6 +16,7 @@ export interface SessionUser {
   role: Role;
   accountStatus?: AccountStatus;
   email: string;
+  phone?: string;
   fullName: string;
   pictureUrl?: string;
   authProvider?: 'LOCAL' | 'GOOGLE';
@@ -228,6 +229,13 @@ export interface BusinessProfile {
   accountId: number;
   taxCode: string;
   companyName: string;
+  email?: string;
+  phone?: string;
+  accountEmail?: string;
+  accountPhone?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  phoneNumber?: string;
   address?: string;
   businessLicenseUrl?: string;
   website?: string;
@@ -255,6 +263,9 @@ export interface ExpertProfile {
   expertId: number;
   accountId: number;
   nationalId: string;
+  email?: string;
+  accountEmail?: string;
+  contactEmail?: string;
   portfolioUrl?: string;
   yearsOfExperience?: number;
   description?: string;
@@ -267,6 +278,9 @@ export interface ExpertProfile {
   updatedAt?: string;
   fullName?: string;
   phone?: string;
+  accountPhone?: string;
+  contactPhone?: string;
+  phoneNumber?: string;
   title?: string;
   rating?: number;
   completedProjects?: number;
