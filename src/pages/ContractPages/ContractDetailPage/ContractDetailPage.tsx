@@ -298,7 +298,6 @@ export function ContractDetailPage() {
         window.location.assign(result.redirectUrl);
         return;
       }
-
       const depositAmount = result.data?.depositAmount ?? securityDepositAmount;
       const [, updatedWallet] = await Promise.all([
         refreshContract(),
@@ -324,12 +323,10 @@ export function ContractDetailPage() {
       setDepositLoading(false);
     }
   };
-
   const terminate = async () => {
     setContract(await contractApi.terminate(contract.contractId, reason));
     setTerminateOpen(false);
   };
-
   const contractTitle =
     contract.contractTitle ||
     contract.title ||
@@ -464,7 +461,6 @@ export function ContractDetailPage() {
       setNdaModalMode(null);
     }
   };
-
   const confirmNdaSigning = async () => {
     setNdaSubmitting(true);
     try {
@@ -501,13 +497,11 @@ export function ContractDetailPage() {
           }
         />
       </div>
-
       {contractNotice && (
         <Notice tone={contractNotice.tone} title={contractNotice.title}>
           {contractNotice.message}
         </Notice>
       )}
-
       <Card className="p-4">
         <SectionHeading
           title="Vòng đời contract"
@@ -515,7 +509,6 @@ export function ContractDetailPage() {
         />
         <ContractLifecycle status={contract.status} />
       </Card>
-
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <Card className="p-6">
           <Notice
@@ -541,7 +534,6 @@ export function ContractDetailPage() {
               NDA {ndaSigned ? "đã ký" : "chưa ký"}
             </Badge>
           </div>
-
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <ContractMetric
               label="Tổng ngân sách"
@@ -560,7 +552,6 @@ export function ContractDetailPage() {
               value={formatDateTime(contract.createdAt)}
             />
           </div>
-
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <ContractMetric
               label="Chờ nghiệm thu"
@@ -756,7 +747,6 @@ export function ContractDetailPage() {
               )}
             </div>
           </div>
-
           <div className="mt-6 flex flex-wrap gap-2">
             {canCurrentPartyAct && contractStatus === "DRAFT" && (
               <Button onClick={signContract} disabled={currentPartyAccepted}>
@@ -794,7 +784,6 @@ export function ContractDetailPage() {
             )}
           </div>
         </Card>
-
         <Card className="p-6">
           <SectionHeading
             title="Vận hành thực tế"

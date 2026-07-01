@@ -15,11 +15,7 @@ import {
   SectionHeading,
 } from "../../../components/ui";
 import { AdminMetric, WalletFact } from "../AdminPages.shared";
-import type {
-  AdminAccount,
-  SystemWallet,
-  WalletTransaction,
-} from "../../../types";
+import type { AdminAccount, SystemWallet, WalletTransaction } from "../../../types";
 
 export function SystemWalletPage() {
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
