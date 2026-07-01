@@ -6,10 +6,15 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
+
 import { useCallback, useEffect, useState } from "react";
+
 import { getApiErrorMessage, withdrawalApi } from "../../../services";
+
 import { cn, formatCurrency, formatDateTime } from "../../../lib/utils";
+
 import type { WithdrawalRequest } from "../../../types";
+
 import {
   Badge,
   Button,
@@ -23,6 +28,7 @@ import {
   SectionHeading,
   Tabs,
 } from "../../../components/ui";
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -535,4 +541,8 @@ export function AdminWithdrawalPage() {
       />
     </div>
   );
+}
+
+export function WithdrawalPage() {
+  return <AdminWithdrawalPage />;
 }

@@ -10,6 +10,11 @@ import {
   Plus,
   Minus,
   XCircle,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Undo2,
 } from "lucide-react";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
@@ -26,7 +31,7 @@ import {
   type Technology,
 } from "../../../services";
 import { cn, formatCurrency } from "../../../lib/utils";
-import type { AcceptanceCriteria, Job, UserQuota } from "../../../types";
+import type { Job, UserQuota } from "../../../types";
 import {
   Badge,
   Button,
@@ -246,8 +251,7 @@ export function CreateJobPage() {
       fundsAllocated: "",
       orderIndex: "1",
       durationValue: "",
-      criteriaIds: [],
-      criteriaSearch: "",
+      acceptanceCriteria: [""],
     },
     {
       milestoneName: "",
@@ -255,8 +259,7 @@ export function CreateJobPage() {
       fundsAllocated: "",
       orderIndex: "2",
       durationValue: "",
-      criteriaIds: [],
-      criteriaSearch: "",
+      acceptanceCriteria: [""],
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -277,9 +280,6 @@ export function CreateJobPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
-  const [acceptanceCriteria, setAcceptanceCriteria] = useState<
-    AcceptanceCriteria[]
-  >([]);
   const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
   const [selectedTechnologyIds, setSelectedTechnologyIds] = useState<number[]>(
     [],
@@ -291,8 +291,14 @@ export function CreateJobPage() {
 
   // ── AI NeedMoreInfo flow ──────────────────────────────────────────────────
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
-  const [aiAdditionalInfo, setAiAdditionalInfo] = useState("");
+  const [aiAdditionalAnswers, setAiAdditionalAnswers] = useState<string[]>([]);
   const [showAiReplyBox, setShowAiReplyBox] = useState(false);
+
+  const [isDeletingMilestones, setIsDeletingMilestones] = useState(false);
+  const [isReorderingMilestones, setIsReorderingMilestones] = useState(false);
+  const [milestonesHistory, setMilestonesHistory] = useState<
+    MilestoneDraft[][]
+  >([]);
 
   const [publishError, setPublishError] = useState("");
 
@@ -304,78 +310,70 @@ export function CreateJobPage() {
       catalogApi.listDomains(true),
       catalogApi.listSkills(true),
       catalogApi.listTechnologies(true),
-      catalogApi.listAcceptanceCriteria(true).catch(() => []),
       userQuotaApi.getCurrent().catch(() => null),
-    ]).then(
-      ([
-        domainItems,
-        skillItems,
-        technologyItems,
-        criteriaItems,
-        quotaItem,
-      ]) => {
-        setDomains(domainItems);
-        setSkills(skillItems);
-        setTechnologies(technologyItems);
-        setAcceptanceCriteria(criteriaItems);
-        setQuota(quotaItem);
+    ]).then(([domainItems, skillItems, technologyItems, quotaItem]) => {
+      setDomains(domainItems);
+      setSkills(skillItems);
+      setTechnologies(technologyItems);
+      setQuota(quotaItem);
 
-        if (jobId) {
-          const id = Number(jobId);
-          marketplaceApi.getJob(id).then((job) => {
-            setSavedJob(job);
-            setForm((prev) => ({
-              ...prev,
-              title: job.title || "",
-              rawRequirements: job.rawRequirements || "",
-              structuredSow: job.structuredSow || "",
-              budgetAmount: job.budget ? String(job.budget) : "",
-              plannedDurationValue: job.plannedDurationValue
-                ? String(job.plannedDurationValue)
-                : "",
-            }));
-          });
+      if (jobId) {
+        const id = Number(jobId);
+        marketplaceApi.getJob(id).then((job) => {
+          setSavedJob(job);
+          setForm((prev) => ({
+            ...prev,
+            title: job.title || "",
+            rawRequirements: job.rawRequirements || "",
+            structuredSow: job.structuredSow || "",
+            budgetAmount: job.budget ? String(job.budget) : "",
+            plannedDurationValue: job.plannedDurationValue
+              ? String(job.plannedDurationValue)
+              : "",
+          }));
+        });
 
-          import("../../../services").then((mod) => {
-            mod.contractApi.listJobMilestones(id).then((ms) => {
-              if (ms.length > 0) {
-                setMilestones(
-                  ms.map((m) => ({
-                    milestoneName: m.milestoneName,
-                    description: m.description || "",
-                    fundsAllocated: m.fundsAllocated
-                      ? String(m.fundsAllocated)
-                      : "",
-                    orderIndex: m.orderIndex ? String(m.orderIndex) : "1",
-                    durationValue: m.durationValue
-                      ? String(m.durationValue)
-                      : "",
-                    criteriaIds: [],
-                    criteriaSearch: "",
-                  })),
-                );
-              }
-            });
-            mod.catalogApi.listJobDomains(id).then((jds) => {
-              if (jds.length > 0) {
-                setSelectedDomainId(jds[0].id.domainId);
-              }
-            });
-            mod.catalogApi.listJobSkills(id).then((jss) => {
-              setSkillAssignments(
-                jss.map((js) => ({
-                  skillId: js.id.skillId,
-                  isMandatory: js.isMandatory,
+        import("../../../services").then((mod) => {
+          mod.contractApi.listJobMilestones(id).then((ms) => {
+            if (ms.length > 0) {
+              setMilestones(
+                ms.map((m) => ({
+                  milestoneName: m.milestoneName,
+                  description: m.description || "",
+                  fundsAllocated: m.fundsAllocated
+                    ? String(m.fundsAllocated)
+                    : "",
+                  orderIndex: m.orderIndex ? String(m.orderIndex) : "1",
+                  durationValue: m.durationValue ? String(m.durationValue) : m.duration ? String(m.duration) : "",
+                  acceptanceCriteria:
+                    m.acceptanceCriteria && m.acceptanceCriteria.length > 0
+                      ? m.acceptanceCriteria
+                      : m.criteria?.map((criteria) => criteria.description) || [
+                          "",
+                        ],
                 })),
               );
-            });
-            mod.catalogApi.listJobTechnologies(id).then((jts) => {
-              setSelectedTechnologyIds(jts.map((jt) => jt.id.technologyId));
-            });
+            }
           });
-        }
-      },
-    );
+          mod.catalogApi.listJobDomains(id).then((jds) => {
+            if (jds.length > 0) {
+              setSelectedDomainId(jds[0].id.domainId);
+            }
+          });
+          mod.catalogApi.listJobSkills(id).then((jss) => {
+            setSkillAssignments(
+              jss.map((js) => ({
+                skillId: js.id.skillId,
+                isMandatory: js.isMandatory,
+              })),
+            );
+          });
+          mod.catalogApi.listJobTechnologies(id).then((jts) => {
+            setSelectedTechnologyIds(jts.map((jt) => jt.id.technologyId));
+          });
+        });
+      }
+    });
   }, [jobId]);
 
   const selectedDomainIdList =
@@ -396,8 +394,10 @@ export function CreateJobPage() {
       milestone.duration !== undefined && milestone.duration !== null
         ? String(milestone.duration)
         : "",
-    criteriaIds: milestones[index]?.criteriaIds || [],
-    criteriaSearch: "",
+    acceptanceCriteria:
+      milestone.acceptanceCriteria && milestone.acceptanceCriteria.length > 0
+        ? milestone.acceptanceCriteria
+        : milestones[index]?.acceptanceCriteria || [""],
   });
 
   // ── Build AI payload — includes technology names ──────────────────────────
@@ -408,8 +408,13 @@ export function CreateJobPage() {
 
     const languageInstruction =
       "Vui lòng xuất nội dung SOW và toàn bộ các mốc (Milestones) bằng tiếng Việt. Định dạng tất cả các số tiền tệ với dấu chấm phân cách hàng nghìn (ví dụ: 15.000 thay vì 15000).";
-    const rawRequirementWithExtra = aiAdditionalInfo.trim()
-      ? `${form.rawRequirements}\n\nBổ sung thêm: ${aiAdditionalInfo.trim()}\n\n${languageInstruction}`
+
+    const extraInfoStr = aiAdditionalAnswers
+      .filter((a) => a.trim())
+      .map((a, i) => `${i + 1}. ${a.trim()}`)
+      .join("\n");
+    const rawRequirementWithExtra = extraInfoStr
+      ? `${form.rawRequirements}\n\nBổ sung thêm:\n${extraInfoStr}\n\n${languageInstruction}`
       : `${form.rawRequirements}\n\n${languageInstruction}`;
 
     return {
@@ -469,23 +474,27 @@ export function CreateJobPage() {
         }));
       }
 
+      const hasGeneratedContent = Boolean(
+        structuredSow ||
+        (response.milestones && response.milestones.length > 0),
+      );
+
       if (response.needMoreInfo) {
         const questions =
           response.questions && response.questions.length > 0
             ? response.questions
             : ["AI cần thêm thông tin để tạo SoW chính xác hơn."];
         setAiQuestions(questions);
+        setAiAdditionalAnswers(new Array(questions.length).fill(""));
         setShowAiReplyBox(true);
-        setAiMessage("AI cần bổ sung thêm thông tin trước khi tạo SoW đầy đủ.");
-        setAiMessageTone("warning");
-        setSowGeneratedLocked(false);
+        setAiMessage(
+          "✓ AI đã tạo SoW và cập nhật Project milestones thành công. Có thể chỉnh sửa hoặc bổ sung thêm các thông tin bên dưới để tạo lại 1 mô tả chi tiết và đầy đủ hơn.",
+        );
+        setAiMessageTone("success");
+        setSowGeneratedLocked(hasGeneratedContent);
         return;
       }
 
-      const hasGeneratedContent = Boolean(
-        structuredSow ||
-        (response.milestones && response.milestones.length > 0),
-      );
       setSowGeneratedLocked(hasGeneratedContent);
       if (hasGeneratedContent)
         setAiMessage(
@@ -509,10 +518,37 @@ export function CreateJobPage() {
     setAiMessage("");
     setAiQuestions([]);
     setShowAiReplyBox(false);
-    setAiAdditionalInfo("");
+    setAiAdditionalAnswers([]);
+  };
+
+  const saveMilestoneHistory = (currentMilestones: MilestoneDraft[]) => {
+    setMilestonesHistory((prev) => [...prev, currentMilestones].slice(-10));
+  };
+
+  const undoMilestoneAction = () => {
+    if (milestonesHistory.length > 0) {
+      const previousState = milestonesHistory[milestonesHistory.length - 1];
+      setMilestones(previousState);
+      setMilestonesHistory((prev) => prev.slice(0, -1));
+
+      const newTotalDuration = previousState.reduce(
+        (acc, m) => acc + Number(m.durationValue || 0),
+        0,
+      );
+      const newTotalBudget = previousState.reduce(
+        (acc, m) => acc + Number(m.fundsAllocated || 0),
+        0,
+      );
+      setForm((prev) => ({
+        ...prev,
+        budgetAmount: String(newTotalBudget),
+        plannedDurationValue: String(newTotalDuration),
+      }));
+    }
   };
 
   const addMilestone = () => {
+    saveMilestoneHistory(milestones);
     setMilestones((prev) => [
       ...prev,
       {
@@ -521,14 +557,59 @@ export function CreateJobPage() {
         fundsAllocated: "",
         orderIndex: String(prev.length + 1),
         durationValue: "",
-        criteriaIds: [],
-        criteriaSearch: "",
+        acceptanceCriteria: [""],
       },
     ]);
   };
 
-  const removeMilestone = () => {
-    setMilestones((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+  const removeSpecificMilestone = (indexToRemove: number) => {
+    saveMilestoneHistory(milestones);
+    const newItems = milestones
+      .filter((_, i) => i !== indexToRemove)
+      .map((item, i) => ({ ...item, orderIndex: String(i + 1) }));
+    setMilestones(newItems);
+
+    const newTotalDuration = newItems.reduce(
+      (acc, m) => acc + Number(m.durationValue || 0),
+      0,
+    );
+    const newTotalBudget = newItems.reduce(
+      (acc, m) => acc + Number(m.fundsAllocated || 0),
+      0,
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      budgetAmount: String(newTotalBudget),
+      plannedDurationValue: String(newTotalDuration),
+    }));
+
+    if (newItems.length <= 1) {
+      setIsDeletingMilestones(false);
+      setIsReorderingMilestones(false);
+    }
+  };
+
+  const moveMilestone = (index: number, direction: "up" | "down") => {
+    saveMilestoneHistory(milestones);
+    const newItems = [...milestones];
+    if (direction === "up" && index > 0) {
+      const temp = newItems[index - 1];
+      newItems[index - 1] = newItems[index];
+      newItems[index] = temp;
+    } else if (direction === "down" && index < newItems.length - 1) {
+      const temp = newItems[index + 1];
+      newItems[index + 1] = newItems[index];
+      newItems[index] = temp;
+    } else {
+      return;
+    }
+
+    const reordered = newItems.map((item, i) => ({
+      ...item,
+      orderIndex: String(i + 1),
+    }));
+    setMilestones(reordered);
   };
 
   const toggleSkill = (skillId: number) => {
@@ -626,18 +707,54 @@ export function CreateJobPage() {
     });
   };
 
-  const toggleMilestoneCriteria = (index: number, criteriaId: number) => {
+  const updateMilestoneCriterion = (
+    milestoneIndex: number,
+    criterionIndex: number,
+    value: string,
+  ) => {
     setMilestones((items) =>
       items.map((item, itemIndex) =>
-        itemIndex === index
+        itemIndex === milestoneIndex
           ? {
               ...item,
-              criteriaIds: item.criteriaIds.includes(criteriaId)
-                ? item.criteriaIds.filter((id) => id !== criteriaId)
-                : [...item.criteriaIds, criteriaId],
+              acceptanceCriteria: item.acceptanceCriteria.map(
+                (criterion, currentIndex) =>
+                  currentIndex === criterionIndex ? value : criterion,
+              ),
             }
           : item,
       ),
+    );
+  };
+
+  const addMilestoneCriterion = (milestoneIndex: number) => {
+    setMilestones((items) =>
+      items.map((item, itemIndex) =>
+        itemIndex === milestoneIndex
+          ? {
+              ...item,
+              acceptanceCriteria: [...item.acceptanceCriteria, ""],
+            }
+          : item,
+      ),
+    );
+  };
+
+  const removeMilestoneCriterion = (
+    milestoneIndex: number,
+    criterionIndex: number,
+  ) => {
+    setMilestones((items) =>
+      items.map((item, itemIndex) => {
+        if (itemIndex !== milestoneIndex) return item;
+        const nextCriteria = item.acceptanceCriteria.filter(
+          (_, currentIndex) => currentIndex !== criterionIndex,
+        );
+        return {
+          ...item,
+          acceptanceCriteria: nextCriteria.length > 0 ? nextCriteria : [""],
+        };
+      }),
     );
   };
 
@@ -681,7 +798,9 @@ export function CreateJobPage() {
         status: "PENDING",
         durationValue: Number(milestone.durationValue || 0),
         durationUnit: "WEEK",
-        criteriaIds: milestone.criteriaIds,
+        acceptanceCriteria: milestone.acceptanceCriteria
+          .map((criterion) => criterion.trim())
+          .filter(Boolean),
       }));
 
   const submit = async (event: FormEvent) => {
@@ -705,7 +824,7 @@ export function CreateJobPage() {
             !m.milestoneName.trim() ||
             !Number(m.durationValue) ||
             !Number(m.fundsAllocated) ||
-            m.criteriaIds.length === 0,
+            !m.acceptanceCriteria.some((criterion) => criterion.trim()),
         );
 
       if (
@@ -739,7 +858,7 @@ export function CreateJobPage() {
       } else {
         job = await marketplaceApi.createJob(payload);
         setCreateMessage(
-          "Bài đăng nháp đã được tạo. Bạn có thể xem chi tiết hoặc đăng bài ngay bên dưới.",
+          "Dự án nháp đã được tạo. Bạn có thể xem chi tiết hoặc đăng bài ngay bên dưới.",
         );
       }
       setSavedJob(job);
@@ -1069,6 +1188,11 @@ export function CreateJobPage() {
             </div>
 
             {/* ── STEP 2: AI Generate ── */}
+            {aiMessage && (
+              <div className="mb-2">
+                <Notice tone={aiMessageTone} title={aiMessage} />
+              </div>
+            )}
             <div className="rounded-2xl border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/60 to-indigo-50/40 p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -1082,7 +1206,7 @@ export function CreateJobPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {sowGeneratedLocked && (
+                  {sowGeneratedLocked && !showAiReplyBox && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -1094,15 +1218,19 @@ export function CreateJobPage() {
                       Chỉnh sửa lại
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    loading={aiLoading}
-                    onClick={generateSow}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    {sowGeneratedLocked ? "Tạo lại mô tả" : "Tạo mô tả bằng AI"}
-                  </Button>
+                  {!showAiReplyBox && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={aiLoading}
+                      onClick={generateSow}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {sowGeneratedLocked
+                        ? "Tạo lại mô tả"
+                        : "Tạo mô tả bằng AI"}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -1119,20 +1247,49 @@ export function CreateJobPage() {
                         key={i}
                         className="flex items-start gap-2 text-sm text-amber-800"
                       >
-                        <span className="mt-1 shrink-0 text-amber-500">›</span>
-                        {q}
+                        <span className="mt-0.5 shrink-0 font-bold text-amber-600">
+                          {i + 1}.
+                        </span>
+                        <span>{q}</span>
                       </li>
                     ))}
                   </ul>
-                  <Field label="Bổ sung câu trả lời cho AI">
-                    <Textarea
-                      value={aiAdditionalInfo}
-                      placeholder="Nhập thêm thông tin để AI có thể tạo SoW đầy đủ hơn..."
-                      autoResize
-                      onChange={(e) => setAiAdditionalInfo(e.target.value)}
-                    />
-                  </Field>
-                  <div className="mt-3 flex justify-end">
+                  <div className="grid gap-3">
+                    <p className="text-sm font-bold text-slate-700">
+                      Bổ sung câu trả lời cho AI
+                    </p>
+                    {aiQuestions.map((q, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="mt-2 text-sm font-bold text-slate-500">
+                          {i + 1}.
+                        </span>
+                        <Textarea
+                          value={aiAdditionalAnswers[i] || ""}
+                          placeholder={`Nhập câu trả lời cho câu ${i + 1}...`}
+                          autoResize
+                          className="flex-1"
+                          onChange={(e) => {
+                            const newAnswers = [...aiAdditionalAnswers];
+                            newAnswers[i] = e.target.value;
+                            setAiAdditionalAnswers(newAnswers);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    {sowGeneratedLocked && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={unlockForm}
+                        title="Mở khóa để chỉnh sửa lại"
+                      >
+                        <Unlock className="h-4 w-4" />
+                        Chỉnh sửa lại
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="secondary"
@@ -1147,12 +1304,6 @@ export function CreateJobPage() {
                 </div>
               )}
             </div>
-
-            {aiMessage && (
-              <div className="mb-2">
-                <Notice tone={aiMessageTone} title={aiMessage} />
-              </div>
-            )}
 
             {/* ── STEP 3: Review SoW & Milestones ── */}
             <div className="grid gap-4">
@@ -1264,11 +1415,49 @@ export function CreateJobPage() {
                       key={index}
                       className="grid gap-3 rounded-2xl bg-white p-3 xl:grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)]"
                     >
+                      {(isDeletingMilestones || isReorderingMilestones) &&
+                        !sowGeneratedLocked && (
+                          <div className="xl:col-span-5 flex justify-end gap-2 p-1 bg-slate-50 rounded-lg">
+                            {isReorderingMilestones && (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => moveMilestone(index, "up")}
+                                  disabled={index === 0}
+                                >
+                                  <ArrowUp className="h-4 w-4 mr-1" /> Lên
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => moveMilestone(index, "down")}
+                                  disabled={index === milestones.length - 1}
+                                >
+                                  <ArrowDown className="h-4 w-4 mr-1" /> Xuống
+                                </Button>
+                              </>
+                            )}
+                            {isDeletingMilestones && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                                onClick={() => removeSpecificMilestone(index)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" /> Xóa mốc này
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       {/* Milestone name — always editable */}
                       <Input
                         aria-label={`Công việc ${index + 1}`}
                         value={milestone.milestoneName}
                         placeholder="Chi tiết công việc"
+                        disabled={sowGeneratedLocked}
                         onChange={(event) =>
                           updateMilestone(index, {
                             milestoneName: event.target.value,
@@ -1329,71 +1518,82 @@ export function CreateJobPage() {
                         </span>
                       </div>
 
-                      {/* Acceptance Criteria — always interactive */}
+                      {/* Acceptance Criteria - milestone-owned text list */}
                       <div>
-                        <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
-                          {(() => {
-                            const searchStr = (milestone.criteriaSearch || "")
-                              .trim()
-                              .toLowerCase();
-                            const milestoneFilteredCriteria = searchStr
-                              ? acceptanceCriteria.filter((c) =>
-                                  c.description
-                                    .toLowerCase()
-                                    .includes(searchStr),
-                                )
-                              : acceptanceCriteria;
-
-                            if (milestoneFilteredCriteria.length === 0) {
-                              return (
-                                <p className="px-2 py-1 text-xs font-semibold text-slate-500">
-                                  {acceptanceCriteria.length === 0
-                                    ? "Chưa tải dược danh sách tiêu chí."
-                                    : "Không tìm thấy tiêu chí phù hợp."}
-                                </p>
-                              );
-                            }
-
-                            return (
-                              <div className="grid gap-1.5">
-                                {milestoneFilteredCriteria.map((criteria) => (
-                                  <label
-                                    key={criteria.criteriaId}
-                                    className="flex cursor-pointer items-start gap-2 rounded-xl px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-outline-variant text-primary focus:ring-primary"
-                                      checked={milestone.criteriaIds.includes(
-                                        criteria.criteriaId,
-                                      )}
-                                      onChange={() =>
-                                        toggleMilestoneCriteria(
+                        <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                          <ul className="grid gap-2">
+                            {milestone.acceptanceCriteria.map(
+                              (criterion, criterionIndex) => (
+                                <li
+                                  key={criterionIndex}
+                                  className="flex items-start gap-2 rounded-xl bg-white px-2 py-1.5"
+                                >
+                                  <span className="mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-600">
+                                    {criterionIndex + 1}
+                                  </span>
+                                  <div
+                                    contentEditable={!sowGeneratedLocked}
+                                    suppressContentEditableWarning
+                                    aria-label={`Tieu chi nghiem thu ${criterionIndex + 1} cua moc ${index + 1}`}
+                                    data-placeholder="Ví dụ: Bàn giao đúng tài liệu/API/demo đã thống nhất."
+                                    className={`min-h-[32px] flex-1 min-w-0 border-0 bg-transparent px-1 py-1.5 text-xs font-semibold shadow-none focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:font-normal break-words ${sowGeneratedLocked ? "cursor-default text-slate-500" : "cursor-text"}`}
+                                    onBlur={(event) =>
+                                      updateMilestoneCriterion(
+                                        index,
+                                        criterionIndex,
+                                        event.currentTarget.textContent || "",
+                                      )
+                                    }
+                                    dangerouslySetInnerHTML={{
+                                      __html: criterion,
+                                    }}
+                                  />
+                                  {!sowGeneratedLocked && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      aria-label="Xóa tiêu chí nghiệm thu"
+                                      title="Xóa tiêu chí"
+                                      className="mt-1 h-8 w-10 shrink-0 rounded-md border border-red-600 bg-red-600 p-0 text-xs text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-red-600 hover:text-white hover:border-red-600 active:scale-95"
+                                      onClick={() =>
+                                        removeMilestoneCriterion(
                                           index,
-                                          criteria.criteriaId,
+                                          criterionIndex,
                                         )
                                       }
-                                    />
-                                    <span className="min-w-0 break-words">
-                                      {criteria.description}
-                                    </span>
-                                  </label>
-                                ))}
-                              </div>
-                            );
-                          })()}
+                                    >
+                                      X
+                                    </Button>
+                                  )}
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                          {!sowGeneratedLocked && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="mt-2 h-9 w-full justify-center text-xs"
+                              onClick={() => addMilestoneCriterion(index)}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Thêm tiêu chí
+                            </Button>
+                          )}
                         </div>
                         {attemptedSubmit &&
-                          milestone.criteriaIds.length === 0 && (
+                          !milestone.acceptanceCriteria.some((criterion) =>
+                            criterion.trim(),
+                          ) && (
                             <p className="mt-1 text-xs text-rose-500">
-                              Vui lòng chọn ít nhất một tiêu chí nghiệm thu.
+                              Vui long nhap it nhat mot tieu chi nghiem thu.
                             </p>
                           )}
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 flex justify-center gap-3">
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <Button
                     type="button"
                     onClick={addMilestone}
@@ -1405,12 +1605,40 @@ export function CreateJobPage() {
                   </Button>
                   <Button
                     type="button"
-                    onClick={removeMilestone}
+                    onClick={() => {
+                      setIsDeletingMilestones((prev) => !prev);
+                      setIsReorderingMilestones(false);
+                    }}
                     disabled={sowGeneratedLocked || milestones.length <= 1}
                     className="bg-pink-500 text-white hover:bg-pink-600 border-none"
                   >
                     <Minus className="mr-1 h-4 w-4" />
-                    Xóa bỏ milestone
+                    {isDeletingMilestones ? "Hoàn tất xóa" : "Xóa bỏ milestone"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsReorderingMilestones((prev) => !prev);
+                      setIsDeletingMilestones(false);
+                    }}
+                    disabled={sowGeneratedLocked || milestones.length <= 1}
+                    className="bg-pink-500 text-white hover:bg-pink-600 border-none"
+                  >
+                    <ArrowUpDown className="mr-1 h-4 w-4" />
+                    {isReorderingMilestones
+                      ? "Hoàn tất sắp xếp"
+                      : "Chỉnh sửa thứ tự"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={undoMilestoneAction}
+                    disabled={
+                      sowGeneratedLocked || milestonesHistory.length === 0
+                    }
+                    className="bg-pink-500 text-white hover:bg-pink-600 border-none"
+                  >
+                    <Undo2 className="mr-1 h-4 w-4" />
+                    Hoàn tác
                   </Button>
                 </div>
                 {attemptedSubmit &&
@@ -1422,7 +1650,9 @@ export function CreateJobPage() {
                           !m.milestoneName.trim() ||
                           !Number(m.durationValue) ||
                           !Number(m.fundsAllocated) ||
-                          m.criteriaIds.length === 0,
+                          !m.acceptanceCriteria.some((criterion) =>
+                            criterion.trim(),
+                          ),
                       );
                     if (hasEmptyMilestone) {
                       return (
@@ -1516,11 +1746,11 @@ export function CreateJobPage() {
               title={
                 savedJob.status === "OPEN"
                   ? "Quản lý bài đăng"
-                  : "Quản lý yêu cầu nháp"
+                  : "Quản lý dự án nháp"
               }
               description={
                 !createMessage && savedJob.status !== "OPEN"
-                  ? "Yêu cầu đã được lưu ở trạng thái nháp."
+                  ? "Dự án đã được lưu ở trạng thái nháp."
                   : undefined
               }
             />
@@ -1551,14 +1781,11 @@ export function CreateJobPage() {
                     label={jobDomainLabel(selectedDomainIdList, domains)}
                     className="mb-2"
                   />
-                  <p className="text-xs font-bold text-slate-400">
-                    #{savedJob.jobId}
-                  </p>
                   <p className="mt-1 break-words font-extrabold text-ink">
                     {savedJob.title}
                   </p>
                 </div>
-                <StatusBadge status={savedJob.status} />
+                <StatusBadge status={savedJob.status === "DRAFT" ? "Nháp" : savedJob.status} />
               </div>
               <div className="mt-4 grid gap-3 text-sm">
                 <div className="flex justify-between gap-3">
@@ -1571,7 +1798,7 @@ export function CreateJobPage() {
                   <span className="text-slate-500">Thời lượng</span>
                   <span className="break-words text-right font-extrabold text-ink">
                     {savedJob.plannedDurationValue
-                      ? `${savedJob.plannedDurationValue} ${savedJob.plannedDurationUnit === "WEEK" ? "TUẦN" : (savedJob.plannedDurationUnit || "TUẦN")}`
+                      ? `${savedJob.plannedDurationValue} ${savedJob.plannedDurationUnit === "WEEK" ? "TUẦN" : savedJob.plannedDurationUnit || "TUẦN"}`
                       : "Chưa xác định"}
                   </span>
                 </div>
@@ -1613,10 +1840,16 @@ export function CreateJobPage() {
                   orderIndex: Number(milestone.orderIndex || index + 1),
                   status: "Pending",
                   durationValue: Number(milestone.durationValue || 0),
-                  criteriaIds: milestone.criteriaIds,
-                  criteria: acceptanceCriteria.filter((c) =>
-                    milestone.criteriaIds.includes(c.criteriaId),
-                  ),
+                  acceptanceCriteria: milestone.acceptanceCriteria
+                    .map((criterion) => criterion.trim())
+                    .filter(Boolean),
+                  criteria: milestone.acceptanceCriteria
+                    .map((criterion, criterionIndex) => ({
+                      criteriaId: criterionIndex + 1,
+                      description: criterion,
+                      sortOrder: criterionIndex + 1,
+                    }))
+                    .filter((criterion) => criterion.description.trim()),
                 }))}
             />
             <div className="mt-4 grid gap-2">

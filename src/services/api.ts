@@ -207,6 +207,7 @@ export interface GeneratedSowMilestone {
   duration?: number;
   durationUnit?: string;
   budget?: number;
+  acceptanceCriteria?: string[];
 }
 
 export interface GenerateSowResponse {

@@ -165,6 +165,7 @@ export interface Milestone {
   durationUnit?: string;
   status: string;
   durationValue?: number;
+  acceptanceCriteria?: string[];
   criteriaIds?: number[];
   criteria?: AcceptanceCriteria[];
   createdAt?: string;
