@@ -11,8 +11,7 @@ export type MilestoneDraft = {
   fundsAllocated: string;
   orderIndex: string;
   durationValue: string;
-  criteriaIds: number[];
-  criteriaSearch?: string;
+  acceptanceCriteria: string[];
 };
 
 export function renderListSection(title: string, values?: string[]) {
@@ -22,7 +21,7 @@ export function renderListSection(title: string, values?: string[]) {
 
 export function formatGeneratedSow(sow?: GeneratedSow) {
   if (!sow) return "";
-  
+
   const sowParts = [
     sow.overview ? `Tổng quan: ${sow.overview}` : "",
     renderListSection("Mục tiêu", sow.objectives),

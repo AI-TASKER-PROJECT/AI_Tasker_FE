@@ -32,9 +32,8 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
                 {milestone.milestoneName}
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
-                <span>{milestone.status || "Pending"}</span>
                 <span className="flex items-center gap-1">
-                  • {(() => {
+                  {(() => {
                     const dVal = milestone.durationValue ?? (milestone as any).duration;
                     const unit = milestone.durationUnit === "WEEK" ? "TUẦN" : (milestone.durationUnit || "TUẦN");
                     return dVal && dVal > 0 ? `${dVal} ${unit}` : "Chưa xác định";
