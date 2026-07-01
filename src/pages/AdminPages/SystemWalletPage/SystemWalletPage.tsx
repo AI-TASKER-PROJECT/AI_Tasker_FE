@@ -5,7 +5,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { adminApi, walletTransactionApi } from "../../../lib/api";
+import { adminApi } from "../../../lib/api";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
 import {
   Badge,
@@ -15,7 +15,11 @@ import {
   SectionHeading,
 } from "../../../components/ui";
 import { AdminMetric, WalletFact } from "../AdminPages.shared";
-import type { AdminAccount, SystemWallet, WalletTransaction } from "../../../types";
+import type {
+  AdminAccount,
+  SystemWallet,
+  WalletTransaction,
+} from "../../../types";
 
 export function SystemWalletPage() {
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
@@ -27,10 +31,8 @@ export function SystemWalletPage() {
     setLoading(true);
     try {
       const [w, h, accs] = await Promise.all([
-        sync
-          ? adminApi.syncSystemWallet()
-          : adminApi.getSystemWallet(),
-        walletTransactionApi.list(),
+        sync ? adminApi.syncSystemWallet() : adminApi.getSystemWallet(),
+        adminApi.listPlatformWalletTransactions(),
         adminApi.listAccounts(),
       ]);
       setWallet(w);
@@ -113,83 +115,103 @@ export function SystemWalletPage() {
 
             <Card className="p-6">
               <SectionHeading
-                title="Lịch sử ký quỹ"
-                description="Lịch sử các giao dịch ký quỹ của hệ thống."
+                title="Lịch sử giao dịch nền tảng"
+                description="Theo dõi giao dịch ví nền tảng, mục đích thanh toán và đối tượng liên quan."
               />
-              <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-100">
-                <table className="min-w-full divide-y divide-slate-100 text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-bold text-slate-500">
-                        Mã giao dịch
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-slate-500">
-                        Ngày giờ
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-slate-500">
-                        Tài khoản
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-slate-500">
-                        Số tiền
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-slate-500">
-                        Trạng thái
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {history.map((t) => (
-                      <tr key={t.id}>
-                        <td className="px-4 py-3 font-semibold text-slate-700">
-                          #{t.id}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col font-medium text-slate-500">
-                            {(() => {
-                              const dt = formatDateTime(t.createdAt);
-                              const [time, date] = dt.split(" ");
-                              return (
-                                <>
-                                  <span>{time}</span>
-                                  <span>{date}</span>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {t.accountId ? (accounts.find(a => a.accountId === t.accountId)?.fullName ?? `#${t.accountId}`) : "-"}
-                        </td>
-                        <td className="px-4 py-3 font-bold text-brand-600">
-                          {formatCurrency(t.amount)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            tone={
-                              t.status === "SUCCESS"
-                                ? "mint"
-                                : t.status === "PENDING"
-                                  ? "amber"
-                                  : "coral"
-                            }
-                          >
-                            {t.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                    {history.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-4 py-8 text-center text-slate-400"
+              <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
+                <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid-cols-[1fr_180px_160px] md:items-center">
+                  <span>Thanh toán cho việc gì</span>
+                  <span>Người thực hiện</span>
+                  <span className="md:text-right">Số tiền</span>
+                </div>
+
+                {history.length === 0 ? (
+                  <div className="px-5 py-10 text-center text-sm font-bold text-slate-400">
+                    Chưa có lịch sử giao dịch nền tảng.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {history.map((t) => {
+                      const transactionId = t.transactionId ?? t.id;
+                      const contextItems = walletTransactionContextItems(t);
+                      const isPositive =
+                        t.direction === "CREDIT" || t.direction === "RELEASE";
+
+                      return (
+                        <div
+                          key={transactionId}
+                          className="grid gap-4 px-5 py-5 transition hover:bg-slate-50/70 md:grid-cols-[1fr_180px_160px] md:items-start"
                         >
-                          Chưa có lịch sử ký quỹ.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                tone={walletTransactionBadgeTone(
+                                  t.transactionType,
+                                )}
+                              >
+                                {walletTransactionTypeLabel(t.transactionType)}
+                              </Badge>
+                              <Badge tone={walletTransactionStatusTone(t.status)}>
+                                {t.status}
+                              </Badge>
+                              <span className="text-xs font-bold text-slate-400">
+                                #{transactionId}
+                              </span>
+                              <span className="text-xs font-bold text-slate-400">
+                                {formatDateTime(t.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="mt-3 text-base font-extrabold text-ink">
+                              {walletTransactionPurposeTitle(t)}
+                            </p>
+                            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                              {walletTransactionPurposeDescription(t)}
+                            </p>
+
+                            {contextItems.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {contextItems.map((item) => (
+                                  <span
+                                    key={item}
+                                    className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-500 ring-1 ring-inset ring-slate-100"
+                                  >
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid gap-1 text-sm">
+                            <span className="font-extrabold text-slate-700">
+                              {walletTransactionActorName(t, accounts)}
+                            </span>
+                            <span className="text-xs font-bold text-slate-400">
+                              {t.balanceType || "BALANCE"}
+                            </span>
+                          </div>
+
+                          <div className="md:text-right">
+                            <div
+                              className={
+                                isPositive
+                                  ? "text-xl font-black text-mint-600"
+                                  : "text-xl font-black text-brand-600"
+                              }
+                            >
+                              {isPositive ? "+" : "-"}
+                              {formatCurrency(t.amount)}
+                            </div>
+                            <div className="mt-1 text-xs font-bold text-slate-400">
+                              {t.direction}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </Card>
           </div>
@@ -197,4 +219,111 @@ export function SystemWalletPage() {
       )}
     </div>
   );
+}
+
+function walletTransactionTypeLabel(type?: string) {
+  const labels: Record<string, string> = {
+    TOPUP: "Nạp ví",
+    MEMBERSHIP_PURCHASE: "Mua gói",
+    CREDIT_PURCHASE: "Mua lượt",
+    CONTRACT_SECURITY_DEPOSIT_HOLD: "Ký quỹ hợp đồng",
+    DEPOSIT_REFUND: "Hoàn ký quỹ",
+    WITHDRAW_HOLD: "Giữ tiền rút",
+    WITHDRAW_APPROVED: "Duyệt rút tiền",
+    WITHDRAW_REJECTED: "Từ chối rút tiền",
+  };
+  return labels[type ?? ""] ?? type ?? "Giao dịch";
+}
+
+function walletTransactionBadgeTone(type?: string) {
+  if (type === "TOPUP" || type === "WITHDRAW_APPROVED") return "mint";
+  if (type === "CONTRACT_SECURITY_DEPOSIT_HOLD" || type === "DEPOSIT_REFUND") {
+    return "amber";
+  }
+  if (type === "WITHDRAW_REJECTED" || type === "WITHDRAW_HOLD") return "coral";
+  if (type === "MEMBERSHIP_PURCHASE" || type === "CREDIT_PURCHASE") {
+    return "violet";
+  }
+  return "slate";
+}
+
+function walletTransactionStatusTone(status?: string) {
+  if (status === "SUCCESS") return "mint";
+  if (status === "PENDING") return "amber";
+  if (status === "FAILED" || status === "CANCELLED") return "coral";
+  return "slate";
+}
+
+function walletTransactionActorName(
+  tx: WalletTransaction,
+  accounts: AdminAccount[],
+) {
+  if (tx.actorName) return tx.actorName;
+  if (!tx.accountId) return "Hệ thống";
+  return accounts.find((account) => account.accountId === tx.accountId)?.fullName
+    ?? `Account #${tx.accountId}`;
+}
+
+function walletTransactionPurposeTitle(tx: WalletTransaction) {
+  if (tx.title) return tx.title;
+  if (tx.transactionType === "TOPUP") return "Nạp tiền vào ví";
+  if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
+    return `Mua gói ${tx.packageName ?? "thành viên"}`;
+  }
+  if (tx.transactionType === "CREDIT_PURCHASE") return "Mua lượt sử dụng";
+  if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
+    return `Ký quỹ hợp đồng ${tx.contractTitle ?? ""}`.trim();
+  }
+  if (tx.transactionType === "DEPOSIT_REFUND") {
+    return `Hoàn ký quỹ hợp đồng ${tx.contractTitle ?? ""}`.trim();
+  }
+  if (tx.transactionType === "WITHDRAW_HOLD") return "Tạo yêu cầu rút tiền";
+  if (tx.transactionType === "WITHDRAW_APPROVED") return "Rút tiền đã được duyệt";
+  if (tx.transactionType === "WITHDRAW_REJECTED") return "Rút tiền bị từ chối";
+  return walletTransactionTypeLabel(tx.transactionType);
+}
+
+function walletTransactionPurposeDescription(tx: WalletTransaction) {
+  if (tx.description) return tx.description;
+  if (tx.rawDescription) return tx.rawDescription;
+
+  const amount = formatCurrency(tx.amount);
+  if (tx.transactionType === "TOPUP") {
+    return `Người dùng nạp ${amount} vào ví${tx.providerOrderCode ? ` qua mã thanh toán ${tx.providerOrderCode}` : ""}.`;
+  }
+  if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
+    return `Thanh toán ${amount} để mua gói ${tx.packageName ?? "thành viên"}.`;
+  }
+  if (tx.transactionType === "CREDIT_PURCHASE") {
+    return `Thanh toán ${amount} để mua thêm lượt đăng job hoặc lượt nộp proposal.`;
+  }
+  if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
+    return `Doanh nghiệp ký quỹ ${amount} cho hợp đồng${tx.contractTitle ? ` "${tx.contractTitle}"` : ""}.`;
+  }
+  if (tx.transactionType === "DEPOSIT_REFUND") {
+    return `Admin xử lý hoàn ký quỹ ${amount}${tx.contractTitle ? ` cho hợp đồng "${tx.contractTitle}"` : ""}.`;
+  }
+  if (tx.transactionType === "WITHDRAW_HOLD") {
+    return `Hệ thống giữ ${amount} khi người dùng tạo yêu cầu rút tiền.`;
+  }
+  if (tx.transactionType === "WITHDRAW_APPROVED") {
+    return `Admin duyệt rút ${amount} về tài khoản ngân hàng.`;
+  }
+  if (tx.transactionType === "WITHDRAW_REJECTED") {
+    return `Yêu cầu rút ${amount} bị từ chối và tiền được hoàn về ví khả dụng.`;
+  }
+  return "Giao dịch ví nền tảng được backend ghi nhận.";
+}
+
+function walletTransactionContextItems(tx: WalletTransaction) {
+  return [
+    tx.contractTitle ? `Contract: ${tx.contractTitle}` : null,
+    tx.jobTitle ? `Job: ${tx.jobTitle}` : null,
+    tx.businessName ? `Doanh nghiệp: ${tx.businessName}` : null,
+    tx.expertName ? `Chuyên gia: ${tx.expertName}` : null,
+    tx.packageName ? `Gói: ${tx.packageName}` : null,
+    tx.withdrawalId ? `Rút tiền #${tx.withdrawalId}` : null,
+    tx.providerOrderCode ? `PayOS #${tx.providerOrderCode}` : null,
+    tx.bankName ? `Ngân hàng: ${tx.bankName}` : null,
+  ].filter(Boolean) as string[];
 }

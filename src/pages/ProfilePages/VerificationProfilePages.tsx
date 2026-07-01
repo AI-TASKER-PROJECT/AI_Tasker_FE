@@ -1,2 +1,2 @@
-export * from './BusinessVerificationProfilePage/BusinessVerificationProfilePage';
-export * from './ExpertVerificationProfilePage/ExpertVerificationProfilePage';
+export { BusinessVerificationProfilePage } from "./BusinessVerificationProfilePage/BusinessVerificationProfilePage";
+export { ExpertVerificationProfilePage } from "./ExpertVerificationProfilePage/ExpertVerificationProfilePage";
