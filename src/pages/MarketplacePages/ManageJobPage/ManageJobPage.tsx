@@ -222,7 +222,7 @@ export function ManageJobPage() {
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
-    } catch (error) {
+    } catch {
       setAiMessage(
         `Tài khoản chưa đăng kí gói Premium. Vui lòng đăng kí để sử dụng tính năng này !`,
       );

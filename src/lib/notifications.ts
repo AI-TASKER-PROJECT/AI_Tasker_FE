@@ -282,7 +282,7 @@ export function notificationTone(item: NotificationItem) {
 }
 
 export function formatNotificationTime(value?: string) {
-  if (!value) return "Vua xong";
+  if (!value) return "Vừa xong";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
@@ -291,9 +291,9 @@ export function formatNotificationTime(value?: string) {
   const hour = 60 * minute;
   const day = 24 * hour;
 
-  if (diffMs < minute) return "Vua xong";
-  if (diffMs < hour) return `${Math.floor(diffMs / minute)} phut truoc`;
-  if (diffMs < day) return `${Math.floor(diffMs / hour)} gio truoc`;
+  if (diffMs < minute) return "Vừa xong";
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)} phút trước`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)} giờ trước`;
 
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",

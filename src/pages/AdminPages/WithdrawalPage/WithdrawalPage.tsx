@@ -434,7 +434,7 @@ export function AdminWithdrawalPage() {
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
               <span className="w-28 text-right">Ngày tạo</span>
-              <span className="w-36 text-center">Hành dộng</span>
+              <span className="w-44 text-center">Hành dộng</span>
             </div>
 
             <div className="divide-y divide-slate-50">
@@ -487,7 +487,7 @@ export function AdminWithdrawalPage() {
                     })()}
                   </div>
 
-                  <div className="flex w-36 justify-center gap-2">
+                  <div className="flex w-44 items-center justify-center rounded-2xl bg-slate-50 p-1 [&_button]:min-w-[92px] [&_button]:justify-center">
                     {wr.status === "PENDING" ? (
                       <>
                         <Button
@@ -512,10 +512,11 @@ export function AdminWithdrawalPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openViewDetails(wr)}
-                        className="text-slate-500 hover:text-brand-600 hover:bg-brand-50"
+                        className="min-w-[92px] justify-center rounded-2xl text-slate-500 hover:text-brand-600 hover:bg-brand-50"
                         title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />
+                        Chi tiáº¿t
                       </Button>
                     )}
                   </div>
@@ -546,3 +547,6 @@ export function AdminWithdrawalPage() {
 export function WithdrawalPage() {
   return <AdminWithdrawalPage />;
 }
+
+
+

@@ -136,6 +136,35 @@ export function getMilestoneDurationLabel(
   return `${duration} ${milestone.durationUnit || "tuần"}`;
 }
 
+export function formatTotalMilestoneDuration(
+  milestones: Array<
+    Partial<Milestone> & {
+      duration?: number;
+      durationUnit?: string;
+      durationValue?: number;
+    }
+  >,
+) {
+  const totalWeeks = milestones.reduce((total, milestone) => {
+    const duration = Number(
+      milestone.durationValue ?? milestone.duration ?? 0,
+    );
+    if (!Number.isFinite(duration) || duration <= 0) return total;
+
+    const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+    if (unit.includes("DAY") || unit.includes("NGAY")) {
+      return total + duration / 7;
+    }
+    if (unit.includes("MONTH") || unit.includes("THANG")) {
+      return total + duration * 4;
+    }
+    return total + duration;
+  }, 0);
+
+  if (totalWeeks <= 0) return "Chưa có thời gian";
+  return `${Number.isInteger(totalWeeks) ? totalWeeks : totalWeeks.toFixed(1)} tuần`;
+}
+
 export function canBackendReviewMilestone(status?: string) {
   const normalized = (status || "")
     .trim()
@@ -389,11 +418,93 @@ export function ContractFlowStep({
   );
 }
 
-export function Participant({ label, value }: { label: string; value: string }) {
+export function Participant({
+  label,
+  value,
+  details = [],
+}: {
+  label: string;
+  value: string;
+  details?: Array<[string, string | undefined]>;
+}) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <p className="text-xs font-bold text-slate-400">{label}</p>
       <p className="mt-1 font-extrabold text-ink">{value}</p>
+      {details.length > 0 && (
+        <div className="mt-3 grid gap-2 text-sm">
+          {details.map(([detailLabel, detailValue]) => (
+            <div
+              key={detailLabel}
+              className="grid grid-cols-[110px_minmax(0,1fr)] gap-3"
+            >
+              <span className="text-slate-500">{detailLabel}</span>
+              <span className="min-w-0 break-words font-bold text-slate-700">
+                {detailValue || "Chưa có dữ liệu từ BE"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SignatureBlock({
+  title,
+  name,
+  signedAt,
+  ndaSigned,
+  verified,
+}: {
+  title: string;
+  name: string;
+  signedAt?: string;
+  ndaSigned: boolean;
+  verified: boolean;
+}) {
+  const signed = Boolean(signedAt);
+  const waitingForNda = signed && !ndaSigned;
+  const waitingForOtherParty = signed && ndaSigned && !verified;
+
+  return (
+    <div
+      className={
+        verified
+          ? "rounded-2xl border border-mint-100 bg-mint-50 p-5 text-center"
+          : "rounded-2xl border border-amber-100 bg-amber-50 p-5 text-center"
+      }
+    >
+      <div
+        className={
+          verified
+            ? "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm"
+            : "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-amber-700 shadow-sm"
+        }
+      >
+        {verified ? (
+          <CheckCircle2 className="h-5 w-5" />
+        ) : (
+          <LockKeyhole className="h-5 w-5" />
+        )}
+      </div>
+      <p className="mt-3 text-sm font-extrabold text-ink">{title}</p>
+      <p className="mt-2 text-base font-black text-slate-700">{name}</p>
+      <p
+        className={
+          verified
+            ? "mt-1 text-xs font-bold text-mint-700"
+            : "mt-1 text-xs font-bold text-amber-700"
+        }
+      >
+        {verified
+          ? `Đã xác thực hợp đồng: ${formatDateTime(signedAt)}`
+          : waitingForNda
+            ? `Đã ký contract lúc ${formatDateTime(signedAt)}, chờ ký NDA`
+            : waitingForOtherParty
+              ? "Đã ký contract và NDA, chờ bên còn lại hoàn tất"
+              : "Đang chờ ký contract"}
+      </p>
     </div>
   );
 }

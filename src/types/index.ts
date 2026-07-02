@@ -16,6 +16,7 @@ export interface SessionUser {
   role: Role;
   accountStatus?: AccountStatus;
   email: string;
+  phone?: string;
   fullName: string;
   pictureUrl?: string;
   authProvider?: 'LOCAL' | 'GOOGLE';
@@ -229,6 +230,13 @@ export interface BusinessProfile {
   accountId: number;
   taxCode: string;
   companyName: string;
+  email?: string;
+  phone?: string;
+  accountEmail?: string;
+  accountPhone?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  phoneNumber?: string;
   address?: string;
   businessLicenseUrl?: string;
   website?: string;
@@ -256,6 +264,9 @@ export interface ExpertProfile {
   expertId: number;
   accountId: number;
   nationalId: string;
+  email?: string;
+  accountEmail?: string;
+  contactEmail?: string;
   portfolioUrl?: string;
   yearsOfExperience?: number;
   description?: string;
@@ -268,6 +279,9 @@ export interface ExpertProfile {
   updatedAt?: string;
   fullName?: string;
   phone?: string;
+  accountPhone?: string;
+  contactPhone?: string;
+  phoneNumber?: string;
   title?: string;
   rating?: number;
   completedProjects?: number;
@@ -457,8 +471,9 @@ export interface UnreadNotificationCount {
 }
 
 export interface WalletTransaction {
-  id: number;
-  systemWalletId: number;
+  id?: number;
+  transactionId?: number;
+  systemWalletId?: number;
   accountId?: number;
   paymentOrderId?: number;
   transactionType:
@@ -469,16 +484,39 @@ export interface WalletTransaction {
     | 'DEPOSIT_REFUND'
     | 'WITHDRAW_HOLD'
     | 'WITHDRAW_APPROVED'
-    | 'WITHDRAW_REJECTED';
-  direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE';
-  balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE';
+    | 'WITHDRAW_REJECTED'
+    | string;
+  direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE' | string;
+  balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE' | string;
   amount: number;
   balanceBefore: number;
   balanceAfter: number;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
   referenceType?: string;
   referenceId?: number;
+  rawDescription?: string;
+  title?: string;
   description?: string;
+  actorName?: string;
+  counterpartyName?: string;
+  businessId?: number;
+  businessName?: string;
+  expertId?: number;
+  expertName?: string;
+  contractId?: number;
+  contractTitle?: string;
+  jobId?: number;
+  jobTitle?: string;
+  withdrawalId?: number;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  adminId?: number;
+  adminName?: string;
+  adminNote?: string;
+  packageId?: number;
+  packageName?: string;
+  providerOrderCode?: number;
   createdAt?: string;
 }
 

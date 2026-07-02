@@ -1,5 +1,14 @@
 import { call } from "./apiClient";
-import type { AdminAccount, AnalyticsOverview, AuditLog, Review, Staff, SystemSetting, SystemWallet } from "../types";
+import type {
+  AdminAccount,
+  AnalyticsOverview,
+  AuditLog,
+  Review,
+  Staff,
+  SystemSetting,
+  SystemWallet,
+  WalletTransaction,
+} from "../types";
 
 export const adminApi = {
   createReview(payload: Partial<Review>) {
@@ -58,6 +67,12 @@ export const adminApi = {
     return call<SystemWallet>({
       method: "POST",
       url: "/api/v1/admin/wallet/sync",
+    });
+  },
+  listPlatformWalletTransactions() {
+    return call<WalletTransaction[]>({
+      method: "GET",
+      url: "/api/v1/admin/wallet/transactions",
     });
   },
   listAccounts() {
