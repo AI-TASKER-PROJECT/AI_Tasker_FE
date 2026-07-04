@@ -93,6 +93,12 @@ export interface ContractMilestone {
   duration?: number;
   durationUnit?: string;
   status: string;
+  criteriaSnapshot?: string;
+  deliverableExpectation?: string;
+  resubmitCount?: number;
+  escrowReleasedAt?: string;
+  settlementSourceType?: string;
+  settlementSourceId?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -160,11 +166,19 @@ export interface Milestone {
   milestoneName: string;
   description?: string;
   fundsAllocated: number;
+  finalBudget?: number;
+  originalBudget?: number;
   orderIndex: number;
   duration?: number;
   durationUnit?: string;
   status: string;
   durationValue?: number;
+  criteriaSnapshot?: string;
+  deliverableExpectation?: string;
+  resubmitCount?: number;
+  escrowReleasedAt?: string;
+  settlementSourceType?: string;
+  settlementSourceId?: number;
   acceptanceCriteria?: string[];
   criteriaIds?: number[];
   criteria?: AcceptanceCriteria[];
@@ -196,6 +210,19 @@ export interface Deliverable {
   updatedAt?: string;
 }
 
+export interface MilestoneProgressReport {
+  progressReportId: number;
+  contractId: number;
+  milestoneId: number;
+  submittedByAccountId: number;
+  checkpointType?: "MIDPOINT" | "PRE_DEADLINE" | string;
+  content: string;
+  percentComplete?: number;
+  attachmentUrl?: string;
+  isLate?: boolean;
+  createdAt?: string;
+}
+
 export interface Transaction {
   transactionId: number;
   milestoneId: number;
@@ -214,15 +241,50 @@ export interface Dispute {
   milestoneId?: number;
   assignedStaffId?: number;
   evidenceReport?: string;
+  escalationReason?: string;
+  escalationEvidenceFile?: string;
   proposedAction?: string;
   adminApprovedBy?: number;
   status: string;
+  initiatedBy?: string;
+  previousMilestoneStatus?: string;
+  resolutionType?: string;
+  resolvedAt?: string;
+  escalatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   title?: string;
   raisedBy?: string;
   jobTitle?: string;
   staffName?: string;
+}
+
+export interface TerminationRequest {
+  terminationRequestId: number;
+  contractId: number;
+  currentMilestoneId?: number;
+  requestedByAccountId: number;
+  requestedByRole: string;
+  requestReason: string;
+  requestFileUrl?: string;
+  assignedStaffId?: number;
+  status: string;
+  staffReviewStartedAt?: string;
+  staffDecidedAt?: string;
+  staffDecisionReason?: string;
+  staffReport?: string;
+  expertPayoutPercentage?: number;
+  expertPayoutAmount?: number;
+  businessRefundAmount?: number;
+  partialEvidenceRequired?: boolean;
+  partialEvidenceSubmittedAt?: string;
+  partialEvidenceUrl?: string;
+  partialEvidenceNote?: string;
+  settlementExecutedAt?: string;
+  depositRefundRequired?: boolean;
+  depositRefundedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BusinessProfile {

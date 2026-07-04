@@ -6,15 +6,10 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-
 import { useCallback, useEffect, useState } from "react";
-
-import { getApiErrorMessage, withdrawalApi } from "../../../services";
-
+import { adminApi, getApiErrorMessage, withdrawalApi } from "../../../services";
 import { cn, formatCurrency, formatDateTime } from "../../../lib/utils";
-
-import type { WithdrawalRequest } from "../../../types";
-
+import type { AdminAccount, WithdrawalRequest } from "../../../types";
 import {
   Badge,
   Button,
@@ -29,10 +24,7 @@ import {
   Tabs,
 } from "../../../components/ui";
 
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function withdrawStatusLabel(status: string) {
+function withdrawalStatusLabel(status: string) {
   const map: Record<string, string> = {
     PENDING: "Chờ duyệt",
     APPROVED: "Đã duyệt",
@@ -48,18 +40,85 @@ function statusTone(status: string): "amber" | "mint" | "rose" | "slate" {
   return "slate";
 }
 
-// ── Review Modal ──────────────────────────────────────────────────────────────
+function accountDisplayName(
+  withdrawal: WithdrawalRequest,
+  accounts: AdminAccount[],
+) {
+  const account = accounts.find(
+    (item) => item.accountId === withdrawal.accountId,
+  );
+  if (account?.fullName) return account.fullName;
+  if (account?.email) return account.email;
+  return `Account #${withdrawal.accountId}`;
+}
+
+function accountSubLabel(
+  withdrawal: WithdrawalRequest,
+  accounts: AdminAccount[],
+) {
+  const account = accounts.find(
+    (item) => item.accountId === withdrawal.accountId,
+  );
+  if (account?.email && account.fullName) return account.email;
+  return `Account #${withdrawal.accountId}`;
+}
+
+function DateCell({ value }: { value?: string }) {
+  if (!value) {
+    return (
+      <div className="flex w-28 flex-col items-end text-xs font-semibold text-slate-300">
+        <span>--</span>
+      </div>
+    );
+  }
+
+  const [time, date] = formatDateTime(value).split(" ");
+  return (
+    <div className="flex w-28 flex-col items-end text-xs font-semibold text-slate-400">
+      <span>{time}</span>
+      <span>{date}</span>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value?: string | number | null;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-white p-3 sm:flex-row sm:items-start sm:justify-between">
+      <span className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        {label}
+      </span>
+      <span
+        className={cn(
+          "break-all text-sm font-bold text-ink sm:max-w-[65%] sm:text-right",
+          mono && "font-mono",
+        )}
+      >
+        {value || "Chưa có"}
+      </span>
+    </div>
+  );
+}
 
 function ReviewModal({
   open,
   withdrawal,
   action,
+  accounts,
   onClose,
   onDone,
 }: {
   open: boolean;
   withdrawal: WithdrawalRequest | null;
   action: "approve" | "reject" | null;
+  accounts: AdminAccount[];
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -95,7 +154,10 @@ function ReviewModal({
           withdrawal.withdrawalId,
           adminNote.trim() || undefined,
         );
-        setNotice({ tone: "success", msg: "Đã từ chối yêu cầu rút tiền." });
+        setNotice({
+          tone: "success",
+          msg: "Đã từ chối yêu cầu rút tiền.",
+        });
       }
       onDone();
     } catch (err) {
@@ -118,8 +180,8 @@ function ReviewModal({
       }
       description={
         action === "approve"
-          ? "Xác nhận sau khi dã chuyển khoản thủ công ra ngân hàng người dùng."
-          : "Số tiền sẽ dược hoàn trả về available balance của người dùng."
+          ? "Xác nhận sau khi đã chuyển khoản thủ công ra ngân hàng người dùng."
+          : "Số tiền sẽ được hoàn trả về available balance của người dùng."
       }
       footer={
         <>
@@ -151,55 +213,64 @@ function ReviewModal({
     >
       <div className="space-y-4">
         {notice && <Notice tone={notice.tone} title={notice.msg} />}
-
-        {/* Withdrawal details */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="grid gap-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Người dùng</span>
-              <span className="font-bold text-ink">
-                #{withdrawal.accountId}
+              <span className="text-right font-bold text-ink">
+                {accountDisplayName(withdrawal, accounts)}
+                <span className="block text-xs font-semibold text-slate-400">
+                  {accountSubLabel(withdrawal, accounts)}
+                </span>
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Số tiền</span>
               <span className="font-extrabold text-brand-700">
                 {formatCurrency(withdrawal.amount)}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Ngân hàng</span>
               <span className="font-bold text-ink">{withdrawal.bankName}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Số TK</span>
-              <span className="font-bold text-ink font-mono">
+              <span className="font-mono font-bold text-ink">
                 {withdrawal.bankAccountNumber}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Chủ TK</span>
               <span className="font-bold text-ink">
                 {withdrawal.bankAccountHolder}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Ngày tạo</span>
               <span className="font-semibold text-slate-700">
                 {formatDateTime(withdrawal.requestedAt ?? withdrawal.createdAt)}
               </span>
             </div>
+            {withdrawal.reviewedAt && (
+              <div className="flex justify-between gap-4">
+                <span className="font-semibold text-slate-500">Ngày xử lý</span>
+                <span className="font-semibold text-slate-700">
+                  {formatDateTime(withdrawal.reviewedAt)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {action === "approve" && (
           <Notice tone="warning" title="Lưu ý trước khi duyệt">
-            Chỉ click "Duyệt" SAU KHI dã chuyển khoản thủ công thành công. Hành
-            dộng này không thể hoàn tác.
+            Chỉ click Duyệt sau khi đã chuyển khoản thủ công thành công.
+            Hành động này không thể hoàn tác.
           </Notice>
         )}
 
-        <Field label={`Ghi chú Admin (tùy chọn)`}>
+        <Field label="Ghi chú Admin">
           <textarea
             className="min-h-[80px] w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
             placeholder={
@@ -208,7 +279,7 @@ function ReviewModal({
                 : "VD: Thông tin ngân hàng không hợp lệ..."
             }
             value={adminNote}
-            onChange={(e) => setAdminNote(e.target.value)}
+            onChange={(event) => setAdminNote(event.target.value)}
           />
         </Field>
       </div>
@@ -216,15 +287,15 @@ function ReviewModal({
   );
 }
 
-// ── View Details Modal ────────────────────────────────────────────────────────
-
 function ViewDetailsModal({
   open,
   withdrawal,
+  accounts,
   onClose,
 }: {
   open: boolean;
   withdrawal: WithdrawalRequest | null;
+  accounts: AdminAccount[];
   onClose: () => void;
 }) {
   if (!withdrawal) return null;
@@ -234,7 +305,7 @@ function ViewDetailsModal({
       open={open}
       onClose={onClose}
       title="Chi tiết giao dịch"
-      size="sm"
+      size="lg"
       footer={
         <Button variant="secondary" onClick={onClose}>
           Đóng
@@ -243,6 +314,63 @@ function ViewDetailsModal({
     >
       <div className="space-y-4">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <DetailRow
+              label="Người yêu cầu"
+              value={accountDisplayName(withdrawal, accounts)}
+            />
+            <DetailRow
+              label="Account"
+              value={accountSubLabel(withdrawal, accounts)}
+            />
+            <DetailRow label="Số tiền" value={formatCurrency(withdrawal.amount)} />
+            <DetailRow
+              label="Trạng thái"
+              value={withdrawalStatusLabel(withdrawal.status)}
+            />
+            <DetailRow label="Ngân hàng" value={withdrawal.bankName} />
+            <DetailRow
+              label="Số tài khoản"
+              value={withdrawal.bankAccountNumber}
+              mono
+            />
+            <DetailRow
+              label="Chủ tài khoản"
+              value={withdrawal.bankAccountHolder}
+            />
+            <DetailRow label="Wallet ID" value={withdrawal.walletId} mono />
+            <DetailRow
+              label="Hold transaction"
+              value={withdrawal.holdTransactionId}
+              mono
+            />
+            <DetailRow
+              label="Review transaction"
+              value={withdrawal.reviewTransactionId}
+              mono
+            />
+            <DetailRow label="Admin ID" value={withdrawal.adminId} mono />
+            <DetailRow
+              label="Ngày tạo"
+              value={formatDateTime(withdrawal.requestedAt ?? withdrawal.createdAt)}
+            />
+            <DetailRow
+              label="Ngày xử lý"
+              value={
+                withdrawal.reviewedAt
+                  ? formatDateTime(withdrawal.reviewedAt)
+                  : undefined
+              }
+            />
+            <DetailRow
+              label="Cập nhật lần cuối"
+              value={
+                withdrawal.updatedAt
+                  ? formatDateTime(withdrawal.updatedAt)
+                  : undefined
+              }
+            />
+          </div>
           <div className="flex flex-col gap-1">
             <span className="font-semibold text-slate-500">
               Ghi chú của Admin
@@ -257,10 +385,9 @@ function ViewDetailsModal({
   );
 }
 
-// ── AdminWithdrawalPage ───────────────────────────────────────────────────────
-
 export function AdminWithdrawalPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">(
@@ -277,10 +404,15 @@ export function AdminWithdrawalPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await withdrawalApi.listAll();
+      const [data, accountItems] = await Promise.all([
+        withdrawalApi.listAll(),
+        adminApi.listAccounts().catch(() => []),
+      ]);
       setWithdrawals(data);
+      setAccounts(accountItems);
     } catch {
       setWithdrawals([]);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -302,17 +434,18 @@ export function AdminWithdrawalPage() {
   };
 
   const handleDone = () => {
-    load();
+    void load();
     setModalOpen(false);
   };
 
-  // Filter
   const filtered = withdrawals.filter((wr) => {
     const matchTab = tab === "ALL" || wr.status === tab;
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
       String(wr.accountId).includes(q) ||
+      accountDisplayName(wr, accounts).toLowerCase().includes(q) ||
+      accountSubLabel(wr, accounts).toLowerCase().includes(q) ||
       wr.bankName.toLowerCase().includes(q) ||
       wr.bankAccountNumber.includes(q) ||
       wr.bankAccountHolder.toLowerCase().includes(q);
@@ -336,7 +469,7 @@ export function AdminWithdrawalPage() {
         <PageHeader
           eyebrow="Admin · Payments"
           title="Quản lý rút tiền"
-          description="Duyệt hoặc từ chối các yêu cầu rút tiền. Nhớ chuyển khoản thủ công trước khi nhấn Duyệt."
+          description="Duyệt hoặc từ chối các yêu cầu rút tiền. Hãy chuyển khoản thủ công trước khi nhấn Duyệt."
           actions={
             <Button variant="secondary" onClick={load} disabled={loading}>
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -346,7 +479,6 @@ export function AdminWithdrawalPage() {
         />
       </div>
 
-      {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-5">
           <div className="flex items-center gap-3">
@@ -391,7 +523,6 @@ export function AdminWithdrawalPage() {
         </Card>
       </div>
 
-      {/* Main table */}
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <SectionHeading title="Danh sách yêu cầu" />
@@ -399,7 +530,7 @@ export function AdminWithdrawalPage() {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Tìm theo tên, số TK..."
+              placeholder="Tìm theo tên, email, số TK..."
             />
             <Tabs
               tabs={[
@@ -427,27 +558,27 @@ export function AdminWithdrawalPage() {
           </div>
         ) : (
           <div>
-            {/* Header */}
-            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
               <span className="w-10">ID</span>
               <span>Thông tin ngân hàng</span>
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
               <span className="w-28 text-right">Ngày tạo</span>
-              <span className="w-44 text-center">Hành dộng</span>
+              <span className="w-28 text-right">Ngày xử lý</span>
+              <span className="w-44 text-center">Hành động</span>
             </div>
 
             <div className="divide-y divide-slate-50">
               {filtered.map((wr) => (
                 <div
                   key={wr.withdrawalId}
-                  className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                  className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                 >
                   <span className="w-10 text-xs font-extrabold text-slate-400">
                     #{wr.withdrawalId}
                   </span>
 
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500">
                       <Building className="h-4 w-4" />
                     </span>
@@ -458,8 +589,11 @@ export function AdminWithdrawalPage() {
                           {wr.bankAccountNumber}
                         </span>
                       </p>
+                      <p className="text-xs font-bold text-slate-600">
+                        {accountDisplayName(wr, accounts)}
+                      </p>
                       <p className="text-xs text-slate-400">
-                        {wr.bankAccountHolder} · Account #{wr.accountId}
+                        {wr.bankAccountHolder} · {accountSubLabel(wr, accounts)}
                       </p>
                     </div>
                   </div>
@@ -470,22 +604,12 @@ export function AdminWithdrawalPage() {
 
                   <span className="w-24 text-center">
                     <Badge tone={statusTone(wr.status)}>
-                      {withdrawStatusLabel(wr.status)}
+                      {withdrawalStatusLabel(wr.status)}
                     </Badge>
                   </span>
 
-                  <div className="flex w-28 flex-col items-end text-xs font-semibold text-slate-400">
-                    {(() => {
-                      const dt = formatDateTime(wr.requestedAt ?? wr.createdAt);
-                      const [time, date] = dt.split(" ");
-                      return (
-                        <>
-                          <span>{time}</span>
-                          <span>{date}</span>
-                        </>
-                      );
-                    })()}
-                  </div>
+                  <DateCell value={wr.requestedAt ?? wr.createdAt} />
+                  <DateCell value={wr.reviewedAt} />
 
                   <div className="flex w-44 items-center justify-center rounded-2xl bg-slate-50 p-1 [&_button]:min-w-[92px] [&_button]:justify-center">
                     {wr.status === "PENDING" ? (
@@ -512,11 +636,11 @@ export function AdminWithdrawalPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openViewDetails(wr)}
-                        className="min-w-[92px] justify-center rounded-2xl text-slate-500 hover:text-brand-600 hover:bg-brand-50"
+                        className="min-w-[92px] justify-center rounded-2xl text-slate-500 hover:bg-brand-50 hover:text-brand-600"
                         title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />
-                        Chi tiáº¿t
+                        Chi tiết
                       </Button>
                     )}
                   </div>
@@ -527,17 +651,18 @@ export function AdminWithdrawalPage() {
         )}
       </Card>
 
-      {/* Review Modal */}
       <ReviewModal
         open={modalOpen}
         withdrawal={selected}
         action={action}
+        accounts={accounts}
         onClose={() => setModalOpen(false)}
         onDone={handleDone}
       />
       <ViewDetailsModal
         open={viewModalOpen}
         withdrawal={viewSelected}
+        accounts={accounts}
         onClose={() => setViewModalOpen(false)}
       />
     </div>
@@ -547,6 +672,3 @@ export function AdminWithdrawalPage() {
 export function WithdrawalPage() {
   return <AdminWithdrawalPage />;
 }
-
-
-

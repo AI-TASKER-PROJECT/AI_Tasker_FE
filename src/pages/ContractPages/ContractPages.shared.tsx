@@ -465,24 +465,25 @@ export function SignatureBlock({
 }) {
   const signed = Boolean(signedAt);
   const waitingForNda = signed && !ndaSigned;
-  const waitingForOtherParty = signed && ndaSigned && !verified;
+  const completed = signed && ndaSigned;
+  const highlighted = verified || completed;
 
   return (
     <div
       className={
-        verified
+        highlighted
           ? "rounded-2xl border border-mint-100 bg-mint-50 p-5 text-center"
           : "rounded-2xl border border-amber-100 bg-amber-50 p-5 text-center"
       }
     >
       <div
         className={
-          verified
+          highlighted
             ? "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-mint-600 shadow-sm"
             : "mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-amber-700 shadow-sm"
         }
       >
-        {verified ? (
+        {highlighted ? (
           <CheckCircle2 className="h-5 w-5" />
         ) : (
           <LockKeyhole className="h-5 w-5" />
@@ -492,18 +493,16 @@ export function SignatureBlock({
       <p className="mt-2 text-base font-black text-slate-700">{name}</p>
       <p
         className={
-          verified
+          highlighted
             ? "mt-1 text-xs font-bold text-mint-700"
             : "mt-1 text-xs font-bold text-amber-700"
         }
       >
-        {verified
-          ? `Đã xác thực hợp đồng: ${formatDateTime(signedAt)}`
+        {completed
+          ? "Đã ký đủ contract và NDA"
           : waitingForNda
             ? `Đã ký contract lúc ${formatDateTime(signedAt)}, chờ ký NDA`
-            : waitingForOtherParty
-              ? "Đã ký contract và NDA, chờ bên còn lại hoàn tất"
-              : "Đang chờ ký contract"}
+            : "Đang chờ ký contract"}
       </p>
     </div>
   );

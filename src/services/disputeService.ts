@@ -9,6 +9,13 @@ export const disputeApi = {
       data: payload,
     });
   },
+  initiate(contractId: number, milestoneId: number, initiatedBy: string) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/disputes`,
+      params: { contractId, initiatedBy },
+    });
+  },
   listByContract(contractId: number) {
     return call<Dispute[]>({
       method: "GET",
@@ -33,6 +40,13 @@ export const disputeApi = {
       method: "PATCH",
       url: `/api/v1/disputes/${disputeId}/resolve`,
       params: { proposedAction },
+    });
+  },
+  escalate(disputeId: number, reason?: string, evidenceFile?: string) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/escalation-request`,
+      params: { reason, evidenceFile },
     });
   },
   demoTesting(disputeId: number, testResult: string) {

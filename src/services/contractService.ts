@@ -1,5 +1,5 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, Contract, ContractDeposit, Deliverable, Milestone, PaymentActionResponse } from "../types";
+import type { AcceptanceCriteria, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, TerminationRequest } from "../types";
 
 export const contractApi = {
   listContracts() {
@@ -55,6 +55,22 @@ export const contractApi = {
       params: { reason },
     });
   },
+  requestTermination(
+    contractId: number,
+    payload: Partial<TerminationRequest>,
+  ) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/termination-requests`,
+      data: payload,
+    });
+  },
+  listTerminationRequests(contractId: number) {
+    return call<TerminationRequest[]>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/termination-requests`,
+    });
+  },
   createMilestone(payload: Partial<Milestone>) {
     return call<Milestone>({
       method: "POST",
@@ -87,11 +103,28 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/criteria`,
     });
   },
-  submitDeliverable(payload: Partial<Deliverable>) {
+  submitDeliverable(milestoneId: number, payload: Partial<Deliverable>) {
     return call<Deliverable>({
       method: "POST",
-      url: "/api/v1/deliverables",
+      url: `/api/v1/milestones/${milestoneId}/deliverables`,
       data: payload,
+    });
+  },
+  submitProgressReport(
+    contractId: number,
+    milestoneId: number,
+    payload: Partial<MilestoneProgressReport>,
+  ) {
+    return call<MilestoneProgressReport>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports`,
+      data: payload,
+    });
+  },
+  listProgressReports(contractId: number, milestoneId: number) {
+    return call<MilestoneProgressReport[]>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports`,
     });
   },
   listDeliverables(milestoneId: number) {
@@ -100,16 +133,35 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/deliverables`,
     });
   },
+  depositMilestoneEscrow(contractId: number, milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/deposit`,
+    });
+  },
+  startMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/start`,
+    });
+  },
+  approveMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/approve`,
+    });
+  },
+  rejectMilestone(milestoneId: number, reason?: string) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/reject`,
+      params: { reason },
+    });
+  },
   completeMilestone(milestoneId: number) {
     return call<Milestone>({
       method: "POST",
       url: `/api/v1/milestones/${milestoneId}/complete`,
-    });
-  },
-  runSlaAutoApprove() {
-    return call<Milestone[]>({
-      method: "POST",
-      url: "/api/v1/milestones/sla-auto-approve",
     });
   },
 };
