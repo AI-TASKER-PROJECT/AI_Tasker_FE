@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircle2,
   FileCheck2,
   FileText,
@@ -11,10 +11,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { disputeApi } from "../../lib/api";
 import { formatDateTime } from "../../lib/utils";
 import type { Contract, Milestone } from "../../types";
-import { Button, Field, Modal, Textarea } from "../../components/ui";
+import { Button, Modal, Notice } from "../../components/ui";
 
 export const NDA_TERMS = [
   {
@@ -517,17 +516,8 @@ export function CreateDisputeInline({
   milestoneId?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [evidenceReport, setEvidenceReport] = useState("");
-
-  const submit = async () => {
-    await disputeApi.create({
-      contractId,
-      milestoneId,
-      evidenceReport,
-      status: "Open",
-    });
-    setOpen(false);
-  };
+  void contractId;
+  void milestoneId;
 
   return (
     <>
@@ -542,20 +532,16 @@ export function CreateDisputeInline({
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="danger" onClick={submit}>
-              Gửi dispute
+              Huy
             </Button>
           </>
         }
       >
-        <Field label="Bằng chứng / mô tả tranh chấp">
-          <Textarea
-            value={evidenceReport}
-            onChange={(event) => setEvidenceReport(event.target.value)}
-          />
-        </Field>
+        <Notice tone="info" title="Dispute được tạo từ workspace milestone">
+          Flow 5 dùng API thật của backend từ action Business từ chối
+          deliverable hoặc Expert khiếu nại trong workspace. Component cũ này
+          không gửi API riêng để tránh tạo dispute sai trạng thái.
+        </Notice>
       </Modal>
     </>
   );
@@ -599,3 +585,5 @@ export function ContractQuickLinks({ contract }: { contract: Contract }) {
     </div>
   );
 }
+
+

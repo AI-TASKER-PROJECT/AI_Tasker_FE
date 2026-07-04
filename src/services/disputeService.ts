@@ -1,12 +1,24 @@
 import { call } from "./apiClient";
-import type { Dispute } from "../types";
+import type {
+  AssignStaffRequest,
+  CancelDisputeRequest,
+  CreateExpertDisputeRequest,
+  Dispute,
+  RejectInterventionRequest,
+  RequestStaffInterventionRequest,
+  StaffDecisionRequest,
+} from "../types";
 
 export const disputeApi = {
-  create(payload: Partial<Dispute>) {
+  initiateExpertDispute(payload: CreateExpertDisputeRequest) {
     return call<Dispute>({
       method: "POST",
-      url: "/api/v1/disputes",
-      data: payload,
+      url: `/api/v1/milestones/${payload.milestoneId}/disputes`,
+      params: {
+        contractId: payload.contractId,
+        initiatedBy: payload.initiatedBy || "EXPERT",
+        initiationType: payload.initiationType,
+      },
     });
   },
   listByContract(contractId: number) {
@@ -21,36 +33,51 @@ export const disputeApi = {
       url: `/api/v1/disputes/${disputeId}`,
     });
   },
-  assign(disputeId: number, staffId: number) {
-    return call<Dispute>({
-      method: "PATCH",
-      url: `/api/v1/disputes/${disputeId}/assign`,
-      params: { staffId },
-    });
-  },
-  resolve(disputeId: number, proposedAction: string) {
-    return call<Dispute>({
-      method: "PATCH",
-      url: `/api/v1/disputes/${disputeId}/resolve`,
-      params: { proposedAction },
-    });
-  },
-  demoTesting(disputeId: number, testResult: string) {
-    return call<Dispute>({
-      method: "POST",
-      url: `/api/v1/disputes/${disputeId}/demo-testing`,
-      params: { testResult },
-    });
-  },
-  technicalReport(
+  requestStaffIntervention(
     disputeId: number,
-    reportContent: string,
-    proposedAction?: string,
+    payload: RequestStaffInterventionRequest,
   ) {
     return call<Dispute>({
       method: "POST",
-      url: `/api/v1/disputes/${disputeId}/technical-report`,
-      params: { reportContent, proposedAction },
+      url: `/api/v1/disputes/${disputeId}/escalation-request`,
+      params: payload,
     });
+  },
+  assignStaff(disputeId: number, payload: AssignStaffRequest) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/assign-staff`,
+      params: payload,
+    });
+  },
+  rejectIntervention(disputeId: number, payload: RejectInterventionRequest) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/reject-intervention`,
+      params: payload,
+    });
+  },
+  issueStaffDecision(disputeId: number, payload: StaffDecisionRequest) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/staff-decision`,
+      params: payload,
+    });
+  },
+  executeSettlement(disputeId: number) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/execute-settlement`,
+    });
+  },
+  cancel(disputeId: number, payload: CancelDisputeRequest = {}) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/cancel`,
+      params: payload,
+    });
+  },
+  assign(disputeId: number, staffId: number) {
+    return this.assignStaff(disputeId, { staffId });
   },
 };
