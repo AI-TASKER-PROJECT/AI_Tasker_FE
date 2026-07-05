@@ -1,9 +1,90 @@
-import { CheckCircle2, FileSearch, Send, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  FileText,
+  Gavel,
+  Send,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { disputeApi } from "../../../lib/api";
-import type { Dispute } from "../../../types";
-import { Badge, Button, Card, EmptyState, Field, Input, Modal, Notice, PageHeader, SectionHeading, StatusBadge, Textarea } from "../../../components/ui";
+import { contractApi, disputeApi, getApiErrorMessage } from "../../../lib/api";
+import { useSession } from "../../../lib/session";
+import { formatCurrency, formatDateTime } from "../../../lib/utils";
+import type {
+  AcceptanceCriteria,
+  CaseAttachment,
+  Contract,
+  Deliverable,
+  Dispute,
+  Milestone,
+  MilestoneProgressReport,
+} from "../../../types";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  Modal,
+  Notice,
+  PageHeader,
+  SectionHeading,
+  StatusBadge,
+  Textarea,
+} from "../../../components/ui";
+
+function flow5StatusText(status?: string) {
+  const normalized = (status || "").toUpperCase();
+  const map: Record<string, { title: string; message: string; tone: "info" | "warning" | "success" | "danger" }> = {
+    PENDING_SELF_RESOLVE: {
+      tone: "warning",
+      title: "Đang chờ hai bên tự xử lý",
+      message:
+        "Business và Expert đang tự trao đổi. Chỉ gửi yêu cầu staff can thiệp nếu hai bên không thống nhất.",
+    },
+    ESCALATION_REQUESTED: {
+      tone: "warning",
+      title: "Đã yêu cầu staff tiếp nhận",
+      message:
+        "Yêu cầu can thiệp đã được tạo. Hệ thống đang chờ gán staff phù hợp hoặc admin phân công thủ công.",
+    },
+    STAFF_REVIEWING: {
+      tone: "info",
+      title: "Staff đang kiểm tra tranh chấp",
+      message:
+        "Staff được gán sẽ xem nguồn/demo, kiểm tra theo Definition of Done và viết báo cáo kỹ thuật cho admin.",
+    },
+    STAFF_DECIDED: {
+      tone: "warning",
+      title: "Staff đã gửi báo cáo cho admin",
+      message:
+        "Admin cần đọc báo cáo và thực thi quyết toán theo tỷ lệ staff đề xuất.",
+    },
+    RESOLVED: {
+      tone: "success",
+      title: "Tranh chấp đã được xử lý xong",
+      message:
+        "Kết quả cuối cùng và giao dịch quyết toán đã được gửi cho các bên liên quan.",
+    },
+    CANCELLED: {
+      tone: "danger",
+      title: "Tranh chấp đã bị hủy",
+      message: "Case này không còn được xử lý trong Flow 5.",
+    },
+  };
+  return map[normalized] || {
+    tone: "info",
+    title: "Trạng thái tranh chấp",
+    message: "Theo dõi trạng thái xử lý và các ghi nhận mới nhất tại đây.",
+  };
+}
+
+function shouldHideLegacyNotice(title?: string) {
+  const normalized = (title || "").toUpperCase();
+  return normalized.includes("CHUA HET 48 GIO") || normalized.includes("STAFF CHUA DUOC GUI REPORT");
+}
 
 export function DisputeDetailPage({
   staffMode = false,
@@ -11,56 +92,255 @@ export function DisputeDetailPage({
   staffMode?: boolean;
 }) {
   const { disputeId } = useParams();
+  const session = useSession();
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [criteria, setCriteria] = useState<AcceptanceCriteria[]>([]);
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [progressReports, setProgressReports] = useState<MilestoneProgressReport[]>([]);
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [finalOpen, setFinalOpen] = useState(false);
   const [staffId, setStaffId] = useState("");
-  const [testResult, setTestResult] = useState("");
+  const [notice, setNotice] = useState<{
+    tone: "success" | "danger" | "info" | "warning";
+    title: string;
+    message?: string;
+  } | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [report, setReport] = useState({
-    reportContent: "",
-    proposedAction: "FORCE_PAYOUT_70_30",
+    staffReport: "",
+    note: "",
+    expertPercent: "50",
+  });
+  const [finalDecision, setFinalDecision] = useState({
+    action: "APPROVE_AS_IS" as "APPROVE_AS_IS" | "ADJUST" | "REQUEST_REVISION",
+    expertPercent: "",
+    note: "",
+  });
+  const [evidenceItems, setEvidenceItems] = useState<CaseAttachment[]>([]);
+  const [evidenceForm, setEvidenceForm] = useState({
+    fileUrl: "",
+    fileName: "",
+    fileType: "TEXT_LOG",
+    note: "",
   });
 
   useEffect(() => {
-    disputeApi
-      .get(Number(disputeId))
-      .then((data) => {
-        setDispute(data);
-        setStaffId(String(data.assignedStaffId || ""));
-      })
-      .catch(() => setDispute(null));
+    const id = Number(disputeId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    (async () => {
+      try {
+        const [disputeData, evidenceData] = await Promise.all([
+          disputeApi.get(id),
+          disputeApi.listEvidence(id).catch(() => []),
+        ]);
+        setDispute(disputeData);
+        setEvidenceItems(evidenceData);
+        setStaffId(String(disputeData.assignedStaffId || ""));
+        setReport({
+          staffReport: disputeData.staffReport || "",
+          note: disputeData.staffDecisionNote || "",
+          expertPercent:
+            typeof disputeData.staffDecisionPercentage === "number"
+              ? String(disputeData.staffDecisionPercentage)
+              : "50",
+        });
+
+        const milestoneId = disputeData.milestoneId;
+        const [contractData, milestoneData] = await Promise.all([
+          contractApi.getContract(disputeData.contractId).catch(() => null),
+          contractApi.listMilestones(disputeData.contractId).catch(() => []),
+        ]);
+        setContract(contractData);
+        setMilestones(milestoneData);
+
+        if (milestoneId) {
+          const [criteriaData, deliverableData, progressReportData] = await Promise.all([
+            contractApi.listCriteria(milestoneId).catch(() => []),
+            contractApi.listDeliverables(milestoneId).catch(() => []),
+            contractApi.listProgressReports(disputeData.contractId, milestoneId).catch(() => []),
+          ]);
+          setCriteria(criteriaData);
+          setDeliverables(deliverableData);
+          setProgressReports(progressReportData);
+        } else {
+          setCriteria([]);
+          setDeliverables([]);
+          setProgressReports([]);
+        }
+      } catch {
+        setDispute(null);
+        setContract(null);
+        setMilestones([]);
+        setCriteria([]);
+        setDeliverables([]);
+        setProgressReports([]);
+        setEvidenceItems([]);
+      }
+    })();
   }, [disputeId]);
+
+  const statusInfo = useMemo(
+    () => flow5StatusText(dispute?.status),
+    [dispute?.status],
+  );
 
   if (!dispute)
     return (
       <EmptyState
         title="Không tìm thấy dispute"
-        description="Dữ liệu dispute được lấy trực tiếp từ backend."
+        description="Không lấy được dữ liệu tranh chấp từ hệ thống."
       />
     );
 
+  const isAdmin = session?.role === "ADMIN";
+  const isStaff = session?.role === "STAFF" || (staffMode && !isAdmin);
+  const canAssign = isAdmin && ["ESCALATION_REQUESTED", "PENDING_SELF_RESOLVE"].includes(dispute.status);
+  const canStaffReport = isStaff && ["STAFF_REVIEWING", "REPORT_REVISION_REQUESTED"].includes(dispute.status);
+  const canAdminExecute = isAdmin && dispute.status === "STAFF_DECIDED";
+  const contractTitle =
+    contract?.contractTitle ||
+    contract?.title ||
+    dispute.jobTitle ||
+    "Hop dong dang tranh chap";
+  const disputedMilestone = milestones.find(
+    (item) => Number(item.milestoneId) === Number(dispute.milestoneId),
+  );
+  const sortedProgressReports = [...progressReports].sort((a, b) =>
+    (a.createdAt || "").localeCompare(b.createdAt || ""),
+  );
+  const sortedDeliverables = [...deliverables].sort((a, b) =>
+    (a.createdAt || "").localeCompare(b.createdAt || ""),
+  );
+  const hintLine = isStaff
+    ? canStaffReport
+      ? "Hint: chờ hết 48 giờ evidence window, kiểm tra source/demo bằng quyền Read & Execute, rồi gửi Technical Report kèm fund split ratio."
+      : "Hint: theo dõi evidence window, SLA và ghi chú revision từ admin trước khi thao tác tiếp."
+    : canAdminExecute
+      ? "Hint: đọc Technical Report, sau đó approve, adjust trong ±10%, hoặc gửi trả staff sửa."
+      : "Hint: admin có thể dùng Staff Assignment Dashboard để xem workload và override staff khi cần.";
+
   const assign = async () => {
-    setDispute(await disputeApi.assign(dispute.disputeId, Number(staffId)));
-    setAssignOpen(false);
+    if (!staffId.trim()) {
+      setNotice({ tone: "warning", title: "Vui lòng nhập Staff ID." });
+      return;
+    }
+    setActionLoading("assign");
+    try {
+      const saved = await disputeApi.assign(dispute.disputeId, Number(staffId));
+      setDispute(saved);
+      setAssignOpen(false);
+      setNotice({
+        tone: "success",
+        title: "Đã gán staff tiếp nhận tranh chấp.",
+        message: "Staff sẽ nhận thông báo và bắt đầu kiểm tra theo chuyên môn.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
   };
-  const demoTesting = async () => {
-    setDispute(await disputeApi.demoTesting(dispute.disputeId, testResult));
-    setTestResult("");
-  };
-  const technicalReport = async () => {
-    setDispute(
-      await disputeApi.technicalReport(
+
+  const submitStaffDecision = async () => {
+    const expertPercent = Number(report.expertPercent);
+    if (!Number.isFinite(expertPercent) || expertPercent < 0 || expertPercent > 100) {
+      setNotice({
+        tone: "warning",
+        title: "Tỷ lệ cho Expert phải nằm trong khoảng 0-100%.",
+      });
+      return;
+    }
+    if (!report.staffReport.trim()) {
+      setNotice({ tone: "warning", title: "Vui lòng nhập báo cáo kỹ thuật." });
+      return;
+    }
+    setActionLoading("staff-report");
+    try {
+      const saved = await disputeApi.staffDecision(
         dispute.disputeId,
-        report.reportContent,
-        report.proposedAction,
-      ),
-    );
-    setReportOpen(false);
+        expertPercent,
+        report.note.trim() || undefined,
+        report.staffReport.trim(),
+      );
+      setDispute(saved);
+      setReportOpen(false);
+      setNotice({
+        tone: "success",
+        title: "Đã gửi báo cáo tranh chấp cho admin.",
+        message:
+          "Admin sẽ đọc báo cáo và thực thi quyết toán theo tỷ lệ staff đề xuất.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
   };
-  const resolve = async () => {
-    setDispute(
-      await disputeApi.resolve(dispute.disputeId, report.proposedAction),
-    );
+
+  const submitAdminFinalDecision = async () => {
+    setActionLoading("admin-final");
+    try {
+      const saved = await disputeApi.adminFinalDecision(dispute.disputeId, {
+        action: finalDecision.action,
+        expertPercent:
+          finalDecision.action === "ADJUST"
+            ? Number(finalDecision.expertPercent)
+            : undefined,
+        note: finalDecision.note.trim() || undefined,
+      });
+      setDispute(saved);
+      setFinalOpen(false);
+      setNotice({
+        tone: "success",
+        title:
+          finalDecision.action === "REQUEST_REVISION"
+            ? "Đã trả báo cáo về staff để sửa."
+            : "Đã hoàn tất quyết định cuối cùng của admin.",
+        message:
+          finalDecision.action === "REQUEST_REVISION"
+            ? "Staff sẽ nhận thông báo revision và cập nhật báo cáo trong SLA 3 ngày."
+            : "Kết quả giao dịch đã được gửi cho Business và Expert theo Flow 5.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const submitEvidence = async () => {
+    if (!evidenceForm.fileUrl.trim()) {
+      setNotice({ tone: "warning", title: "Vui long nhap URL evidence." });
+      return;
+    }
+    setActionLoading("evidence");
+    try {
+      const saved = await disputeApi.createEvidence(dispute.disputeId, {
+        fileUrl: evidenceForm.fileUrl.trim(),
+        fileName: evidenceForm.fileName.trim() || undefined,
+        fileType: evidenceForm.fileType.trim() || undefined,
+        note: evidenceForm.note.trim() || undefined,
+      });
+      setEvidenceItems((current) => [...current, saved]);
+      setEvidenceForm({
+        fileUrl: "",
+        fileName: "",
+        fileType: "TEXT_LOG",
+        note: "",
+      });
+      setNotice({
+        tone: "success",
+        title: "Da them evidence vao shared dispute folder.",
+        message: "Staff va admin co the xem evidence nay trong qua trinh Flow 5.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   return (
@@ -68,87 +348,566 @@ export function DisputeDetailPage({
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={dispute.title || `Dispute #${dispute.disputeId}`}
-          description="Single source of truth là acceptance criteria và deliverables trong workspace."
+          description={
+            staffMode
+              ? "Flow 5: staff tiếp nhận tranh chấp, kiểm tra chứng cứ và gửi báo cáo cho admin."
+              : "Flow 5: admin đọc báo cáo staff và thực thi quyết toán tranh chấp."
+          }
           actions={
             <>
-              <Button variant="secondary" onClick={() => setAssignOpen(true)}>
-                <Users className="h-4 w-4" />
-                Assign staff
-              </Button>
-              <Button onClick={resolve}>
-                <CheckCircle2 className="h-4 w-4" />
-                Resolve
-              </Button>
+              {canAssign && (
+                <Button variant="secondary" onClick={() => setAssignOpen(true)}>
+                  <Users className="h-4 w-4" />
+                  Gán staff
+                </Button>
+              )}
+              {canStaffReport && (
+                <Button onClick={() => setReportOpen(true)}>
+                  <Send className="h-4 w-4" />
+                  Gửi báo cáo cho admin
+                </Button>
+              )}
+              {canAdminExecute && (
+                <Button onClick={() => setFinalOpen(true)}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Admin Final Review
+                </Button>
+              )}
             </>
           }
         />
       </div>
+
+      {notice && !shouldHideLegacyNotice(notice.title) && (
+        <Notice tone={notice.tone} title={notice.title}>
+          {notice.message}
+        </Notice>
+      )}
+
+      <Notice tone={statusInfo.tone} title={statusInfo.title}>
+        {statusInfo.message}
+      </Notice>
+
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <Card className="p-6">
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={dispute.status} />
-            <Badge tone="brand">Contract #{dispute.contractId}</Badge>
+            <Badge tone="brand">{contractTitle}</Badge>
             {dispute.milestoneId && (
-              <Badge tone="amber">Milestone #{dispute.milestoneId}</Badge>
+              <Badge tone="amber">
+                {disputedMilestone?.milestoneName || "Cot moc dang tranh chap"}
+              </Badge>
             )}
-          </div>
-          <SectionHeading title="Bằng chứng và báo cáo" description="" />
-          <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-7 text-slate-700">
-            {dispute.evidenceReport || "Chưa có báo cáo."}
-          </div>
-          <div className="mt-5 grid gap-4">
-            <Field label="Kết quả demo testing">
-              <Textarea
-                value={testResult}
-                onChange={(event) => setTestResult(event.target.value)}
-                placeholder="Ghi nhận môi trường test, AC đạt/không đạt, lỗi tái hiện..."
+            {dispute.initiatedBy && (
+              <Badge tone="slate">Bên tạo: {dispute.initiatedBy}</Badge>
+            )}
+            <div className="w-full">
+              <SectionHeading
+                title="Ho so project / contract"
+                description="Thong tin tong quan de staff xem noi dung hop dong va project."
               />
-            </Field>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={demoTesting}>
-                <FileSearch className="h-4 w-4" />
-                Lưu demo testing
-              </Button>
-              <Button onClick={() => setReportOpen(true)}>
-                <Send className="h-4 w-4" />
-                Technical report
-              </Button>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                    Project / contract
+                  </p>
+                  <p className="mt-2 text-lg font-extrabold text-ink">{contractTitle}</p>
+                  <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-500">
+                    <p>Tong ngan sach: {contract ? formatCurrency(contract.totalBudget) : "Chua co"}</p>
+                    <p>Timeline: {contract?.timelineDays ? `${contract.timelineDays} ngay` : "Chua co"}</p>
+                    <p>Cong nghe: {contract?.technologyUsed || "Chua co"}</p>
+                    <p>Business: {contract?.businessName || "Chua co ten Business"}</p>
+                    <p>Expert: {contract?.expertName || "Chua co ten Expert"}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                    Moc dang tranh chap
+                  </p>
+                  <p className="mt-2 text-lg font-extrabold text-ink">
+                    {disputedMilestone?.milestoneName || "Cot moc dang tranh chap"}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap leading-6">
+                    {disputedMilestone?.description || "Backend chua tra mo ta chi tiet cho milestone nay."}
+                  </p>
+                  {disputedMilestone?.deliverableExpectation && (
+                    <div className="mt-3 rounded-xl bg-white p-3">
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                        Deliverable expectation
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap leading-6">
+                        {disputedMilestone.deliverableExpectation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="w-full">
+              <SectionHeading
+                title="Cac cot moc cua project"
+                description="Staff can xem toan bo milestone de hieu boi canh tien do."
+              />
+              <div className="mt-5 grid gap-3">
+                {milestones.map((item) => (
+                  <div
+                    key={item.milestoneId}
+                    className={
+                      Number(item.milestoneId) === Number(dispute.milestoneId)
+                        ? "rounded-2xl border border-brand-200 bg-brand-50 p-4"
+                        : "rounded-2xl border border-slate-100 bg-white p-4"
+                    }
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-extrabold text-ink">
+                          Moc {item.orderIndex}: {item.milestoneName}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {item.description || "Chua co mo ta milestone."}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge status={item.status} />
+                        {Number(item.milestoneId) === Number(dispute.milestoneId) && (
+                          <Badge tone="brand">Dang tranh chap</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-500">
+                      <span>Ngan sach: {formatCurrency(item.finalBudget || item.fundsAllocated || 0)}</span>
+                      {item.dueAt && <span>Han nop: {formatDateTime(item.dueAt)}</span>}
+                      {item.reviewDueAt && <span>Han review: {formatDateTime(item.reviewDueAt)}</span>}
+                    </div>
+                  </div>
+                ))}
+                {milestones.length === 0 && (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+                    Chua tai duoc danh sach milestone cua contract nay.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="w-full rounded-2xl border border-slate-100 bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-extrabold text-ink">Shared evidence folder</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    48h window: Business va Expert nop text logs, files, chat history de staff audit.
+                  </p>
+                </div>
+                <Badge tone="slate">{evidenceItems.length} evidence</Badge>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {evidenceItems.map((item) => (
+                  <div
+                    key={item.attachmentId || `${item.fileUrl}-${item.createdAt}`}
+                    className="rounded-xl bg-slate-50 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <a
+                        href={item.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all font-bold text-brand-600 hover:text-brand-700"
+                      >
+                        {item.fileName || item.fileUrl}
+                      </a>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.fileType && <Badge tone="brand">{item.fileType}</Badge>}
+                        {item.createdAt && (
+                          <span className="text-xs font-bold text-slate-400">
+                            {formatDateTime(item.createdAt)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {item.note && (
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                        {item.note}
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {evidenceItems.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-400">
+                    Chua co evidence nao trong shared folder.
+                  </p>
+                )}
+              </div>
+              {!isAdmin ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <Field label="Evidence URL">
+                  <Input
+                    value={evidenceForm.fileUrl}
+                    onChange={(event) =>
+                      setEvidenceForm((value) => ({
+                        ...value,
+                        fileUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                  />
+                </Field>
+                <Field label="Evidence type">
+                  <Input
+                    value={evidenceForm.fileType}
+                    onChange={(event) =>
+                      setEvidenceForm((value) => ({
+                        ...value,
+                        fileType: event.target.value,
+                      }))
+                    }
+                    placeholder="TEXT_LOG / FILE / CHAT_HISTORY"
+                  />
+                </Field>
+                <Field label="Display name">
+                  <Input
+                    value={evidenceForm.fileName}
+                    onChange={(event) =>
+                      setEvidenceForm((value) => ({
+                        ...value,
+                        fileName: event.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <div className="flex items-end">
+                  <Button
+                    onClick={submitEvidence}
+                    loading={actionLoading === "evidence"}
+                    className="w-full"
+                  >
+                    <Send className="h-4 w-4" />
+                    Them evidence
+                  </Button>
+                </div>
+                <div className="md:col-span-2">
+                  <Field label="Evidence note / chat log">
+                    <Textarea
+                      value={evidenceForm.note}
+                      onChange={(event) =>
+                        setEvidenceForm((value) => ({
+                          ...value,
+                          note: event.target.value,
+                        }))
+                      }
+                      placeholder="Tom tat log, chat history hoac noi dung lien quan den dispute..."
+                    />
+                  </Field>
+                </div>
+              </div>
+              ) : (
+                <Notice tone="info" title="Admin chỉ xem evidence" className="mt-4">
+                  Business, Expert hoặc Staff bổ sung evidence. Admin dùng phần này để đọc trước khi final review.
+                </Notice>
+              )}
             </div>
           </div>
+
+          <SectionHeading
+            title="DoD / Acceptance criteria"
+            description="Tieu chi danh gia cua milestone dang tranh chap."
+          />
+          <div className="mt-5 grid gap-2">
+            {criteria.map((item) => (
+              <div
+                key={item.criteriaId}
+                className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mint-600" />
+                <span>{item.description}</span>
+              </div>
+            ))}
+            {criteria.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+                Chua tai duoc acceptance criteria cho milestone nay.
+              </p>
+            )}
+          </div>
+
+          <SectionHeading
+            title="Bai nop cua expert"
+            description="Tat ca progress report va final product staff can doc de doi chieu voi DoD."
+          />
+          <div className="mt-5 grid gap-4">
+            {sortedProgressReports.map((item) => (
+              <div
+                key={`report-${item.progressReportId}`}
+                className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-700"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-extrabold text-ink">
+                    Progress report #{item.progressReportId}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {item.checkpointType && <Badge tone="brand">{item.checkpointType}</Badge>}
+                    {item.createdAt && (
+                      <span className="text-xs font-bold text-slate-400">
+                        {formatDateTime(item.createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {typeof item.percentComplete === "number" && (
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Tien do: {item.percentComplete}%
+                  </p>
+                )}
+                <p className="mt-3 whitespace-pre-wrap leading-6">
+                  {item.submissionNotes || item.content}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {item.sourceCodeUrl && (
+                    <a
+                      href={item.sourceCodeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      Source code URL
+                    </a>
+                  )}
+                  {item.demoLink && (
+                    <a
+                      href={item.demoLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      Demo URL
+                    </a>
+                  )}
+                  {item.attachmentUrl && (
+                    <a
+                      href={item.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      Attachment URL
+                    </a>
+                  )}
+                </div>
+                {item.businessFeedback && (
+                  <div className="mt-3 rounded-xl bg-amber-50 p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                      Business feedback
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap leading-6">
+                      {item.businessFeedback}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+            {sortedDeliverables.map((item) => (
+              <div
+                key={`deliverable-${item.deliverableId}`}
+                className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-700"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-extrabold text-ink">
+                    Final product #{item.deliverableId}
+                  </p>
+                  {item.createdAt && (
+                    <span className="text-xs font-bold text-slate-400">
+                      {formatDateTime(item.createdAt)}
+                    </span>
+                  )}
+                </div>
+                {item.submissionNotes && (
+                  <p className="mt-3 whitespace-pre-wrap leading-6">
+                    {item.submissionNotes}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {item.sourceCodeUrl && (
+                    <a
+                      href={item.sourceCodeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      Source code URL
+                    </a>
+                  )}
+                  {item.demoLink && (
+                    <a
+                      href={item.demoLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      Demo URL
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+            {sortedProgressReports.length === 0 && sortedDeliverables.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
+                Chua co bai nop nao cua expert cho milestone dang tranh chap.
+              </p>
+            )}
+          </div>
+
+          <SectionHeading
+            title="Chứng cứ tranh chấp"
+            description="Thông tin dùng để staff kiểm tra nguồn, demo và Definition of Done."
+          />
+          <div className="mt-5 grid gap-4 text-sm text-slate-700">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                Báo cáo / mô tả chứng cứ
+              </p>
+              <p className="mt-2 whitespace-pre-wrap leading-7">
+                {dispute.evidenceReport || "Chưa có báo cáo chứng cứ."}
+              </p>
+            </div>
+            {dispute.escalationReason && (
+              <div className="rounded-2xl bg-amber-50 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                  Lý do yêu cầu staff can thiệp
+                </p>
+                <p className="mt-2 whitespace-pre-wrap leading-7">
+                  {dispute.escalationReason}
+                </p>
+              </div>
+            )}
+            {dispute.escalationEvidenceFile && (
+              <a
+                href={dispute.escalationEvidenceFile}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex font-bold text-brand-600 hover:text-brand-700"
+              >
+                File chứng cứ bổ sung
+              </a>
+            )}
+          </div>
+
+          <SectionHeading
+            title="Báo cáo của staff"
+            description="Admin dùng phần này để thực thi quyết toán."
+          />
+          <div className="mt-5 grid gap-4">
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-brand-600" />
+                <p className="font-extrabold text-ink">Technical report</p>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap leading-7">
+                {dispute.staffReport || "Staff chưa gửi báo cáo kỹ thuật."}
+              </p>
+            </div>
+            {dispute.staffDecisionNote && (
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-extrabold text-ink">Ghi chú quyết định</p>
+                <p className="mt-2 whitespace-pre-wrap leading-7">
+                  {dispute.staffDecisionNote}
+                </p>
+              </div>
+            )}
+          </div>
         </Card>
+
         <Card className="p-6">
-          <SectionHeading title="Đề xuất xử lý" />
-          <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5">
-            <p className="text-sm font-bold text-slate-500">Proposed action</p>
-            <p className="mt-2 font-display text-xl font-black text-ink">
-              {dispute.proposedAction || "Chưa có"}
-            </p>
-          </div>
-          <Notice tone="warning" title="Termination snapshot" className="mt-4">
-            Giao diện có chỗ cho Force Payout / Refund / split ratio; back-end
-            hiện mới lưu proposedAction dạng text.
-          </Notice>
+          <SectionHeading title="Tỷ lệ xử lý tiền ký quỹ" />
           <div className="mt-5 grid gap-3">
-            <Badge tone="slate">Raised by: {dispute.raisedBy || "N/A"}</Badge>
-            <Badge tone="mint">
-              Assigned:{" "}
-              {dispute.staffName ||
-                `Staff #${dispute.assignedStaffId || "N/A"}`}
-            </Badge>
+            <div className="rounded-2xl bg-mint-50 p-4">
+              <p className="text-sm font-bold text-mint-700">Expert nhận</p>
+              <p className="mt-1 font-display text-2xl font-black text-ink">
+                {typeof dispute.staffDecisionPercentage === "number"
+                  ? `${dispute.staffDecisionPercentage}%`
+                  : "Chưa có"}
+              </p>
+              {typeof dispute.staffProposedExpertAmount === "number" && (
+                <p className="mt-1 text-sm font-bold text-slate-500">
+                  {formatCurrency(dispute.staffProposedExpertAmount)}
+                </p>
+              )}
+            </div>
+            <div className="rounded-2xl bg-rose-50 p-4">
+              <p className="text-sm font-bold text-rose-700">Business hoàn lại</p>
+              <p className="mt-1 font-display text-2xl font-black text-ink">
+                {typeof dispute.staffDecisionPercentage === "number"
+                  ? `${100 - dispute.staffDecisionPercentage}%`
+                  : "Chưa có"}
+              </p>
+              {typeof dispute.businessRefundAmount === "number" && (
+                <p className="mt-1 text-sm font-bold text-slate-500">
+                  {formatCurrency(dispute.businessRefundAmount)}
+                </p>
+              )}
+            </div>
           </div>
+
+          <div className="mt-5 grid gap-3">
+            <Badge tone="slate">
+              Staff: {dispute.staffName || "Chua gan staff"}
+            </Badge>
+            {dispute.staffReviewStartedAt && (
+              <Badge tone="brand">
+                Nhận xử lý: {formatDateTime(dispute.staffReviewStartedAt)}
+              </Badge>
+            )}
+            {dispute.staffDecidedAt && (
+              <Badge tone="amber">
+                Gửi báo cáo: {formatDateTime(dispute.staffDecidedAt)}
+              </Badge>
+            )}
+            {dispute.evidenceCollectionDueAt && (
+              <Badge tone="slate">
+                Evidence đến: {formatDateTime(dispute.evidenceCollectionDueAt)}
+              </Badge>
+            )}
+            {dispute.staffAccessExpiresAt && (
+              <Badge tone="violet">
+                Access hết hạn: {formatDateTime(dispute.staffAccessExpiresAt)}
+              </Badge>
+            )}
+            {dispute.staffSlaDueAt && (
+              <Badge tone={dispute.staffSlaEscalatedAt ? "rose" : "amber"}>
+                SLA report: {formatDateTime(dispute.staffSlaDueAt)}
+              </Badge>
+            )}
+            {dispute.settlementExecutedAt && (
+              <Badge tone="mint">
+                Đã quyết toán: {formatDateTime(dispute.settlementExecutedAt)}
+              </Badge>
+            )}
+          </div>
+
+          {!canStaffReport && isStaff && dispute.status !== "RESOLVED" && (
+            <Notice tone="info" title="Chưa đến bước staff gửi báo cáo" className="mt-5">
+              Staff chỉ gửi báo cáo khi tranh chấp đang ở trạng thái STAFF_REVIEWING.
+            </Notice>
+          )}
+          {!canAdminExecute && isAdmin && dispute.status !== "RESOLVED" && (
+            <Notice tone="info" title="Admin chờ báo cáo staff" className="mt-5">
+              Admin chỉ thực thi quyết toán sau khi staff gửi báo cáo và trạng thái chuyển sang STAFF_DECIDED.
+            </Notice>
+          )}
         </Card>
       </div>
+
+      <Notice tone="info" title="Hint Line">
+        {hintLine}
+      </Notice>
 
       <Modal
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
-        title="Assign dispute"
+        title="Gán staff tiếp nhận tranh chấp"
         footer={
           <>
             <Button variant="secondary" onClick={() => setAssignOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={assign}>Gán staff</Button>
+            <Button onClick={assign} loading={actionLoading === "assign"}>
+              Gán staff
+            </Button>
           </>
         }
       >
@@ -163,49 +922,143 @@ export function DisputeDetailPage({
       <Modal
         open={reportOpen}
         onClose={() => setReportOpen(false)}
-        title="Technical report"
-        description="Staff ghi báo cáo tiếng Việt có dấu và đề xuất tỷ lệ chia tiền."
+        title="Gửi báo cáo tranh chấp cho admin"
+        description="Staff kiểm tra source/demo theo DoD và đề xuất tỷ lệ chia tiền ký quỹ."
         footer={
           <>
             <Button variant="secondary" onClick={() => setReportOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={technicalReport}>Gửi report</Button>
+            <Button
+              onClick={submitStaffDecision}
+              loading={actionLoading === "staff-report"}
+            >
+              <Gavel className="h-4 w-4" />
+              Gửi báo cáo
+            </Button>
           </>
         }
       >
         <div className="grid gap-4">
-          <Field label="Nội dung báo cáo">
+          <Field label="Báo cáo kỹ thuật">
             <Textarea
-              value={report.reportContent}
+              value={report.staffReport}
               onChange={(event) =>
                 setReport((value) => ({
                   ...value,
-                  reportContent: event.target.value,
+                  staffReport: event.target.value,
+                }))
+              }
+              placeholder="Nêu môi trường kiểm tra, tiêu chí đạt/không đạt, bằng chứng và kết luận kỹ thuật..."
+            />
+          </Field>
+          <Field label="Tỷ lệ tiền ký quỹ trả cho Expert (%)">
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={report.expertPercent}
+              onChange={(event) =>
+                setReport((value) => ({
+                  ...value,
+                  expertPercent: event.target.value,
                 }))
               }
             />
           </Field>
-          <Field label="Proposed action">
-            <Input
-              value={report.proposedAction}
+          <Field label="Ghi chú quyết định">
+            <Textarea
+              value={report.note}
               onChange={(event) =>
                 setReport((value) => ({
                   ...value,
-                  proposedAction: event.target.value,
+                  note: event.target.value,
+                }))
+              }
+              placeholder="Ví dụ: Expert hoàn thành 70% DoD, Business được hoàn 30% phần ký quỹ milestone."
+            />
+          </Field>
+        </div>
+      </Modal>
+
+      <Modal
+        open={finalOpen}
+        onClose={() => setFinalOpen(false)}
+        title="Admin Final Review & Decision"
+        description="Admin có thể giữ tỷ lệ staff, chỉnh trong ngưỡng ±10%, hoặc trả báo cáo về staff sửa."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setFinalOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={submitAdminFinalDecision}
+              loading={actionLoading === "admin-final"}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Xác nhận quyết định
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <Field label="Quyết định">
+            <div className="flex flex-wrap gap-2">
+              {(["APPROVE_AS_IS", "ADJUST", "REQUEST_REVISION"] as const).map((action) => (
+                <Button
+                  key={action}
+                  type="button"
+                  size="sm"
+                  variant={finalDecision.action === action ? "primary" : "secondary"}
+                  onClick={() =>
+                    setFinalDecision((value) => ({
+                      ...value,
+                      action,
+                      expertPercent:
+                        action === "ADJUST"
+                          ? value.expertPercent || String(dispute.staffDecisionPercentage || 50)
+                          : value.expertPercent,
+                    }))
+                  }
+                >
+                  {action === "APPROVE_AS_IS"
+                    ? "Approve as-is"
+                    : action === "ADJUST"
+                      ? "Adjust ±10%"
+                      : "Send back revision"}
+                </Button>
+              ))}
+            </div>
+          </Field>
+          {finalDecision.action === "ADJUST" && (
+            <Field label="Tỷ lệ Expert nhận sau điều chỉnh (%)">
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={finalDecision.expertPercent}
+                onChange={(event) =>
+                  setFinalDecision((value) => ({
+                    ...value,
+                    expertPercent: event.target.value,
+                  }))
+                }
+              />
+            </Field>
+          )}
+          <Field label={finalDecision.action === "REQUEST_REVISION" ? "Ghi chú bắt buộc cho staff" : "Ghi chú final decision"}>
+            <Textarea
+              value={finalDecision.note}
+              onChange={(event) =>
+                setFinalDecision((value) => ({
+                  ...value,
+                  note: event.target.value,
                 }))
               }
             />
           </Field>
         </div>
       </Modal>
-
-      {!staffMode && (
-        <Notice tone="info" title="Luồng người dùng">
-          Business/Expert xem trạng thái dispute tại đây. Staff/Admin dùng cùng
-          detail nhưng có thêm ngữ cảnh xử lý ticket.
-        </Notice>
-      )}
     </div>
   );
 }

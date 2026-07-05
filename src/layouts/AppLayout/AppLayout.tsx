@@ -290,8 +290,13 @@ const roleNav: Record<Role, NavItem[]> = {
     },
     {
       label: "Tranh chấp",
-      to: "/app/tickets",
+      to: "/app/disputes",
       icon: <Gavel className="h-4 w-4" />,
+    },
+    {
+      label: "Gán staff tranh chấp",
+      to: "/app/admin/staff-assignment",
+      icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
       label: "Quản lý nhân viên",

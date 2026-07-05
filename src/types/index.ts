@@ -171,6 +171,10 @@ export interface Milestone {
   orderIndex: number;
   duration?: number;
   durationUnit?: string;
+  inProgressStartedAt?: string;
+  dueAt?: string;
+  overdue?: boolean;
+  reviewDueAt?: string;
   status: string;
   durationValue?: number;
   criteriaSnapshot?: string;
@@ -219,7 +223,14 @@ export interface MilestoneProgressReport {
   content: string;
   percentComplete?: number;
   attachmentUrl?: string;
+  sourceCodeUrl?: string;
+  demoLink?: string;
+  submissionNotes?: string;
   isLate?: boolean;
+  businessFeedback?: string;
+  feedbackByAccountId?: number;
+  feedbackAt?: string;
+  requiresAdjustment?: boolean;
   createdAt?: string;
 }
 
@@ -247,6 +258,30 @@ export interface Dispute {
   adminApprovedBy?: number;
   status: string;
   initiatedBy?: string;
+  initiatedByAccountId?: number;
+  initiationType?: string;
+  escalationRequestedByAccountId?: number;
+  escalationRequestedAt?: string;
+  staffReviewStartedAt?: string;
+  staffDecisionPercentage?: number;
+  staffDecisionNote?: string;
+  staffDecidedAt?: string;
+  interventionRejectedAt?: string;
+  interventionRejectionReason?: string;
+  staffReport?: string;
+  staffProposedExpertAmount?: number;
+  businessRefundAmount?: number;
+  settlementExecutedAt?: string;
+  settlementWalletTransactionId?: number;
+  evidenceCollectionDueAt?: string;
+  staffAccessScope?: string;
+  staffAccessExpiresAt?: string;
+  staffSlaDueAt?: string;
+  staffSlaEscalatedAt?: string;
+  adminFinalExpertPercentage?: number;
+  adminFinalNote?: string;
+  adminRevisionNote?: string;
+  adminRevisionRequestedAt?: string;
   previousMilestoneStatus?: string;
   resolutionType?: string;
   resolvedAt?: string;
@@ -257,6 +292,29 @@ export interface Dispute {
   raisedBy?: string;
   jobTitle?: string;
   staffName?: string;
+}
+
+export interface StaffAssignmentCandidate {
+  staffId: number;
+  accountId: number;
+  fullName?: string;
+  email?: string;
+  specialization?: string;
+  matchedSpecialization?: boolean;
+  availabilityStatus: "Idle" | "Busy" | string;
+  activeDisputeWorkload: number;
+}
+
+export interface CaseAttachment {
+  attachmentId?: number;
+  ownerType: string;
+  ownerId: number;
+  uploadedByAccountId?: number;
+  fileUrl: string;
+  fileName?: string;
+  fileType?: string;
+  note?: string;
+  createdAt?: string;
 }
 
 export interface TerminationRequest {

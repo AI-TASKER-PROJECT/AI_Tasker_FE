@@ -2,6 +2,8 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Gavel,
   PlayCircle,
   RefreshCw,
@@ -46,10 +48,10 @@ import {
 type NoticeTone = "success" | "danger" | "info" | "warning";
 
 const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
-const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "DISPUTED"]);
+const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS"]);
 const DEPOSITABLE_STATUSES = new Set(["PENDING"]);
-const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "UNDER_REVIEW", "DISPUTED"]);
+const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"]);
 
 function normalizeStatus(status?: string) {
   return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
@@ -61,6 +63,7 @@ function milestoneStatusLabel(status?: string) {
     PENDING: "Chờ mở mốc",
     DEPOSITED: "Sẵn sàng làm việc",
     IN_PROGRESS: "Đang thực hiện",
+    OVERDUE: "Quá hạn",
     UNDER_REVIEW: "Chờ nghiệm thu",
     DISPUTED: "Đang tranh chấp",
     COMPLETED: "Hoàn thành",
@@ -81,6 +84,124 @@ function roleLabel(role?: string) {
   if (role === "BUSINESS") return "BUSINESS";
   if (role === "EXPERT") return "EXPERT";
   return "OTHER";
+}
+
+function checkpointLabel(checkpointType?: string) {
+  if (!checkpointType) return "Báo cáo tiến độ";
+  return "Báo cáo giữa kỳ";
+}
+
+function latestProgressStatusLabel(report: MilestoneProgressReport) {
+  if (report.businessFeedback) {
+    return report.requiresAdjustment ? "Đã feedback, cần chỉnh sửa" : "Đã feedback";
+  }
+  return "Đã nộp, chờ business xem";
+}
+
+function latestDeliverableStatusLabel(milestoneStatus?: string) {
+  const normalized = normalizeStatus(milestoneStatus);
+  if (normalized === "COMPLETED") return "Đã nghiệm thu";
+  if (normalized === "UNDER_REVIEW") return "Đã nộp, chờ nghiệm thu";
+  if (normalized === "DISPUTED") return "Đang tranh chấp";
+  if (normalized === "OVERDUE") return "Quá hạn";
+  return "Đã nộp";
+}
+
+function isActiveMilestoneStatus(status?: string) {
+  return ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
+    normalizeStatus(status),
+  );
+}
+
+function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
+  const normalized = normalizeStatus(status);
+  const disputeStatus = normalizeStatus(dispute?.status);
+  if (disputeStatus === "ESCALATION_REQUESTED") {
+    return "Hint: Dispute da duoc gui den hang doi staff/admin. Hai ben nen bo sung bang chung va cho staff tiep nhan.";
+  }
+  if (disputeStatus === "STAFF_REVIEWING") {
+    return "Hint: Staff dang audit source/demo. Business va Expert theo doi ket qua tren man dispute.";
+  }
+  if (role === "BUSINESS" && normalized === "PENDING") {
+    return "Hint: Ky quy milestone nay de Expert co the bat dau cong viec.";
+  }
+  if (role === "EXPERT" && normalized === "DEPOSITED") {
+    return "Hint: Bam Bat dau moc de mo buoc nop progress report va final product.";
+  }
+  if (role === "EXPERT" && normalized === "IN_PROGRESS") {
+    return "Hint: Nop bao cao giua ky de Business theo doi, sau do nop final product khi san pham san sang.";
+  }
+  if (role === "BUSINESS" && normalized === "UNDER_REVIEW") {
+    return "Hint: Kiem tra source/demo theo DoD, nghiem thu neu dat hoac reject kem feedback co cau truc.";
+  }
+  if (normalized === "COMPLETED") {
+    return "Hint: Milestone da hoan tat. Business co the mo milestone tiep theo neu con.";
+  }
+  return "Hint: Theo doi trang thai milestone va chi thao tac tren moc dang active.";
+}
+
+function buildStructuredFeedback({
+  category,
+  severity,
+  requiresAdjustment,
+  dodChecklist,
+  feedback,
+}: {
+  category: string;
+  severity: string;
+  requiresAdjustment: boolean;
+  dodChecklist: string[];
+  feedback: string;
+}) {
+  const checklist =
+    dodChecklist.length > 0
+      ? dodChecklist.map((item) => `- ${item}`).join("\n")
+      : "- Khong chon tieu chi DoD cu the";
+  return [
+    `Category: ${category}`,
+    `Severity: ${severity}`,
+    `Requires adjustment: ${requiresAdjustment ? "Yes" : "No"}`,
+    "DoD checklist:",
+    checklist,
+    "Feedback:",
+    feedback,
+  ].join("\n");
+}
+
+function disputeWorkspaceNotice(dispute?: Dispute) {
+  const status = normalizeStatus(dispute?.status);
+  const fallback = {
+    title: dispute ? `Dispute #${dispute.disputeId}` : "Tranh chấp",
+    message: "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
+  };
+  const messages: Record<string, { title: string; message: string }> = {
+    PENDING_SELF_RESOLVE: {
+      title: `Dispute #${dispute?.disputeId} - Hai bên đang tự xử lý`,
+      message:
+        "Business và Expert đang tự trao đổi. Nếu không thống nhất, hãy gửi yêu cầu staff can thiệp.",
+    },
+    ESCALATION_REQUESTED: {
+      title: `Dispute #${dispute?.disputeId} - Đã gửi yêu cầu staff`,
+      message:
+        "Yêu cầu can thiệp đã được gửi. Hệ thống đang chờ staff phù hợp tiếp nhận hoặc admin phân công.",
+    },
+    STAFF_REVIEWING: {
+      title: `Dispute #${dispute?.disputeId} - Staff đang kiểm tra`,
+      message:
+        "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Definition of Done và sẽ gửi báo cáo cho admin.",
+    },
+    STAFF_DECIDED: {
+      title: `Dispute #${dispute?.disputeId} - Chờ admin quyết toán`,
+      message:
+        "Staff đã gửi báo cáo kỹ thuật và tỷ lệ chia tiền ký quỹ. Admin sẽ đọc báo cáo và thực thi quyết toán.",
+    },
+    RESOLVED: {
+      title: `Dispute #${dispute?.disputeId} - Đã xử lý xong`,
+      message:
+        "Tranh chấp đã được quyết toán. Business và Expert có thể xem kết quả giao dịch cuối cùng.",
+    },
+  };
+  return messages[status] || fallback;
 }
 
 function FlowStep({
@@ -161,6 +282,12 @@ export function WorkspacePage() {
     null,
   );
   const [feedbackOpen, setFeedbackOpen] = useState<Milestone | null>(null);
+  const [progressFeedbackOpen, setProgressFeedbackOpen] = useState<{
+    milestone: Milestone;
+    report: MilestoneProgressReport;
+  } | null>(null);
+  const [progressFeedbackDetail, setProgressFeedbackDetail] =
+    useState<MilestoneProgressReport | null>(null);
   const [disputeOpen, setDisputeOpen] = useState<Milestone | null>(null);
   const [terminationOpen, setTerminationOpen] = useState<Milestone | null>(
     null,
@@ -174,6 +301,19 @@ export function WorkspacePage() {
     percentComplete: "50",
   });
   const [feedbackReason, setFeedbackReason] = useState("");
+  const [finalFeedbackForm, setFinalFeedbackForm] = useState({
+    category: "Core Logic",
+    severity: "High",
+    dodChecklist: [] as string[],
+  });
+  const [progressFeedbackForm, setProgressFeedbackForm] = useState({
+    feedback: "",
+    category: "Core Logic",
+    severity: "Medium",
+    dodChecklist: [] as string[],
+    requiresAdjustment: false,
+  });
+  const [expandedMilestones, setExpandedMilestones] = useState<Record<number, boolean>>({});
   const [disputeReason, setDisputeReason] = useState("");
   const [terminationReason, setTerminationReason] = useState(
     "Milestone đã quá thời hạn nhưng chưa có sản phẩm đạt yêu cầu.",
@@ -268,9 +408,10 @@ export function WorkspacePage() {
         if (status === "PENDING") summary.pending += 1;
         if (status === "DEPOSITED") summary.ready += 1;
         if (status === "IN_PROGRESS") summary.working += 1;
+        if (status === "OVERDUE") summary.overdue += 1;
         return summary;
       },
-      { done: 0, review: 0, disputed: 0, pending: 0, ready: 0, working: 0 },
+      { done: 0, review: 0, disputed: 0, pending: 0, ready: 0, working: 0, overdue: 0 },
     );
   }, [milestones]);
 
@@ -353,8 +494,9 @@ export function WorkspacePage() {
           percentComplete: Number.isFinite(percentComplete)
             ? percentComplete
             : undefined,
-          attachmentUrl:
-            deliverableForm.demoLink || deliverableForm.sourceCodeUrl || undefined,
+          sourceCodeUrl: deliverableForm.sourceCodeUrl || undefined,
+          demoLink: deliverableForm.demoLink || undefined,
+          submissionNotes: notes,
         });
       } else {
         await contractApi.submitDeliverable(sourceMilestoneId, {
@@ -419,14 +561,97 @@ export function WorkspacePage() {
       return;
     }
     const milestone = feedbackOpen;
+    const structuredReason = buildStructuredFeedback({
+      ...finalFeedbackForm,
+      requiresAdjustment: true,
+      feedback: reason,
+    });
     await runMilestoneAction(
       milestone,
       "feedback",
-      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, reason),
+      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, structuredReason),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
+    setFinalFeedbackForm({
+      category: "Core Logic",
+      severity: "High",
+      dodChecklist: [],
+    });
     setFeedbackOpen(null);
+  };
+
+  const submitProgressFeedback = async () => {
+    if (!progressFeedbackOpen || !contract) return;
+    const sourceMilestoneId = getSourceMilestoneId(progressFeedbackOpen.milestone);
+    const feedback = progressFeedbackForm.feedback.trim();
+    if (!sourceMilestoneId) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: "Không xác định được cột mốc cần phản hồi.",
+      });
+      return;
+    }
+    if (!feedback) {
+      setWorkspaceNotice({
+        tone: "warning",
+        title: "Vui lòng nhập nội dung phản hồi.",
+      });
+      return;
+    }
+    const checklist =
+      progressFeedbackForm.dodChecklist.length > 0
+        ? progressFeedbackForm.dodChecklist.map((item) => `- ${item}`).join("\n")
+        : "- Không chọn tiêu chí DoD cụ thể";
+    const structuredFeedback = [
+      `Category: ${progressFeedbackForm.category}`,
+      `Severity: ${progressFeedbackForm.severity}`,
+      `Requires adjustment: ${progressFeedbackForm.requiresAdjustment ? "Yes" : "No"}`,
+      "DoD checklist:",
+      checklist,
+      "Feedback:",
+      feedback,
+    ].join("\n");
+    setActionLoading(`progress-feedback:${progressFeedbackOpen.report.progressReportId}`);
+    try {
+      const saved = await contractApi.feedbackProgressReport(
+        contract.contractId,
+        sourceMilestoneId,
+        progressFeedbackOpen.report.progressReportId,
+        {
+          feedback: structuredFeedback,
+          requiresAdjustment: progressFeedbackForm.requiresAdjustment,
+        },
+      );
+      setProgressReportsByMilestone((current) => ({
+        ...current,
+        [sourceMilestoneId]: (current[sourceMilestoneId] || []).map((item) =>
+          item.progressReportId === saved.progressReportId ? saved : item,
+        ),
+      }));
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "success",
+        title: "Đã gửi phản hồi cho báo cáo tiến độ.",
+        message: progressFeedbackForm.requiresAdjustment
+          ? "Expert sẽ thấy yêu cầu điều chỉnh trong thông báo."
+          : "Phản hồi đã được lưu trong lịch sử báo cáo.",
+      });
+      setProgressFeedbackForm({
+        feedback: "",
+        category: "Core Logic",
+        severity: "Medium",
+        dodChecklist: [],
+        requiresAdjustment: false,
+      });
+      setProgressFeedbackOpen(null);
+    } catch (error) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const escalateDispute = async () => {
@@ -443,6 +668,16 @@ export function WorkspacePage() {
     setActionLoading(`dispute:${sourceMilestoneId}`);
     try {
       const existing = disputesByMilestone[sourceMilestoneId];
+      if (existing && normalizeStatus(existing.status) !== "PENDING_SELF_RESOLVE") {
+        setMilestoneNotice(sourceMilestoneId, {
+          tone: "info",
+          title: "Yêu cầu can thiệp đã được gửi trước đó.",
+          message:
+            disputeWorkspaceNotice(existing).message,
+        });
+        setDisputeOpen(null);
+        return;
+      }
       const dispute =
         existing ||
         (await disputeApi.initiate(
@@ -456,9 +691,9 @@ export function WorkspacePage() {
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã gửi yêu cầu hỗ trợ xử lý tranh chấp.",
+        title: "Đã gửi tranh chấp cho staff tiếp nhận.",
         message:
-          "Yêu cầu đã được chuyển đến bộ phận phụ trách để xem xét.",
+          "Nếu có staff phù hợp chuyên ngành, hệ thống sẽ gán trực tiếp cho staff đó. Nếu chưa tìm thấy, admin sẽ phân công thủ công.",
       });
       setDisputeReason("");
       setDisputeOpen(null);
@@ -505,6 +740,29 @@ export function WorkspacePage() {
     }
   };
 
+  const autoApproveReviewSla = async () => {
+    if (!contract) return;
+    setActionLoading("review-sla");
+    try {
+      const updated = await contractApi.autoApproveReviewSla(contract.contractId);
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: "success",
+        title:
+          updated.length > 0
+            ? `Đã tự động nghiệm thu ${updated.length} cột mốc quá thời gian phản hồi.`
+            : "Chưa có cột mốc nào đủ điều kiện tự động nghiệm thu.",
+      });
+    } catch (error) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (!contract) {
     return (
       <EmptyState
@@ -539,6 +797,16 @@ export function WorkspacePage() {
           description="Business ký quỹ từng cột mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
           actions={
             <div className="flex flex-wrap gap-2">
+              {session?.role === "ADMIN" && (
+                <Button
+                  variant="secondary"
+                  onClick={autoApproveReviewSla}
+                  loading={actionLoading === "review-sla"}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Xử lý nghiệm thu quá hạn
+                </Button>
+              )}
               <Button variant="secondary" onClick={loadWorkspace}>
                 <RefreshCw className="h-4 w-4" />
                 Làm mới
@@ -579,8 +847,8 @@ export function WorkspacePage() {
         <FlowStep
           icon={<UploadCloud className="h-4 w-4" />}
           title="Expert nộp sản phẩm"
-          description={`${counts.ready} milestone chờ Expert bắt đầu, ${counts.working} milestone đang làm.`}
-          active={counts.ready > 0 || counts.working > 0}
+          description={`${counts.ready} mốc chờ bắt đầu, ${counts.working} đang làm, ${counts.overdue} quá hạn.`}
+          active={counts.ready > 0 || counts.working > 0 || counts.overdue > 0}
         />
         <FlowStep
           icon={<CheckCircle2 className="h-4 w-4" />}
@@ -626,6 +894,29 @@ export function WorkspacePage() {
           const currentDispute = sourceMilestoneId
             ? disputesByMilestone[sourceMilestoneId]
             : undefined;
+          const latestProgressReport =
+            milestoneReports.length > 0
+              ? milestoneReports[milestoneReports.length - 1]
+              : undefined;
+          const latestDeliverable =
+            milestoneDeliverables.length > 0
+              ? milestoneDeliverables[milestoneDeliverables.length - 1]
+              : undefined;
+          const latestSubmissionMeta = [
+            ...milestoneReports.map((item) => ({
+              kind: "REPORT" as const,
+              id: item.progressReportId,
+              createdAt: item.createdAt || "",
+            })),
+            ...milestoneDeliverables.map((item) => ({
+              kind: "DELIVERABLE" as const,
+              id: item.deliverableId,
+              createdAt: item.createdAt || "",
+            })),
+          ]
+            .filter((item) => item.createdAt)
+            .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+            .at(-1);
           const isLoading = (action: string) =>
             actionLoading === `${action}:${sourceMilestoneId}`;
           const canDeposit =
@@ -645,13 +936,19 @@ export function WorkspacePage() {
             session?.role === "BUSINESS" && REVIEWABLE_STATUSES.has(status);
           const canDispute =
             (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
-            DISPUTABLE_STATUSES.has(status);
+            DISPUTABLE_STATUSES.has(status) &&
+            (!currentDispute ||
+              normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
           const canRequestTermination =
             (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
-            ["DEPOSITED", "IN_PROGRESS", "UNDER_REVIEW", "DISPUTED"].includes(
+            ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
               status,
             ) &&
             !hasActiveTermination;
+          const isExpanded = sourceMilestoneId
+            ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
+            : true;
+          const hintLine = workspaceHintLine(session?.role, status, currentDispute);
 
           return (
             <Card
@@ -687,10 +984,35 @@ export function WorkspacePage() {
                     {milestone.updatedAt && (
                       <span>Cập nhật: {formatDateTime(milestone.updatedAt)}</span>
                     )}
+                    {milestone.dueAt && (
+                      <span>Hạn nộp: {formatDateTime(milestone.dueAt)}</span>
+                    )}
+                    {milestone.reviewDueAt && (
+                      <span>Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}</span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  {sourceMilestoneId && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        setExpandedMilestones((current) => ({
+                          ...current,
+                          [sourceMilestoneId]: !isExpanded,
+                        }))
+                      }
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      {isExpanded ? "Thu gon" : "Mo chi tiet"}
+                    </Button>
+                  )}
                   {canDeposit && (
                     <Button
                       size="sm"
@@ -762,38 +1084,7 @@ export function WorkspacePage() {
                         }}
                       >
                         <UploadCloud className="h-4 w-4" />
-                        {status === "DISPUTED"
-                          ? "Nộp lại final product"
-                          : "Nộp final product"}
-                      </Button>
-                    </>
-                  )}
-                  {canReview && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="success"
-                        loading={isLoading("approve")}
-                        onClick={() =>
-                          runMilestoneAction(
-                            milestone,
-                            "approve",
-                            (sourceMilestoneId) =>
-                              contractApi.approveMilestone(sourceMilestoneId),
-                            "Đã nghiệm thu final product và giải ngân escrow cho Expert.",
-                          )
-                        }
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Nghiệm thu & giải ngân
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setFeedbackOpen(milestone)}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Reject final product
+                        Nộp final product
                       </Button>
                     </>
                   )}
@@ -844,6 +1135,8 @@ export function WorkspacePage() {
                 </div>
               </div>
 
+              {isExpanded ? (
+                <>
               {milestoneNotice && (
                 <div className="mt-4">
                   <Notice
@@ -866,18 +1159,29 @@ export function WorkspacePage() {
                   </Notice>
                 </div>
               )}
+              {status === "OVERDUE" && (
+                <div className="mt-4">
+                  <Notice
+                    tone="warning"
+                    title="Cột mốc đã quá hạn nộp final product."
+                  >
+                    Expert vẫn có thể nộp final product muộn để Business kiểm
+                    tra, hoặc hai bên có thể gửi yêu cầu hủy nếu không thể tiếp
+                    tục.
+                  </Notice>
+                </div>
+              )}
               {currentDispute && (
                 <div className="mt-4">
                   <Notice
                     tone="warning"
-                    title={`Dispute #${currentDispute.disputeId} - ${currentDispute.status}`}
+                    title={disputeWorkspaceNotice(currentDispute).title}
                   >
-                    {currentDispute.evidenceReport ||
-                      "Cột mốc đang có tranh chấp hoặc đang chờ hai bên tự xử lý."}
+                    {disputeWorkspaceNotice(currentDispute).message}
                   </Notice>
                 </div>
               )}
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="mt-5 grid gap-4">
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-sm font-extrabold text-ink">
                     Definition of Done / Acceptance Criteria
@@ -913,7 +1217,7 @@ export function WorkspacePage() {
                     {milestoneReports.map((item) => (
                       <div
                         key={`report-${item.progressReportId}`}
-                        className="rounded-xl bg-white p-3 text-sm text-slate-600 shadow-sm"
+                        className="rounded-xl bg-white p-4 text-sm text-slate-600 shadow-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-bold text-ink">
@@ -921,7 +1225,22 @@ export function WorkspacePage() {
                           </p>
                           <div className="flex flex-wrap items-center gap-2">
                             {item.checkpointType && (
-                              <Badge tone="brand">{item.checkpointType}</Badge>
+                              <Badge tone="brand">{checkpointLabel(item.checkpointType)}</Badge>
+                            )}
+                            <Badge
+                              tone={
+                                item.businessFeedback
+                                  ? item.requiresAdjustment
+                                    ? "amber"
+                                    : "mint"
+                                  : "slate"
+                              }
+                            >
+                              {latestProgressStatusLabel(item)}
+                            </Badge>
+                            {latestSubmissionMeta?.kind === "REPORT" &&
+                              latestSubmissionMeta.id === item.progressReportId && (
+                              <Badge tone="violet">Lần nộp mới nhất</Badge>
                             )}
                             {item.isLate && <Badge tone="amber">Nộp trễ</Badge>}
                             {item.createdAt && (
@@ -931,68 +1250,211 @@ export function WorkspacePage() {
                             )}
                           </div>
                         </div>
-                        {typeof item.percentComplete === "number" && (
-                          <p className="mt-2 text-xs font-bold text-slate-400">
-                            Hoàn thành khoảng {item.percentComplete}%
-                          </p>
-                        )}
-                        <p className="mt-2 whitespace-pre-wrap leading-6">
-                          {item.content}
-                        </p>
-                        {item.attachmentUrl && (
-                          <a
-                            href={item.attachmentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-flex font-bold text-brand-600 hover:text-brand-700"
-                          >
-                            File đính kèm
-                          </a>
-                        )}
+                        <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3">
+                          {typeof item.percentComplete === "number" && (
+                            <p className="text-xs font-bold text-slate-500">
+                              Tiến độ: khoảng {item.percentComplete}%
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-3">
+                            {item.sourceCodeUrl && (
+                              <div className="rounded-lg bg-white px-3 py-2">
+                                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Source code URL
+                                </p>
+                                <a
+                                  href={item.sourceCodeUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
+                                >
+                                  {item.sourceCodeUrl}
+                                </a>
+                              </div>
+                            )}
+                            {item.demoLink && (
+                              <div className="rounded-lg bg-white px-3 py-2">
+                                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Demo URL
+                                </p>
+                                <a
+                                  href={item.demoLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
+                                >
+                                  {item.demoLink}
+                                </a>
+                              </div>
+                            )}
+                            {item.attachmentUrl && (
+                              <div className="rounded-lg bg-white px-3 py-2">
+                                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                  File đính kèm
+                                </p>
+                                <a
+                                  href={item.attachmentUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
+                                >
+                                  {item.attachmentUrl}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                              Nội dung nộp
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap leading-6">
+                              {item.submissionNotes || item.content}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {item.businessFeedback && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setProgressFeedbackDetail(item)}
+                            >
+                              Mở phản hồi của Business
+                            </Button>
+                          )}
+                          {session?.role === "BUSINESS" && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={
+                                latestProgressReport?.progressReportId !==
+                                item.progressReportId
+                              }
+                              onClick={() => {
+                                setProgressFeedbackForm({
+                                  feedback: item.businessFeedback || "",
+                                  category: "Core Logic",
+                                  severity: "Medium",
+                                  dodChecklist: [],
+                                  requiresAdjustment: Boolean(item.requiresAdjustment),
+                                });
+                                setProgressFeedbackOpen({ milestone, report: item });
+                              }}
+                            >
+                              {latestProgressReport?.progressReportId ===
+                              item.progressReportId
+                                ? "Phản hồi báo cáo này"
+                                : "Chỉ phản hồi lần nộp mới nhất"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     {milestoneDeliverables.map((item) => (
                       <div
                         key={item.deliverableId}
-                        className="rounded-xl bg-white p-3 text-sm text-slate-600 shadow-sm"
+                        className="rounded-xl bg-white p-4 text-sm text-slate-600 shadow-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-bold text-ink">
                             Final product #{item.deliverableId}
                           </p>
-                          {item.createdAt && (
-                            <span className="text-xs font-bold text-slate-400">
-                              {formatDateTime(item.createdAt)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {item.sourceCodeUrl && (
-                            <a
-                              href={item.sourceCodeUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-bold text-brand-600 hover:text-brand-700"
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              tone={
+                                normalizeStatus(milestone.status) === "COMPLETED"
+                                  ? "mint"
+                                  : normalizeStatus(milestone.status) === "DISPUTED"
+                                    ? "amber"
+                                    : "slate"
+                              }
                             >
-                              Source code
-                            </a>
+                              {latestDeliverable?.deliverableId === item.deliverableId
+                                ? latestDeliverableStatusLabel(milestone.status)
+                                : "Bản nộp trước"}
+                            </Badge>
+                            {latestSubmissionMeta?.kind === "DELIVERABLE" &&
+                              latestSubmissionMeta.id === item.deliverableId && (
+                              <Badge tone="violet">Lần nộp mới nhất</Badge>
+                            )}
+                            {item.createdAt && (
+                              <span className="text-xs font-bold text-slate-400">
+                                {formatDateTime(item.createdAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {item.sourceCodeUrl && (
+                            <div className="rounded-lg bg-slate-50 px-3 py-2">
+                              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                Source code URL
+                              </p>
+                              <a
+                                href={item.sourceCodeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
+                              >
+                                {item.sourceCodeUrl}
+                              </a>
+                            </div>
                           )}
                           {item.demoLink && (
-                            <a
-                              href={item.demoLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-bold text-brand-600 hover:text-brand-700"
-                            >
-                              Demo
-                            </a>
+                            <div className="rounded-lg bg-slate-50 px-3 py-2">
+                              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                Demo URL
+                              </p>
+                              <a
+                                href={item.demoLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
+                              >
+                                {item.demoLink}
+                              </a>
+                            </div>
                           )}
                         </div>
                         {item.submissionNotes && (
-                          <p className="mt-2 whitespace-pre-wrap leading-6">
-                            {item.submissionNotes}
-                          </p>
+                          <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                              Nội dung nộp
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap leading-6">
+                              {item.submissionNotes}
+                            </p>
+                          </div>
                         )}
+                        {session?.role === "BUSINESS" &&
+                          latestDeliverable?.deliverableId === item.deliverableId &&
+                          canReview && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  runMilestoneAction(
+                                    milestone,
+                                    "approve",
+                                    () => contractApi.approveMilestone(sourceMilestoneId!),
+                                    "Đã nghiệm thu sản phẩm và giải ngân milestone.",
+                                  )
+                                }
+                                loading={isLoading("approve")}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Nghiệm thu bản nộp này
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => setFeedbackOpen(milestone)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Reject bản nộp này
+                              </Button>
+                            </div>
+                          )}
                       </div>
                     ))}
                     {milestoneReports.length === 0 &&
@@ -1005,6 +1467,15 @@ export function WorkspacePage() {
                   </div>
                 </div>
               </div>
+              <Notice tone="info" title="Hint Line" className="mt-4">
+                {hintLine}
+              </Notice>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                  Milestone dang duoc thu gon. Mo chi tiet de xem DoD, progress report, final product va cac action hien co.
+                </div>
+              )}
             </Card>
           );
         })}
@@ -1101,32 +1572,28 @@ export function WorkspacePage() {
               />
             </Field>
           )}
-          {deliverableForm.type === "FINAL" && (
-            <>
-              <Field label="Source code URL">
-                <Input
-                  value={deliverableForm.sourceCodeUrl}
-                  onChange={(event) =>
-                    setDeliverableForm((value) => ({
-                      ...value,
-                      sourceCodeUrl: event.target.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Demo link">
-                <Input
-                  value={deliverableForm.demoLink}
-                  onChange={(event) =>
-                    setDeliverableForm((value) => ({
-                      ...value,
-                      demoLink: event.target.value,
-                    }))
-                  }
-                />
-              </Field>
-            </>
-          )}
+          <Field label="Source code URL">
+            <Input
+              value={deliverableForm.sourceCodeUrl}
+              onChange={(event) =>
+                setDeliverableForm((value) => ({
+                  ...value,
+                  sourceCodeUrl: event.target.value,
+                }))
+              }
+            />
+          </Field>
+          <Field label="Demo link">
+            <Input
+              value={deliverableForm.demoLink}
+              onChange={(event) =>
+                setDeliverableForm((value) => ({
+                  ...value,
+                  demoLink: event.target.value,
+                }))
+              }
+            />
+          </Field>
           <Field
             label={
               deliverableForm.type === "FINAL"
@@ -1145,6 +1612,180 @@ export function WorkspacePage() {
             />
           </Field>
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(progressFeedbackOpen)}
+        onClose={() => setProgressFeedbackOpen(null)}
+        title="Phản hồi báo cáo tiến độ"
+        description="Phản hồi này chỉ dùng để trao đổi về tiến độ, không chuyển cột mốc sang tranh chấp."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setProgressFeedbackOpen(null)}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={submitProgressFeedback}
+              loading={
+                progressFeedbackOpen
+                  ? actionLoading ===
+                    `progress-feedback:${progressFeedbackOpen.report.progressReportId}`
+                  : false
+              }
+            >
+              <Send className="h-4 w-4" />
+              Gửi phản hồi
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
+            <p className="text-sm font-extrabold text-ink">Structured feedback panel</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <Field label="Category">
+                <div className="flex flex-wrap gap-2">
+                  {["Core Logic", "UI/UX", "Security", "Performance"].map((category) => (
+                    <Button
+                      key={category}
+                      type="button"
+                      size="sm"
+                      variant={progressFeedbackForm.category === category ? "primary" : "secondary"}
+                      onClick={() =>
+                        setProgressFeedbackForm((value) => ({
+                          ...value,
+                          category,
+                        }))
+                      }
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Severity">
+                <div className="flex flex-wrap gap-2">
+                  {["Low", "Medium", "High", "Critical"].map((severity) => (
+                    <Button
+                      key={severity}
+                      type="button"
+                      size="sm"
+                      variant={progressFeedbackForm.severity === severity ? "primary" : "secondary"}
+                      onClick={() =>
+                        setProgressFeedbackForm((value) => ({
+                          ...value,
+                          severity,
+                        }))
+                      }
+                    >
+                      {severity}
+                    </Button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          </div>
+          {progressFeedbackOpen && (
+            <Field label="DoD checklist liên quan">
+              <div className="grid gap-2">
+                {(
+                  criteriaByMilestone[getSourceMilestoneId(progressFeedbackOpen.milestone) || -1] || []
+                ).map((item) => (
+                  <label
+                    key={item.criteriaId}
+                    className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={progressFeedbackForm.dodChecklist.includes(item.description)}
+                      onChange={(event) =>
+                        setProgressFeedbackForm((value) => ({
+                          ...value,
+                          dodChecklist: event.target.checked
+                            ? [...value.dodChecklist, item.description]
+                            : value.dodChecklist.filter((entry) => entry !== item.description),
+                        }))
+                      }
+                    />
+                    <span>{item.description}</span>
+                  </label>
+                ))}
+                {(criteriaByMilestone[getSourceMilestoneId(progressFeedbackOpen.milestone) || -1] || []).length === 0 && (
+                  <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-400">
+                    Milestone này chưa có DoD checklist riêng.
+                  </p>
+                )}
+              </div>
+            </Field>
+          )}
+          <Field label="Nội dung phản hồi">
+            <Textarea
+              value={progressFeedbackForm.feedback}
+              onChange={(event) =>
+                setProgressFeedbackForm((value) => ({
+                  ...value,
+                  feedback: event.target.value,
+                }))
+              }
+              placeholder="Ví dụ: cần bổ sung demo cho phần tích hợp, cập nhật tiến độ rõ hơn..."
+            />
+          </Field>
+          <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-600">
+            <input
+              type="checkbox"
+              checked={progressFeedbackForm.requiresAdjustment}
+              onChange={(event) =>
+                setProgressFeedbackForm((value) => ({
+                  ...value,
+                  requiresAdjustment: event.target.checked,
+                }))
+              }
+            />
+            Yêu cầu Expert điều chỉnh ở báo cáo tiếp theo
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(progressFeedbackDetail)}
+        onClose={() => setProgressFeedbackDetail(null)}
+        title="Phản hồi của Business"
+        footer={
+          <Button
+            variant="secondary"
+            onClick={() => setProgressFeedbackDetail(null)}
+          >
+            Đóng
+          </Button>
+        }
+      >
+        {progressFeedbackDetail && (
+          <div className="grid gap-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={progressFeedbackDetail.requiresAdjustment ? "amber" : "mint"}>
+                {progressFeedbackDetail.requiresAdjustment
+                  ? "Cần điều chỉnh"
+                  : "Đã ghi nhận"}
+              </Badge>
+              {progressFeedbackDetail.feedbackAt && (
+                <span className="text-xs font-bold text-slate-400">
+                  {formatDateTime(progressFeedbackDetail.feedbackAt)}
+                </span>
+              )}
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                Nội dung phản hồi
+              </p>
+              <p className="mt-2 whitespace-pre-wrap leading-6">
+                {progressFeedbackDetail.businessFeedback}
+              </p>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal
@@ -1173,6 +1814,82 @@ export function WorkspacePage() {
           </>
         }
       >
+        <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 p-4">
+          <p className="text-sm font-extrabold text-ink">Structured rejection panel</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field label="Category">
+              <div className="flex flex-wrap gap-2">
+                {["Core Logic", "UI/UX", "Security", "Performance"].map((category) => (
+                  <Button
+                    key={category}
+                    type="button"
+                    size="sm"
+                    variant={finalFeedbackForm.category === category ? "primary" : "secondary"}
+                    onClick={() =>
+                      setFinalFeedbackForm((value) => ({
+                        ...value,
+                        category,
+                      }))
+                    }
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Severity">
+              <div className="flex flex-wrap gap-2">
+                {["Low", "Medium", "High", "Critical"].map((severity) => (
+                  <Button
+                    key={severity}
+                    type="button"
+                    size="sm"
+                    variant={finalFeedbackForm.severity === severity ? "primary" : "secondary"}
+                    onClick={() =>
+                      setFinalFeedbackForm((value) => ({
+                        ...value,
+                        severity,
+                      }))
+                    }
+                  >
+                    {severity}
+                  </Button>
+                ))}
+              </div>
+            </Field>
+          </div>
+        </div>
+        {feedbackOpen && (
+          <Field label="DoD checklist chua dat">
+            <div className="grid gap-2">
+              {(criteriaByMilestone[getSourceMilestoneId(feedbackOpen) || -1] || []).map((item) => (
+                <label
+                  key={item.criteriaId}
+                  className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600"
+                >
+                  <input
+                    type="checkbox"
+                    checked={finalFeedbackForm.dodChecklist.includes(item.description)}
+                    onChange={(event) =>
+                      setFinalFeedbackForm((value) => ({
+                        ...value,
+                        dodChecklist: event.target.checked
+                          ? [...value.dodChecklist, item.description]
+                          : value.dodChecklist.filter((entry) => entry !== item.description),
+                      }))
+                    }
+                  />
+                  <span>{item.description}</span>
+                </label>
+              ))}
+              {(criteriaByMilestone[getSourceMilestoneId(feedbackOpen) || -1] || []).length === 0 && (
+                <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-400">
+                  Milestone nay chua co DoD checklist rieng.
+                </p>
+              )}
+            </div>
+          </Field>
+        )}
         <Field label="Feedback cho final product">
           <Textarea
             value={feedbackReason}

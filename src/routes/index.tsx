@@ -18,6 +18,7 @@ import {
   MasterDataPage,
   ReportsPage,
   SettingsPage,
+  StaffAssignmentPage,
   StaffPage,
   SystemWalletPage,
 } from "../pages/AdminPages";
@@ -368,8 +369,8 @@ export function AppRoutes() {
           }
         />
 
-        {/* Staff */}
-        <Route element={<RoleProtectedRoute roles={["STAFF", "ADMIN"]} />}>
+        {/* Staff dispute handling */}
+        <Route element={<RoleProtectedRoute roles={["STAFF"]} />}>
           <Route
             path="tickets"
             element={
@@ -386,6 +387,10 @@ export function AppRoutes() {
               </PageTransition>
             }
           />
+        </Route>
+
+        {/* Staff/Admin verifications */}
+        <Route element={<RoleProtectedRoute roles={["STAFF", "ADMIN"]} />}>
           <Route
             path="verifications"
             element={
@@ -443,6 +448,14 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <StaffPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/staff-assignment"
+            element={
+              <PageTransition>
+                <StaffAssignmentPage />
               </PageTransition>
             }
           />

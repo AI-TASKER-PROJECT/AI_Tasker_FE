@@ -38,6 +38,13 @@ export function StaffPage() {
       .catch(() => setDomains([]));
   }, []);
 
+  useEffect(() => {
+    if (!editing) return;
+    setDomainIds(
+      selectedDomainIdsFromSpecialization(editing.specialization, domains),
+    );
+  }, [domains, editing?.staffId]);
+
   const beginEditStaff = (staff: Staff) => {
     setEditing(staff);
     setDomainIds(
@@ -47,8 +54,12 @@ export function StaffPage() {
 
   const saveStaff = async () => {
     if (!editing) return;
+    const specialization =
+      domainIds.length > 0
+        ? specializationFromDomains(domainIds, domains)
+        : editing.specialization || "General";
     const updated = await adminApi.updateStaff(editing.staffId, {
-      specialization: specializationFromDomains(domainIds, domains),
+      specialization,
     });
     setStaffs((items) =>
       items.map((item) => (item.staffId === updated.staffId ? updated : item)),

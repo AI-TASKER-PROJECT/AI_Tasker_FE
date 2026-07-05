@@ -127,6 +127,18 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports`,
     });
   },
+  feedbackProgressReport(
+    contractId: number,
+    milestoneId: number,
+    progressReportId: number,
+    payload: { feedback: string; requiresAdjustment?: boolean },
+  ) {
+    return call<MilestoneProgressReport>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports/${progressReportId}/feedback`,
+      data: payload,
+    });
+  },
   listDeliverables(milestoneId: number) {
     return call<Deliverable[]>({
       method: "GET",
@@ -162,6 +174,18 @@ export const contractApi = {
     return call<Milestone>({
       method: "POST",
       url: `/api/v1/milestones/${milestoneId}/complete`,
+    });
+  },
+  checkOverdueMilestones(contractId: number) {
+    return call<Milestone[]>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/check-overdue`,
+    });
+  },
+  autoApproveReviewSla(contractId: number) {
+    return call<Milestone[]>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/sla-auto-approve`,
     });
   },
 };
