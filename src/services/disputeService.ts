@@ -21,6 +21,13 @@ export const disputeApi = {
       },
     });
   },
+  initiate(contractId: number, milestoneId: number, initiatedBy: string) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/disputes`,
+      params: { contractId, initiatedBy },
+    });
+  },
   listByContract(contractId: number) {
     return call<Dispute[]>({
       method: "GET",
@@ -51,6 +58,14 @@ export const disputeApi = {
     });
   },
   rejectIntervention(disputeId: number, payload: RejectInterventionRequest) {
+  escalate(disputeId: number, reason?: string, evidenceFile?: string) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/escalation-request`,
+      params: { reason, evidenceFile },
+    });
+  },
+  demoTesting(disputeId: number, testResult: string) {
     return call<Dispute>({
       method: "POST",
       url: `/api/v1/disputes/${disputeId}/reject-intervention`,

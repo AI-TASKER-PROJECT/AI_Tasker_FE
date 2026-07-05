@@ -40,7 +40,6 @@ import {
 } from "../../../components/ui";
 import {
   calculateSecurityDeposit,
-  ContractFlowStep,
   ContractLifecycle,
   ContractMetric,
   formatTimelineWeeks,
@@ -439,6 +438,26 @@ export function ContractDetailPage() {
     securityDepositAmount - availableBalance,
   );
   const hasEnoughDepositBalance = depositMissingAmount <= 0;
+  const businessSignatureComplete = businessAccepted && businessNdaSigned;
+  const expertSignatureComplete = expertAccepted && expertNdaSigned;
+  const signatureProgress = [
+    {
+      label: "Business",
+      name: businessDisplayName,
+      accepted: businessAccepted,
+      completed: businessSignatureComplete,
+      acceptedAt: contract.businessAcceptedAt,
+      completedAt: contract.businessNdaSignedAt,
+    },
+    {
+      label: "Expert",
+      name: expertDisplayName,
+      accepted: expertAccepted,
+      completed: expertSignatureComplete,
+      acceptedAt: contract.expertAcceptedAt,
+      completedAt: contract.expertNdaSignedAt,
+    },
+  ].filter((item) => item.accepted || item.completed);
   const currentPartyLabel =
     session?.role === "BUSINESS"
       ? "doanh nghiệp"
@@ -647,31 +666,9 @@ export function ContractDetailPage() {
 
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
-              title="Điều kiện kích hoạt hợp đồng"
-              description="BE chỉ chuyển contract sang Active khi đủ 4 bước: business accept, expert accept, business ký NDA, expert ký NDA."
+              title="Trạng thái chữ ký hợp đồng"
+              description="Hiển thị bên đã ký/xác thực; khi đủ hai bên thì hợp đồng sẵn sàng kích hoạt."
             />
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <ContractFlowStep
-                label="Business chấp nhận contract"
-                done={businessAccepted}
-                value={contract.businessAcceptedAt}
-              />
-              <ContractFlowStep
-                label="Expert chấp nhận contract"
-                done={expertAccepted}
-                value={contract.expertAcceptedAt}
-              />
-              <ContractFlowStep
-                label="Business ký NDA"
-                done={businessNdaSigned}
-                value={contract.businessNdaSignedAt}
-              />
-              <ContractFlowStep
-                label="Expert ký NDA"
-                done={expertNdaSigned}
-                value={contract.expertNdaSignedAt}
-              />
-            </div>
             <Notice
               tone={
                 readyToActivate || contractStatus === "ACTIVE"
@@ -679,12 +676,52 @@ export function ContractDetailPage() {
                   : "info"
               }
               title={
-                contractStatus === "ACTIVE"
-                  ? "Contract đã Active, milestone budget và job status đã được backend cập nhật."
-                  : "Contract sẽ Active sau khi đủ 2 chữ ký contract và 2 chữ ký NDA."
+                readyToActivate || contractStatus === "ACTIVE"
+                  ? "Hợp đồng đã có đủ chữ ký và xác thực của 2 bên."
+                  : signatureProgress.length > 0
+                    ? "Hợp đồng đang chờ bên còn lại hoàn tất chữ ký/xác thực."
+                    : "Hợp đồng chưa có bên nào ký/xác thực."
               }
               className="mt-4"
-            />
+            >
+              {contractStatus === "ACTIVE"
+                ? "Contract đã Active, milestone budget và job status đã được backend cập nhật."
+                : readyToActivate
+                  ? "Business và Expert đã hoàn tất contract cùng NDA. Business có thể tiếp tục ký quỹ để kích hoạt flow làm việc."
+                  : "Bên đã ký sẽ được ghi nhận ngay khi backend trả thời điểm ký/xác thực."}
+            </Notice>
+            {signatureProgress.length > 0 && !readyToActivate && (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {signatureProgress.map((item) => (
+                  <div
+                    key={item.label}
+                    className={
+                      item.completed
+                        ? "rounded-2xl border border-mint-100 bg-mint-50 p-4"
+                        : "rounded-2xl border border-amber-100 bg-amber-50 p-4"
+                    }
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 font-display text-lg font-black text-ink">
+                      {item.name}
+                    </p>
+                    <p
+                      className={
+                        item.completed
+                          ? "mt-2 text-sm font-bold text-mint-700"
+                          : "mt-2 text-sm font-bold text-amber-700"
+                      }
+                    >
+                      {item.completed
+                        ? `Đã ký đủ contract và NDA: ${formatDateTime(item.completedAt)}`
+                        : `Đã ký contract: ${formatDateTime(item.acceptedAt)}, chờ ký NDA`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
@@ -972,22 +1009,24 @@ export function ContractDetailPage() {
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Điều kiện trước khi ký quỹ"
-              description="Contract phải ở trạng thái PENDING, nghĩa là business và expert đã chấp nhận contract và đã ký NDA."
+              description="Contract phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
             />
-            <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600 md:grid-cols-2">
+            <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
               <span>Contract: #{contract.contractId}</span>
               <span>Status: {contract.status}</span>
               <span>
-                Business accepted: {businessAccepted ? "Đã xong" : "Chưa"}
-              </span>
-              <span>
-                Expert accepted: {expertAccepted ? "Đã xong" : "Chưa"}
-              </span>
-              <span>
-                Business NDA: {businessNdaSigned ? "Đã xong" : "Chưa"}
-              </span>
-              <span>
-                Expert NDA: {expertNdaSigned ? "Đã xong" : "Chưa"}
+                Chữ ký/xác thực:{" "}
+                {readyToActivate
+                  ? "Đã đủ hai bên"
+                  : signatureProgress.length > 0
+                    ? signatureProgress
+                        .map((item) =>
+                          item.completed
+                            ? `${item.label} đã hoàn tất`
+                            : `${item.label} đã ký contract`,
+                        )
+                        .join(", ")
+                    : "Chưa có bên nào hoàn tất"}
               </span>
             </div>
           </div>
