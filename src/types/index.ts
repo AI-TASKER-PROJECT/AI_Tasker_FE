@@ -11,6 +11,7 @@ export interface ApiResponse<T> {
 
 export interface SessionUser {
   accountId?: number;
+  staffId?: number;
   accessToken: string;
   refreshToken?: string;
   role: Role;
@@ -245,6 +246,30 @@ export interface Dispute {
   escalationEvidenceFile?: string;
   proposedAction?: string;
   adminApprovedBy?: number;
+  status: DisputeStatus;
+  initiatedBy?: 'BUSINESS' | 'EXPERT' | 'OTHER';
+  initiatedByAccountId?: number;
+  initiationType?: DisputeInitiationType;
+  escalationReason?: string;
+  escalationEvidenceFile?: string;
+  escalationRequestedByAccountId?: number;
+  escalationRequestedAt?: string;
+  staffReviewStartedAt?: string;
+  staffDecisionPercentage?: number;
+  staffDecisionNote?: string;
+  staffDecidedAt?: string;
+  interventionRejectedAt?: string;
+  interventionRejectionReason?: string;
+  staffReport?: string;
+  staffProposedExpertAmount?: number;
+  businessRefundAmount?: number;
+  settlementExecutedAt?: string;
+  settlementWalletTransactionId?: number;
+  resolutionType?: DisputeResolutionType;
+  resolvedAt?: string;
+  cancelledAt?: string;
+  cancelledByAccountId?: number;
+  cancellationReason?: string;
   status: string;
   initiatedBy?: string;
   previousMilestoneStatus?: string;
@@ -259,6 +284,56 @@ export interface Dispute {
   staffName?: string;
 }
 
+export type DisputeStatus =
+  | 'PENDING_SELF_RESOLVE'
+  | 'ESCALATION_REQUESTED'
+  | 'STAFF_REVIEWING'
+  | 'INTERVENTION_REJECTED'
+  | 'STAFF_DECIDED'
+  | 'RESOLVED'
+  | 'CANCELLED';
+
+export type DisputeInitiationType =
+  | 'BUSINESS_REJECTED_DELIVERABLE'
+  | 'EXPERT_SCOPE_CONCERN'
+  | 'EXPERT_NO_REVIEW_RESPONSE'
+  | 'EXPERT_BAD_FAITH_REJECTION'
+  | 'OTHER';
+
+export type DisputeResolutionType =
+  | 'BUSINESS_APPROVED_AFTER_SELF_RESOLVE'
+  | 'STAFF_DECISION_SETTLEMENT'
+  | 'CANCELLED_BY_INITIATOR'
+  | 'CANCELLED_BY_ADMIN';
+
+export interface CreateExpertDisputeRequest {
+  contractId: number;
+  milestoneId: number;
+  initiatedBy?: 'EXPERT';
+  initiationType?: DisputeInitiationType;
+}
+
+export interface RequestStaffInterventionRequest {
+  reason?: string;
+  evidenceFile?: string;
+}
+
+export interface AssignStaffRequest {
+  staffId: number;
+}
+
+export interface RejectInterventionRequest {
+  reason?: string;
+}
+
+export interface StaffDecisionRequest {
+  expertPercent: number;
+  note?: string;
+  staffReport?: string;
+}
+
+export interface CancelDisputeRequest {
+  reason?: string;
 export interface TerminationRequest {
   terminationRequestId: number;
   contractId: number;

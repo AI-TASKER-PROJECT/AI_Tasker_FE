@@ -103,6 +103,15 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/criteria`,
     });
   },
+  submitDeliverable(payload: Partial<Deliverable>) {
+    if (!payload.milestoneId) {
+      return Promise.reject(
+        new Error("Backend requires milestoneId to submit a deliverable."),
+      );
+    }
+    return call<Deliverable>({
+      method: "POST",
+      url: `/api/v1/milestones/${payload.milestoneId}/deliverables`,
   submitDeliverable(milestoneId: number, payload: Partial<Deliverable>) {
     return call<Deliverable>({
       method: "POST",
@@ -139,6 +148,27 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/deposit`,
     });
   },
+  approveMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/approve`,
+    });
+  },
+  rejectMilestone(milestoneId: number, reason?: string) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/reject`,
+      params: { reason },
+    });
+  },
+  startMilestone(milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/start`,
+    });
+  },
+  runSlaAutoApprove() {
+    return call<Milestone[]>({
   startMilestone(milestoneId: number) {
     return call<Milestone>({
       method: "POST",

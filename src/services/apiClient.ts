@@ -39,14 +39,27 @@ export function getApiErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {
       return error.message;
     }
-    return "???? c?? l???i kh??ng x??c d???nh.";
+    return "Đã có lỗi không xác định.";
   }
 
   if (error.code === "ECONNABORTED") {
-    return "Request b??? qu?? th???i gian ch???. Generate SoW c?? th??? m???t l??u h??n b??nh th?????ng do backend ??ang g???i AI.";
+    return "Request bị quá thời gian chờ. Generate SoW có thể mất lâu hơn bình thường do backend đang gọi AI.";
   }
 
   const status = error.response?.status;
+  if (status === 401) {
+    return "Bạn cần đăng nhập lại để tiếp tục thao tác.";
+  }
+  if (status === 403) {
+    return "Tài khoản hiện tại không có quyền thực hiện thao tác này.";
+  }
+  if (status === 404) {
+    return "Không tìm thấy dữ liệu từ backend. Vui lòng tải lại trang.";
+  }
+  if (status === 409) {
+    return "Trạng thái dữ liệu đã thay đổi. Vui lòng tải lại và thử lại.";
+  }
+
   const responseData = error.response?.data as
     | Partial<ApiResponse<unknown>>
     | { error?: string }
@@ -67,34 +80,37 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   if (status === 401) {
-    return "B???n ch??a d??ng nh???p ho???c phi??n d??ng nh???p d?? h???t h???n.";
+    return "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.";
   }
   if (status === 403) {
-    return "T??i kho???n hi???n t???i kh??ng c?? quy???n g???i ch???c n??ng n??y.";
+    return "Tài khoản hiện tại không có quyền thực hiện chức năng này.";
+  }
+  if (status === 409) {
+    return "Thao tác bị từ chối do trạng thái dữ liệu đã thay đổi hoặc đang có conflict. Vui lòng tải lại và thử lại.";
   }
   if (status === 502) {
-    return "Backend kh??ng g???i d?????c AI API ho???c OPENAI_API_KEY ch??a d?????c c???u h??nh d??ng.";
+    return "Backend không gọi được AI API hoặc OPENAI_API_KEY chưa được cấu hình đúng.";
   }
   if (status) {
     return `Backend trả lỗi HTTP ${status}.`;
   }
 
-  return "Kh??ng k???t n???i d?????c backend. Vui l??ng ki???m tra server backend ho???c VITE_API_BASE_URL.";
+  return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
 }
 
 function mapApiErrorCode(message: string) {
   const normalized = message.trim().toUpperCase();
   if (normalized === "INSUFFICIENT_BALANCE") {
-    return "S??? d?? kh??? d???ng trong v?? kh??ng d??? d??? th???c hi???n giao d???ch n??y.";
+    return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }
   if (normalized === "CONTRACT_INVALID_STATUS") {
-    return "H???p ?????ng ch??a ??? tr???ng th??i cho ph??p k?? qu???. C???n d??? 2 b??n ch???p nh???n contract v?? k?? NDA tr?????c.";
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần đủ 2 bên chấp nhận contract và ký NDA trước.";
   }
   if (normalized === "DEPOSIT_ALREADY_HELD") {
-    return "H???p ?????ng n??y d?? d?????c k?? qu??? r???i.";
+    return "Hợp đồng này đã được ký quỹ rồi.";
   }
   if (normalized === "CONTRACT_NOT_FOUND") {
-    return "Kh??ng t??m th???y h???p ?????ng.";
+    return "Không tìm thấy hợp đồng.";
   }
   return message;
 }
