@@ -27,6 +27,7 @@ import {
   EmptyState,
   Field,
   Input,
+  LinkButton,
   Modal,
   Notice,
   PageHeader,
@@ -84,6 +85,13 @@ function flow5StatusText(status?: string) {
 function shouldHideLegacyNotice(title?: string) {
   const normalized = (title || "").toUpperCase();
   return normalized.includes("CHUA HET 48 GIO") || normalized.includes("STAFF CHUA DUOC GUI REPORT");
+}
+
+function getJobMilestoneId(milestone: Milestone) {
+  return Number(
+    (milestone as Milestone & { jobMilestoneId?: number }).jobMilestoneId ??
+      milestone.milestoneId,
+  );
 }
 
 export function DisputeDetailPage({
@@ -205,8 +213,11 @@ export function DisputeDetailPage({
     contract?.title ||
     dispute.jobTitle ||
     "Hop dong dang tranh chap";
+  const pageTitle = dispute.jobTitle
+    ? `Tranh chấp - ${dispute.jobTitle}`
+    : dispute.title || `Dispute #${dispute.disputeId}`;
   const disputedMilestone = milestones.find(
-    (item) => Number(item.milestoneId) === Number(dispute.milestoneId),
+    (item) => getJobMilestoneId(item) === Number(dispute.milestoneId),
   );
   const sortedProgressReports = [...progressReports].sort((a, b) =>
     (a.createdAt || "").localeCompare(b.createdAt || ""),
@@ -343,11 +354,18 @@ export function DisputeDetailPage({
     }
   };
 
+  const scrollToStaffReport = () => {
+    document.getElementById("staff-report-section")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title={dispute.title || `Dispute #${dispute.disputeId}`}
+          title={pageTitle}
           description={
             staffMode
               ? "Flow 5: staff tiếp nhận tranh chấp, kiểm tra chứng cứ và gửi báo cáo cho admin."
@@ -355,6 +373,12 @@ export function DisputeDetailPage({
           }
           actions={
             <>
+              {isStaff && (
+                <LinkButton to={`/app/tickets/${dispute.disputeId}/project`} variant="secondary">
+                  <FileText className="h-4 w-4" />
+                  Xem thong tin project
+                </LinkButton>
+              )}
               {canAssign && (
                 <Button variant="secondary" onClick={() => setAssignOpen(true)}>
                   <Users className="h-4 w-4" />
@@ -368,10 +392,16 @@ export function DisputeDetailPage({
                 </Button>
               )}
               {canAdminExecute && (
-                <Button onClick={() => setFinalOpen(true)}>
-                  <ShieldCheck className="h-4 w-4" />
-                  Admin Final Review
-                </Button>
+                <>
+                  <Button variant="secondary" onClick={scrollToStaffReport}>
+                    <FileText className="h-4 w-4" />
+                    Báo cáo staff
+                  </Button>
+                  <Button onClick={() => setFinalOpen(true)}>
+                    <ShieldCheck className="h-4 w-4" />
+                    Duyệt báo cáo staff
+                  </Button>
+                </>
               )}
             </>
           }
@@ -427,6 +457,19 @@ export function DisputeDetailPage({
                   <p className="mt-2 text-lg font-extrabold text-ink">
                     {disputedMilestone?.milestoneName || "Cot moc dang tranh chap"}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {disputedMilestone?.status && <StatusBadge status={disputedMilestone.status} />}
+                    {disputedMilestone && (
+                      <Badge tone="slate">
+                        Ngan sach: {formatCurrency(disputedMilestone.finalBudget || disputedMilestone.fundsAllocated || 0)}
+                      </Badge>
+                    )}
+                    {disputedMilestone?.dueAt && (
+                      <Badge tone="amber">
+                        Han nop: {formatDateTime(disputedMilestone.dueAt)}
+                      </Badge>
+                    )}
+                  </div>
                   <p className="mt-2 whitespace-pre-wrap leading-6">
                     {disputedMilestone?.description || "Backend chua tra mo ta chi tiet cho milestone nay."}
                   </p>
@@ -441,51 +484,6 @@ export function DisputeDetailPage({
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-            <div className="w-full">
-              <SectionHeading
-                title="Cac cot moc cua project"
-                description="Staff can xem toan bo milestone de hieu boi canh tien do."
-              />
-              <div className="mt-5 grid gap-3">
-                {milestones.map((item) => (
-                  <div
-                    key={item.milestoneId}
-                    className={
-                      Number(item.milestoneId) === Number(dispute.milestoneId)
-                        ? "rounded-2xl border border-brand-200 bg-brand-50 p-4"
-                        : "rounded-2xl border border-slate-100 bg-white p-4"
-                    }
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-extrabold text-ink">
-                          Moc {item.orderIndex}: {item.milestoneName}
-                        </p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {item.description || "Chua co mo ta milestone."}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <StatusBadge status={item.status} />
-                        {Number(item.milestoneId) === Number(dispute.milestoneId) && (
-                          <Badge tone="brand">Dang tranh chap</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-500">
-                      <span>Ngan sach: {formatCurrency(item.finalBudget || item.fundsAllocated || 0)}</span>
-                      {item.dueAt && <span>Han nop: {formatDateTime(item.dueAt)}</span>}
-                      {item.reviewDueAt && <span>Han review: {formatDateTime(item.reviewDueAt)}</span>}
-                    </div>
-                  </div>
-                ))}
-                {milestones.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-                    Chua tai duoc danh sach milestone cua contract nay.
-                  </p>
-                )}
               </div>
             </div>
             <div className="w-full rounded-2xl border border-slate-100 bg-white p-4">
@@ -536,67 +534,67 @@ export function DisputeDetailPage({
                 )}
               </div>
               {!isAdmin ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <Field label="Evidence URL">
-                  <Input
-                    value={evidenceForm.fileUrl}
-                    onChange={(event) =>
-                      setEvidenceForm((value) => ({
-                        ...value,
-                        fileUrl: event.target.value,
-                      }))
-                    }
-                    placeholder="https://..."
-                  />
-                </Field>
-                <Field label="Evidence type">
-                  <Input
-                    value={evidenceForm.fileType}
-                    onChange={(event) =>
-                      setEvidenceForm((value) => ({
-                        ...value,
-                        fileType: event.target.value,
-                      }))
-                    }
-                    placeholder="TEXT_LOG / FILE / CHAT_HISTORY"
-                  />
-                </Field>
-                <Field label="Display name">
-                  <Input
-                    value={evidenceForm.fileName}
-                    onChange={(event) =>
-                      setEvidenceForm((value) => ({
-                        ...value,
-                        fileName: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <div className="flex items-end">
-                  <Button
-                    onClick={submitEvidence}
-                    loading={actionLoading === "evidence"}
-                    className="w-full"
-                  >
-                    <Send className="h-4 w-4" />
-                    Them evidence
-                  </Button>
-                </div>
-                <div className="md:col-span-2">
-                  <Field label="Evidence note / chat log">
-                    <Textarea
-                      value={evidenceForm.note}
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <Field label="Evidence URL">
+                    <Input
+                      value={evidenceForm.fileUrl}
                       onChange={(event) =>
                         setEvidenceForm((value) => ({
                           ...value,
-                          note: event.target.value,
+                          fileUrl: event.target.value,
                         }))
                       }
-                      placeholder="Tom tat log, chat history hoac noi dung lien quan den dispute..."
+                      placeholder="https://..."
                     />
                   </Field>
+                  <Field label="Evidence type">
+                    <Input
+                      value={evidenceForm.fileType}
+                      onChange={(event) =>
+                        setEvidenceForm((value) => ({
+                          ...value,
+                          fileType: event.target.value,
+                        }))
+                      }
+                      placeholder="TEXT_LOG / FILE / CHAT_HISTORY"
+                    />
+                  </Field>
+                  <Field label="Display name">
+                    <Input
+                      value={evidenceForm.fileName}
+                      onChange={(event) =>
+                        setEvidenceForm((value) => ({
+                          ...value,
+                          fileName: event.target.value,
+                        }))
+                      }
+                    />
+                  </Field>
+                  <div className="flex items-end">
+                    <Button
+                      onClick={submitEvidence}
+                      loading={actionLoading === "evidence"}
+                      className="w-full"
+                    >
+                      <Send className="h-4 w-4" />
+                      Them evidence
+                    </Button>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Field label="Evidence note / chat log">
+                      <Textarea
+                        value={evidenceForm.note}
+                        onChange={(event) =>
+                          setEvidenceForm((value) => ({
+                            ...value,
+                            note: event.target.value,
+                          }))
+                        }
+                        placeholder="Tom tat log, chat history hoac noi dung lien quan den dispute..."
+                      />
+                    </Field>
+                  </div>
                 </div>
-              </div>
               ) : (
                 <Notice tone="info" title="Admin chỉ xem evidence" className="mt-4">
                   Business, Expert hoặc Staff bổ sung evidence. Admin dùng phần này để đọc trước khi final review.
@@ -787,10 +785,12 @@ export function DisputeDetailPage({
             )}
           </div>
 
-          <SectionHeading
-            title="Báo cáo của staff"
-            description="Admin dùng phần này để thực thi quyết toán."
-          />
+          <div id="staff-report-section" className="scroll-mt-6">
+            <SectionHeading
+              title="Báo cáo của staff"
+              description="Admin đọc báo cáo kỹ thuật, tỷ lệ đề xuất và ghi chú trước khi duyệt quyết toán."
+            />
+          </div>
           <div className="mt-5 grid gap-4">
             <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
               <div className="flex items-center gap-2">

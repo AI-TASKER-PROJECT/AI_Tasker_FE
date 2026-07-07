@@ -1,89 +1,185 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { contractApi, disputeApi } from "../../../lib/api";
+import { useSession } from "../../../lib/session";
 import type { Dispute } from "../../../types";
-import { Badge, Card, LinkButton, PageHeader, SearchInput, StatusBadge } from "../../../components/ui";
+import {
+  Badge,
+  Card,
+  LinkButton,
+  Notice,
+  PageHeader,
+  SearchInput,
+  StatusBadge,
+} from "../../../components/ui";
+
+function normalizeStatus(value?: string) {
+  return (value || "").trim().toUpperCase();
+}
 
 export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
+  const session = useSession();
+  const isAdmin = session?.role === "ADMIN";
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [items, setItems] = useState<Dispute[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    contractApi
-      .listContracts()
-      .then((contracts) =>
-        Promise.all(
-          contracts.map((contract) =>
-            disputeApi.listByContract(contract.contractId),
-          ),
-        ),
-      )
-      .then((groups) => setItems(groups.flat()))
-      .catch(() => setItems([]));
-  }, []);
+    let mounted = true;
+    const fetchDisputes = async () => {
+      setLoading(true);
+      try {
+        if (staffMode || isAdmin) {
+          const data = await disputeApi.listAll();
+          if (mounted) setItems(Array.isArray(data) ? data : []);
+          return;
+        }
+        const contracts = await contractApi.listContracts();
+        const groups = await Promise.all(
+          contracts.map((contract) => disputeApi.listByContract(contract.contractId)),
+        );
+        if (mounted) setItems(groups.flat());
+      } catch {
+        if (mounted) setItems([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void fetchDisputes();
+    return () => {
+      mounted = false;
+    };
+  }, [staffMode, isAdmin]);
 
-  const disputes = items.filter((item) =>
-    `${item.title} ${item.jobTitle} ${item.status}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
+  const disputes = useMemo(
+    () =>
+      items.filter((item) => {
+        const haystack = `${item.title || ""} ${item.jobTitle || ""} ${item.status || ""} ${item.staffName || ""}`.toLowerCase();
+        if (query && !haystack.includes(query.toLowerCase())) return false;
+        if (statusFilter !== "ALL" && normalizeStatus(item.status) !== statusFilter) return false;
+        return true;
+      }),
+    [items, query, statusFilter],
   );
+
+  const statusOptions = staffMode
+    ? [
+        { value: "ALL", label: "Moi trang thai" },
+        { value: "ESCALATION_REQUESTED", label: "Cho xu ly" },
+        { value: "STAFF_REVIEWING", label: "Dang staff review" },
+        { value: "REPORT_REVISION_REQUESTED", label: "Can sua bao cao" },
+        { value: "STAFF_DECIDED", label: "Da gui admin" },
+        { value: "RESOLVED", label: "Da giai quyet" },
+      ]
+    : [{ value: "ALL", label: "Moi trang thai" }];
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title={staffMode ? "Tranh chấp được giao" : "Tranh chấp của dự án"}
+          title={staffMode ? "Ticket tranh chap staff duoc giao" : "Tranh chap cua du an"}
           description={
             staffMode
-              ? "Staff tiếp nhận, demo testing, viết technical report và đề xuất xử lý."
-              : "Doanh nghiệp/chuyên gia tạo dispute để khóa dòng tiền và yêu cầu can thiệp."
+              ? "Danh sach nay lay tu backend flow45 va chi hien cac dispute dang duoc giao cho staff hien tai."
+              : "Doanh nghiep va chuyen gia theo doi cac dispute lien quan den contract."
           }
         />
       </div>
-      <Card className="p-4">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Tìm dispute theo job, trạng thái..."
-        />
+
+      {staffMode && (
+        <Notice tone="info" title="Danh sach ticket cua staff">
+          Staff khong tu nhan ticket o man nay nua. Backend flow45 chi cho admin hoac auto-routing gan tranh chap cho staff, sau do staff vao doc ho so project va xu ly.
+        </Notice>
+      )}
+
+      <Card className="flex flex-col gap-4 p-4 sm:flex-row">
+        <div className="flex-1">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={staffMode ? "Tim theo ten contract, project, milestone..." : "Tim dispute theo project..."}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </Card>
-      <div className="grid gap-4">
-        {disputes.map((dispute) => (
-          <Card key={dispute.disputeId} className="p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone="brand">#{dispute.disputeId}</Badge>
-                  <StatusBadge status={dispute.status} />
+
+      {loading ? (
+        <div className="py-8 text-center text-slate-500">Dang tai...</div>
+      ) : disputes.length === 0 ? (
+        <div className="py-8 text-center text-slate-500">Khong tim thay du lieu.</div>
+      ) : (
+        <div className="grid gap-4">
+          {disputes.map((dispute) => (
+            <Card key={dispute.disputeId} className="p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="brand">#{dispute.disputeId}</Badge>
+                    <StatusBadge status={dispute.status} />
+                    {dispute.staffName && <Badge tone="mint">Staff: {dispute.staffName}</Badge>}
+                  </div>
+                  <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
+                    {dispute.title || `Tranh chap #${dispute.disputeId}`}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    {dispute.jobTitle || "Backend chua tra ten project"} 
+                  </p>
+                  {dispute.escalationReason && (
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                      <strong>Ly do tranh chap:</strong> {dispute.escalationReason}
+                    </p>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge tone="slate">Nguoi tao: {dispute.raisedBy || dispute.initiatedBy || "Chua ro"}</Badge>
+                    {dispute.createdAt && (
+                      <Badge tone="slate">Ngay tao: {new Date(dispute.createdAt).toLocaleString()}</Badge>
+                    )}
+                    {dispute.staffSlaDueAt && (
+                      <Badge tone="amber">Han report: {new Date(dispute.staffSlaDueAt).toLocaleString()}</Badge>
+                    )}
+                  </div>
                 </div>
-                <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
-                  {dispute.title}
-                </h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  {dispute.jobTitle}
-                </p>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  {dispute.evidenceReport}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge tone="slate">Người tạo: {dispute.raisedBy}</Badge>
-                  <Badge tone="mint">
-                    Staff: {dispute.staffName || "Chưa gán"}
-                  </Badge>
+                <div className="mt-4 flex flex-col gap-2 md:mt-0">
+                  <LinkButton
+                    to={isAdmin ? `/app/disputes/${dispute.disputeId}/project` : `/app/tickets/${dispute.disputeId}/project`}
+                    variant="secondary"
+                  >
+                    Xem thong tin project
+                  </LinkButton>
+                  {isAdmin && !dispute.assignedStaffId && normalizeStatus(dispute.status) !== "RESOLVED" && (
+                    <LinkButton
+                      to={`/app/admin/staff-assignment?disputeId=${dispute.disputeId}`}
+                      variant="secondary"
+                    >
+                      Gán staff phù hợp
+                    </LinkButton>
+                  )}
+                  {isAdmin && normalizeStatus(dispute.status) === "STAFF_DECIDED" && (
+                    <LinkButton to={`/app/disputes/${dispute.disputeId}`} variant="secondary">
+                      Báo cáo staff / duyệt
+                    </LinkButton>
+                  )}
+                  <LinkButton to={isAdmin ? `/app/disputes/${dispute.disputeId}` : `/app/tickets/${dispute.disputeId}`} variant="primary">
+                    Mo ticket xu ly
+                  </LinkButton>
                 </div>
               </div>
-              <LinkButton
-                to={
-                  staffMode
-                    ? `/app/tickets/${dispute.disputeId}`
-                    : `/app/disputes/${dispute.disputeId}`
-                }
-                variant="secondary"
-              >
-                Xử lý
-              </LinkButton>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

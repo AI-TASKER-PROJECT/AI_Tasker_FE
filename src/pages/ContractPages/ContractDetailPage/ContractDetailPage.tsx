@@ -335,7 +335,7 @@ export function ContractDetailPage() {
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
   const ndaSigned = Boolean(
     contract.ndaSigned ||
-      (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
+    (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
   );
   const businessAccepted = Boolean(contract.businessAcceptedAt);
   const expertAccepted = Boolean(contract.expertAcceptedAt);
@@ -406,9 +406,9 @@ export function ContractDetailPage() {
   const contractStartDate = contract.createdAt || contract.activatedAt;
   const contractEndDate = contractStartDate
     ? new Date(
-        new Date(contractStartDate).getTime() +
-          Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
-      ).toISOString()
+      new Date(contractStartDate).getTime() +
+      Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
+    ).toISOString()
     : undefined;
   const contractTimelineLabel =
     contractStartDate && contractEndDate
@@ -594,7 +594,7 @@ export function ContractDetailPage() {
                 details={[
                   ["Mã số thuế", participants.business?.taxCode],
                   ["Địa chỉ", participants.business?.address],
-                  ["Website", participants.business?.website],
+
                   ["Email", businessEmail],
                   ["Số điện thoại", businessPhone],
                 ]}
@@ -1020,12 +1020,12 @@ export function ContractDetailPage() {
                   ? "Đã đủ hai bên"
                   : signatureProgress.length > 0
                     ? signatureProgress
-                        .map((item) =>
-                          item.completed
-                            ? `${item.label} đã hoàn tất`
-                            : `${item.label} đã ký contract`,
-                        )
-                        .join(", ")
+                      .map((item) =>
+                        item.completed
+                          ? `${item.label} đã hoàn tất`
+                          : `${item.label} đã ký contract`,
+                      )
+                      .join(", ")
                     : "Chưa có bên nào hoàn tất"}
               </span>
             </div>

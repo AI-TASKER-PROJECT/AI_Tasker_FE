@@ -22,6 +22,13 @@ export const disputeApi = {
       url: `/api/v1/contracts/${contractId}/disputes`,
     });
   },
+  listAll(params?: Record<string, any>) {
+    return call<Dispute[]>({
+      method: "GET",
+      url: `/api/v1/disputes`,
+      params,
+    });
+  },
   get(disputeId: number) {
     return call<Dispute>({
       method: "GET",

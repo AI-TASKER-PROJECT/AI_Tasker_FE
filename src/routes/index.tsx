@@ -60,6 +60,7 @@ import {
 } from "../pages/PublicPages";
 import {
   DisputeDetailPage,
+  DisputeProjectInfoPage,
   DisputesPage,
   NewDisputePage,
   VerificationDetailPage,
@@ -368,6 +369,14 @@ export function AppRoutes() {
             </PageTransition>
           }
         />
+        <Route
+          path="disputes/:disputeId/project"
+          element={
+            <PageTransition>
+              <DisputeProjectInfoPage />
+            </PageTransition>
+          }
+        />
 
         {/* Staff dispute handling */}
         <Route element={<RoleProtectedRoute roles={["STAFF"]} />}>
@@ -384,6 +393,14 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <DisputeDetailPage staffMode />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="tickets/:disputeId/project"
+            element={
+              <PageTransition>
+                <DisputeProjectInfoPage />
               </PageTransition>
             }
           />

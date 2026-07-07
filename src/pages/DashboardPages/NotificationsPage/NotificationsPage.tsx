@@ -123,7 +123,7 @@ export function NotificationsPage() {
             const tone = notificationTone(item);
             const isSelected =
               selectedNotification?.notificationId === item.notificationId;
-            const targetHref = notificationHref(item.targetUrl, item);
+            const targetHref = notificationHref(item.targetUrl, item, session?.role);
 
             return (
               <Card

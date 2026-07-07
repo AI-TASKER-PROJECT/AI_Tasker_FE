@@ -169,6 +169,7 @@ function verificationHref(
 export function notificationHref(
   targetUrl?: string,
   notification?: NotificationItem,
+  role?: string,
 ) {
   const targetVerificationHref = verificationHref(notification, targetUrl);
   if (targetVerificationHref) return targetVerificationHref;
@@ -208,14 +209,28 @@ export function notificationHref(
     ]),
   );
   const contractRelated = isContractNotification(notification);
+  const disputeHref = (disputeId: number) => {
+    if (role === "ADMIN") return `/app/disputes/${disputeId}`;
+    if (role === "STAFF") return `/app/tickets/${disputeId}`;
+    return `/app/disputes/${disputeId}`;
+  };
 
   if (!targetUrl) {
+    if (metadataDisputeId) return disputeHref(metadataDisputeId);
     if (metadataContractId) return `/app/contracts/${metadataContractId}`;
     if (contractRelated) return "/app/contracts";
     if (metadataJobId) return `/app/jobs/${metadataJobId}/manage`;
-    if (metadataDisputeId) return `/app/tickets/${metadataDisputeId}`;
     return "/app/notifications";
   }
+  const appContractDisputeMatch = targetUrl.match(/^\/app\/contracts\/\d+\/disputes\/(\d+)/);
+  if (appContractDisputeMatch) return disputeHref(Number(appContractDisputeMatch[1]));
+
+  const appDisputeMatch = targetUrl.match(/^\/app\/disputes\/(\d+)/);
+  if (appDisputeMatch) return disputeHref(Number(appDisputeMatch[1]));
+
+  const appTicketMatch = targetUrl.match(/^\/app\/tickets\/(\d+)/);
+  if (appTicketMatch) return disputeHref(Number(appTicketMatch[1]));
+
   if (targetUrl.startsWith("/app/")) return targetUrl;
 
   const proposalMatch = targetUrl.match(/^\/business\/jobs\/(\d+)\/proposals/);
@@ -227,6 +242,19 @@ export function notificationHref(
   if (contractWorkspaceMatch) {
     return `/app/contracts/${contractWorkspaceMatch[1]}/workspace`;
   }
+
+  const contractDisputeMatch = targetUrl.match(
+    /^\/(?:business\/|expert\/)?contracts\/\d+\/disputes\/(\d+)/,
+  );
+  if (contractDisputeMatch) return disputeHref(Number(contractDisputeMatch[1]));
+
+  const bareContractDisputeMatch = targetUrl.match(
+    /^\/contracts\/\d+\/disputes\/(\d+)/,
+  );
+  if (bareContractDisputeMatch) return disputeHref(Number(bareContractDisputeMatch[1]));
+
+  const adminDisputeMatch = targetUrl.match(/^\/(?:app\/)?admin\/disputes\/(\d+)/);
+  if (adminDisputeMatch) return `/app/disputes/${adminDisputeMatch[1]}`;
 
   const contractMatch = targetUrl.match(
     /^\/(?:business\/|expert\/)?contracts\/(\d+)/,
@@ -249,17 +277,17 @@ export function notificationHref(
   const staffDisputeMatch = targetUrl.match(
     /^\/(?:app\/)?staff\/(?:disputes|tickets)\/(\d+)/,
   );
-  if (staffDisputeMatch) return `/app/tickets/${staffDisputeMatch[1]}`;
+  if (staffDisputeMatch) return disputeHref(Number(staffDisputeMatch[1]));
 
   const disputeIdFromQuery = targetUrl.match(
     /[?&](?:disputeId|ticketId)=(\d+)/,
   );
-  if (disputeIdFromQuery) return `/app/tickets/${disputeIdFromQuery[1]}`;
+  if (disputeIdFromQuery) return disputeHref(Number(disputeIdFromQuery[1]));
 
+  if (metadataDisputeId) return disputeHref(metadataDisputeId);
   if (metadataContractId) return `/app/contracts/${metadataContractId}`;
   if (contractRelated) return "/app/contracts";
   if (metadataJobId) return `/app/jobs/${metadataJobId}/manage`;
-  if (metadataDisputeId) return `/app/tickets/${metadataDisputeId}`;
 
   if (targetUrl.startsWith("/")) {
     if (
