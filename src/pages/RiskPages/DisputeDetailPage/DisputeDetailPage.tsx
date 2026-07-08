@@ -87,6 +87,10 @@ function shouldHideLegacyNotice(title?: string) {
   return normalized.includes("CHUA HET 48 GIO") || normalized.includes("STAFF CHUA DUOC GUI REPORT");
 }
 
+function normalizeStatus(status?: string) {
+  return (status || "").trim().toUpperCase();
+}
+
 function getJobMilestoneId(milestone: Milestone) {
   return Number(
     (milestone as Milestone & { jobMilestoneId?: number }).jobMilestoneId ??
@@ -205,6 +209,7 @@ export function DisputeDetailPage({
 
   const isAdmin = session?.role === "ADMIN";
   const isStaff = session?.role === "STAFF" || (staffMode && !isAdmin);
+  const isParticipantView = !isAdmin && !isStaff;
   const canAssign = isAdmin && ["ESCALATION_REQUESTED", "PENDING_SELF_RESOLVE"].includes(dispute.status);
   const canStaffReport = isStaff && ["STAFF_REVIEWING", "REPORT_REVISION_REQUESTED"].includes(dispute.status);
   const canAdminExecute = isAdmin && dispute.status === "STAFF_DECIDED";
@@ -219,6 +224,12 @@ export function DisputeDetailPage({
   const disputedMilestone = milestones.find(
     (item) => getJobMilestoneId(item) === Number(dispute.milestoneId),
   );
+  const finalExpertPercent =
+    typeof dispute.adminFinalExpertPercentage === "number"
+      ? dispute.adminFinalExpertPercentage
+      : dispute.staffDecisionPercentage;
+  const finalBusinessPercent =
+    typeof finalExpertPercent === "number" ? 100 - finalExpertPercent : undefined;
   const sortedProgressReports = [...progressReports].sort((a, b) =>
     (a.createdAt || "").localeCompare(b.createdAt || ""),
   );
@@ -359,6 +370,160 @@ export function DisputeDetailPage({
       behavior: "smooth",
       block: "start",
     });
+  };
+
+  if (isParticipantView) {
+    return (
+      <div className="space-y-6">
+        <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+          <PageHeader
+            title={pageTitle}
+            description="Trang nay chi hien ket qua tranh chap, bao cao staff va ket luan admin cho Business/Expert."
+            actions={
+              <LinkButton to={`/app/disputes/${dispute.disputeId}/project`} variant="secondary">
+                <FileText className="h-4 w-4" />
+                Xem thong tin project
+              </LinkButton>
+            }
+          />
+        </div>
+
+        {notice && !shouldHideLegacyNotice(notice.title) && (
+          <Notice tone={notice.tone} title={notice.title}>
+            {notice.message}
+          </Notice>
+        )}
+
+        <Notice tone={statusInfo.tone} title={statusInfo.title}>
+          {statusInfo.message}
+        </Notice>
+
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <Card className="p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={dispute.status} />
+              <Badge tone="brand">{contractTitle}</Badge>
+              {disputedMilestone && (
+                <Badge tone="amber">{disputedMilestone.milestoneName}</Badge>
+              )}
+              {dispute.staffName && <Badge tone="mint">Staff: {dispute.staffName}</Badge>}
+            </div>
+
+            <SectionHeading
+              title="Cot moc dang tranh chap"
+              description="Thong tin ngan gon ve pham vi tranh chap."
+            />
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-display text-lg font-extrabold text-ink">
+                  {disputedMilestone?.milestoneName || "Cot moc dang tranh chap"}
+                </p>
+                {disputedMilestone && (
+                  <Badge tone="slate">
+                    {formatCurrency(disputedMilestone.finalBudget || disputedMilestone.fundsAllocated || 0)}
+                  </Badge>
+                )}
+              </div>
+              {disputedMilestone?.description && (
+                <p className="mt-3 whitespace-pre-wrap leading-6">
+                  {disputedMilestone.description}
+                </p>
+              )}
+              {dispute.escalationReason && (
+                <div className="mt-4 rounded-xl bg-amber-50 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                    Ly do tranh chap
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap leading-6">
+                    {dispute.escalationReason}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <SectionHeading
+              title="Bao cao xu ly tranh chap"
+              description="Noi dung staff va admin cong bo cho cac ben lien quan."
+            />
+            <div className="mt-5 grid gap-4">
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-brand-600" />
+                  <p className="font-extrabold text-ink">Bao cao cua staff</p>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap leading-7">
+                  {dispute.staffReport || "Staff chua gui bao cao cho admin."}
+                </p>
+              </div>
+
+              {dispute.staffDecisionNote && (
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="font-extrabold text-ink">Ghi chu danh gia cua staff</p>
+                  <p className="mt-2 whitespace-pre-wrap leading-7">
+                    {dispute.staffDecisionNote}
+                  </p>
+                </div>
+              )}
+
+              {dispute.adminFinalNote && (
+                <div className="rounded-2xl bg-mint-50 p-4 text-sm text-slate-700">
+                  <p className="font-extrabold text-mint-800">Ket luan cuoi cung cua admin</p>
+                  <p className="mt-2 whitespace-pre-wrap leading-7">
+                    {dispute.adminFinalNote}
+                  </p>
+                </div>
+              )}
+
+              {!dispute.staffReport && normalizeStatus(dispute.status) !== "RESOLVED" && (
+                <Notice tone="info" title="Dang cho bao cao staff">
+                  Khi staff gui report va admin xu ly, ket qua se hien thi tai day.
+                </Notice>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <SectionHeading title="Ket qua tien ky quy" />
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl bg-mint-50 p-4">
+                <p className="text-sm font-bold text-mint-700">Expert nhan</p>
+                <p className="mt-1 font-display text-2xl font-black text-ink">
+                  {typeof finalExpertPercent === "number" ? `${finalExpertPercent}%` : "Chua co"}
+                </p>
+                {typeof dispute.staffProposedExpertAmount === "number" && (
+                  <p className="mt-1 text-sm font-bold text-slate-500">
+                    {formatCurrency(dispute.staffProposedExpertAmount)}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-2xl bg-rose-50 p-4">
+                <p className="text-sm font-bold text-rose-700">Business hoan lai</p>
+                <p className="mt-1 font-display text-2xl font-black text-ink">
+                  {typeof finalBusinessPercent === "number" ? `${finalBusinessPercent}%` : "Chua co"}
+                </p>
+                {typeof dispute.businessRefundAmount === "number" && (
+                  <p className="mt-1 text-sm font-bold text-slate-500">
+                    {formatCurrency(dispute.businessRefundAmount)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-2">
+              {dispute.staffDecidedAt && (
+                <Badge tone="amber">Staff gui bao cao: {formatDateTime(dispute.staffDecidedAt)}</Badge>
+              )}
+              {dispute.settlementExecutedAt && (
+                <Badge tone="mint">Da quyet toan: {formatDateTime(dispute.settlementExecutedAt)}</Badge>
+              )}
+              {dispute.resolvedAt && (
+                <Badge tone="slate">Da xu ly: {formatDateTime(dispute.resolvedAt)}</Badge>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
   };
 
   return (

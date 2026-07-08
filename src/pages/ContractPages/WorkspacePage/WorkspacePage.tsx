@@ -71,6 +71,19 @@ function milestoneStatusLabel(status?: string) {
   return labels[normalized] || status || "Chưa có trạng thái";
 }
 
+function contractStatusLabel(status?: string) {
+  const normalized = normalizeStatus(status);
+  const labels: Record<string, string> = {
+    ACTIVE: "Dang thuc hien",
+    AWAITING_CONTINUATION_DECISION: "Cho Business quyet dinh",
+    TERMINATION_PENDING: "Cho xu ly huy",
+    TERMINATED: "Da huy",
+    CANCELLED: "Da huy",
+    COMPLETED: "Hoan thanh",
+  };
+  return labels[normalized] || status || "Chua co trang thai";
+}
+
 function milestoneDurationLabel(milestone: Milestone) {
   const duration = Number(milestone.duration || milestone.durationValue || 0);
   if (!Number.isFinite(duration) || duration <= 0) return "Chưa có thời gian";
@@ -721,17 +734,122 @@ export function WorkspacePage() {
     try {
       await contractApi.requestTermination(contract.contractId, {
         currentMilestoneId: sourceMilestoneId,
-        requestReason: terminationReason.trim() || "Milestone quá thời hạn.",
+        requestReason:
+          terminationReason.trim() ||
+          "Business muốn hủy contract và chờ Expert phản hồi trong 3 ngày.",
       });
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã gửi yêu cầu hủy hợp đồng.",
-        message: "Yêu cầu đang chờ bộ phận phụ trách xem xét.",
+        title: "Đã gửi yêu cầu hủy contract cho Expert.",
+        message:
+          "Tiền chưa được hoàn trong lúc chờ Expert phản hồi. Nếu Expert không phản hồi trong 3 ngày, hệ thống sẽ tự động hủy contract và refund các milestone chưa hoàn thành.",
       });
       setTerminationOpen(null);
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const disputeBusinessTermination = async (request: TerminationRequest) => {
+    if (!request.terminationRequestId) return;
+    const reason = window.prompt(
+      "Lý do Expert không đồng ý với yêu cầu hủy contract của Business:",
+      "Business hủy contract khi Expert vẫn có khả năng tiếp tục thực hiện.",
+    );
+    if (reason === null) return;
+    setActionLoading(`termination-dispute:${request.terminationRequestId}`);
+    try {
+      await contractApi.disputeTerminationRequest(
+        request.terminationRequestId,
+        reason.trim() ||
+          "Expert yêu cầu staff hỗ trợ vì không đồng ý hủy contract.",
+      );
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: "success",
+        title: "Đã gửi yêu cầu staff hỗ trợ.",
+        message:
+          "Tiền tiếp tục được tạm giữ. Admin sẽ phân công staff xem xét yêu cầu hủy contract này.",
+      });
+    } catch (error) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const acceptBusinessTermination = async (request: TerminationRequest) => {
+    if (!request.terminationRequestId) return;
+    if (
+      !window.confirm(
+        "Dong y huy contract? He thong se huy contract va refund cac milestone chua hoan thanh cho Business.",
+      )
+    ) {
+      return;
+    }
+    setActionLoading(`termination-accept:${request.terminationRequestId}`);
+    try {
+      await contractApi.acceptTerminationRequest(request.terminationRequestId);
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: "success",
+        title: "Da dong y huy contract.",
+        message:
+          "Contract da duoc huy. Cac milestone chua hoan thanh se duoc refund cho Business neu milestone do dang giu escrow.",
+      });
+    } catch (error) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const decideAfterDispute = async (decision: "continue" | "cancel") => {
+    if (!contract) return;
+    if (
+      decision === "cancel" &&
+      !window.confirm(
+        "Huy contract ngay va refund cac milestone chua hoan thanh? Hanh dong nay se khoa contract.",
+      )
+    ) {
+      return;
+    }
+    setActionLoading(`post-dispute:${decision}`);
+    try {
+      const updated =
+        decision === "continue"
+          ? await contractApi.continueAfterDispute(contract.contractId)
+          : await contractApi.cancelAfterDispute(
+              contract.contractId,
+              "Business huy contract sau khi tranh chap duoc admin xu ly.",
+            );
+      setContract(updated);
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: decision === "continue" ? "success" : "warning",
+        title:
+          decision === "continue"
+            ? "Da mo lai contract de tiep tuc du an."
+            : "Da huy contract va refund cac milestone chua lam.",
+        message:
+          decision === "continue"
+            ? "Expert co the tiep tuc lam viec theo milestone tiep theo."
+            : "Cac milestone chua hoan thanh da bi huy. Milestone nao dang giu escrow se duoc hoan ve vi Business.",
+      });
+    } catch (error) {
+      setWorkspaceNotice({
         tone: "danger",
         title: getApiErrorMessage(error),
       });
@@ -774,16 +892,50 @@ export function WorkspacePage() {
 
   const allDone =
     milestones.length > 0 && counts.done === milestones.length;
+  const contractStatus = normalizeStatus(contract.status);
+  const awaitingBusinessDecision =
+    contractStatus === "AWAITING_CONTINUATION_DECISION";
+  const contractActionsFrozen = [
+    "AWAITING_CONTINUATION_DECISION",
+    "TERMINATION_PENDING",
+    "TERMINATED",
+    "CANCELLED",
+    "CLOSED",
+    "COMPLETED",
+  ].includes(contractStatus);
+  const canBusinessDecideAfterDispute =
+    session?.role === "BUSINESS" && awaitingBusinessDecision;
   const hasActiveTermination = terminationRequests.some((request) =>
     !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
       normalizeStatus(request.status),
     ),
   );
+  const activeTerminationRequest = terminationRequests.find((request) =>
+    !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
+      normalizeStatus(request.status),
+    ),
+  );
+  const awaitingExpertTerminationResponse =
+    normalizeStatus(activeTerminationRequest?.status) ===
+      "AWAITING_EXPERT_RESPONSE" ||
+    (normalizeStatus(activeTerminationRequest?.status) === "REQUESTED" &&
+      activeTerminationRequest?.requestedByRole?.toUpperCase() === "BUSINESS" &&
+      !activeTerminationRequest?.assignedStaffId &&
+      !activeTerminationRequest?.staffReviewStartedAt &&
+      !activeTerminationRequest?.partialEvidenceNote);
+  const canExpertEscalateTermination =
+    session?.role === "EXPERT" &&
+    Boolean(activeTerminationRequest) &&
+    awaitingExpertTerminationResponse;
   const deliverableOpenStatus = normalizeStatus(deliverableOpen?.status);
   const canOpenProgressReport =
-    deliverableOpen !== null && PROGRESS_REPORT_STATUSES.has(deliverableOpenStatus);
+    !contractActionsFrozen &&
+    deliverableOpen !== null &&
+    PROGRESS_REPORT_STATUSES.has(deliverableOpenStatus);
   const canOpenFinalProduct =
-    deliverableOpen !== null && SUBMITTABLE_STATUSES.has(deliverableOpenStatus);
+    !contractActionsFrozen &&
+    deliverableOpen !== null &&
+    SUBMITTABLE_STATUSES.has(deliverableOpenStatus);
 
   return (
     <div className="space-y-6">
@@ -824,6 +976,107 @@ export function WorkspacePage() {
         >
           {workspaceNotice.message}
         </Notice>
+      )}
+
+      {activeTerminationRequest && awaitingExpertTerminationResponse && (
+        <Card className="border-amber-200 bg-amber-50/80 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="amber">Dang cho Expert phan hoi</Badge>
+                <Badge tone="slate">Tien chua duoc hoan</Badge>
+              </div>
+              <h2 className="mt-3 font-display text-lg font-extrabold text-ink">
+                Business da yeu cau huy contract
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Expert co 3 ngay de phan hoi. Neu Expert khong phan hoi, he
+                thong se tu dong huy contract va refund cac milestone chua hoan
+                thanh cho Business. Neu Expert khong dong y, Expert co the yeu
+                cau staff ho tro xu ly.
+              </p>
+            </div>
+            {canExpertEscalateTermination && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  loading={
+                    actionLoading ===
+                    `termination-accept:${activeTerminationRequest.terminationRequestId}`
+                  }
+                  onClick={() =>
+                    acceptBusinessTermination(activeTerminationRequest)
+                  }
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Dong y huy
+                </Button>
+                <Button
+                  variant="danger"
+                  loading={
+                    actionLoading ===
+                    `termination-dispute:${activeTerminationRequest.terminationRequestId}`
+                  }
+                  onClick={() =>
+                    disputeBusinessTermination(activeTerminationRequest)
+                  }
+                >
+                  <Gavel className="h-4 w-4" />
+                  Yeu cau staff ho tro
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {activeTerminationRequest && !awaitingExpertTerminationResponse && (
+        <Notice tone="warning" title="Yeu cau huy contract dang duoc xu ly">
+          Tien dang duoc tam giu va contract tam khoa thao tac. Staff/admin se
+          xem xet yeu cau huy nay truoc khi quyet dinh refund hoac cho contract
+          tiep tuc.
+        </Notice>
+      )}
+
+      {awaitingBusinessDecision && (
+        <Card className="border-amber-200 bg-amber-50/70 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="amber">{contractStatusLabel(contract.status)}</Badge>
+                <Badge tone="slate">Contract tam khoa thao tac</Badge>
+              </div>
+              <h2 className="mt-3 font-display text-lg font-extrabold text-ink">
+                Tranh chap da duoc xu ly. Business can quyet dinh buoc tiep theo.
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Neu tiep tuc, contract duoc mo lai de lam cac milestone con lai.
+                Neu huy, he thong se huy toan bo milestone chua hoan thanh va
+                refund milestone nao dang giu escrow ve vi Business.
+              </p>
+            </div>
+            {canBusinessDecideAfterDispute && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  loading={actionLoading === "post-dispute:continue"}
+                  onClick={() => decideAfterDispute("continue")}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Tiep tuc du an
+                </Button>
+                <Button
+                  variant="danger"
+                  loading={actionLoading === "post-dispute:cancel"}
+                  onClick={() => decideAfterDispute("cancel")}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Huy contract va refund
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       {allDone && (
@@ -920,27 +1173,40 @@ export function WorkspacePage() {
           const isLoading = (action: string) =>
             actionLoading === `${action}:${sourceMilestoneId}`;
           const canDeposit =
-            session?.role === "BUSINESS" && DEPOSITABLE_STATUSES.has(status);
+            !contractActionsFrozen &&
+            session?.role === "BUSINESS" &&
+            DEPOSITABLE_STATUSES.has(status);
           const canStart =
-            session?.role === "EXPERT" && status === "DEPOSITED";
+            !contractActionsFrozen &&
+            session?.role === "EXPERT" &&
+            status === "DEPOSITED";
           const canDepositNext =
+            !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
             status === "COMPLETED" &&
             nextMilestoneId &&
             DEPOSITABLE_STATUSES.has(normalizeStatus(nextMilestone?.status));
           const canSubmit =
-            session?.role === "EXPERT" && SUBMITTABLE_STATUSES.has(status);
+            !contractActionsFrozen &&
+            session?.role === "EXPERT" &&
+            SUBMITTABLE_STATUSES.has(status);
           const canSubmitProgress =
-            session?.role === "EXPERT" && PROGRESS_REPORT_STATUSES.has(status);
+            !contractActionsFrozen &&
+            session?.role === "EXPERT" &&
+            PROGRESS_REPORT_STATUSES.has(status);
           const canReview =
-            session?.role === "BUSINESS" && REVIEWABLE_STATUSES.has(status);
+            !contractActionsFrozen &&
+            session?.role === "BUSINESS" &&
+            REVIEWABLE_STATUSES.has(status);
           const canDispute =
-            (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+            !contractActionsFrozen &&
+            session?.role === "EXPERT" &&
             DISPUTABLE_STATUSES.has(status) &&
             (!currentDispute ||
               normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
           const canRequestTermination =
-            (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+            !contractActionsFrozen &&
+            session?.role === "BUSINESS" &&
             ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
               status,
             ) &&
@@ -1129,7 +1395,7 @@ export function WorkspacePage() {
                       onClick={() => setTerminationOpen(milestone)}
                     >
                       <AlertTriangle className="h-4 w-4" />
-                      Yêu cầu hủy quá hạn
+                      Hủy hợp đồng
                     </Button>
                   )}
                 </div>
@@ -1937,8 +2203,8 @@ export function WorkspacePage() {
       <Modal
         open={Boolean(terminationOpen)}
         onClose={() => setTerminationOpen(null)}
-        title="Yêu cầu hủy hợp đồng do quá hạn"
-        description="Yêu cầu sẽ được chuyển đến bộ phận phụ trách để xem xét và quyết định hướng xử lý."
+        title="Hủy hợp đồng"
+        description="Yêu cầu sẽ được gửi cho Expert phản hồi trong 3 ngày. Tiền chưa được hoàn cho đến khi Expert đồng ý, không phản hồi quá hạn, hoặc staff/admin xử lý xong."
         footer={
           <>
             <Button variant="secondary" onClick={() => setTerminationOpen(null)}>
@@ -1964,6 +2230,7 @@ export function WorkspacePage() {
           <Textarea
             value={terminationReason}
             onChange={(event) => setTerminationReason(event.target.value)}
+            placeholder="Nhập lý do Business muốn hủy contract..."
           />
         </Field>
       </Modal>

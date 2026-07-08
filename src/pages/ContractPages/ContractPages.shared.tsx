@@ -53,6 +53,8 @@ export function normalizeContractStatus(status?: string) {
   if (normalized === "PENDING" || normalized === "PENDINGDEPOSIT")
     return "PENDING";
   if (normalized === "ACTIVE") return "ACTIVE";
+  if (normalized === "AWAITING_CONTINUATION_DECISION")
+    return "AWAITING_CONTINUATION_DECISION";
   if (normalized === "COMPLETED") return "COMPLETED";
   if (normalized === "TERMINATED" || normalized === "CANCELLED")
     return "CANCELLED";
@@ -70,6 +72,8 @@ export function translateContractStatus(status?: string) {
       return "Chờ ký quỹ";
     case "ACTIVE":
       return "Đang hoạt động";
+    case "AWAITING_CONTINUATION_DECISION":
+      return "Cho Business quyet dinh";
     case "IN_PROGRESS":
       return "Đang thực hiện";
     case "COMPLETED":

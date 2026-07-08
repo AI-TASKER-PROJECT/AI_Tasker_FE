@@ -71,6 +71,32 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/termination-requests`,
     });
   },
+  disputeTerminationRequest(terminationRequestId: number, reason?: string) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/dispute`,
+      params: { reason },
+    });
+  },
+  acceptTerminationRequest(terminationRequestId: number) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/accept`,
+    });
+  },
+  continueAfterDispute(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/continue-after-dispute`,
+    });
+  },
+  cancelAfterDispute(contractId: number, reason?: string) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/cancel-after-dispute`,
+      params: { reason },
+    });
+  },
   createMilestone(payload: Partial<Milestone>) {
     return call<Milestone>({
       method: "POST",

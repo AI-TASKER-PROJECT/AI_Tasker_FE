@@ -19,6 +19,15 @@ function normalizeStatus(value?: string) {
 export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const session = useSession();
   const isAdmin = session?.role === "ADMIN";
+  const detailPath = (disputeId: number) => {
+    if (isAdmin) return `/app/disputes/${disputeId}`;
+    if (staffMode) return `/app/tickets/${disputeId}`;
+    return `/app/disputes/${disputeId}`;
+  };
+  const projectPath = (disputeId: number) => {
+    if (staffMode) return `/app/tickets/${disputeId}/project`;
+    return `/app/disputes/${disputeId}/project`;
+  };
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [items, setItems] = useState<Dispute[]>([]);
@@ -153,7 +162,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
                 </div>
                 <div className="mt-4 flex flex-col gap-2 md:mt-0">
                   <LinkButton
-                    to={isAdmin ? `/app/disputes/${dispute.disputeId}/project` : `/app/tickets/${dispute.disputeId}/project`}
+                    to={projectPath(dispute.disputeId)}
                     variant="secondary"
                   >
                     Xem thong tin project
@@ -171,8 +180,8 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
                       Báo cáo staff / duyệt
                     </LinkButton>
                   )}
-                  <LinkButton to={isAdmin ? `/app/disputes/${dispute.disputeId}` : `/app/tickets/${dispute.disputeId}`} variant="primary">
-                    Mo ticket xu ly
+                  <LinkButton to={detailPath(dispute.disputeId)} variant="primary">
+                    {staffMode || isAdmin ? "Mo ticket xu ly" : "Xem bao cao tranh chap"}
                   </LinkButton>
                 </div>
               </div>
