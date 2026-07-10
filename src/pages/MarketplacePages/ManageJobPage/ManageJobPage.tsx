@@ -1,4 +1,4 @@
-﻿import {
+import {
   Award,
   BrainCircuit,
   ChevronDown,
@@ -149,6 +149,8 @@ export function ManageJobPage() {
   const [contractTermsOpen, setContractTermsOpen] = useState(false);
   const [contractError, setContractError] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [reviewMessageTone, setReviewMessageTone] = useState<"success" | "danger">("success");
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
   const [recommendationResult, setRecommendationResult] =
@@ -258,10 +260,18 @@ export function ManageJobPage() {
     status: "Accepted" | "Rejected",
   ) => {
     if (jobInProgress) return;
-    const updated = await marketplaceApi.reviewProposal(proposalId, status);
-    setProposals((items) =>
-      items.map((item) => (item.proposalId === proposalId ? updated : item)),
-    );
+    setReviewMessage("");
+    try {
+      const updated = await marketplaceApi.reviewProposal(proposalId, status);
+      setProposals((items) =>
+        items.map((item) => (item.proposalId === proposalId ? updated : item)),
+      );
+      setReviewMessageTone(status === "Accepted" ? "success" : "danger");
+      setReviewMessage(status === "Accepted" ? "Đã chấp nhận proposal thành công!" : "Đã từ chối proposal thành công!");
+    } catch (error) {
+      setReviewMessageTone("danger");
+      setReviewMessage(getApiErrorMessage(error));
+    }
   };
 
   const createContract = async () => {
@@ -439,6 +449,13 @@ export function ManageJobPage() {
                 className="mt-4"
               />
             )}
+            {reviewMessage && (
+              <Notice
+                tone={reviewMessageTone}
+                title={reviewMessage}
+                className="mt-4"
+              />
+            )}
             <div className="mt-6 grid gap-4">
               {proposals.map((proposal) => (
                 <ProposalCard
@@ -599,7 +616,7 @@ export function ManageJobPage() {
               title="Job chưa có milestone nên backend chưa thể tạo contract draft."
             />
           )}
-          <Field label="Tiêu đề contract">
+          <Field label="Tên hợp đồng">
             <Input
               value={contractForm.contractTitle}
               onChange={(event) =>
@@ -610,7 +627,7 @@ export function ManageJobPage() {
               }
             />
           </Field>
-          <Field label="Timeline (tuần)">
+          <Field label="Thời gian (tuần)">
             <Input
               type="number"
               min={minimumTimelineWeeks}
@@ -623,20 +640,20 @@ export function ManageJobPage() {
               }
             />
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              Ban co the thay doi thoi gian hop dong lon hon tong thoi gian
-              milestones.
+              Bạn có thể nhập số tuần tối thiểu {minimumTimelineWeeks} tuần để
+              đảm bảo hợp đồng đủ thời gian cho các mốc nghiệm thu.
             </p>
           </Field>
           {!timelineValid && (
             <Notice
               tone="warning"
-              title={`Timeline phải lớn hơn hoặc bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
+              title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc nghiệm thu (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
             />
           )}
           <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-4">
             <ContractPreviewMetric
-              label="Tổng milestone"
-              value={`${totalMilestoneWeeks} tuan (${totalMilestoneDays} ngày)`}
+              label="Tổng thời gian mốc nghiệm thu"
+              value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
             <ContractPreviewMetric
               label="Ngày bắt đầu dự kiến"
@@ -694,7 +711,7 @@ export function ManageJobPage() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-400">
-                          Ngân sách job
+                          Ngân sách gốc
                         </p>
                         <p className="font-extrabold text-slate-700">
                           {formatCurrency(milestone.fundsAllocated)}
@@ -702,7 +719,7 @@ export function ManageJobPage() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-400">
-                          Chốt contract
+                          Ngân sách cuối cùng
                         </p>
                         <p className="font-extrabold text-ink">
                           {formatCurrency(finalBudget)}
@@ -969,7 +986,7 @@ function ProposalCard({
               }
             >
               <CheckCircle2 className="h-4 w-4" />
-              Accept
+              Chấp nhận
             </Button>
 
             <Button
@@ -983,7 +1000,7 @@ function ProposalCard({
               }
             >
               <XCircle className="h-4 w-4" />
-              Reject
+              Từ chối
             </Button>
 
             {contract ? (

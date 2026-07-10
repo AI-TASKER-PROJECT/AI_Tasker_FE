@@ -7,7 +7,6 @@ import {
   ReceiptText,
   Star,
   WalletCards,
-  XCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -81,7 +80,7 @@ export function translateContractStatus(status?: string) {
     case "CANCELLED":
       return "Đã hủy";
     case "TERMINATED":
-      return "Kết thúc sớm";
+      return "Đã hủy";
     case "REJECTED":
       return "Bị từ chối";
     case "UNDER_REVIEW":
@@ -150,9 +149,7 @@ export function formatTotalMilestoneDuration(
   >,
 ) {
   const totalWeeks = milestones.reduce((total, milestone) => {
-    const duration = Number(
-      milestone.durationValue ?? milestone.duration ?? 0,
-    );
+    const duration = Number(milestone.durationValue ?? milestone.duration ?? 0);
     if (!Number.isFinite(duration) || duration <= 0) return total;
 
     const unit = (milestone.durationUnit || "WEEK").toUpperCase();
@@ -189,10 +186,10 @@ export function canBackendReviewMilestone(status?: string) {
 export function ContractLifecycle({ status }: { status: string }) {
   const steps = ["DRAFT", "PENDING", "ACTIVE", "COMPLETED"];
   const labels: Record<string, string> = {
-    DRAFT: "Draft",
-    PENDING: "Cho ky quy",
-    ACTIVE: "Active",
-    COMPLETED: "Completed",
+    DRAFT: "Nháp",
+    PENDING: "Chờ kí quỹ",
+    ACTIVE: "Đang hoạt động",
+    COMPLETED: "Hoàn thành",
   };
   const normalizedStatus = normalizeContractStatus(status);
   const currentIndex = steps.indexOf(normalizedStatus);
@@ -231,16 +228,6 @@ export function ContractLifecycle({ status }: { status: string }) {
           </div>
         );
       })}
-      {terminal && (
-        <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 md:col-span-5">
-          <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-rose-600" />
-            <p className="text-sm font-extrabold text-rose-700">
-              Contract đã dừng ở trạng thái {status}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -287,18 +274,20 @@ export function getContractNextAction({
     return {
       tone: "danger",
       title: "Contract không còn tiếp tục thực hiện.",
-      description: `Trạng thái hiện tại là ${contract.status}.`,
+      description: `Hai bên không thể tiếp tục thực hiện các milestone.`,
     };
   }
   if (contractStatus === "PENDING") {
     return {
-      tone: role === "BUSINESS" ? "warning" : "info",
+      tone: "warning",
       title:
         role === "BUSINESS"
-          ? "Bạn cần thanh toán ký quỹ để kích hoạt contract."
+          ? "Bạn cần thanh toán ký quỹ để kích hoạt hợp đồng."
           : "Đang chờ doanh nghiệp thanh toán ký quỹ.",
       description:
-        "BE chỉ cho ký quỹ khi contract ở trạng thái PendingDeposit.",
+        role === "BUSINESS"
+          ? "Tiến hành thanh toán ký quỹ để kích hoạt hợp đồng."
+          : "Hợp đồng chưa được kích hoạt vì doanh nghiệp chưa thanh toán ký quỹ.",
     };
   }
   if (!businessAccepted) {
@@ -306,10 +295,9 @@ export function getContractNextAction({
       tone: role === "BUSINESS" ? "warning" : "info",
       title:
         role === "BUSINESS"
-          ? "Bạn cần chấp nhận contract."
-          : "Đang chờ doanh nghiệp chấp nhận contract.",
-      description:
-        "Một trong 4 điều kiện kích hoạt contract vẫn chưa hoàn tất.",
+          ? "Bạn cần chấp nhận hợp đồng."
+          : "Đang chờ doanh nghiệp chấp nhận hợp đồng.",
+      description: "Các điều kiện kích hoạt hợp đồng vẫn chưa hoàn tất.",
     };
   }
   if (!expertAccepted) {
@@ -317,10 +305,9 @@ export function getContractNextAction({
       tone: role === "EXPERT" ? "warning" : "info",
       title:
         role === "EXPERT"
-          ? "Bạn cần chấp nhận contract."
-          : "Đang chờ chuyên gia chấp nhận contract.",
-      description:
-        "Một trong 4 điều kiện kích hoạt contract vẫn chưa hoàn tất.",
+          ? "Bạn cần chấp nhận hợp đồng."
+          : "Đang chờ chuyên gia chấp nhận hợp đồng.",
+      description: "Các điều kiện kích hoạt hợp đồng vẫn chưa hoàn tất.",
     };
   }
   if (!businessNdaSigned) {
@@ -330,7 +317,7 @@ export function getContractNextAction({
         role === "BUSINESS"
           ? "Bạn cần ký NDA."
           : "Đang chờ doanh nghiệp ký NDA.",
-      description: "BE lưu thời điểm ký NDA riêng cho từng bên.",
+      description: "Hệ thống lưu thời điểm ký NDA riêng cho từng bên.",
     };
   }
   if (!expertNdaSigned) {
@@ -338,7 +325,7 @@ export function getContractNextAction({
       tone: role === "EXPERT" ? "warning" : "info",
       title:
         role === "EXPERT" ? "Bạn cần ký NDA." : "Đang chờ chuyên gia ký NDA.",
-      description: "BE lưu thời điểm ký NDA riêng cho từng bên.",
+      description: "Hệ thống lưu thời điểm ký NDA riêng cho từng bên.",
     };
   }
   if (contractStatus === "ACTIVE") {
@@ -347,22 +334,28 @@ export function getContractNextAction({
       title:
         underReviewCount > 0 && role === "BUSINESS"
           ? "Có milestone đang chờ nghiệm thu."
-          : "Contract đang Active.",
+          : "Hợp đồng đang hoạt động.",
       description:
         underReviewCount > 0
           ? `${underReviewCount} milestone đã có deliverable và đang Under Review.`
-          : "Expert có thể submit deliverable trong workspace, business nghiệm thu milestone khi có submission.",
+          : "Chuyên gia có thể tiếp tục thực hiện các mốc nghiệm thu và gửi sản phẩm để doanh nghiệp nghiệm thu.",
     };
   }
   return {
     tone: "info",
-    title: "Contract đang trong giai đoạn chuẩn bị.",
+    title: "Hợp đồng đang trong giai đoạn chuẩn bị.",
     description:
       "Theo dõi các điều kiện kích hoạt và action theo role ở bên dưới.",
   };
 }
 
-export function ContractMetric({ label, value }: { label: string; value: string }) {
+export function ContractMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-3xl border border-slate-100 p-4">
       <p className="text-xs font-bold text-slate-400">{label}</p>
@@ -371,7 +364,13 @@ export function ContractMetric({ label, value }: { label: string; value: string 
   );
 }
 
-export function OperationStat({ label, value }: { label: string; value: string }) {
+export function OperationStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3.5">
       <p className="min-w-0 text-sm font-bold leading-5 text-slate-500">

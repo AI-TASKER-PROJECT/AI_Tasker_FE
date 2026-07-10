@@ -1,12 +1,13 @@
 import {
   CheckCircle2,
+  Clock3,
   FileText,
   LockKeyhole,
   ShieldCheck,
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import {
   contractApi,
@@ -46,10 +47,8 @@ import {
   formatTotalMilestoneDuration,
   getContractNextAction,
   getMilestoneBudget,
-  getMilestoneDurationLabel,
   NDA_TERMS,
   normalizeContractStatus,
-  OperationStat,
   Participant,
   SignatureBlock,
   translateContractStatus,
@@ -66,7 +65,8 @@ type ContactSource = {
 };
 
 function firstContactValue(...values: Array<string | undefined>) {
-  return values.find((value) => typeof value === "string" && value.trim())
+  return values
+    .find((value) => typeof value === "string" && value.trim())
     ?.trim();
 }
 
@@ -89,6 +89,14 @@ function contactPhone(profile?: ContactSource | null, fallback?: string) {
   );
 }
 
+function displayTerminateReason(value: string) {
+  if (value === "CLIENT_STOP_PROJECT") {
+    return "Doanh nghiệp dừng dự án";
+  }
+
+  return value;
+}
+
 export function ContractDetailPage() {
   const { contractId } = useParams();
   const session = useSession();
@@ -104,9 +112,14 @@ export function ContractDetailPage() {
     expert: null,
   });
   const [contractNotice, setContractNotice] = useState<{
-    tone: "success" | "danger" | "info";
+    tone: "success" | "danger" | "info" | "warning";
     title: string;
-    message?: string;
+    message?: ReactNode;
+  } | null>(null);
+  const [actionNotice, setActionNotice] = useState<{
+    tone: "success" | "danger" | "info" | "warning";
+    title: string;
+    message?: ReactNode;
   } | null>(null);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
@@ -212,7 +225,7 @@ export function ContractDetailPage() {
     return (
       <EmptyState
         title="Không tìm thấy hợp đồng"
-        description="Dữ liệu hợp đồng được lấy trực tiếp từ backend."
+        description="Dữ liệu hợp đồng được lấy trực tiếp từ hệ thống."
       />
     );
   }
@@ -224,9 +237,9 @@ export function ContractDetailPage() {
       setContract(updated);
       setContractNotice({
         tone: "success",
-        title: "Ký contract thành công.",
+        title: "Ký hợp đồng thành công.",
         message:
-          "Hệ thống đã ghi nhận xác nhận hợp đồng của bạn. Khi hai bên ký đủ contract và NDA, contract sẽ sẵn sàng cho bước tiếp theo.",
+          "Hệ thống đã ghi nhận xác nhận hợp đồng của bạn. Khi hai bên ký đủ hợp đồng và NDA, hợp đồng sẽ sẵn sàng cho bước tiếp theo.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -235,7 +248,7 @@ export function ContractDetailPage() {
         title:
           error instanceof Error
             ? error.message
-            : "Không thể ký contract. Vui lòng thử lại.",
+            : "Không thể ký hợp đồng. Vui lòng thử lại.",
       });
     }
   };
@@ -248,8 +261,7 @@ export function ContractDetailPage() {
       setContractNotice({
         tone: "success",
         title: "Ký NDA thành công.",
-        message:
-          "Hệ thống đã ghi nhận chữ ký NDA của bạn cho hợp đồng này.",
+        message: "Hệ thống đã ghi nhận chữ ký NDA của bạn cho hợp đồng này.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -281,12 +293,13 @@ export function ContractDetailPage() {
   const payDeposit = async () => {
     setDepositLoading(true);
     setContractNotice(null);
+    setActionNotice(null);
     try {
       const result = await contractApi.payDeposit(contract.contractId);
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
-          title: "Ví chưa đủ để ký quỹ contract.",
+          title: "Ví chưa đủ để ký quỹ hợp đồng.",
           message: result.missingAmount
             ? `Cần nạp thêm ${formatCurrency(result.missingAmount)}.`
             : result.message,
@@ -305,18 +318,41 @@ export function ContractDetailPage() {
       setPaymentWallet(updatedWallet);
       setDepositConfirmOpen(false);
       window.dispatchEvent(new Event("aitasker:reload-wallet"));
+      sessionStorage.setItem("justActivatedContract", "true");
       setContractNotice({
         tone: "success",
-        title: "Đã ký quỹ và kích hoạt contract.",
-        message: updatedWallet
-          ? `Backend đã hold ${formatCurrency(depositAmount)} vào escrow. Số dư khả dụng còn ${formatCurrency(updatedWallet.availableBalance)}, escrow hiện tại ${formatCurrency(updatedWallet.escrowBalance)}.`
-          : `Backend đã hold ${formatCurrency(depositAmount)} vào escrow và cập nhật contract/milestone.`,
+        title: "Đã ký quỹ và kích hoạt hợp đồng.",
+        message: updatedWallet ? (
+          <div className="flex flex-col gap-1 mt-1">
+            <span>
+              Hệ thống đã giữ {formatCurrency(depositAmount)} trong quỹ bảo
+              chứng.
+            </span>
+            <span>
+              Số dư khả dụng còn{" "}
+              {formatCurrency(updatedWallet.availableBalance)}.
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 mt-1">
+            <span>
+              Hệ thống đã giữ {formatCurrency(depositAmount)} trong quỹ bảo
+              chứng và cập nhật hợp đồng/mốc công việc.
+            </span>
+          </div>
+        ),
       });
+      setActionNotice({
+        tone: "warning",
+        title: "Việc tiếp theo",
+        message: "Vui lòng truy cập Không gian làm việc để triển khai dự án.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setContractNotice({
         tone: "danger",
         title:
-          err instanceof Error ? err.message : "Không thể ký quỹ contract.",
+          err instanceof Error ? err.message : "Không thể ký quỹ hợp đồng.",
       });
     } finally {
       setDepositLoading(false);
@@ -326,10 +362,7 @@ export function ContractDetailPage() {
     setContract(await contractApi.terminate(contract.contractId, reason));
     setTerminateOpen(false);
   };
-  const contractTitle =
-    contract.contractTitle ||
-    contract.title ||
-    `Contract #${contract.contractId}`;
+  const contractTitle = contract.contractTitle || contract.title || "Hợp đồng";
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
@@ -363,9 +396,6 @@ export function ContractDetailPage() {
   const underReviewCount = jobMilestones.filter(
     (item) => normalizeContractStatus(item.status) === "UNDER_REVIEW",
   ).length;
-  const completedMilestoneCount = jobMilestones.filter((item) =>
-    ["COMPLETED", "RELEASED"].includes(normalizeContractStatus(item.status)),
-  ).length;
   const renderedMilestones =
     contract.contractMilestones && contract.contractMilestones.length > 0
       ? contract.contractMilestones
@@ -375,11 +405,11 @@ export function ContractDetailPage() {
   const businessDisplayName =
     contract.businessName ||
     participants.business?.companyName ||
-    `Business #${contract.businessId}`;
+    `Doanh nghiệp #${contract.businessId}`;
   const expertDisplayName =
     contract.expertName ||
     participants.expert?.fullName ||
-    `Expert #${contract.expertId}`;
+    `Chuyên gia #${contract.expertId}`;
   const sessionPhone = session?.phone;
   const isBusinessSession =
     session?.role === "BUSINESS" &&
@@ -406,14 +436,14 @@ export function ContractDetailPage() {
   const contractStartDate = contract.createdAt || contract.activatedAt;
   const contractEndDate = contractStartDate
     ? new Date(
-      new Date(contractStartDate).getTime() +
-      Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
-    ).toISOString()
+        new Date(contractStartDate).getTime() +
+          Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
+      ).toISOString()
     : undefined;
   const contractTimelineLabel =
     contractStartDate && contractEndDate
       ? `${formatDate(contractStartDate)} - ${formatDate(contractEndDate)}`
-      : "Chưa có timeline";
+      : "Chưa có thời gian dự kiến";
   const nextAction = getContractNextAction({
     contract,
     role: session?.role,
@@ -442,7 +472,7 @@ export function ContractDetailPage() {
   const expertSignatureComplete = expertAccepted && expertNdaSigned;
   const signatureProgress = [
     {
-      label: "Business",
+      label: "Doanh nghiệp",
       name: businessDisplayName,
       accepted: businessAccepted,
       completed: businessSignatureComplete,
@@ -450,7 +480,7 @@ export function ContractDetailPage() {
       completedAt: contract.businessNdaSignedAt,
     },
     {
-      label: "Expert",
+      label: "Chuyên gia",
       name: expertDisplayName,
       accepted: expertAccepted,
       completed: expertSignatureComplete,
@@ -494,9 +524,9 @@ export function ContractDetailPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          eyebrow="CONTRACT DETAIL"
+          eyebrow="CHI TIẾT HỢP ĐỒNG"
           title={contractTitle}
-          description="Điểm điều phối cho đàm phán, activate, NDA, termination và các luồng con."
+          description="Thông tin chi tiết của hợp đồng, bao gồm các bên tham gia, trạng thái ký hợp đồng và NDA, mốc công việc, ngân sách và thời gian thực hiện."
           actions={
             <>
               <Button variant="secondary" onClick={openNdaPreview}>
@@ -507,28 +537,34 @@ export function ContractDetailPage() {
                 to={`/app/contracts/${contract.contractId}/workspace`}
                 variant="secondary"
               >
-                Workspace
+                Không gian làm việc
               </LinkButton>
               <LinkButton to="/app/finance" variant="secondary">
-                Escrow
+                Ký quỹ
               </LinkButton>
             </>
           }
         />
       </div>
       {contractNotice && (
-        <Notice tone={contractNotice.tone} title={contractNotice.title}>
+        <Notice tone={contractNotice.tone as any} title={contractNotice.title}>
           {contractNotice.message}
         </Notice>
       )}
+      {actionNotice && (
+        <Notice
+          tone={actionNotice.tone as any}
+          title={actionNotice.title}
+          className="mt-4"
+        >
+          {actionNotice.message}
+        </Notice>
+      )}
       <Card className="p-4">
-        <SectionHeading
-          title="Vòng đời contract"
-          description="Các bước này khớp với status backend đang lưu."
-        />
+        <SectionHeading title="Vòng đời hợp đồng" />
         <ContractLifecycle status={contract.status} />
       </Card>
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+      <div className="grid gap-6">
         <Card className="p-6">
           <Notice
             tone={nextAction.tone}
@@ -541,7 +577,7 @@ export function ContractDetailPage() {
           {contractInProgress && (
             <Notice
               tone="info"
-              title="Contract đang IN_PROGRESS/ACTIVE, các thao tác đổi trạng thái đã bị khóa."
+              title="Hợp đồng đang ở trạng thái đang thực hiện/đang hoạt động, các thao tác đổi trạng thái đã bị khóa."
               className="mb-5"
             />
           )}
@@ -563,15 +599,13 @@ export function ContractDetailPage() {
               value={formatCurrency(securityDepositAmount)}
             />
             <ContractMetric
-              label="Timeline"
+              label="Thời gian"
               value={formatTimelineWeeks(contract.timelineDays)}
             />
             <ContractMetric
               label="Ngày tạo hợp đồng"
               value={formatDateTime(contract.createdAt)}
             />
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <ContractMetric
               label="Chờ nghiệm thu"
               value={`${underReviewCount} mốc`}
@@ -585,7 +619,7 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl bg-slate-50 p-5">
             <SectionHeading
               title="Hai bên tham gia"
-              description="Tên và thông tin liên hệ được lấy từ API profile nếu backend có dữ liệu."
+              description="Thông tin liên hệ và chi tiết của hai bên tham gia hợp đồng, bao gồm doanh nghiệp và chuyên gia thực hiện."
             />
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Participant
@@ -612,7 +646,6 @@ export function ContractDetailPage() {
                       ? `${participants.expert.yearsOfExperience} năm`
                       : undefined,
                   ],
-                  ["KYC", participants.expert?.kycStatus],
                 ]}
               />
             </div>
@@ -620,8 +653,8 @@ export function ContractDetailPage() {
 
           <div className="mt-6 rounded-3xl border border-slate-100 bg-white p-5">
             <SectionHeading
-              title="Trang ký hợp đồng"
-              description="Bản trình bày một trang để hai bên kiểm tra trước khi ký contract và NDA."
+              title="Nội dung hợp đồng"
+              description="Hiển thị thông tin chi tiết của hợp đồng, chữ ký/xác thực của hai bên và các mốc công việc."
             />
             <div className="mt-4 border-b border-slate-100 pb-4 text-center">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
@@ -644,7 +677,7 @@ export function ContractDetailPage() {
                 label="Thời hạn"
                 value={formatTimelineWeeks(contract.timelineDays)}
               />
-              <ContractMetric label="Timeline" value={contractTimelineLabel} />
+              <ContractMetric label="Thời gian" value={contractTimelineLabel} />
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SignatureBlock
@@ -685,10 +718,10 @@ export function ContractDetailPage() {
               className="mt-4"
             >
               {contractStatus === "ACTIVE"
-                ? "Contract đã Active, milestone budget và job status đã được backend cập nhật."
+                ? "Hợp đồng đã được kích hoạt, ngân sách mốc công việc và trạng thái công việc đã được hệ thống cập nhật."
                 : readyToActivate
-                  ? "Business và Expert đã hoàn tất contract cùng NDA. Business có thể tiếp tục ký quỹ để kích hoạt flow làm việc."
-                  : "Bên đã ký sẽ được ghi nhận ngay khi backend trả thời điểm ký/xác thực."}
+                  ? "Doanh nghiệp và chuyên gia đã hoàn tất hợp đồng cùng NDA. Doanh nghiệp có thể tiếp tục ký quỹ để kích hoạt luồng làm việc."
+                  : "Bên đã ký sẽ được ghi nhận ngay khi hệ thống trả thời điểm ký/xác thực."}
             </Notice>
             {signatureProgress.length > 0 && !readyToActivate && (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -715,8 +748,8 @@ export function ContractDetailPage() {
                       }
                     >
                       {item.completed
-                        ? `Đã ký đủ contract và NDA: ${formatDateTime(item.completedAt)}`
-                        : `Đã ký contract: ${formatDateTime(item.acceptedAt)}, chờ ký NDA`}
+                        ? `Đã ký đủ hợp đồng và NDA: ${formatDateTime(item.completedAt)}`
+                        : `Đã ký hợp đồng: ${formatDateTime(item.acceptedAt)}, chờ ký NDA`}
                     </p>
                   </div>
                 ))}
@@ -726,8 +759,8 @@ export function ContractDetailPage() {
 
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
-              title="Milestone trong draft"
-              description="Các ngân sách chốt được backend tạo từ job và proposal đã accepted."
+              title="Mốc công việc"
+              description="Danh sách các mốc công việc được hệ thống lưu cho hợp đồng này, bao gồm thời gian dự kiến và ngân sách gốc/đã chốt."
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
@@ -740,46 +773,109 @@ export function ContractDetailPage() {
               }
             />
             <div className="mt-4 grid gap-3">
-              {renderedMilestones.map((milestone) => (
-                <div
-                  key={
-                    "contractMilestoneId" in milestone
-                      ? milestone.contractMilestoneId
-                      : milestone.milestoneId
+              {renderedMilestones.map((milestone) => {
+                const criteriaList = (() => {
+                  if (
+                    (milestone as any).criteria &&
+                    Array.isArray((milestone as any).criteria)
+                  ) {
+                    return (milestone as any).criteria;
                   }
-                  className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
-                >
-                  <div className="min-w-0">
-                    <p className="font-extrabold text-ink">
-                      {milestone.orderIndex}. {milestone.milestoneName}
-                    </p>
-                    {milestone.description && (
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        {milestone.description}
+                  if ((milestone as any).criteriaSnapshot) {
+                    try {
+                      const snapshot = (milestone as any).criteriaSnapshot;
+                      if (typeof snapshot === "string") {
+                        return snapshot
+                          .split(/\r?\n/)
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .map((desc, i) => ({
+                            criteriaId: `snap-${i}`,
+                            description: desc,
+                          }));
+                      }
+                    } catch {
+                      return [];
+                    }
+                  }
+                  return [];
+                })();
+
+                return (
+                  <div
+                    key={
+                      "contractMilestoneId" in milestone
+                        ? milestone.contractMilestoneId
+                        : milestone.milestoneId
+                    }
+                    className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+                        Mốc {milestone.orderIndex}
                       </p>
-                    )}
-                    <p className="mt-2 text-xs font-bold text-slate-400">
-                      Thời gian: {getMilestoneDurationLabel(milestone)}
-                    </p>
+                      <p className="break-words text-sm font-extrabold text-ink">
+                        {milestone.milestoneName}
+                      </p>
+                      {milestone.description && (
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                          {milestone.description}
+                        </p>
+                      )}
+                      <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {(() => {
+                          const dVal =
+                            (milestone as any).durationValue ??
+                            (milestone as any).duration;
+                          const unit =
+                            (milestone as any).durationUnit === "WEEK"
+                              ? "TUẦN"
+                              : (milestone as any).durationUnit || "TUẦN";
+                          return dVal && dVal > 0
+                            ? `${dVal} ${unit}`
+                            : "Chưa xác định";
+                        })()}
+                      </p>
+
+                      {criteriaList && criteriaList.length > 0 && (
+                        <div className="mt-3 space-y-1.5 border-t border-slate-200/60 pt-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Tiêu chí nghiệm thu
+                          </p>
+                          <ul className="grid gap-1.5">
+                            {criteriaList.map((c: any, i: number) => (
+                              <li
+                                key={c.criteriaId || i}
+                                className="flex items-start gap-2 text-sm text-slate-600"
+                              >
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                                <span>{c.description}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <ContractMetric
+                      label="Ngân sách gốc"
+                      value={formatCurrency(
+                        "originalBudget" in milestone
+                          ? milestone.originalBudget
+                          : milestone.fundsAllocated,
+                      )}
+                    />
+                    <ContractMetric
+                      label="Ngân sách đã chốt"
+                      value={formatCurrency(getMilestoneBudget(milestone))}
+                    />
                   </div>
-                  <ContractMetric
-                    label="Ngân sách gốc"
-                    value={formatCurrency(
-                      "originalBudget" in milestone
-                        ? milestone.originalBudget
-                        : milestone.fundsAllocated,
-                    )}
-                  />
-                  <ContractMetric
-                    label="Ngân sách chốt"
-                    value={formatCurrency(getMilestoneBudget(milestone))}
-                  />
-                </div>
-              ))}
+                );
+              })}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có milestone draft"
-                  description="Backend chưa trả contractMilestones cho contract này."
+                  title="Chưa có bản nháp mốc công việc"
+                  description="Hệ thống chưa trả dữ liệu mốc công việc cho hợp đồng này."
                 />
               )}
             </div>
@@ -788,7 +884,7 @@ export function ContractDetailPage() {
             {canCurrentPartyAct && contractStatus === "DRAFT" && (
               <Button onClick={signContract} disabled={currentPartyAccepted}>
                 <CheckCircle2 className="h-4 w-4" />
-                Chấp nhận contract
+                Chấp nhận hợp đồng
               </Button>
             )}
             {canCurrentPartyAct && contractStatus === "DRAFT" && (
@@ -816,54 +912,8 @@ export function ContractDetailPage() {
             {canTerminate && (
               <Button variant="danger" onClick={() => setTerminateOpen(true)}>
                 <XCircle className="h-4 w-4" />
-                Terminate
+                Chấm dứt
               </Button>
-            )}
-          </div>
-        </Card>
-        <Card className="p-6">
-          <SectionHeading
-            title="Vận hành thực tế"
-            description="Dữ liệu lấy từ milestone, deliverable, transaction và dispute endpoints hiện có."
-          />
-          <div className="mt-5 grid gap-3">
-            <OperationStat
-              label="Milestone completed/released"
-              value={`${completedMilestoneCount}/${jobMilestones.length}`}
-            />
-            <OperationStat
-              label="Milestone chờ business nghiệm thu"
-              value={`${underReviewCount}`}
-            />
-            <OperationStat
-              label="Dispute chưa xử lý xong"
-              value={`${activeDisputes.length}`}
-            />
-            {jobMilestones.slice(0, 4).map((milestone) => (
-              <div
-                key={milestone.milestoneId}
-                className="rounded-2xl border border-slate-100 p-3.5"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="min-w-0 truncate font-extrabold text-ink">
-                    {milestone.orderIndex}. {milestone.milestoneName}
-                  </p>
-                  <StatusBadge
-                    status={translateContractStatus(milestone.status)}
-                  />
-                </div>
-                <p className="mt-2 text-sm font-semibold text-slate-500">
-                  {formatCurrency(milestone.fundsAllocated)}
-                </p>
-              </div>
-            ))}
-            {jobMilestones.length > 4 && (
-              <LinkButton
-                to={`/app/contracts/${contract.contractId}/workspace`}
-                variant="secondary"
-              >
-                Xem tất cả milestone trong workspace
-              </LinkButton>
             )}
           </div>
         </Card>
@@ -934,8 +984,8 @@ export function ContractDetailPage() {
       <Modal
         open={depositConfirmOpen}
         onClose={() => !depositLoading && setDepositConfirmOpen(false)}
-        title="Xác nhận ký quỹ contract"
-        description="Số tiền ký quỹ bằng 20% tổng ngân sách contract và sẽ được giữ trong escrow."
+        title="Xác nhận ký quỹ hợp đồng"
+        description="Số tiền ký quỹ bằng 20% tổng ngân sách hợp đồng và sẽ được giữ trong quỹ bảo chứng."
         size="lg"
         footer={
           <>
@@ -954,7 +1004,7 @@ export function ContractDetailPage() {
                     new CustomEvent("aitasker:open-wallet-topup", {
                       detail: {
                         amount: depositMissingAmount,
-                        description: `Nạp ví để ký quỹ contract #${contract.contractId}`,
+                        description: `Nạp ví để ký quỹ hợp đồng #${contract.contractId}`,
                       },
                     }),
                   )
@@ -976,7 +1026,7 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng contract"
+              label="Tổng giá trị hợp đồng"
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
@@ -999,33 +1049,35 @@ export function ContractDetailPage() {
           ) : (
             <Notice
               tone="warning"
-              title="Bạn có chắc chắn muốn ký quỹ contract này?"
+              title="Bạn có chắc chắn muốn ký quỹ hợp đồng này?"
             >
-              Sau khi xác nhận, BE sẽ hold 20% giá trị contract vào escrow,
-              chuyển contract sang ACTIVE và cập nhật ngân sách milestone theo
-              proposal đã accept.
+              Sau khi xác nhận, hệ thống sẽ giữ 20% giá trị hợp đồng trong quỹ
+              bảo chứng, chuyển hợp đồng sang trạng thái hoạt động và cập nhật
+              ngân sách mốc công việc theo đề xuất đã được chấp nhận.
             </Notice>
           )}
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Điều kiện trước khi ký quỹ"
-              description="Contract phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
+              description="Hợp đồng phải ở trạng thái chờ xử lý và đã đủ chữ ký/xác thực của hai bên."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
-              <span>Contract: #{contract.contractId}</span>
-              <span>Status: {contract.status}</span>
+              <span>Hợp đồng: {contract.contractTitle}</span>
+              <span>
+                Trạng thái: {translateContractStatus(contract.status)}
+              </span>
               <span>
                 Chữ ký/xác thực:{" "}
                 {readyToActivate
                   ? "Đã đủ hai bên"
                   : signatureProgress.length > 0
                     ? signatureProgress
-                      .map((item) =>
-                        item.completed
-                          ? `${item.label} đã hoàn tất`
-                          : `${item.label} đã ký contract`,
-                      )
-                      .join(", ")
+                        .map((item) =>
+                          item.completed
+                            ? `${item.label} đã hoàn tất`
+                            : `${item.label} đã ký hợp đồng`,
+                        )
+                        .join(", ")
                     : "Chưa có bên nào hoàn tất"}
               </span>
             </div>
@@ -1037,25 +1089,25 @@ export function ContractDetailPage() {
         open={terminateOpen}
         onClose={() => setTerminateOpen(false)}
         title="Chấm dứt hợp đồng"
-        description="UI thể hiện snapshot termination dù back-end hiện mới đổi trạng thái contract."
+        description="Giao diện hiển thị tổng quan chấm dứt dù hệ thống hiện mới đổi trạng thái hợp đồng."
         footer={
           <>
             <Button variant="secondary" onClick={() => setTerminateOpen(false)}>
               Hủy
             </Button>
             <Button variant="danger" onClick={terminate}>
-              Xác nhận terminate
+              Xác nhận chấm dứt
             </Button>
           </>
         }
       >
-        <Notice tone="warning" title="Snapshot tiến độ">
-          Mốc đã Released sẽ thuộc chuyên gia; mốc chưa hoàn thành sẽ hoàn tiền
-          doanh nghiệp. Logic chi tiết đang chờ back-end.
+        <Notice tone="warning" title="Tổng quan tiến độ">
+          Mốc đã giải ngân sẽ thuộc về chuyên gia; mốc chưa hoàn thành sẽ hoàn
+          tiền cho doanh nghiệp. Logic chi tiết đang chờ hệ thống xử lý.
         </Notice>
         <Field label="Lý do" className="mt-4">
           <Textarea
-            value={reason}
+            value={displayTerminateReason(reason)}
             onChange={(event) => setReason(event.target.value)}
           />
         </Field>
