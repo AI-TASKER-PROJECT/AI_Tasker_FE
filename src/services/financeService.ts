@@ -1,26 +1,24 @@
-import { call } from "./apiClient";
 import type { Transaction } from "../types";
+
+function unsupportedLegacyFinanceApi() {
+  return Promise.reject(
+    new Error("Backend hien khong expose API transaction legacy. Vui long dung wallet history."),
+  );
+}
 
 export const financeApi = {
   createTransaction(payload: Partial<Transaction>) {
-    return call<Transaction>({
-      method: "POST",
-      url: "/api/v1/transactions",
-      data: payload,
-    });
+    void payload;
+    return unsupportedLegacyFinanceApi() as Promise<Transaction>;
   },
   listTransactions(milestoneId: number) {
-    return call<Transaction[]>({
-      method: "GET",
-      url: `/api/v1/milestones/${milestoneId}/transactions`,
-    });
+    void milestoneId;
+    return Promise.resolve([]);
   },
   updateTransactionStatus(transactionId: number, status: string) {
-    return call<Transaction>({
-      method: "PATCH",
-      url: `/api/v1/transactions/${transactionId}/status`,
-      params: { status },
-    });
+    void transactionId;
+    void status;
+    return unsupportedLegacyFinanceApi() as Promise<Transaction>;
   },
   paymentWebhook(
     transactionId: number,
@@ -28,10 +26,10 @@ export const financeApi = {
     bankTxCode?: string,
     receiptImgUrl?: string,
   ) {
-    return call<Transaction>({
-      method: "POST",
-      url: `/api/v1/transactions/${transactionId}/webhook`,
-      params: { paymentStatus, bankTxCode, receiptImgUrl },
-    });
+    void transactionId;
+    void paymentStatus;
+    void bankTxCode;
+    void receiptImgUrl;
+    return unsupportedLegacyFinanceApi() as Promise<Transaction>;
   },
 };

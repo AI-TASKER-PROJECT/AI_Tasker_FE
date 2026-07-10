@@ -296,10 +296,6 @@ export interface Dispute {
   staffAccessExpiresAt?: string;
   staffSlaDueAt?: string;
   staffSlaEscalatedAt?: string;
-  adminFinalExpertPercentage?: number;
-  adminFinalNote?: string;
-  adminRevisionNote?: string;
-  adminRevisionRequestedAt?: string;
   previousMilestoneStatus?: string;
   resolutionType?: string;
   resolvedAt?: string;

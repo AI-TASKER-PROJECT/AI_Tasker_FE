@@ -184,14 +184,9 @@ export function MasterDataPage() {
   };
 
   const saveCriteria = async () => {
-    const saved = await contractApi.createCriteria({
-      criteriaCode: criteriaForm.criteriaCode,
-      category: "GENERAL",
-      description: criteriaForm.description,
-      isActive: criteriaForm.isActive,
-      sortOrder: Number(criteriaForm.sortOrder) || 0,
-    });
-    setCriteria((items) => [...items, saved]);
+    setError(
+      "Backend da chuyen acceptance criteria thanh du lieu rieng cua tung milestone. Khong con API tao criteria global.",
+    );
     setCriteriaOpen(false);
   };
 

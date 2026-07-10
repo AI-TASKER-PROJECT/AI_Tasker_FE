@@ -119,10 +119,9 @@ export const profileApi = {
     });
   },
   getPortfolioByExpert(expertId: number) {
-    return call<Portfolio>({
-      method: "GET",
-      url: `/api/v1/profiles/portfolio/expert/${expertId}`,
-    });
+    return profileApi
+      .listPortfolios()
+      .then((items) => items.find((item) => item.expertId === expertId) || null);
   },
   getFileViewUrl(path: string) {
     return call<string>({

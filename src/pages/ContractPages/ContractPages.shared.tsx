@@ -107,6 +107,10 @@ export function calculateSecurityDeposit(totalBudget?: number) {
   return Math.round(Number(totalBudget || 0) * 20) / 100;
 }
 
+export function calculateExpertSecurityDeposit(totalBudget?: number) {
+  return Math.round(Number(totalBudget || 0) * 10) / 100;
+}
+
 export function formatTimelineWeeks(timelineDays?: number) {
   const weeks = Math.max(1, Math.ceil(Number(timelineDays || 0) / 7));
   return `${weeks} tuần`;
@@ -292,13 +296,15 @@ export function getContractNextAction({
   }
   if (contractStatus === "PENDING") {
     return {
-      tone: role === "BUSINESS" ? "warning" : "info",
+      tone: role === "BUSINESS" || role === "EXPERT" ? "warning" : "info",
       title:
         role === "BUSINESS"
-          ? "Bạn cần thanh toán ký quỹ để kích hoạt contract."
-          : "Đang chờ doanh nghiệp thanh toán ký quỹ.",
+          ? "Bạn cần thanh toán ký quỹ 20% để kích hoạt contract."
+          : role === "EXPERT"
+            ? "Bạn cần thanh toán ký quỹ 10% để kích hoạt contract."
+            : "Đang chờ hai bên thanh toán ký quỹ.",
       description:
-        "BE chỉ cho ký quỹ khi contract ở trạng thái PendingDeposit.",
+        "BE chỉ kích hoạt contract khi cả Business và Expert đều đã ký quỹ.",
     };
   }
   if (!businessAccepted) {
@@ -527,7 +533,9 @@ export function CreateDisputeInline({
       contractId,
       milestoneId,
       evidenceReport,
-      status: "Open",
+      initiatedBy: "BUSINESS",
+      initiationType: "OTHER",
+      status: "PENDING_SELF_RESOLVE",
     });
     setOpen(false);
   };

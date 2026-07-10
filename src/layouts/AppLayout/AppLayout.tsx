@@ -591,12 +591,14 @@ export function AppShell() {
     const currentSession = getSession();
     if (!currentSession?.accessToken) return;
 
-    const freshSession = await authApi.me();
+    const freshSession = currentSession.refreshToken
+      ? await authApi.refresh(currentSession.refreshToken)
+      : await authApi.me();
     saveSession({
       ...currentSession,
       ...freshSession,
-      accessToken: currentSession.accessToken,
-      refreshToken: currentSession.refreshToken,
+      accessToken: freshSession.accessToken || currentSession.accessToken,
+      refreshToken: freshSession.refreshToken || currentSession.refreshToken,
     });
   }, []);
 

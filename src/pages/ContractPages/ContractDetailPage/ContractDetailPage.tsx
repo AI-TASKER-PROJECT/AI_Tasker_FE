@@ -39,6 +39,7 @@ import {
   Textarea,
 } from "../../../components/ui";
 import {
+  calculateExpertSecurityDeposit,
   calculateSecurityDeposit,
   ContractLifecycle,
   ContractMetric,
@@ -110,6 +111,7 @@ export function ContractDetailPage() {
   } | null>(null);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
+  const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
@@ -191,7 +193,12 @@ export function ContractDetailPage() {
   }, [contract]);
 
   useEffect(() => {
-    if (!contract || session?.role !== "BUSINESS") return;
+    if (
+      !contract ||
+      (session?.role !== "BUSINESS" && session?.role !== "EXPERT")
+    ) {
+      return;
+    }
     let ignore = false;
 
     walletApi
@@ -224,9 +231,9 @@ export function ContractDetailPage() {
       setContract(updated);
       setContractNotice({
         tone: "success",
-        title: "Ký contract thành công.",
+        title: "Ký hợp đồng thành công.",
         message:
-          "Hệ thống đã ghi nhận xác nhận hợp đồng của bạn. Khi hai bên ký đủ contract và NDA, contract sẽ sẵn sàng cho bước tiếp theo.",
+          "Hệ thống đã ghi nhận xác nhận hợp đồng của bạn. Khi hai bên ký đủ hợp đồng và NDA, hợp đồng sẽ sẵn sàng cho bước tiếp theo.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -235,7 +242,7 @@ export function ContractDetailPage() {
         title:
           error instanceof Error
             ? error.message
-            : "Không thể ký contract. Vui lòng thử lại.",
+            : "Không thể ký hợp đồng. Vui lòng thử lại.",
       });
     }
   };
@@ -263,9 +270,6 @@ export function ContractDetailPage() {
     }
   };
 
-  const rejectContract = async () =>
-    setContract(await contractApi.reject(contract.contractId));
-
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
     setContract(updated);
@@ -282,7 +286,10 @@ export function ContractDetailPage() {
     setDepositLoading(true);
     setContractNotice(null);
     try {
-      const result = await contractApi.payDeposit(contract.contractId);
+      const isExpertDeposit = session?.role === "EXPERT";
+      const result = isExpertDeposit
+        ? await contractApi.payExpertDeposit(contract.contractId)
+        : await contractApi.payDeposit(contract.contractId);
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
@@ -297,7 +304,7 @@ export function ContractDetailPage() {
         window.location.assign(result.redirectUrl);
         return;
       }
-      const depositAmount = result.data?.depositAmount ?? securityDepositAmount;
+      const depositAmount = result.data?.depositAmount ?? currentDepositAmount;
       const [, updatedWallet] = await Promise.all([
         refreshContract(),
         walletApi.current().catch(() => null),
@@ -307,23 +314,27 @@ export function ContractDetailPage() {
       window.dispatchEvent(new Event("aitasker:reload-wallet"));
       setContractNotice({
         tone: "success",
-        title: "Đã ký quỹ và kích hoạt contract.",
+        title: "Đã giữ tiền ký quỹ hợp đồng.",
         message: updatedWallet
-          ? `Backend đã hold ${formatCurrency(depositAmount)} vào escrow. Số dư khả dụng còn ${formatCurrency(updatedWallet.availableBalance)}, escrow hiện tại ${formatCurrency(updatedWallet.escrowBalance)}.`
-          : `Backend đã hold ${formatCurrency(depositAmount)} vào escrow và cập nhật contract/milestone.`,
+          ? `Hệ thống đã giữ ${formatCurrency(depositAmount)} vào tiền ký quỹ. Số dư khả dụng còn ${formatCurrency(updatedWallet.availableBalance)}, tiền ký quỹ hiện tại ${formatCurrency(updatedWallet.escrowBalance)}.`
+          : `Hệ thống đã giữ ${formatCurrency(depositAmount)} vào tiền ký quỹ. Hợp đồng sẽ được kích hoạt khi cả Chủ hợp đồng và Chuyên gia đều đã ký quỹ.`,
       });
+      setDepositPaidLocally(true);
     } catch (err) {
       setContractNotice({
         tone: "danger",
         title:
-          err instanceof Error ? err.message : "Không thể ký quỹ contract.",
+          err instanceof Error ? err.message : "Không thể ký quỹ hợp đồng.",
       });
     } finally {
       setDepositLoading(false);
     }
   };
   const terminate = async () => {
-    setContract(await contractApi.terminate(contract.contractId, reason));
+    await contractApi.requestTermination(contract.contractId, {
+      requestReason: reason,
+    });
+    await refreshContract();
     setTerminateOpen(false);
   };
   const contractTitle =
@@ -333,6 +344,16 @@ export function ContractDetailPage() {
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
+  const expertSecurityDepositAmount = calculateExpertSecurityDeposit(
+    contract.totalBudget,
+  );
+  const currentDepositAmount =
+    session?.role === "EXPERT"
+      ? expertSecurityDepositAmount
+      : securityDepositAmount;
+  const currentDepositPercentage = session?.role === "EXPERT" ? 10 : 20;
+  const currentDepositRoleLabel =
+    session?.role === "EXPERT" ? "Expert" : "Business";
   const ndaSigned = Boolean(
     contract.ndaSigned ||
     (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
@@ -425,17 +446,17 @@ export function ContractDetailPage() {
     activeDisputeCount: activeDisputes.length,
   });
   const canPayDeposit =
-    session?.role === "BUSINESS" && contractStatus === "PENDING";
+    (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+    contractStatus === "PENDING" &&
+    !depositPaidLocally;
   const canTerminate =
     (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
     !contractInProgress &&
     !["COMPLETED", "CANCELLED"].includes(contractStatus);
-  const canRejectContract =
-    session?.role === "EXPERT" && ["DRAFT", "PENDING"].includes(contractStatus);
   const availableBalance = paymentWallet?.availableBalance ?? 0;
   const depositMissingAmount = Math.max(
     0,
-    securityDepositAmount - availableBalance,
+    currentDepositAmount - availableBalance,
   );
   const hasEnoughDepositBalance = depositMissingAmount <= 0;
   const businessSignatureComplete = businessAccepted && businessNdaSigned;
@@ -727,11 +748,11 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
               title="Milestone trong draft"
-              description="Các ngân sách chốt được backend tạo từ job và proposal đã accepted."
+              description="Các ngân sách chốt được tạo từ job và proposal đã được chấp nhận."
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
-                    Tổng thời gian milestone
+                    Tổng thời gian mốc
                   </p>
                   <p className="mt-1 font-display text-lg font-black text-ink">
                     {totalMilestoneDurationLabel}
@@ -778,8 +799,8 @@ export function ContractDetailPage() {
               ))}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có milestone draft"
-                  description="Backend chưa trả contractMilestones cho contract này."
+                  title="Chưa có mốc draft"
+                  description="Hệ thống chưa có dữ liệu mốc cho hợp đồng này."
                 />
               )}
             </div>
@@ -804,19 +825,13 @@ export function ContractDetailPage() {
             {canPayDeposit && (
               <Button onClick={() => setDepositConfirmOpen(true)}>
                 <WalletCards className="h-4 w-4" />
-                Thanh toán ký quỹ
-              </Button>
-            )}
-            {canRejectContract && (
-              <Button variant="danger" onClick={rejectContract}>
-                <XCircle className="h-4 w-4" />
-                Từ chối hợp đồng
+                Thanh toán ký quỹ {currentDepositRoleLabel}
               </Button>
             )}
             {canTerminate && (
               <Button variant="danger" onClick={() => setTerminateOpen(true)}>
                 <XCircle className="h-4 w-4" />
-                Terminate
+                Hủy hợp đồng
               </Button>
             )}
           </div>
@@ -824,19 +839,19 @@ export function ContractDetailPage() {
         <Card className="p-6">
           <SectionHeading
             title="Vận hành thực tế"
-            description="Dữ liệu lấy từ milestone, deliverable, transaction và dispute endpoints hiện có."
+            description="Dữ liệu lấy từ mốc, sản phẩm bàn giao, giao dịch và tranh chấp hiện có."
           />
           <div className="mt-5 grid gap-3">
             <OperationStat
-              label="Milestone completed/released"
+              label="Mốc hoàn thành/giải ngân"
               value={`${completedMilestoneCount}/${jobMilestones.length}`}
             />
             <OperationStat
-              label="Milestone chờ business nghiệm thu"
+              label="Mốc chờ chủ hợp đồng nghiệm thu"
               value={`${underReviewCount}`}
             />
             <OperationStat
-              label="Dispute chưa xử lý xong"
+              label="Tranh chấp chưa xử lý xong"
               value={`${activeDisputes.length}`}
             />
             {jobMilestones.slice(0, 4).map((milestone) => (
@@ -862,7 +877,7 @@ export function ContractDetailPage() {
                 to={`/app/contracts/${contract.contractId}/workspace`}
                 variant="secondary"
               >
-                Xem tất cả milestone trong workspace
+                Xem tất cả mốc trong workspace
               </LinkButton>
             )}
           </div>
@@ -934,8 +949,8 @@ export function ContractDetailPage() {
       <Modal
         open={depositConfirmOpen}
         onClose={() => !depositLoading && setDepositConfirmOpen(false)}
-        title="Xác nhận ký quỹ contract"
-        description="Số tiền ký quỹ bằng 20% tổng ngân sách contract và sẽ được giữ trong escrow."
+        title="Xác nhận ký quỹ hợp đồng"
+        description={`Số tiền ký quỹ ${currentDepositRoleLabel} bằng ${currentDepositPercentage}% tổng ngân sách hợp đồng và sẽ được giữ trong escrow.`}
         size="lg"
         footer={
           <>
@@ -980,8 +995,8 @@ export function ContractDetailPage() {
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
-              label="Ký quỹ 20%"
-              value={formatCurrency(securityDepositAmount)}
+              label={`Ký quỹ ${currentDepositPercentage}%`}
+              value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
               label="Số dư khả dụng"
@@ -999,20 +1014,19 @@ export function ContractDetailPage() {
           ) : (
             <Notice
               tone="warning"
-              title="Bạn có chắc chắn muốn ký quỹ contract này?"
+              title="Bạn có chắc chắn muốn ký quỹ hợp đồng này?"
             >
-              Sau khi xác nhận, BE sẽ hold 20% giá trị contract vào escrow,
-              chuyển contract sang ACTIVE và cập nhật ngân sách milestone theo
-              proposal đã accept.
+              Sau khi xác nhận, Hệ thống sẽ giữ {currentDepositPercentage}% giá trị hợp đồng vào escrow,
+              sau đó kích hoạt hợp đồng khi cả Business và Expert đều đã ký quỹ.
             </Notice>
           )}
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Điều kiện trước khi ký quỹ"
-              description="Contract phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
+              description="Hợp đồng phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
-              <span>Contract: #{contract.contractId}</span>
+              <span>Hợp đồng: #{contract.contractId}</span>
               <span>Status: {contract.status}</span>
               <span>
                 Chữ ký/xác thực:{" "}
@@ -1023,7 +1037,7 @@ export function ContractDetailPage() {
                       .map((item) =>
                         item.completed
                           ? `${item.label} đã hoàn tất`
-                          : `${item.label} đã ký contract`,
+                          : `${item.label} đã ký hợp đồng`,
                       )
                       .join(", ")
                     : "Chưa có bên nào hoàn tất"}
@@ -1063,3 +1077,4 @@ export function ContractDetailPage() {
     </div>
   );
 }
+

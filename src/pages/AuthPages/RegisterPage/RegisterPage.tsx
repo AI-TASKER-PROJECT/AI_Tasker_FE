@@ -56,10 +56,8 @@ export function RegisterPage() {
         const emailExists = await authApi.checkEmail(email);
 
         if (emailExists) {
-          const session = await authApi.googleSignup({
+          const session = await authApi.googleLogin({
             credential,
-            fullName: payload.name || nameFromEmail(email),
-            phone: "",
             role: "BUSINESS",
           });
           saveSession(session);
@@ -611,4 +609,4 @@ export function RegisterPage() {
     </AuthFrame>
   );
 }
-
+

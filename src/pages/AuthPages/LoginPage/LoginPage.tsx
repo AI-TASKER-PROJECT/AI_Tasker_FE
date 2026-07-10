@@ -144,10 +144,8 @@ export function LoginPage() {
 
         if (emailExists) {
           //check email có tồn tại không
-          const session = await authApi.googleSignup({
+          const session = await authApi.googleLogin({
             credential,
-            fullName: payload.name || nameFromEmail(email),
-            phone: "",
             role: "BUSINESS",
           });
           saveSession(session); // có thì lưu session
@@ -411,4 +409,4 @@ export function LoginPage() {
     </AuthFrame>
   );
 }
-
+
