@@ -55,6 +55,16 @@ export const contractApi = {
       params: { reason },
     });
   },
+  abruptTermination(
+    contractId: number,
+    payload: { reason?: string; confirmedPenalty: boolean },
+  ) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/abrupt-termination`,
+      data: payload,
+    });
+  },
   requestTermination(
     contractId: number,
     payload: Partial<TerminationRequest>,
@@ -145,6 +155,12 @@ export const contractApi = {
       method: "POST",
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports`,
       data: payload,
+    });
+  },
+  requestProgressReport(contractId: number, milestoneId: number) {
+    return call<Milestone>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-report-request`,
     });
   },
   listProgressReports(contractId: number, milestoneId: number) {

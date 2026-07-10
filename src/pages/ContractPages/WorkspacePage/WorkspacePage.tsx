@@ -49,7 +49,7 @@ type NoticeTone = "success" | "danger" | "info" | "warning";
 
 const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
 const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
-const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS"]);
+const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const DEPOSITABLE_STATUSES = new Set(["PENDING"]);
 const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"]);
 
@@ -151,34 +151,6 @@ function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
     return "Hint: Milestone da hoan tat. Business co the mo milestone tiep theo neu con.";
   }
   return "Hint: Theo doi trang thai milestone va chi thao tac tren moc dang active.";
-}
-
-function buildStructuredFeedback({
-  category,
-  severity,
-  requiresAdjustment,
-  dodChecklist,
-  feedback,
-}: {
-  category: string;
-  severity: string;
-  requiresAdjustment: boolean;
-  dodChecklist: string[];
-  feedback: string;
-}) {
-  const checklist =
-    dodChecklist.length > 0
-      ? dodChecklist.map((item) => `- ${item}`).join("\n")
-      : "- Khong chon tieu chi DoD cu the";
-  return [
-    `Category: ${category}`,
-    `Severity: ${severity}`,
-    `Requires adjustment: ${requiresAdjustment ? "Yes" : "No"}`,
-    "DoD checklist:",
-    checklist,
-    "Feedback:",
-    feedback,
-  ].join("\n");
 }
 
 function disputeWorkspaceNotice(dispute?: Dispute) {
@@ -301,10 +273,13 @@ export function WorkspacePage() {
   } | null>(null);
   const [progressFeedbackDetail, setProgressFeedbackDetail] =
     useState<MilestoneProgressReport | null>(null);
+  const [deliverableFeedbackDetail, setDeliverableFeedbackDetail] = useState<{
+    deliverable: Deliverable;
+    milestoneName: string;
+    attemptNumber: number;
+  } | null>(null);
   const [disputeOpen, setDisputeOpen] = useState<Milestone | null>(null);
-  const [terminationOpen, setTerminationOpen] = useState<Milestone | null>(
-    null,
-  );
+  const [abruptTerminationOpen, setAbruptTerminationOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deliverableForm, setDeliverableForm] = useState({
     type: "PROCESS",
@@ -314,11 +289,7 @@ export function WorkspacePage() {
     percentComplete: "50",
   });
   const [feedbackReason, setFeedbackReason] = useState("");
-  const [finalFeedbackForm, setFinalFeedbackForm] = useState({
-    category: "Core Logic",
-    severity: "High",
-    dodChecklist: [] as string[],
-  });
+  const [feedbackRequired, setFeedbackRequired] = useState(false);
   const [progressFeedbackForm, setProgressFeedbackForm] = useState({
     feedback: "",
     category: "Core Logic",
@@ -328,9 +299,7 @@ export function WorkspacePage() {
   });
   const [expandedMilestones, setExpandedMilestones] = useState<Record<number, boolean>>({});
   const [disputeReason, setDisputeReason] = useState("");
-  const [terminationReason, setTerminationReason] = useState(
-    "Milestone đã quá thời hạn nhưng chưa có sản phẩm đạt yêu cầu.",
-  );
+  const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
     tone: NoticeTone;
     title: string;
@@ -567,30 +536,18 @@ export function WorkspacePage() {
     if (!feedbackOpen) return;
     const reason = feedbackReason.trim();
     if (!reason) {
-      setWorkspaceNotice({
-        tone: "warning",
-        title: "Vui lòng nhập feedback để Expert biết cần chỉnh gì.",
-      });
+      setFeedbackRequired(true);
       return;
     }
     const milestone = feedbackOpen;
-    const structuredReason = buildStructuredFeedback({
-      ...finalFeedbackForm,
-      requiresAdjustment: true,
-      feedback: reason,
-    });
     await runMilestoneAction(
       milestone,
       "feedback",
-      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, structuredReason),
+      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, reason),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
-    setFinalFeedbackForm({
-      category: "Core Logic",
-      severity: "High",
-      dodChecklist: [],
-    });
+    setFeedbackRequired(false);
     setFeedbackOpen(null);
   };
 
@@ -719,43 +676,6 @@ export function WorkspacePage() {
       setActionLoading(null);
     }
   };
-
-  const requestOverdueTermination = async () => {
-    if (!terminationOpen || !contract) return;
-    const sourceMilestoneId = getSourceMilestoneId(terminationOpen);
-    if (!sourceMilestoneId) {
-      setWorkspaceNotice({
-        tone: "danger",
-        title: "Không xác định được milestone hiện tại để yêu cầu hủy.",
-      });
-      return;
-    }
-    setActionLoading(`terminate:${sourceMilestoneId}`);
-    try {
-      await contractApi.requestTermination(contract.contractId, {
-        currentMilestoneId: sourceMilestoneId,
-        requestReason:
-          terminationReason.trim() ||
-          "Business muốn hủy contract và chờ Expert phản hồi trong 3 ngày.",
-      });
-      await refreshAfterAction();
-      setMilestoneNotice(sourceMilestoneId, {
-        tone: "success",
-        title: "Đã gửi yêu cầu hủy contract cho Expert.",
-        message:
-          "Tiền chưa được hoàn trong lúc chờ Expert phản hồi. Nếu Expert không phản hồi trong 3 ngày, hệ thống sẽ tự động hủy contract và refund các milestone chưa hoàn thành.",
-      });
-      setTerminationOpen(null);
-    } catch (error) {
-      setMilestoneNotice(sourceMilestoneId, {
-        tone: "danger",
-        title: getApiErrorMessage(error),
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const disputeBusinessTermination = async (request: TerminationRequest) => {
     if (!request.terminationRequestId) return;
     const reason = window.prompt(
@@ -858,6 +778,40 @@ export function WorkspacePage() {
     }
   };
 
+  const submitAbruptTermination = async () => {
+    if (!contract) return;
+    setActionLoading("abrupt-termination");
+    try {
+      const updated = await contractApi.abruptTermination(contract.contractId, {
+        reason:
+          abruptTerminationReason.trim() ||
+          (session?.role === "EXPERT"
+            ? "Expert boi thuong 10% gia tri du an de huy ngang hop dong."
+            : "Business chap nhan mat 10% gia tri du an de huy ngang hop dong."),
+        confirmedPenalty: true,
+      });
+      setContract(updated);
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: "success",
+        title: "Da huy ngang hop dong.",
+        message:
+          session?.role === "EXPERT"
+            ? "He thong da khau tru 10% gia tri du an tu vi Expert va boi thuong cho Business."
+            : "He thong da chuyen 10% gia tri du an tu tien coc sang vi Expert va hoan phan con lai cho Business.",
+      });
+      setAbruptTerminationOpen(false);
+      setAbruptTerminationReason("");
+    } catch (error) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const autoApproveReviewSla = async () => {
     if (!contract) return;
     setActionLoading("review-sla");
@@ -927,6 +881,27 @@ export function WorkspacePage() {
     session?.role === "EXPERT" &&
     Boolean(activeTerminationRequest) &&
     awaitingExpertTerminationResponse;
+  const hasRejectedDeliverableHistory = milestones.some(
+    (milestone) => Number(milestone.rejectCount || 0) > 0,
+  );
+  const hasExpiredProgressReportRequest = milestones.some(
+    (milestone) => Boolean(milestone.progressReportRequestOverdue),
+  );
+  const hasAbruptTerminationBlockedMilestone = milestones.some((milestone) =>
+    ["UNDER_REVIEW", "DISPUTED"].includes(normalizeStatus(milestone.status)),
+  );
+  const canShowAbruptTermination =
+    (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+    contractStatus === "ACTIVE" &&
+    !contractActionsFrozen &&
+    !hasActiveTermination;
+  const canUseAbruptTermination =
+    canShowAbruptTermination &&
+    !hasAbruptTerminationBlockedMilestone &&
+    (session?.role !== "BUSINESS" ||
+      !hasRejectedDeliverableHistory ||
+      hasExpiredProgressReportRequest);
+  const abruptTerminationPenalty = Number(contract.totalBudget || 0) * 0.1;
   const deliverableOpenStatus = normalizeStatus(deliverableOpen?.status);
   const canOpenProgressReport =
     !contractActionsFrozen &&
@@ -957,6 +932,27 @@ export function WorkspacePage() {
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Xử lý nghiệm thu quá hạn
+                </Button>
+              )}
+              {canShowAbruptTermination && (
+                <Button
+                  variant="danger"
+                  disabled={!canUseAbruptTermination}
+                  title={
+                    hasRejectedDeliverableHistory &&
+                    !hasExpiredProgressReportRequest &&
+                    session?.role === "BUSINESS"
+                      ? "Hop dong da co lich su reject san pham, vui long dung luong yeu cau cham dut de staff/admin phan xu."
+                      : hasAbruptTerminationBlockedMilestone
+                        ? "Khong the huy ngang khi co milestone dang nghiem thu hoac tranh chap."
+                        : undefined
+                  }
+                  onClick={() => setAbruptTerminationOpen(true)}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  {session?.role === "EXPERT"
+                    ? "Boi thuong hop dong"
+                    : "Huy hop dong dot ngot"}
                 </Button>
               )}
               <Button variant="secondary" onClick={loadWorkspace}>
@@ -1138,6 +1134,14 @@ export function WorkspacePage() {
           const milestoneNotice = sourceMilestoneId
             ? milestoneNotices[sourceMilestoneId]
             : null;
+          const visibleMilestoneNotice =
+            milestoneNotice &&
+            !(
+              status === "UNDER_REVIEW" &&
+              milestoneNotice.title.toLowerCase().includes("feedback")
+            )
+              ? milestoneNotice
+              : null;
           const nextMilestone = milestones.find(
             (item) => Number(item.orderIndex) === Number(milestone.orderIndex) + 1,
           );
@@ -1175,7 +1179,13 @@ export function WorkspacePage() {
           const canDeposit =
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
-            DEPOSITABLE_STATUSES.has(status);
+            DEPOSITABLE_STATUSES.has(status) &&
+            milestones
+              .filter(
+                (item) =>
+                  Number(item.orderIndex) < Number(milestone.orderIndex),
+              )
+              .every((item) => normalizeStatus(item.status) === "COMPLETED");
           const canStart =
             !contractActionsFrozen &&
             session?.role === "EXPERT" &&
@@ -1194,6 +1204,11 @@ export function WorkspacePage() {
             !contractActionsFrozen &&
             session?.role === "EXPERT" &&
             PROGRESS_REPORT_STATUSES.has(status);
+          const canRequestProgressReport =
+            !contractActionsFrozen &&
+            session?.role === "BUSINESS" &&
+            PROGRESS_REPORT_STATUSES.has(status) &&
+            !milestone.progressReportRequestPending;
           const canReview =
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
@@ -1204,13 +1219,6 @@ export function WorkspacePage() {
             DISPUTABLE_STATUSES.has(status) &&
             (!currentDispute ||
               normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
-          const canRequestTermination =
-            !contractActionsFrozen &&
-            session?.role === "BUSINESS" &&
-            ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
-              status,
-            ) &&
-            !hasActiveTermination;
           const isExpanded = sourceMilestoneId
             ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
             : true;
@@ -1232,9 +1240,7 @@ export function WorkspacePage() {
                     <StatusBadge
                       status={milestoneStatusLabel(milestone.status)}
                     />
-                    {sourceMilestoneId && (
-                      <Badge tone="slate">Milestone #{sourceMilestoneId}</Badge>
-                    )}
+                    <Badge tone="slate">{milestone.milestoneName}</Badge>
                   </div>
                   <h3 className="mt-3 font-display text-xl font-extrabold text-ink">
                     {milestone.milestoneName}
@@ -1319,6 +1325,30 @@ export function WorkspacePage() {
                       Bắt đầu mốc
                     </Button>
                   )}
+                  {canRequestProgressReport && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={isLoading("progress-request")}
+                      onClick={() =>
+                        runMilestoneAction(
+                          milestone,
+                          "progress-request",
+                          (sourceMilestoneId) =>
+                            contractApi.requestProgressReport(
+                              contract.contractId,
+                              sourceMilestoneId,
+                            ),
+                          Number(milestone.progressReportRequestCount || 0) === 0
+                            ? "Da yeu cau Expert nop bao cao tien do trong 24h."
+                            : "Da yeu cau Expert nop lai bao cao tien do trong 12h.",
+                        )
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                      Yeu cau bao cao tien do
+                    </Button>
+                  )}
                   {canSubmit && (
                     <>
                       {canSubmitProgress && (
@@ -1388,28 +1418,37 @@ export function WorkspacePage() {
                       Yêu cầu staff can thiệp
                     </Button>
                   )}
-                  {canRequestTermination && (
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => setTerminationOpen(milestone)}
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                      Hủy hợp đồng
-                    </Button>
-                  )}
                 </div>
               </div>
 
               {isExpanded ? (
                 <>
-              {milestoneNotice && (
+              {visibleMilestoneNotice && (
                 <div className="mt-4">
                   <Notice
-                    tone={milestoneNotice.tone}
-                    title={milestoneNotice.title}
+                    tone={visibleMilestoneNotice.tone}
+                    title={visibleMilestoneNotice.title}
                   >
-                    {milestoneNotice.message}
+                    {visibleMilestoneNotice.message}
+                  </Notice>
+                </div>
+              )}
+
+              {milestone.progressReportRequestPending && (
+                <div className="mt-4">
+                  <Notice
+                    tone={
+                      milestone.progressReportRequestOverdue ? "danger" : "warning"
+                    }
+                    title={
+                      milestone.progressReportRequestOverdue
+                        ? "Qua han nop bao cao tien do"
+                        : "Business da yeu cau bao cao tien do"
+                    }
+                  >
+                    {milestone.progressReportRequestOverdue
+                      ? "Expert chua nop bao cao tien do dung han. Business co quyen huy ngang hop dong."
+                      : `Expert can nop bao cao tien do truoc ${formatDateTime(milestone.progressReportDueAt)}.`}
                   </Notice>
                 </div>
               )}
@@ -1480,14 +1519,14 @@ export function WorkspacePage() {
                     </span>
                   </div>
                   <div className="mt-3 grid gap-2">
-                    {milestoneReports.map((item) => (
+                    {milestoneReports.map((item, reportIndex) => (
                       <div
                         key={`report-${item.progressReportId}`}
                         className="rounded-xl bg-white p-4 text-sm text-slate-600 shadow-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-bold text-ink">
-                            Progress report #{item.progressReportId}
+                            Bao cao tien do lan {reportIndex + 1}
                           </p>
                           <div className="flex flex-wrap items-center gap-2">
                             {item.checkpointType && (
@@ -1616,14 +1655,14 @@ export function WorkspacePage() {
                         </div>
                       </div>
                     ))}
-                    {milestoneDeliverables.map((item) => (
+                    {milestoneDeliverables.map((item, deliverableIndex) => (
                       <div
                         key={item.deliverableId}
                         className="rounded-xl bg-white p-4 text-sm text-slate-600 shadow-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-bold text-ink">
-                            Final product #{item.deliverableId}
+                            Ban nop final product lan {deliverableIndex + 1}
                           </p>
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge
@@ -1692,6 +1731,23 @@ export function WorkspacePage() {
                             </p>
                           </div>
                         )}
+                        {item.rejectionFeedback && (
+                          <div className="mt-3">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() =>
+                                setDeliverableFeedbackDetail({
+                                  deliverable: item,
+                                  milestoneName: milestone.milestoneName,
+                                  attemptNumber: deliverableIndex + 1,
+                                })
+                              }
+                            >
+                              Xem chi tiet feedback
+                            </Button>
+                          </div>
+                        )}
                         {session?.role === "BUSINESS" &&
                           latestDeliverable?.deliverableId === item.deliverableId &&
                           canReview && (
@@ -1714,7 +1770,11 @@ export function WorkspacePage() {
                               <Button
                                 size="sm"
                                 variant="danger"
-                                onClick={() => setFeedbackOpen(milestone)}
+                                onClick={() => {
+                                  setFeedbackReason("");
+                                  setFeedbackRequired(false);
+                                  setFeedbackOpen(milestone);
+                                }}
                               >
                                 <XCircle className="h-4 w-4" />
                                 Reject bản nộp này
@@ -2055,13 +2115,63 @@ export function WorkspacePage() {
       </Modal>
 
       <Modal
+        open={Boolean(deliverableFeedbackDetail)}
+        onClose={() => setDeliverableFeedbackDetail(null)}
+        title="Chi tiet feedback"
+        footer={
+          <Button
+            variant="secondary"
+            onClick={() => setDeliverableFeedbackDetail(null)}
+          >
+            Dong
+          </Button>
+        }
+      >
+        {deliverableFeedbackDetail && (
+          <div className="grid gap-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="amber">Da feedback</Badge>
+              <Badge tone="slate">
+                {deliverableFeedbackDetail.milestoneName}
+              </Badge>
+              <Badge tone="brand">
+                Lan nop {deliverableFeedbackDetail.attemptNumber}
+              </Badge>
+              {deliverableFeedbackDetail.deliverable.rejectedAt && (
+                <span className="text-xs font-bold text-slate-400">
+                  {formatDateTime(deliverableFeedbackDetail.deliverable.rejectedAt)}
+                </span>
+              )}
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                Noi dung feedback
+              </p>
+              <p className="mt-2 whitespace-pre-wrap break-words leading-6">
+                {deliverableFeedbackDetail.deliverable.rejectionFeedback}
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         open={Boolean(feedbackOpen)}
-        onClose={() => setFeedbackOpen(null)}
+        onClose={() => {
+          setFeedbackOpen(null);
+          setFeedbackRequired(false);
+        }}
         title="Reject final product"
         description="Feedback này sẽ được gửi cho Expert để chỉnh sửa và nộp lại final product."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setFeedbackOpen(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFeedbackOpen(null);
+                setFeedbackRequired(false);
+              }}
+            >
               Hủy
             </Button>
             <Button
@@ -2080,88 +2190,21 @@ export function WorkspacePage() {
           </>
         }
       >
-        <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 p-4">
-          <p className="text-sm font-extrabold text-ink">Structured rejection panel</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <Field label="Category">
-              <div className="flex flex-wrap gap-2">
-                {["Core Logic", "UI/UX", "Security", "Performance"].map((category) => (
-                  <Button
-                    key={category}
-                    type="button"
-                    size="sm"
-                    variant={finalFeedbackForm.category === category ? "primary" : "secondary"}
-                    onClick={() =>
-                      setFinalFeedbackForm((value) => ({
-                        ...value,
-                        category,
-                      }))
-                    }
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
-            </Field>
-            <Field label="Severity">
-              <div className="flex flex-wrap gap-2">
-                {["Low", "Medium", "High", "Critical"].map((severity) => (
-                  <Button
-                    key={severity}
-                    type="button"
-                    size="sm"
-                    variant={finalFeedbackForm.severity === severity ? "primary" : "secondary"}
-                    onClick={() =>
-                      setFinalFeedbackForm((value) => ({
-                        ...value,
-                        severity,
-                      }))
-                    }
-                  >
-                    {severity}
-                  </Button>
-                ))}
-              </div>
-            </Field>
-          </div>
-        </div>
-        {feedbackOpen && (
-          <Field label="DoD checklist chua dat">
-            <div className="grid gap-2">
-              {(criteriaByMilestone[getSourceMilestoneId(feedbackOpen) || -1] || []).map((item) => (
-                <label
-                  key={item.criteriaId}
-                  className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600"
-                >
-                  <input
-                    type="checkbox"
-                    checked={finalFeedbackForm.dodChecklist.includes(item.description)}
-                    onChange={(event) =>
-                      setFinalFeedbackForm((value) => ({
-                        ...value,
-                        dodChecklist: event.target.checked
-                          ? [...value.dodChecklist, item.description]
-                          : value.dodChecklist.filter((entry) => entry !== item.description),
-                      }))
-                    }
-                  />
-                  <span>{item.description}</span>
-                </label>
-              ))}
-              {(criteriaByMilestone[getSourceMilestoneId(feedbackOpen) || -1] || []).length === 0 && (
-                <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-400">
-                  Milestone nay chua co DoD checklist rieng.
-                </p>
-              )}
-            </div>
-          </Field>
-        )}
         <Field label="Feedback cho final product">
           <Textarea
             value={feedbackReason}
-            onChange={(event) => setFeedbackReason(event.target.value)}
-            placeholder="Ví dụ: final product chưa đáp ứng tiêu chí DoD, demo thiếu case..."
+            onChange={(event) => {
+              setFeedbackReason(event.target.value);
+              if (event.target.value.trim()) setFeedbackRequired(false);
+            }}
+            placeholder="Vui long nhap feedback de Expert biet can chinh gi..."
+            className={feedbackRequired ? "border-amber-300 bg-amber-50/40" : undefined}
           />
+          {feedbackRequired && (
+            <p className="mt-2 text-sm font-bold text-amber-700">
+              Vui long nhap feedback de Expert biet can chinh gi.
+            </p>
+          )}
         </Field>
       </Modal>
 
@@ -2201,38 +2244,58 @@ export function WorkspacePage() {
       </Modal>
 
       <Modal
-        open={Boolean(terminationOpen)}
-        onClose={() => setTerminationOpen(null)}
-        title="Hủy hợp đồng"
-        description="Yêu cầu sẽ được gửi cho Expert phản hồi trong 3 ngày. Tiền chưa được hoàn cho đến khi Expert đồng ý, không phản hồi quá hạn, hoặc staff/admin xử lý xong."
+        open={abruptTerminationOpen}
+        onClose={() => setAbruptTerminationOpen(false)}
+        title={
+          session?.role === "EXPERT"
+            ? "Boi thuong hop dong"
+            : "Huy hop dong dot ngot"
+        }
+        description={
+          session?.role === "EXPERT"
+            ? `He thong se khau tru ${formatCurrency(abruptTerminationPenalty)} tu vi cua ban de boi thuong cho Business.`
+            : `Hanh dong nay se chuyen ${formatCurrency(abruptTerminationPenalty)} tu tien coc sang vi Expert de den bu ngay cong.`
+        }
         footer={
           <>
-            <Button variant="secondary" onClick={() => setTerminationOpen(null)}>
-              Hủy
+            <Button
+              variant="secondary"
+              onClick={() => setAbruptTerminationOpen(false)}
+            >
+              Huy
             </Button>
             <Button
               variant="danger"
-              onClick={requestOverdueTermination}
-              loading={
-                terminationOpen
-                  ? actionLoading ===
-                    `terminate:${getSourceMilestoneId(terminationOpen)}`
-                  : false
-              }
+              onClick={submitAbruptTermination}
+              loading={actionLoading === "abrupt-termination"}
             >
               <AlertTriangle className="h-4 w-4" />
-              Gửi yêu cầu
+              Xac nhan
             </Button>
           </>
         }
       >
-        <Field label="Lý do hủy">
-          <Textarea
-            value={terminationReason}
-            onChange={(event) => setTerminationReason(event.target.value)}
-            placeholder="Nhập lý do Business muốn hủy contract..."
-          />
-        </Field>
+        <div className="grid gap-4">
+          <Notice
+            tone="warning"
+            title={
+              session?.role === "EXPERT"
+                ? "Ban se bi tru 10% gia tri du an."
+                : "Ban se mat 10% gia tri du an."
+            }
+          >
+            {session?.role === "EXPERT"
+              ? "Neu vi khong du so du kha dung, he thong se tu choi thao tac nay."
+              : "Neu hop dong da tung co san pham bi reject, Business phai dung luong yeu cau cham dut de staff/admin phan xu."}
+          </Notice>
+          <Field label="Ly do">
+            <Textarea
+              value={abruptTerminationReason}
+              onChange={(event) => setAbruptTerminationReason(event.target.value)}
+              placeholder="Nhap ly do huy ngang hop dong..."
+            />
+          </Field>
+        </div>
       </Modal>
 
     </div>
