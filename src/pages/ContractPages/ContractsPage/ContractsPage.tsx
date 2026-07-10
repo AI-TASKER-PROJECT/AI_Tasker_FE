@@ -8,7 +8,7 @@ import { formatTimelineWeeks, normalizeContractStatus, translateContractStatus }
 export function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [activeStatus, setActiveStatus] = useState<
-    "ALL" | "DRAFT" | "PENDING" | "ACTIVE" | "COMPLETED"
+    "ALL" | "DRAFT" | "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED"
   >("ALL");
 
   useEffect(() => {
@@ -38,6 +38,9 @@ export function ContractsPage() {
   const completedCount = contracts.filter(
     (contract) => normalizeContractStatus(contract.status) === "COMPLETED",
   ).length;
+  const cancelledCount = contracts.filter(
+    (contract) => normalizeContractStatus(contract.status) === "CANCELLED",
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -55,6 +58,7 @@ export function ContractsPage() {
             { id: "PENDING", label: "Chờ phản hồi", count: pendingCount },
             { id: "ACTIVE", label: "Đang hoạt động", count: activeCount },
             { id: "COMPLETED", label: "Hoàn thành", count: completedCount },
+            { id: "CANCELLED", label: "Đã hủy", count: cancelledCount },
           ].map((item) => (
             <Button
               key={item.id}
@@ -72,16 +76,14 @@ export function ContractsPage() {
         </div>
       </Card>
       <div className="grid gap-4 xl:grid-cols-3">
-        {filteredContracts.map((contract) => (
+        {filteredContracts.map((contract, index) => (
           <Card key={contract.contractId} hover className="p-5">
             <div className="flex items-start justify-between gap-3">
-              <Badge tone="brand">#{contract.contractId}</Badge>
+              <Badge tone="brand">#{index + 1}</Badge>
               <StatusBadge status={translateContractStatus(contract.status)} />
             </div>
             <h3 className="mt-4 font-display text-lg font-extrabold leading-7 text-ink">
-              {contract.contractTitle ||
-                contract.title ||
-                `Hợp đồng nháp #${contract.contractId}`}
+              {contract.contractTitle || contract.title || "Hợp đồng"}
             </h3>
             <p className="mt-2 text-xs font-bold text-slate-400">
               Ngày tạo: {formatDateTime(contract.createdAt)}

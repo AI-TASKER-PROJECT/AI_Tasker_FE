@@ -51,10 +51,18 @@ const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
 const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const DEPOSITABLE_STATUSES = new Set(["PENDING"]);
-const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"]);
+const DISPUTABLE_STATUSES = new Set([
+  "IN_PROGRESS",
+  "OVERDUE",
+  "UNDER_REVIEW",
+  "DISPUTED",
+]);
 
 function normalizeStatus(status?: string) {
-  return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
+  return (status || "")
+    .trim()
+    .replace(/[\s-]+/g, "_")
+    .toUpperCase();
 }
 
 function milestoneStatusLabel(status?: string) {
@@ -106,7 +114,9 @@ function checkpointLabel(checkpointType?: string) {
 
 function latestProgressStatusLabel(report: MilestoneProgressReport) {
   if (report.businessFeedback) {
-    return report.requiresAdjustment ? "Đã feedback, cần chỉnh sửa" : "Đã feedback";
+    return report.requiresAdjustment
+      ? "Đã feedback, cần chỉnh sửa"
+      : "Đã feedback";
   }
   return "Đã nộp, chờ business xem";
 }
@@ -121,9 +131,13 @@ function latestDeliverableStatusLabel(milestoneStatus?: string) {
 }
 
 function isActiveMilestoneStatus(status?: string) {
-  return ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
-    normalizeStatus(status),
-  );
+  return [
+    "DEPOSITED",
+    "IN_PROGRESS",
+    "OVERDUE",
+    "UNDER_REVIEW",
+    "DISPUTED",
+  ].includes(normalizeStatus(status));
 }
 
 function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
@@ -156,32 +170,33 @@ function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
 function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
-    title: dispute ? `Tranh chấp #${dispute.disputeId}` : "Tranh chấp",
-    message: "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
+    title: "Tranh chấp",
+    message:
+      "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
   };
   const messages: Record<string, { title: string; message: string }> = {
     PENDING_SELF_RESOLVE: {
-      title: `Tranh chấp #${dispute?.disputeId} - Hai bên đang tự xử lý`,
+      title: `Tranh chấp - Hai bên đang tự xử lý`,
       message:
         "Doanh nghiệp và Chuyên gia đang tự trao đổi. Nếu không thống nhất, hãy gửi yêu cầu staff can thiệp.",
     },
     ESCALATION_REQUESTED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Đã gửi yêu cầu staff`,
+      title: `Tranh chấp - Đã gửi yêu cầu staff`,
       message:
         "Yêu cầu can thiệp đã được gửi. Hệ thống đang chờ staff phù hợp tiếp nhận hoặc admin phân công.",
     },
     STAFF_REVIEWING: {
-      title: `Tranh chấp #${dispute?.disputeId} - Staff đang kiểm tra`,
+      title: `Tranh chấp - Staff đang kiểm tra`,
       message:
         "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ gửi báo cáo cho admin.",
     },
     STAFF_DECIDED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Chờ admin quyết toán`,
+      title: `Tranh chấp - Chờ admin quyết toán`,
       message:
         "Staff đã gửi báo cáo kỹ thuật và tỷ lệ chia tiền ký quỹ. Admin sẽ đọc báo cáo và thực thi quyết toán.",
     },
     RESOLVED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Đã xử lý xong`,
+      title: `Tranh chấp - Đã xử lý xong`,
       message:
         "Tranh chấp đã được quyết toán. Doanh nghiệp và Chuyên gia có thể xem kết quả giao dịch cuối cùng.",
     },
@@ -297,7 +312,9 @@ export function WorkspacePage() {
     dodChecklist: [] as string[],
     requiresAdjustment: false,
   });
-  const [expandedMilestones, setExpandedMilestones] = useState<Record<number, boolean>>({});
+  const [expandedMilestones, setExpandedMilestones] = useState<
+    Record<number, boolean>
+  >({});
   const [disputeReason, setDisputeReason] = useState("");
   const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
@@ -341,7 +358,21 @@ export function WorkspacePage() {
   }, [id]);
 
   useEffect(() => {
-    queueMicrotask(() => void loadWorkspace());
+    if (sessionStorage.getItem("justActivatedContract") === "true") {
+      sessionStorage.removeItem("justActivatedContract");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setWorkspaceNotice({
+        tone: "info",
+        title: "Triển khai dự án",
+        message: "Hãy kí quỹ cột mốc để chuyên gia tiến hành làm việc.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadWorkspace();
   }, [loadWorkspace]);
 
   useEffect(() => {
@@ -393,7 +424,15 @@ export function WorkspacePage() {
         if (status === "OVERDUE") summary.overdue += 1;
         return summary;
       },
-      { done: 0, review: 0, disputed: 0, pending: 0, ready: 0, working: 0, overdue: 0 },
+      {
+        done: 0,
+        review: 0,
+        disputed: 0,
+        pending: 0,
+        ready: 0,
+        working: 0,
+        overdue: 0,
+      },
     );
   }, [milestones]);
 
@@ -543,7 +582,8 @@ export function WorkspacePage() {
     await runMilestoneAction(
       milestone,
       "feedback",
-      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, reason),
+      (sourceMilestoneId) =>
+        contractApi.rejectMilestone(sourceMilestoneId, structuredReason),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
@@ -553,7 +593,9 @@ export function WorkspacePage() {
 
   const submitProgressFeedback = async () => {
     if (!progressFeedbackOpen || !contract) return;
-    const sourceMilestoneId = getSourceMilestoneId(progressFeedbackOpen.milestone);
+    const sourceMilestoneId = getSourceMilestoneId(
+      progressFeedbackOpen.milestone,
+    );
     const feedback = progressFeedbackForm.feedback.trim();
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
@@ -571,7 +613,9 @@ export function WorkspacePage() {
     }
     const checklist =
       progressFeedbackForm.dodChecklist.length > 0
-        ? progressFeedbackForm.dodChecklist.map((item) => `- ${item}`).join("\n")
+        ? progressFeedbackForm.dodChecklist
+            .map((item) => `- ${item}`)
+            .join("\n")
         : "- Không chọn tiêu chí DoD cụ thể";
     const structuredFeedback = [
       `Category: ${progressFeedbackForm.category}`,
@@ -582,7 +626,9 @@ export function WorkspacePage() {
       "Feedback:",
       feedback,
     ].join("\n");
-    setActionLoading(`progress-feedback:${progressFeedbackOpen.report.progressReportId}`);
+    setActionLoading(
+      `progress-feedback:${progressFeedbackOpen.report.progressReportId}`,
+    );
     try {
       const saved = await contractApi.feedbackProgressReport(
         contract.contractId,
@@ -634,16 +680,19 @@ export function WorkspacePage() {
       });
       return;
     }
-    const reason = disputeReason.trim() || "Hai bên không thống nhất về kết quả milestone.";
+    const reason =
+      disputeReason.trim() || "Hai bên không thống nhất về kết quả milestone.";
     setActionLoading(`dispute:${sourceMilestoneId}`);
     try {
       const existing = disputesByMilestone[sourceMilestoneId];
-      if (existing && normalizeStatus(existing.status) !== "PENDING_SELF_RESOLVE") {
+      if (
+        existing &&
+        normalizeStatus(existing.status) !== "PENDING_SELF_RESOLVE"
+      ) {
         setMilestoneNotice(sourceMilestoneId, {
           tone: "info",
           title: "Yêu cầu can thiệp đã được gửi trước đó.",
-          message:
-            disputeWorkspaceNotice(existing).message,
+          message: disputeWorkspaceNotice(existing).message,
         });
         setDisputeOpen(null);
         return;
@@ -803,7 +852,9 @@ export function WorkspacePage() {
     if (!contract) return;
     setActionLoading("review-sla");
     try {
-      const updated = await contractApi.autoApproveReviewSla(contract.contractId);
+      const updated = await contractApi.autoApproveReviewSla(
+        contract.contractId,
+      );
       await refreshAfterAction();
       setWorkspaceNotice({
         tone: "success",
@@ -831,8 +882,7 @@ export function WorkspacePage() {
     );
   }
 
-  const allDone =
-    milestones.length > 0 && counts.done === milestones.length;
+  const allDone = milestones.length > 0 && counts.done === milestones.length;
   const contractStatus = normalizeStatus(contract.status);
   const awaitingBusinessDecision =
     contractStatus === "AWAITING_CONTINUATION_DECISION";
@@ -846,15 +896,17 @@ export function WorkspacePage() {
   ].includes(contractStatus);
   const canBusinessDecideAfterDispute =
     session?.role === "BUSINESS" && awaitingBusinessDecision;
-  const hasActiveTermination = terminationRequests.some((request) =>
-    !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
-      normalizeStatus(request.status),
-    ),
+  const hasActiveTermination = terminationRequests.some(
+    (request) =>
+      !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
+        normalizeStatus(request.status),
+      ),
   );
-  const activeTerminationRequest = terminationRequests.find((request) =>
-    !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
-      normalizeStatus(request.status),
-    ),
+  const activeTerminationRequest = terminationRequests.find(
+    (request) =>
+      !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
+        normalizeStatus(request.status),
+      ),
   );
   const awaitingExpertTerminationResponse =
     normalizeStatus(activeTerminationRequest?.status) ===
@@ -905,8 +957,8 @@ export function WorkspacePage() {
         <PageHeader
           title={`Workspace: ${contract.contractTitle ||
             contract.title ||
-            `Contract #${contract.contractId}`
-            }`}
+            `Hợp đồng`
+          }`}
           description="Business ký quỹ từng cột mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
           actions={
             <div className="flex flex-wrap gap-2">
@@ -1025,7 +1077,9 @@ export function WorkspacePage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="amber">{contractStatusLabel(contract.status)}</Badge>
+                <Badge tone="amber">
+                  {contractStatusLabel(contract.status)}
+                </Badge>
                 <Badge tone="slate">Contract tam khoa thao tac</Badge>
               </div>
               <h2 className="mt-3 font-display text-lg font-extrabold text-ink">
@@ -1131,7 +1185,8 @@ export function WorkspacePage() {
               ? milestoneNotice
               : null;
           const nextMilestone = milestones.find(
-            (item) => Number(item.orderIndex) === Number(milestone.orderIndex) + 1,
+            (item) =>
+              Number(item.orderIndex) === Number(milestone.orderIndex) + 1,
           );
           const nextMilestoneId = nextMilestone
             ? getSourceMilestoneId(nextMilestone)
@@ -1208,9 +1263,14 @@ export function WorkspacePage() {
             (!currentDispute ||
               normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
           const isExpanded = sourceMilestoneId
-            ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
+            ? (expandedMilestones[sourceMilestoneId] ??
+              isActiveMilestoneStatus(status))
             : true;
-          const hintLine = workspaceHintLine(session?.role, status, currentDispute);
+          const hintLine = workspaceHintLine(
+            session?.role,
+            status,
+            currentDispute,
+          );
 
           return (
             <Card
@@ -1228,38 +1288,30 @@ export function WorkspacePage() {
                     <StatusBadge
                       status={milestoneStatusLabel(milestone.status)}
                     />
-                    <Badge tone="slate">{milestone.milestoneName}</Badge>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <h3 className="font-display text-xl font-extrabold text-ink">
-                      {milestone.milestoneName}
-                    </h3>
-                    {status === "PENDING" ? (
-                      session?.role === "BUSINESS" ? (
-                        <Badge tone="rose">Doanh nghiệp cần ký quỹ</Badge>
-                      ) : (
-                        <Badge tone="amber">Chờ Doanh nghiệp ký quỹ</Badge>
-                      )
-                    ) : status && !["CANCELLED", "TERMINATED"].includes(status) ? (
-                      <Badge tone="mint">Đã ký quỹ</Badge>
-                    ) : null}
                   </div>
                   {milestone.description && (
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
                       {milestone.description}
                     </p>
                   )}
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold text-slate-500">
-                    <span>Ngân sách mốc: {formatCurrency(getMilestoneBudget(milestone))}</span>
+                  <div className="mt-3 flex flex-col gap-1 text-sm font-bold text-slate-500">
+                    <span>
+                      Ngân sách mốc:{" "}
+                      {formatCurrency(getMilestoneBudget(milestone))}
+                    </span>
                     <span>Thời gian: {milestoneDurationLabel(milestone)}</span>
                     {milestone.updatedAt && (
-                      <span>Cập nhật: {formatDateTime(milestone.updatedAt)}</span>
+                      <span>
+                        Cập nhật: {formatDateTime(milestone.updatedAt)}
+                      </span>
                     )}
                     {milestone.dueAt && (
                       <span>Hạn nộp: {formatDateTime(milestone.dueAt)}</span>
                     )}
                     {milestone.reviewDueAt && (
-                      <span>Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}</span>
+                      <span>
+                        Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1489,7 +1541,7 @@ export function WorkspacePage() {
                   <div className="mt-5 grid gap-4">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-sm font-extrabold text-ink">
-                        Định nghĩa hoàn thành / Tiêu chí nghiệm thu
+                        Definition of Done / Acceptance Criteria
                       </p>
                       <div className="mt-3 grid gap-2">
                         {visibleCriteria.map((description, index) => (
@@ -1975,26 +2027,34 @@ export function WorkspacePage() {
       >
         <div className="grid gap-4">
           <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
-            <p className="text-sm font-extrabold text-ink">Structured feedback panel</p>
+            <p className="text-sm font-extrabold text-ink">
+              Structured feedback panel
+            </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <Field label="Category">
                 <div className="flex flex-wrap gap-2">
-                  {["Core Logic", "UI/UX", "Security", "Performance"].map((category) => (
-                    <Button
-                      key={category}
-                      type="button"
-                      size="sm"
-                      variant={progressFeedbackForm.category === category ? "primary" : "secondary"}
-                      onClick={() =>
-                        setProgressFeedbackForm((value) => ({
-                          ...value,
-                          category,
-                        }))
-                      }
-                    >
-                      {category}
-                    </Button>
-                  ))}
+                  {["Core Logic", "UI/UX", "Security", "Performance"].map(
+                    (category) => (
+                      <Button
+                        key={category}
+                        type="button"
+                        size="sm"
+                        variant={
+                          progressFeedbackForm.category === category
+                            ? "primary"
+                            : "secondary"
+                        }
+                        onClick={() =>
+                          setProgressFeedbackForm((value) => ({
+                            ...value,
+                            category,
+                          }))
+                        }
+                      >
+                        {category}
+                      </Button>
+                    ),
+                  )}
                 </div>
               </Field>
               <Field label="Severity">
@@ -2004,7 +2064,11 @@ export function WorkspacePage() {
                       key={severity}
                       type="button"
                       size="sm"
-                      variant={progressFeedbackForm.severity === severity ? "primary" : "secondary"}
+                      variant={
+                        progressFeedbackForm.severity === severity
+                          ? "primary"
+                          : "secondary"
+                      }
                       onClick={() =>
                         setProgressFeedbackForm((value) => ({
                           ...value,
@@ -2023,7 +2087,9 @@ export function WorkspacePage() {
             <Field label="DoD checklist liên quan">
               <div className="grid gap-2">
                 {(
-                  criteriaByMilestone[getSourceMilestoneId(progressFeedbackOpen.milestone) || -1] || []
+                  criteriaByMilestone[
+                    getSourceMilestoneId(progressFeedbackOpen.milestone) || -1
+                  ] || []
                 ).map((item) => (
                   <label
                     key={item.criteriaId}
@@ -2031,20 +2097,28 @@ export function WorkspacePage() {
                   >
                     <input
                       type="checkbox"
-                      checked={progressFeedbackForm.dodChecklist.includes(item.description)}
+                      checked={progressFeedbackForm.dodChecklist.includes(
+                        item.description,
+                      )}
                       onChange={(event) =>
                         setProgressFeedbackForm((value) => ({
                           ...value,
                           dodChecklist: event.target.checked
                             ? [...value.dodChecklist, item.description]
-                            : value.dodChecklist.filter((entry) => entry !== item.description),
+                            : value.dodChecklist.filter(
+                                (entry) => entry !== item.description,
+                              ),
                         }))
                       }
                     />
                     <span>{item.description}</span>
                   </label>
                 ))}
-                {(criteriaByMilestone[getSourceMilestoneId(progressFeedbackOpen.milestone) || -1] || []).length === 0 && (
+                {(
+                  criteriaByMilestone[
+                    getSourceMilestoneId(progressFeedbackOpen.milestone) || -1
+                  ] || []
+                ).length === 0 && (
                   <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-400">
                     Cột mốc này chưa có tiêu chí nghiệm thu riêng.
                   </p>
@@ -2096,7 +2170,11 @@ export function WorkspacePage() {
         {progressFeedbackDetail && (
           <div className="grid gap-3 text-sm text-slate-600">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={progressFeedbackDetail.requiresAdjustment ? "amber" : "mint"}>
+              <Badge
+                tone={
+                  progressFeedbackDetail.requiresAdjustment ? "amber" : "mint"
+                }
+              >
                 {progressFeedbackDetail.requiresAdjustment
                   ? "Cần điều chỉnh"
                   : "Đã ghi nhận"}
@@ -2302,7 +2380,6 @@ export function WorkspacePage() {
           </Field>
         </div>
       </Modal>
-
     </div>
   );
 }
