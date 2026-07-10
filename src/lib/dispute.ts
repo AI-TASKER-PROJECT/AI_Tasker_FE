@@ -56,7 +56,10 @@ export function canBusinessRequestStaffIntervention(
   role?: Role,
   status?: string,
 ) {
-  return role === "BUSINESS" && status === "PENDING_SELF_RESOLVE";
+  return (
+    (role === "BUSINESS" || role === "EXPERT") &&
+    normalizeStatus(status) === "PENDING_SELF_RESOLVE"
+  );
 }
 
 export function canExpertInitiateDispute(
@@ -65,9 +68,7 @@ export function canExpertInitiateDispute(
 ) {
   return (
     role === "EXPERT" &&
-    ["IN_PROGRESS", "UNDER_REVIEW"].includes(
-      normalizeStatus(milestoneStatus),
-    )
+    ["IN_PROGRESS", "UNDER_REVIEW"].includes(normalizeStatus(milestoneStatus))
   );
 }
 
@@ -104,11 +105,7 @@ export function canStaffIssueDecision(
   dispute?: Dispute,
   currentStaffId?: number,
 ) {
-  return (
-    role === "STAFF" &&
-    normalizeStatus(dispute?.status) === "STAFF_REVIEWING" &&
-    isAssignedStaff(dispute, currentStaffId)
-  );
+  return canStaffRejectIntervention(role, dispute, currentStaffId);
 }
 
 export function canInitiatorCancelDispute(
@@ -117,7 +114,11 @@ export function canInitiatorCancelDispute(
   accountId?: number,
 ) {
   if (!role || !dispute) return false;
-  if (role === "ADMIN") return isActiveDisputeStatus(dispute.status);
+  if (role === "ADMIN") {
+    return ["PENDING_SELF_RESOLVE", "ESCALATION_REQUESTED"].includes(
+      normalizeStatus(dispute.status),
+    );
+  }
   const requesterMatchesRole = dispute.initiatedBy === role;
   const requesterMatchesAccount =
     dispute.initiatedByAccountId === undefined ||
@@ -126,7 +127,9 @@ export function canInitiatorCancelDispute(
   return (
     requesterMatchesRole &&
     requesterMatchesAccount &&
-    ["PENDING_SELF_RESOLVE", "ESCALATION_REQUESTED"].includes(dispute.status)
+    ["PENDING_SELF_RESOLVE", "ESCALATION_REQUESTED"].includes(
+      normalizeStatus(dispute.status),
+    )
   );
 }
 

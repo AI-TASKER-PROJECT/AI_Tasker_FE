@@ -61,6 +61,7 @@ import {
   DisputeDetailPage,
   DisputesPage,
   NewDisputePage,
+  TerminationDetailPage,
   VerificationDetailPage,
   VerificationsPage,
 } from "../pages/RiskPages";
@@ -364,6 +365,14 @@ export function AppRoutes() {
           element={
             <PageTransition>
               <DisputeDetailPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="termination-requests/:terminationRequestId"
+          element={
+            <PageTransition>
+              <TerminationDetailPage />
             </PageTransition>
           }
         />

@@ -1,12 +1,18 @@
 ﻿import {
   FileText,
+  ReceiptText,
   Scale,
   UserCheck,
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { adminApi, disputeApi, getApiErrorMessage } from "../../../lib/api";
+import {
+  adminApi,
+  contractApi,
+  disputeApi,
+  getApiErrorMessage,
+} from "../../../lib/api";
 import {
   canAdminAssignStaff,
   canInitiatorCancelDispute,
@@ -17,7 +23,7 @@ import {
 } from "../../../lib/dispute";
 import { useSession } from "../../../lib/session";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
-import type { Dispute, Staff } from "../../../types";
+import type { Contract, Dispute, Milestone, Staff } from "../../../types";
 import {
   Badge,
   Button,
@@ -38,7 +44,8 @@ type ActionName =
   | "assign"
   | "cancel"
   | "reject-intervention"
-  | "staff-decision";
+  | "staff-decision"
+  | "execute-settlement";
 
 export function DisputeDetailPage({
   staffMode = false,
@@ -54,6 +61,7 @@ export function DisputeDetailPage({
   const [notice, setNotice] = useState("");
   const [assignOpen, setAssignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [executeOpen, setExecuteOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(false);
   const [staffId, setStaffId] = useState("");
@@ -64,6 +72,8 @@ export function DisputeDetailPage({
     staffReport: "",
     note: "",
   });
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [submitting, setSubmitting] = useState<ActionName | null>(null);
 
   const numericDisputeId = Number(disputeId);
@@ -80,9 +90,20 @@ export function DisputeDetailPage({
       const data = await disputeApi.get(numericDisputeId);
       setDispute(data);
       setStaffId(data.assignedStaffId ? String(data.assignedStaffId) : "");
+      const [contractData, milestoneItems] = await Promise.all([
+        contractApi.getContract(data.contractId).catch(() => null),
+        contractApi.listMilestones(data.contractId).catch(() => []),
+      ]);
+      setContract(contractData);
+      setMilestone(
+        milestoneItems.find((item) => item.milestoneId === data.milestoneId) ||
+          null,
+      );
     } catch (loadError) {
       setError(getApiErrorMessage(loadError));
       setDispute(null);
+      setContract(null);
+      setMilestone(null);
     } finally {
       setLoading(false);
     }
@@ -156,14 +177,35 @@ export function DisputeDetailPage({
 
   const issueDecision = async () => {
     if (!dispute) return;
+    if (
+      !Number.isFinite(decision.expertPercent) ||
+      decision.expertPercent < 0 ||
+      decision.expertPercent > 100
+    ) {
+      setError("Payout percentage phải nằm trong khoảng 0-100.");
+      return;
+    }
+    if (!decision.note.trim() || !decision.staffReport.trim()) {
+      setError("Vui lòng nhập decision reason và Staff report.");
+      return;
+    }
     await runAction("staff-decision", async () => {
       await disputeApi.issueStaffDecision(dispute.disputeId, {
         expertPercent: decision.expertPercent,
-        staffReport: decision.staffReport,
-        note: decision.note,
+        staffReport: decision.staffReport.trim(),
+        note: decision.note.trim(),
       });
       setDecisionOpen(false);
       setNotice("Staff đã gửi quyết định. Settlement sẽ do backend xử lý.");
+    });
+  };
+
+  const executeSettlement = async () => {
+    if (!dispute) return;
+    await runAction("execute-settlement", async () => {
+      await disputeApi.executeSettlement(dispute.disputeId);
+      setNotice("Admin đã execute settlement theo phản hồi backend.");
+      setExecuteOpen(false);
     });
   };
 
@@ -195,6 +237,77 @@ export function DisputeDetailPage({
     session?.staffId,
   );
   const canDecide = canStaffIssueDecision(role, dispute, session?.staffId);
+  const canExecuteSettlement =
+    role === "ADMIN" && dispute.status === "STAFF_DECIDED";
+  const timeline = [
+    {
+      label: "Tạo dispute",
+      at: dispute.createdAt,
+      description:
+        dispute.evidenceReport || "Dispute được tạo theo trạng thái milestone.",
+    },
+    {
+      label: "Yêu cầu Staff can thiệp",
+      at: dispute.escalationRequestedAt || dispute.escalatedAt,
+      description:
+        dispute.escalationReason || "Một bên đã yêu cầu Staff can thiệp.",
+    },
+    {
+      label: "Staff bắt đầu review",
+      at: dispute.staffReviewStartedAt,
+      description: "Admin đã gán Staff xử lý dispute.",
+    },
+    {
+      label: "Staff từ chối can thiệp",
+      at: dispute.interventionRejectedAt,
+      description:
+        dispute.interventionRejectionReason ||
+        "Staff từ chối can thiệp và trả dispute về self-resolve.",
+    },
+    {
+      label: "Staff ra quyết định",
+      at: dispute.staffDecidedAt,
+      description:
+        dispute.staffDecisionNote ||
+        dispute.staffReport ||
+        "Staff đã nhập quyết định bắt buộc.",
+    },
+    {
+      label: "Execute settlement",
+      at: dispute.settlementExecutedAt,
+      description: "Backend đã xử lý milestone escrow settlement.",
+    },
+    {
+      label: "Resolve/cancel",
+      at: dispute.resolvedAt || dispute.cancelledAt,
+      description:
+        dispute.resolutionType ||
+        dispute.cancellationReason ||
+        "Dispute đã có trạng thái cuối.",
+    },
+  ];
+  const evidenceItems = [
+    {
+      title: "Lý do ban đầu",
+      note: dispute.evidenceReport,
+    },
+    {
+      title: "Evidence yêu cầu Staff",
+      note: dispute.escalationReason,
+      href: dispute.escalationEvidenceFile,
+      timestamp: dispute.escalationRequestedAt || dispute.escalatedAt,
+    },
+    {
+      title: "Staff report",
+      note: dispute.staffReport,
+      timestamp: dispute.staffDecidedAt,
+    },
+    {
+      title: "Decision reason",
+      note: dispute.staffDecisionNote,
+      timestamp: dispute.staffDecidedAt,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -231,6 +344,15 @@ export function DisputeDetailPage({
                   Ra quyết định
                 </Button>
               )}
+              {canExecuteSettlement && (
+                <Button
+                  onClick={() => setExecuteOpen(true)}
+                  disabled={Boolean(submitting)}
+                >
+                  <ReceiptText className="h-4 w-4" />
+                  Execute settlement
+                </Button>
+              )}
             </div>
           }
         />
@@ -256,6 +378,14 @@ export function DisputeDetailPage({
             description="Thông tin được render từ response backend hiện có."
           />
           <div className="mt-5 grid gap-4 rounded-3xl bg-slate-50 p-5 text-sm text-slate-700 md:grid-cols-2">
+            <InfoLine
+              label="Contract"
+              value={contract?.contractTitle || contract?.title || dispute.jobTitle}
+            />
+            <InfoLine
+              label="Milestone"
+              value={milestone?.milestoneName || "Milestone liên quan"}
+            />
             <InfoLine
               label="Loại tranh chấp"
               value={translateDisputeInitiationType(dispute.initiationType)}
@@ -343,6 +473,43 @@ export function DisputeDetailPage({
               className="mt-3"
             />
           )}
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <Card className="p-6">
+          <SectionHeading
+            title="Evidence"
+            description="Các bằng chứng và ghi chú hiện có trong DTO dispute."
+          />
+          <div className="mt-5 grid gap-3">
+            {evidenceItems.map((item) => (
+              <EvidenceItem
+                key={item.title}
+                title={item.title}
+                href={item.href}
+                note={item.note}
+                timestamp={item.timestamp}
+              />
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <SectionHeading
+            title="Timeline"
+            description="Dựng từ timestamp backend trả về, không dùng dữ liệu giả."
+          />
+          <div className="mt-5 grid gap-3">
+            {timeline.map((item) => (
+              <TimelineItem
+                key={item.label}
+                label={item.label}
+                at={item.at}
+                description={item.description}
+              />
+            ))}
+          </div>
         </Card>
       </div>
 
@@ -518,6 +685,64 @@ export function DisputeDetailPage({
           </div>
         </div>
       </Modal>
+
+      <Modal
+        open={executeOpen}
+        onClose={() => setExecuteOpen(false)}
+        title="Execute dispute settlement"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setExecuteOpen(false)}
+              disabled={Boolean(submitting)}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={executeSettlement}
+              loading={submitting === "execute-settlement"}
+              disabled={Boolean(submitting)}
+            >
+              Execute settlement
+            </Button>
+          </>
+        }
+      >
+        <Notice
+          tone="warning"
+          title="Hành động này xác nhận kết quả Staff đã quyết định."
+        >
+          Frontend chỉ gọi API execute; wallet ledger và escrow release do
+          backend xử lý.
+        </Notice>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <InfoLine
+            label="Expert %"
+            value={
+              dispute.staffDecisionPercentage !== undefined
+                ? `${dispute.staffDecisionPercentage}%`
+                : undefined
+            }
+          />
+          <InfoLine
+            label="Expert nhận"
+            value={
+              dispute.staffProposedExpertAmount !== undefined
+                ? formatCurrency(dispute.staffProposedExpertAmount)
+                : undefined
+            }
+          />
+          <InfoLine
+            label="Business hoàn"
+            value={
+              dispute.businessRefundAmount !== undefined
+                ? formatCurrency(dispute.businessRefundAmount)
+                : undefined
+            }
+          />
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -537,6 +762,74 @@ function InfoLine({
       <p className="mt-1 break-words font-semibold text-slate-700">
         {value || "Chưa có dữ liệu từ backend"}
       </p>
+    </div>
+  );
+}
+
+function EvidenceItem({
+  title,
+  href,
+  note,
+  timestamp,
+}: {
+  title: string;
+  href?: string;
+  note?: string;
+  timestamp?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white text-brand-600">
+          <FileText className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-extrabold text-ink">{title}</p>
+          {timestamp && (
+            <p className="mt-0.5 text-xs font-bold text-slate-400">
+              {formatDateTime(timestamp)}
+            </p>
+          )}
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+            {note || "Chưa có ghi chú từ backend"}
+          </p>
+          {href && (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex break-all text-sm font-bold text-brand-600"
+            >
+              Mở file bằng chứng
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineItem({
+  label,
+  at,
+  description,
+}: {
+  label: string;
+  at?: string;
+  description?: string;
+}) {
+  return (
+    <div className="grid grid-cols-[16px_1fr] gap-3">
+      <span className={at ? "mt-1 h-3 w-3 rounded-full bg-brand-600" : "mt-1 h-3 w-3 rounded-full bg-slate-200"} />
+      <div className="rounded-2xl bg-slate-50 p-3">
+        <p className="font-extrabold text-ink">{label}</p>
+        <p className="mt-1 text-xs font-bold text-slate-400">
+          {at ? formatDateTime(at) : "Chưa diễn ra"}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {description || "Chưa có mô tả từ backend"}
+        </p>
+      </div>
     </div>
   );
 }

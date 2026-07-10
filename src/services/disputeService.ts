@@ -21,7 +21,11 @@ export const disputeApi = {
       },
     });
   },
-  initiate(contractId: number, milestoneId: number, initiatedBy: string) {
+  initiate(
+    contractId: number,
+    milestoneId: number,
+    initiatedBy: "BUSINESS" | "EXPERT" | "OTHER" = "EXPERT",
+  ) {
     return call<Dispute>({
       method: "POST",
       url: `/api/v1/milestones/${milestoneId}/disputes`,
@@ -50,6 +54,9 @@ export const disputeApi = {
       params: payload,
     });
   },
+  escalate(disputeId: number, reason?: string, evidenceFile?: string) {
+    return this.requestStaffIntervention(disputeId, { reason, evidenceFile });
+  },
   assignStaff(disputeId: number, payload: AssignStaffRequest) {
     return call<Dispute>({
       method: "POST",
@@ -58,14 +65,6 @@ export const disputeApi = {
     });
   },
   rejectIntervention(disputeId: number, payload: RejectInterventionRequest) {
-  escalate(disputeId: number, reason?: string, evidenceFile?: string) {
-    return call<Dispute>({
-      method: "POST",
-      url: `/api/v1/disputes/${disputeId}/escalation-request`,
-      params: { reason, evidenceFile },
-    });
-  },
-  demoTesting(disputeId: number, testResult: string) {
     return call<Dispute>({
       method: "POST",
       url: `/api/v1/disputes/${disputeId}/reject-intervention`,

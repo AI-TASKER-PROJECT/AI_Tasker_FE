@@ -323,8 +323,28 @@ export function ContractDetailPage() {
     }
   };
   const terminate = async () => {
-    setContract(await contractApi.terminate(contract.contractId, reason));
-    setTerminateOpen(false);
+    setContractNotice(null);
+    try {
+      await contractApi.requestTermination(contract.contractId, {
+        requestReason: reason,
+      });
+      await refreshContract();
+      setTerminateOpen(false);
+      setContractNotice({
+        tone: "success",
+        title: "Đã gửi yêu cầu chấm dứt hợp đồng.",
+        message:
+          "Backend đã nhận termination request; trạng thái tiếp theo sẽ được Staff/Admin xử lý.",
+      });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể gửi yêu cầu chấm dứt hợp đồng.",
+      });
+    }
   };
   const contractTitle =
     contract.contractTitle ||
@@ -427,9 +447,8 @@ export function ContractDetailPage() {
   const canPayDeposit =
     session?.role === "BUSINESS" && contractStatus === "PENDING";
   const canTerminate =
-    (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
-    !contractInProgress &&
-    !["COMPLETED", "CANCELLED"].includes(contractStatus);
+    (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+    contractStatus === "ACTIVE";
   const canRejectContract =
     session?.role === "EXPERT" && ["DRAFT", "PENDING"].includes(contractStatus);
   const availableBalance = paymentWallet?.availableBalance ?? 0;

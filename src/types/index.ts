@@ -115,7 +115,7 @@ export interface Contract {
   totalBudget: number;
   timelineDays: number;
   ndaSigned?: boolean;
-  status: string;
+  status: ContractStatus | string;
   businessAcceptedAt?: string;
   expertAcceptedAt?: string;
   businessNdaSignedAt?: string;
@@ -172,7 +172,7 @@ export interface Milestone {
   orderIndex: number;
   duration?: number;
   durationUnit?: string;
-  status: string;
+  status: MilestoneStatus | string;
   durationValue?: number;
   criteriaSnapshot?: string;
   deliverableExpectation?: string;
@@ -250,8 +250,6 @@ export interface Dispute {
   initiatedBy?: 'BUSINESS' | 'EXPERT' | 'OTHER';
   initiatedByAccountId?: number;
   initiationType?: DisputeInitiationType;
-  escalationReason?: string;
-  escalationEvidenceFile?: string;
   escalationRequestedByAccountId?: number;
   escalationRequestedAt?: string;
   staffReviewStartedAt?: string;
@@ -270,11 +268,7 @@ export interface Dispute {
   cancelledAt?: string;
   cancelledByAccountId?: number;
   cancellationReason?: string;
-  status: string;
-  initiatedBy?: string;
   previousMilestoneStatus?: string;
-  resolutionType?: string;
-  resolvedAt?: string;
   escalatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -283,6 +277,25 @@ export interface Dispute {
   jobTitle?: string;
   staffName?: string;
 }
+
+export type ContractStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'TERMINATION_PENDING'
+  | 'COMPLETED'
+  | 'TERMINATED'
+  | 'CLOSED'
+  | 'CANCELLED';
+
+export type MilestoneStatus =
+  | 'PENDING'
+  | 'DEPOSITED'
+  | 'IN_PROGRESS'
+  | 'UNDER_REVIEW'
+  | 'DISPUTED'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export type DisputeStatus =
   | 'PENDING_SELF_RESOLVE'
@@ -334,6 +347,18 @@ export interface StaffDecisionRequest {
 
 export interface CancelDisputeRequest {
   reason?: string;
+}
+
+export type TerminationRequestStatus =
+  | 'REQUESTED'
+  | 'STAFF_REVIEWING'
+  | 'STAFF_APPROVED'
+  | 'STAFF_REJECTED'
+  | 'AWAITING_SETTLEMENT_EXECUTION'
+  | 'AWAITING_DEPOSIT_REFUND'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
 export interface TerminationRequest {
   terminationRequestId: number;
   contractId: number;
@@ -343,7 +368,7 @@ export interface TerminationRequest {
   requestReason: string;
   requestFileUrl?: string;
   assignedStaffId?: number;
-  status: string;
+  status: TerminationRequestStatus | string;
   staffReviewStartedAt?: string;
   staffDecidedAt?: string;
   staffDecisionReason?: string;

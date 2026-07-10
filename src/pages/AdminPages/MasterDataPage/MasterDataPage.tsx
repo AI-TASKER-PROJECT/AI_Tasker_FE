@@ -2,7 +2,6 @@ import { Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   catalogApi,
-  contractApi,
   type Domain,
   type Skill,
 } from "../../../lib/api";
@@ -184,14 +183,10 @@ export function MasterDataPage() {
   };
 
   const saveCriteria = async () => {
-    const saved = await contractApi.createCriteria({
-      criteriaCode: criteriaForm.criteriaCode,
-      category: "GENERAL",
-      description: criteriaForm.description,
-      isActive: criteriaForm.isActive,
-      sortOrder: Number(criteriaForm.sortOrder) || 0,
-    });
-    setCriteria((items) => [...items, saved]);
+    void criteriaForm;
+    setError(
+      "Backend hiện chỉ hỗ trợ acceptance criteria theo từng milestone trong contract workspace; không có API tạo global criteria.",
+    );
     setCriteriaOpen(false);
   };
 

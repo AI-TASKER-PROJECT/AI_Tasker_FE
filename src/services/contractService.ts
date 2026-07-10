@@ -1,5 +1,19 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, TerminationRequest } from "../types";
+import type {
+  AcceptanceCriteria,
+  Contract,
+  ContractDeposit,
+  Deliverable,
+  Milestone,
+  MilestoneProgressReport,
+  PaymentActionResponse,
+  TerminationRequest,
+} from "../types";
+
+export interface DepositRefundRequest {
+  refundAmount?: number;
+  adminNote?: string;
+}
 
 export const contractApi = {
   listContracts() {
@@ -16,12 +30,6 @@ export const contractApi = {
       method: "POST",
       url: `/api/v1/contracts/from-proposals/${proposalId}`,
       data: payload,
-    });
-  },
-  activate(contractId: number) {
-    return call<Contract>({
-      method: "POST",
-      url: `/api/v1/contracts/${contractId}/activate`,
     });
   },
   sign(contractId: number) {
@@ -48,11 +56,14 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/deposit/pay`,
     });
   },
-  terminate(contractId: number, reason: string) {
-    return call<Contract>({
+  refundContractDeposit(
+    contractId: number,
+    payload: DepositRefundRequest = {},
+  ) {
+    return call<ContractDeposit>({
       method: "POST",
-      url: `/api/v1/contracts/${contractId}/terminate`,
-      params: { reason },
+      url: `/api/v1/admin/contracts/${contractId}/deposit/refund`,
+      data: payload,
     });
   },
   requestTermination(
@@ -71,6 +82,69 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/termination-requests`,
     });
   },
+  getTerminationRequest(terminationRequestId: number) {
+    return call<TerminationRequest>({
+      method: "GET",
+      url: `/api/v1/termination-requests/${terminationRequestId}`,
+    });
+  },
+  assignTerminationStaff(terminationRequestId: number, staffId: number) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/assign-staff`,
+      params: { staffId },
+    });
+  },
+  rejectTermination(terminationRequestId: number, reason?: string) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/reject`,
+      params: { reason },
+    });
+  },
+  approveTermination(
+    terminationRequestId: number,
+    payload: Partial<TerminationRequest> = {},
+  ) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/approve`,
+      data: payload,
+    });
+  },
+  submitPartialEvidence(
+    terminationRequestId: number,
+    payload: Partial<TerminationRequest>,
+  ) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/partial-evidence`,
+      data: payload,
+    });
+  },
+  executeTerminationSettlement(terminationRequestId: number) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/execute-settlement`,
+    });
+  },
+  withdrawTermination(terminationRequestId: number, reason?: string) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/withdraw`,
+      params: { reason },
+    });
+  },
+  refundDepositAfterTermination(
+    terminationRequestId: number,
+    payload: DepositRefundRequest = {},
+  ) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/termination-requests/${terminationRequestId}/refund-deposit`,
+      data: payload,
+    });
+  },
   createMilestone(payload: Partial<Milestone>) {
     return call<Milestone>({
       method: "POST",
@@ -87,14 +161,31 @@ export const contractApi = {
   listJobMilestones(jobId: number) {
     return call<Milestone[]>({
       method: "GET",
-      url: `/api/v1/jobs/${jobId}/milestones`, //Lấy danh sách tất cả các mốc tiến dộ
+      url: `/api/v1/jobs/${jobId}/milestones`,
     });
   },
-  createCriteria(payload: Partial<AcceptanceCriteria>) {
+  createCriteria(milestoneId: number, payload: Partial<AcceptanceCriteria>) {
     return call<AcceptanceCriteria>({
       method: "POST",
-      url: "/api/v1/criteria",
+      url: `/api/v1/milestones/${milestoneId}/criteria`,
       data: payload,
+    });
+  },
+  updateCriteria(
+    milestoneId: number,
+    criteriaId: number,
+    payload: Partial<AcceptanceCriteria>,
+  ) {
+    return call<AcceptanceCriteria>({
+      method: "PUT",
+      url: `/api/v1/milestones/${milestoneId}/criteria/${criteriaId}`,
+      data: payload,
+    });
+  },
+  deleteCriteria(milestoneId: number, criteriaId: number) {
+    return call<void>({
+      method: "DELETE",
+      url: `/api/v1/milestones/${milestoneId}/criteria/${criteriaId}`,
     });
   },
   listCriteria(milestoneId: number) {
@@ -103,15 +194,6 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/criteria`,
     });
   },
-  submitDeliverable(payload: Partial<Deliverable>) {
-    if (!payload.milestoneId) {
-      return Promise.reject(
-        new Error("Backend requires milestoneId to submit a deliverable."),
-      );
-    }
-    return call<Deliverable>({
-      method: "POST",
-      url: `/api/v1/milestones/${payload.milestoneId}/deliverables`,
   submitDeliverable(milestoneId: number, payload: Partial<Deliverable>) {
     return call<Deliverable>({
       method: "POST",
@@ -148,27 +230,6 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/deposit`,
     });
   },
-  approveMilestone(milestoneId: number) {
-    return call<Milestone>({
-      method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/approve`,
-    });
-  },
-  rejectMilestone(milestoneId: number, reason?: string) {
-    return call<Milestone>({
-      method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/reject`,
-      params: { reason },
-    });
-  },
-  startMilestone(milestoneId: number) {
-    return call<Milestone>({
-      method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/start`,
-    });
-  },
-  runSlaAutoApprove() {
-    return call<Milestone[]>({
   startMilestone(milestoneId: number) {
     return call<Milestone>({
       method: "POST",
@@ -188,10 +249,17 @@ export const contractApi = {
       params: { reason },
     });
   },
-  completeMilestone(milestoneId: number) {
-    return call<Milestone>({
+  createReview(contractId: number, payload: { rating: number; comment?: string }) {
+    return call<any>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/complete`,
+      url: `/api/v1/contracts/${contractId}/reviews`,
+      data: payload,
+    });
+  },
+  listReviews(contractId: number) {
+    return call<any[]>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/reviews`,
     });
   },
 };
