@@ -1,10 +1,11 @@
-import {
+﻿import {
   CheckCircle2,
   FileText,
   Gavel,
   Send,
   ShieldCheck,
   Users,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -126,11 +127,6 @@ export function DisputeDetailPage({
     note: "",
     expertPercent: "50",
   });
-  const [finalDecision, setFinalDecision] = useState({
-    action: "APPROVE_AS_IS" as "APPROVE_AS_IS" | "ADJUST" | "REQUEST_REVISION",
-    expertPercent: "",
-    note: "",
-  });
   const [evidenceItems, setEvidenceItems] = useState<CaseAttachment[]>([]);
   const [evidenceForm, setEvidenceForm] = useState({
     fileUrl: "",
@@ -211,8 +207,14 @@ export function DisputeDetailPage({
   const isStaff = session?.role === "STAFF" || (staffMode && !isAdmin);
   const isParticipantView = !isAdmin && !isStaff;
   const canAssign = isAdmin && ["ESCALATION_REQUESTED", "PENDING_SELF_RESOLVE"].includes(dispute.status);
-  const canStaffReport = isStaff && ["STAFF_REVIEWING", "REPORT_REVISION_REQUESTED"].includes(dispute.status);
+  const canStaffReport = isStaff && dispute.status === "STAFF_REVIEWING";
   const canAdminExecute = isAdmin && dispute.status === "STAFF_DECIDED";
+  const canRejectIntervention = isStaff && dispute.status === "STAFF_REVIEWING";
+  const canCancelDispute =
+    (isAdmin ||
+      dispute.initiatedByAccountId === session?.accountId ||
+      dispute.initiatedBy === session?.role) &&
+    ["PENDING_SELF_RESOLVE", "ESCALATION_REQUESTED"].includes(dispute.status);
   const contractTitle =
     contract?.contractTitle ||
     contract?.title ||
@@ -224,10 +226,7 @@ export function DisputeDetailPage({
   const disputedMilestone = milestones.find(
     (item) => getJobMilestoneId(item) === Number(dispute.milestoneId),
   );
-  const finalExpertPercent =
-    typeof dispute.adminFinalExpertPercentage === "number"
-      ? dispute.adminFinalExpertPercentage
-      : dispute.staffDecisionPercentage;
+  const finalExpertPercent = dispute.staffDecisionPercentage;
   const finalBusinessPercent =
     typeof finalExpertPercent === "number" ? 100 - finalExpertPercent : undefined;
   const sortedProgressReports = [...progressReports].sort((a, b) =>
@@ -239,9 +238,9 @@ export function DisputeDetailPage({
   const hintLine = isStaff
     ? canStaffReport
       ? "Hint: chờ hết 48 giờ evidence window, kiểm tra source/demo bằng quyền Read & Execute, rồi gửi Technical Report kèm fund split ratio."
-      : "Hint: theo dõi evidence window, SLA và ghi chú revision từ admin trước khi thao tác tiếp."
+      : "Hint: theo dõi evidence window và SLA. Staff có thể từ chối can thiệp nếu case chưa đủ điều kiện."
     : canAdminExecute
-      ? "Hint: đọc Technical Report, sau đó approve, adjust trong ±10%, hoặc gửi trả staff sửa."
+      ? "Hint: đọc Technical Report, sau đó thực thi settlement đúng tỷ lệ Staff đã quyết định. Admin không chỉnh tỷ lệ."
       : "Hint: admin có thể dùng Staff Assignment Dashboard để xem workload và override staff khi cần.";
 
   const assign = async () => {
@@ -291,9 +290,9 @@ export function DisputeDetailPage({
       setReportOpen(false);
       setNotice({
         tone: "success",
-        title: "Đã gửi báo cáo tranh chấp cho admin.",
+        title: "Đã gửi quyết định tranh chấp.",
         message:
-          "Admin sẽ đọc báo cáo và thực thi quyết toán theo tỷ lệ staff đề xuất.",
+          "Tỷ lệ Staff quyết định đã được lưu. Settlement sẽ dùng đúng tỷ lệ này khi Admin/System execute.",
       });
     } catch (error) {
       setNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -302,29 +301,60 @@ export function DisputeDetailPage({
     }
   };
 
-  const submitAdminFinalDecision = async () => {
-    setActionLoading("admin-final");
+  const executeSettlement = async () => {
+    setActionLoading("execute-settlement");
     try {
-      const saved = await disputeApi.adminFinalDecision(dispute.disputeId, {
-        action: finalDecision.action,
-        expertPercent:
-          finalDecision.action === "ADJUST"
-            ? Number(finalDecision.expertPercent)
-            : undefined,
-        note: finalDecision.note.trim() || undefined,
-      });
+      const saved = await disputeApi.executeSettlement(dispute.disputeId);
       setDispute(saved);
       setFinalOpen(false);
       setNotice({
         tone: "success",
-        title:
-          finalDecision.action === "REQUEST_REVISION"
-            ? "Đã trả báo cáo về staff để sửa."
-            : "Đã hoàn tất quyết định cuối cùng của admin.",
-        message:
-          finalDecision.action === "REQUEST_REVISION"
-            ? "Staff sẽ nhận thông báo revision và cập nhật báo cáo trong SLA 3 ngày."
-            : "Kết quả giao dịch đã được gửi cho Business và Expert theo Flow 5.",
+        title: "Đã thực thi settlement theo quyết định Staff.",
+        message: "Kết quả giao dịch đã được gửi cho Business và Expert theo Flow 5.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const rejectIntervention = async () => {
+    const reason = window.prompt(
+      "Lý do Staff từ chối can thiệp và trả dispute về self-resolve:",
+      "Chưa đủ bằng chứng để Staff can thiệp.",
+    );
+    if (reason === null) return;
+    setActionLoading("reject-intervention");
+    try {
+      const saved = await disputeApi.rejectIntervention(
+        dispute.disputeId,
+        reason.trim() || undefined,
+      );
+      setDispute(saved);
+      setNotice({
+        tone: "success",
+        title: "Đã từ chối can thiệp.",
+        message: "Dispute được trả về bước hai bên tự giải quyết.",
+      });
+    } catch (error) {
+      setNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const cancelDispute = async () => {
+    const reason = window.prompt("Lý do hủy dispute:", "Hủy dispute trước khi Staff review.");
+    if (reason === null) return;
+    setActionLoading("cancel-dispute");
+    try {
+      const saved = await disputeApi.cancel(dispute.disputeId, reason.trim() || undefined);
+      setDispute(saved);
+      setNotice({
+        tone: "success",
+        title: "Đã hủy dispute.",
+        message: "Milestone sẽ quay về trạng thái trước đó nếu BE cho phép.",
       });
     } catch (error) {
       setNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -464,16 +494,6 @@ export function DisputeDetailPage({
                   </p>
                 </div>
               )}
-
-              {dispute.adminFinalNote && (
-                <div className="rounded-2xl bg-mint-50 p-4 text-sm text-slate-700">
-                  <p className="font-extrabold text-mint-800">Ket luan cuoi cung cua admin</p>
-                  <p className="mt-2 whitespace-pre-wrap leading-7">
-                    {dispute.adminFinalNote}
-                  </p>
-                </div>
-              )}
-
               {!dispute.staffReport && normalizeStatus(dispute.status) !== "RESOLVED" && (
                 <Notice tone="info" title="Dang cho bao cao staff">
                   Khi staff gui report va admin xu ly, ket qua se hien thi tai day.
@@ -554,6 +574,26 @@ export function DisputeDetailPage({
                 <Button onClick={() => setReportOpen(true)}>
                   <Send className="h-4 w-4" />
                   Gửi báo cáo cho admin
+                </Button>
+              )}
+              {canRejectIntervention && (
+                <Button
+                  variant="secondary"
+                  onClick={rejectIntervention}
+                  loading={actionLoading === "reject-intervention"}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Từ chối can thiệp
+                </Button>
+              )}
+              {canCancelDispute && (
+                <Button
+                  variant="secondary"
+                  onClick={cancelDispute}
+                  loading={actionLoading === "cancel-dispute"}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Hủy dispute
                 </Button>
               )}
               {canAdminExecute && (
@@ -1149,81 +1189,38 @@ export function DisputeDetailPage({
       <Modal
         open={finalOpen}
         onClose={() => setFinalOpen(false)}
-        title="Admin Final Review & Decision"
-        description="Admin có thể giữ tỷ lệ staff, chỉnh trong ngưỡng ±10%, hoặc trả báo cáo về staff sửa."
+        title="Execute dispute settlement"
+        description="Admin chỉ thực thi settlement theo đúng tỷ lệ Staff đã quyết định. Không chỉnh tỷ lệ và không yêu cầu revision."
         footer={
           <>
             <Button variant="secondary" onClick={() => setFinalOpen(false)}>
               Hủy
             </Button>
             <Button
-              onClick={submitAdminFinalDecision}
-              loading={actionLoading === "admin-final"}
+              onClick={executeSettlement}
+              loading={actionLoading === "execute-settlement"}
             >
               <ShieldCheck className="h-4 w-4" />
-              Xác nhận quyết định
+              Execute settlement
             </Button>
           </>
         }
       >
         <div className="grid gap-4">
-          <Field label="Quyết định">
-            <div className="flex flex-wrap gap-2">
-              {(["APPROVE_AS_IS", "ADJUST", "REQUEST_REVISION"] as const).map((action) => (
-                <Button
-                  key={action}
-                  type="button"
-                  size="sm"
-                  variant={finalDecision.action === action ? "primary" : "secondary"}
-                  onClick={() =>
-                    setFinalDecision((value) => ({
-                      ...value,
-                      action,
-                      expertPercent:
-                        action === "ADJUST"
-                          ? value.expertPercent || String(dispute.staffDecisionPercentage || 50)
-                          : value.expertPercent,
-                    }))
-                  }
-                >
-                  {action === "APPROVE_AS_IS"
-                    ? "Approve as-is"
-                    : action === "ADJUST"
-                      ? "Adjust ±10%"
-                      : "Send back revision"}
-                </Button>
-              ))}
+          <Notice tone="warning" title="Staff decision là final">
+            Settlement sẽ dùng tỷ lệ Expert nhận {typeof dispute.staffDecisionPercentage === "number" ? `${dispute.staffDecisionPercentage}%` : "chưa có"} và hoàn phần còn lại cho Business.
+          </Notice>
+          {dispute.staffDecisionNote && (
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-extrabold text-ink">Ghi chú Staff</p>
+              <p className="mt-2 whitespace-pre-wrap leading-6">
+                {dispute.staffDecisionNote}
+              </p>
             </div>
-          </Field>
-          {finalDecision.action === "ADJUST" && (
-            <Field label="Tỷ lệ Expert nhận sau điều chỉnh (%)">
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={finalDecision.expertPercent}
-                onChange={(event) =>
-                  setFinalDecision((value) => ({
-                    ...value,
-                    expertPercent: event.target.value,
-                  }))
-                }
-              />
-            </Field>
           )}
-          <Field label={finalDecision.action === "REQUEST_REVISION" ? "Ghi chú bắt buộc cho staff" : "Ghi chú final decision"}>
-            <Textarea
-              value={finalDecision.note}
-              onChange={(event) =>
-                setFinalDecision((value) => ({
-                  ...value,
-                  note: event.target.value,
-                }))
-              }
-            />
-          </Field>
         </div>
       </Modal>
     </div>
   );
 }
+

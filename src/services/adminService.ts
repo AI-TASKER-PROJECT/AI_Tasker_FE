@@ -14,14 +14,14 @@ export const adminApi = {
   createReview(payload: Partial<Review>) {
     return call<Review>({
       method: "POST",
-      url: "/api/v1/admin/reviews",
+      url: `/api/v1/contracts/${payload.contractId}/reviews`,
       data: payload,
     });
   },
   listReviews(contractId: number) {
     return call<Review[]>({
       method: "GET",
-      url: `/api/v1/admin/reviews/contracts/${contractId}`,
+      url: `/api/v1/contracts/${contractId}/reviews`,
     });
   },
   listSettings() {

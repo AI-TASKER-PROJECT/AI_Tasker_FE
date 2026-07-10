@@ -106,6 +106,10 @@ export function calculateSecurityDeposit(totalBudget?: number) {
   return Math.round(Number(totalBudget || 0) * 20) / 100;
 }
 
+export function calculateExpertSecurityDeposit(totalBudget?: number) {
+  return Math.round(Number(totalBudget || 0) * 10) / 100;
+}
+
 export function formatTimelineWeeks(timelineDays?: number) {
   const weeks = Math.max(1, Math.ceil(Number(timelineDays || 0) / 7));
   return `${weeks} tuần`;
@@ -526,7 +530,9 @@ export function CreateDisputeInline({
       contractId,
       milestoneId,
       evidenceReport,
-      status: "Open",
+      initiatedBy: "BUSINESS",
+      initiationType: "OTHER",
+      status: "PENDING_SELF_RESOLVE",
     });
     setOpen(false);
   };

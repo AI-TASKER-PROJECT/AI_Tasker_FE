@@ -15,6 +15,13 @@ export const authApi = {
       url: "/api/auth/me",//Check access token
     });
   },
+  refresh(refreshToken: string) {
+    return call<SessionUser>({
+      method: "POST",
+      url: "/api/auth/refresh",
+      data: { refreshToken },
+    });
+  },
   checkEmail(email: string) {
     return api
       .get<boolean>("/api/auth/check-email", { params: { email } }) //Check email
@@ -71,6 +78,13 @@ export const authApi = {
     return call<SessionUser>({
       method: "POST",
       url: "/api/auth/google/register",
+      data: payload,
+    });
+  },
+  googleLogin(payload: { credential: string; role?: "BUSINESS" | "EXPERT" }) {
+    return call<SessionUser>({
+      method: "POST",
+      url: "/api/auth/google/login",
       data: payload,
     });
   },

@@ -40,6 +40,7 @@ import {
   Textarea,
 } from "../../../components/ui";
 import {
+  calculateExpertSecurityDeposit,
   calculateSecurityDeposit,
   ContractLifecycle,
   ContractMetric,
@@ -123,6 +124,7 @@ export function ContractDetailPage() {
   } | null>(null);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
+  const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
@@ -204,7 +206,12 @@ export function ContractDetailPage() {
   }, [contract]);
 
   useEffect(() => {
-    if (!contract || session?.role !== "BUSINESS") return;
+    if (
+      !contract ||
+      (session?.role !== "BUSINESS" && session?.role !== "EXPERT")
+    ) {
+      return;
+    }
     let ignore = false;
 
     walletApi
@@ -275,9 +282,6 @@ export function ContractDetailPage() {
     }
   };
 
-  const rejectContract = async () =>
-    setContract(await contractApi.reject(contract.contractId));
-
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
     setContract(updated);
@@ -295,7 +299,10 @@ export function ContractDetailPage() {
     setContractNotice(null);
     setActionNotice(null);
     try {
-      const result = await contractApi.payDeposit(contract.contractId);
+      const isExpertDeposit = session?.role === "EXPERT";
+      const result = isExpertDeposit
+        ? await contractApi.payExpertDeposit(contract.contractId)
+        : await contractApi.payDeposit(contract.contractId);
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
@@ -310,7 +317,7 @@ export function ContractDetailPage() {
         window.location.assign(result.redirectUrl);
         return;
       }
-      const depositAmount = result.data?.depositAmount ?? securityDepositAmount;
+      const depositAmount = result.data?.depositAmount ?? currentDepositAmount;
       const [, updatedWallet] = await Promise.all([
         refreshContract(),
         walletApi.current().catch(() => null),
@@ -359,13 +366,26 @@ export function ContractDetailPage() {
     }
   };
   const terminate = async () => {
-    setContract(await contractApi.terminate(contract.contractId, reason));
+    await contractApi.requestTermination(contract.contractId, {
+      requestReason: reason,
+    });
+    await refreshContract();
     setTerminateOpen(false);
   };
   const contractTitle = contract.contractTitle || contract.title || "Hợp đồng";
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
+  const expertSecurityDepositAmount = calculateExpertSecurityDeposit(
+    contract.totalBudget,
+  );
+  const currentDepositAmount =
+    session?.role === "EXPERT"
+      ? expertSecurityDepositAmount
+      : securityDepositAmount;
+  const currentDepositPercentage = session?.role === "EXPERT" ? 10 : 20;
+  const currentDepositRoleLabel =
+    session?.role === "EXPERT" ? "Expert" : "Business";
   const ndaSigned = Boolean(
     contract.ndaSigned ||
     (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
@@ -455,17 +475,17 @@ export function ContractDetailPage() {
     activeDisputeCount: activeDisputes.length,
   });
   const canPayDeposit =
-    session?.role === "BUSINESS" && contractStatus === "PENDING";
+    (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+    contractStatus === "PENDING" &&
+    !depositPaidLocally;
   const canTerminate =
     (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
     !contractInProgress &&
     !["COMPLETED", "CANCELLED"].includes(contractStatus);
-  const canRejectContract =
-    session?.role === "EXPERT" && ["DRAFT", "PENDING"].includes(contractStatus);
   const availableBalance = paymentWallet?.availableBalance ?? 0;
   const depositMissingAmount = Math.max(
     0,
-    securityDepositAmount - availableBalance,
+    currentDepositAmount - availableBalance,
   );
   const hasEnoughDepositBalance = depositMissingAmount <= 0;
   const businessSignatureComplete = businessAccepted && businessNdaSigned;
@@ -764,7 +784,7 @@ export function ContractDetailPage() {
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
-                    Tổng thời gian milestone
+                    Tổng thời gian mốc
                   </p>
                   <p className="mt-1 font-display text-lg font-black text-ink">
                     {totalMilestoneDurationLabel}
@@ -900,19 +920,13 @@ export function ContractDetailPage() {
             {canPayDeposit && (
               <Button onClick={() => setDepositConfirmOpen(true)}>
                 <WalletCards className="h-4 w-4" />
-                Thanh toán ký quỹ
-              </Button>
-            )}
-            {canRejectContract && (
-              <Button variant="danger" onClick={rejectContract}>
-                <XCircle className="h-4 w-4" />
-                Từ chối hợp đồng
+                Thanh toán ký quỹ {currentDepositRoleLabel}
               </Button>
             )}
             {canTerminate && (
               <Button variant="danger" onClick={() => setTerminateOpen(true)}>
                 <XCircle className="h-4 w-4" />
-                Chấm dứt
+                Hủy hợp đồng
               </Button>
             )}
           </div>
@@ -1030,8 +1044,8 @@ export function ContractDetailPage() {
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
-              label="Ký quỹ 20%"
-              value={formatCurrency(securityDepositAmount)}
+              label={`Ký quỹ ${currentDepositPercentage}%`}
+              value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
               label="Số dư khả dụng"
@@ -1115,3 +1129,4 @@ export function ContractDetailPage() {
     </div>
   );
 }
+

@@ -796,6 +796,7 @@ export function CreateJobPage() {
         orderIndex: Number(milestone.orderIndex || index + 1),
         duration: Number(milestone.durationValue || 0),
         status: "PENDING",
+        rejectCount: 0,
         durationValue: Number(milestone.durationValue || 0),
         durationUnit: "WEEK",
         acceptanceCriteria: milestone.acceptanceCriteria

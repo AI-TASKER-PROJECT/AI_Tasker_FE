@@ -96,6 +96,14 @@ export interface ContractMilestone {
   criteriaSnapshot?: string;
   deliverableExpectation?: string;
   resubmitCount?: number;
+  rejectCount?: number;
+  lastRejectionFeedback?: string;
+  progressReportRequestCount?: number;
+  progressReportRequestedAt?: string;
+  progressReportDueAt?: string;
+  progressReportSubmittedAt?: string;
+  progressReportRequestPending?: boolean;
+  progressReportRequestOverdue?: boolean;
   escrowReleasedAt?: string;
   settlementSourceType?: string;
   settlementSourceId?: number;
@@ -180,6 +188,14 @@ export interface Milestone {
   criteriaSnapshot?: string;
   deliverableExpectation?: string;
   resubmitCount?: number;
+  rejectCount?: number;
+  lastRejectionFeedback?: string;
+  progressReportRequestCount?: number;
+  progressReportRequestedAt?: string;
+  progressReportDueAt?: string;
+  progressReportSubmittedAt?: string;
+  progressReportRequestPending?: boolean;
+  progressReportRequestOverdue?: boolean;
   escrowReleasedAt?: string;
   settlementSourceType?: string;
   settlementSourceId?: number;
@@ -210,6 +226,8 @@ export interface Deliverable {
   sourceCodeUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
+  rejectionFeedback?: string;
+  rejectedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -278,10 +296,6 @@ export interface Dispute {
   staffAccessExpiresAt?: string;
   staffSlaDueAt?: string;
   staffSlaEscalatedAt?: string;
-  adminFinalExpertPercentage?: number;
-  adminFinalNote?: string;
-  adminRevisionNote?: string;
-  adminRevisionRequestedAt?: string;
   previousMilestoneStatus?: string;
   resolutionType?: string;
   resolvedAt?: string;

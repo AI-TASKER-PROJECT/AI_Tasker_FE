@@ -76,8 +76,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         { value: "ALL", label: "Moi trang thai" },
         { value: "ESCALATION_REQUESTED", label: "Cho xu ly" },
         { value: "STAFF_REVIEWING", label: "Dang staff review" },
-        { value: "REPORT_REVISION_REQUESTED", label: "Can sua bao cao" },
-        { value: "STAFF_DECIDED", label: "Da gui admin" },
+        { value: "STAFF_DECIDED", label: "Staff da quyet dinh" },
         { value: "RESOLVED", label: "Da giai quyet" },
       ]
     : [{ value: "ALL", label: "Moi trang thai" }];

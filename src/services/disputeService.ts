@@ -3,10 +3,19 @@ import type { CaseAttachment, Dispute, StaffAssignmentCandidate } from "../types
 
 export const disputeApi = {
   create(payload: Partial<Dispute>) {
+    if (!payload.contractId || !payload.milestoneId) {
+      return Promise.reject(
+        new Error("Backend yeu cau contractId va milestoneId de tao dispute."),
+      );
+    }
     return call<Dispute>({
       method: "POST",
-      url: "/api/v1/disputes",
-      data: payload,
+      url: `/api/v1/milestones/${payload.milestoneId}/disputes`,
+      params: {
+        contractId: payload.contractId,
+        initiatedBy: payload.initiatedBy,
+        initiationType: payload.initiationType || "OTHER",
+      },
     });
   },
   initiate(contractId: number, milestoneId: number, initiatedBy: string) {
@@ -23,11 +32,10 @@ export const disputeApi = {
     });
   },
   listAll(params?: Record<string, any>) {
-    return call<Dispute[]>({
-      method: "GET",
-      url: `/api/v1/disputes`,
-      params,
-    });
+    void params;
+    return Promise.reject(
+      new Error("Backend hien khong expose API liet ke tat ca dispute."),
+    );
   },
   get(disputeId: number) {
     return call<Dispute>({
@@ -58,16 +66,6 @@ export const disputeApi = {
     return call<Dispute>({
       method: "POST",
       url: `/api/v1/disputes/${disputeId}/execute-settlement`,
-    });
-  },
-  adminFinalDecision(
-    disputeId: number,
-    payload: { action: "APPROVE_AS_IS" | "ADJUST" | "REQUEST_REVISION"; expertPercent?: number; note?: string },
-  ) {
-    return call<Dispute>({
-      method: "POST",
-      url: `/api/v1/disputes/${disputeId}/admin-final-decision`,
-      data: payload,
     });
   },
   staffCandidates(disputeId: number) {
@@ -101,11 +99,31 @@ export const disputeApi = {
       params: { reason, evidenceFile },
     });
   },
-  demoTesting(disputeId: number, testResult: string) {
+  rejectIntervention(disputeId: number, reason?: string) {
     return call<Dispute>({
       method: "POST",
-      url: `/api/v1/disputes/${disputeId}/demo-testing`,
-      params: { testResult },
+      url: `/api/v1/disputes/${disputeId}/reject-intervention`,
+      params: { reason },
     });
+  },
+  cancel(disputeId: number, reason?: string) {
+    return call<Dispute>({
+      method: "POST",
+      url: `/api/v1/disputes/${disputeId}/cancel`,
+      params: { reason },
+    });
+  },
+  escalateStaffSla() {
+    return call<Dispute[]>({
+      method: "POST",
+      url: "/api/v1/disputes/staff-sla-escalate",
+    });
+  },
+  demoTesting(disputeId: number, testResult: string) {
+    void disputeId;
+    void testResult;
+    return Promise.reject(
+      new Error("Backend hien khong expose API demo-testing cho dispute."),
+    );
   },
 };

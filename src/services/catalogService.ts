@@ -53,11 +53,8 @@ export const catalogApi = {
     });
   },
   listAcceptanceCriteria(activeOnly = true) {
-    return call<AcceptanceCriteria[]>({
-      method: "GET",
-      url: "/api/v1/acceptance-criteria",//lấy ds nghiệm thu
-      params: { activeOnly },
-    });
+    void activeOnly;
+    return Promise.resolve([] as AcceptanceCriteria[]);
   },
   listJobDomains(jobId: number) {
     return call<JobDomain[]>({
