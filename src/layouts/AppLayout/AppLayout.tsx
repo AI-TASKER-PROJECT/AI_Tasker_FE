@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowLeft,
   BadgeCheck,
   BarChart3,
@@ -11,7 +11,6 @@ import {
   Clock3,
   FileCheck2,
   FileText,
-  Gavel,
   IdCard,
   LayoutDashboard,
   LogOut,
@@ -173,11 +172,6 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Tranh chấp",
-      to: "/app/disputes",
-      icon: <Gavel className="h-4 w-4" />,
-    },
-    {
       label: "Đánh giá",
       to: "/app/reviews",
       icon: <Star className="h-4 w-4" />,
@@ -225,9 +219,9 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Tranh chấp",
-      to: "/app/disputes",
-      icon: <Gavel className="h-4 w-4" />,
+      label: "Đánh giá",
+      to: "/app/reviews",
+      icon: <Star className="h-4 w-4" />,
     },
     {
       label: "Hồ sơ KYC",
@@ -245,11 +239,6 @@ const roleNav: Record<Role, NavItem[]> = {
       label: "Duyệt hồ sơ",
       to: "/app/verifications",
       icon: <ShieldCheck className="h-4 w-4" />,
-    },
-    {
-      label: "Tranh chấp được giao",
-      to: "/app/tickets",
-      icon: <Gavel className="h-4 w-4" />,
     },
     {
       label: "Analytics",
@@ -286,16 +275,6 @@ const roleNav: Record<Role, NavItem[]> = {
     {
       label: "Duyệt hồ sơ",
       to: "/app/verifications",
-      icon: <ShieldCheck className="h-4 w-4" />,
-    },
-    {
-      label: "Tranh chấp",
-      to: "/app/disputes",
-      icon: <Gavel className="h-4 w-4" />,
-    },
-    {
-      label: "Gán staff tranh chấp",
-      to: "/app/admin/staff-assignment",
       icon: <ShieldCheck className="h-4 w-4" />,
     },
     {

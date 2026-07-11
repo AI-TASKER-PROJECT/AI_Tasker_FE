@@ -130,6 +130,11 @@ export interface Contract {
   activatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  terminationReason?: string;
+  terminatedAt?: string;
+  cancelledByAccountId?: number;
+  cancelledByRole?: "BUSINESS" | "EXPERT" | string;
+  cancelledAt?: string;
   title?: string;
   businessName?: string;
   expertName?: string;
@@ -226,6 +231,8 @@ export interface Deliverable {
   sourceCodeUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
+  submissionRound?: number;
+  status?: "SUBMITTED" | "APPROVED" | "REJECTED" | "SUPERSEDED" | string;
   rejectionFeedback?: string;
   rejectedAt?: string;
   createdAt?: string;
@@ -244,11 +251,31 @@ export interface MilestoneProgressReport {
   sourceCodeUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
-  isLate?: boolean;
   businessFeedback?: string;
+  feedbackCategory?: string;
+  feedbackSeverity?: string;
+  feedbackDodItems?: unknown;
+  requiresAdjustment?: boolean;
   feedbackByAccountId?: number;
   feedbackAt?: string;
-  requiresAdjustment?: boolean;
+  isLate?: boolean;
+  acknowledgementState?: "PENDING_BUSINESS_ACK" | "ACKNOWLEDGED" | string;
+  acknowledgedByAccountId?: number;
+  acknowledgedAt?: string;
+  progressReportRequestOverdue?: boolean;
+  createdAt?: string;
+}
+
+export interface ProgressReportRequestRecord {
+  progressReportRequestId?: number;
+  contractId: number;
+  milestoneId: number;
+  requestNumber?: number;
+  status?: string;
+  dueAt?: string;
+  submittedAt?: string;
+  progressReportId?: number;
+  progressReportRequestOverdue?: boolean;
   createdAt?: string;
 }
 
@@ -302,6 +329,11 @@ export interface Dispute {
   escalatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Số lần hai bên đã tự giải quyết; BE sẽ bổ sung và có thể đổi tên field. */
+  selfResolveCount?: number;
+  selfResolveAttempts?: number;
+  selfResolveRound?: number;
+  selfResolveAttemptCount?: number;
   title?: string;
   raisedBy?: string;
   jobTitle?: string;
@@ -311,12 +343,17 @@ export interface Dispute {
 export interface StaffAssignmentCandidate {
   staffId: number;
   accountId: number;
+  displayName?: string;
   fullName?: string;
   email?: string;
   specialization?: string;
+  specializationMatch?: boolean;
+  technologyMatchSummary?: string;
   matchedSpecialization?: boolean;
   availabilityStatus: "Idle" | "Busy" | string;
-  activeDisputeWorkload: number;
+  activeDisputeWorkload?: number;
+  activeDisputeWorkloadCount?: number;
+  conflictEligible?: boolean;
 }
 
 export interface CaseAttachment {

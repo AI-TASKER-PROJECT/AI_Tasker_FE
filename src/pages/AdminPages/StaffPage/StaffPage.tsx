@@ -40,10 +40,12 @@ export function StaffPage() {
 
   useEffect(() => {
     if (!editing) return;
-    setDomainIds(
-      selectedDomainIdsFromSpecialization(editing.specialization, domains),
-    );
-  }, [domains, editing?.staffId]);
+    setTimeout(() => {
+      setDomainIds(
+        selectedDomainIdsFromSpecialization(editing.specialization, domains),
+      );
+    }, 0);
+  }, [domains, editing, editing?.staffId]);
 
   const beginEditStaff = (staff: Staff) => {
     setEditing(staff);

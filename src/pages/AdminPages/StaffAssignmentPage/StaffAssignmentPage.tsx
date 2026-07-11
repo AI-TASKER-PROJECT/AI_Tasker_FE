@@ -125,14 +125,16 @@ export function StaffAssignmentPage() {
   };
 
   useEffect(() => {
-    if (disputeId) void load();
-  }, []);
+    if (disputeId) setTimeout(() => void load(), 0);
+    // load depends on the current page state and is intentionally triggered by disputeId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disputeId]);
 
   const assign = async (staff: StaffAssignmentCandidate) => {
     if (!dispute) return;
     setAssigning(staff.staffId);
     try {
-      const saved = await disputeApi.assign(dispute.disputeId, staff.staffId);
+      const saved = await disputeApi.routeStaff(dispute.disputeId, staff.staffId);
       setDispute(saved);
       await load();
       setNotice({

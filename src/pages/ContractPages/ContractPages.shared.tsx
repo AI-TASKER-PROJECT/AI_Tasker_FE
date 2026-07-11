@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircle2,
   FileCheck2,
   FileText,
@@ -44,6 +44,30 @@ export const NDA_TERMS = [
     title: "7. Vi phạm",
     body: "Bên vi phạm phải chịu trách nhiệm đối với các thiệt hại phát sinh và phối hợp xử lý sự cố bảo mật theo quy trình của nền tảng và thỏa thuận giữa hai bên.",
   },
+  {
+    title: "8. Dữ liệu cá nhân và dữ liệu truy cập",
+    body: "Các bên chỉ được thu thập, truy cập và xử lý dữ liệu cá nhân, thông tin liên hệ, thông tin đăng nhập, khóa API hoặc dữ liệu hệ thống trong phạm vi cần thiết cho hợp đồng. Không được dùng lại, bán, chia sẻ hoặc chuyển dữ liệu cho bên khác khi chưa có căn cứ hợp pháp và sự chấp thuận phù hợp.",
+  },
+  {
+    title: "9. Source code, tài sản trí tuệ và dữ liệu đầu ra",
+    body: "NDA này chỉ điều chỉnh nghĩa vụ bảo mật và không tự động chuyển giao quyền sở hữu trí tuệ. Quyền đối với source code, tài liệu, mô hình, dữ liệu, sản phẩm bàn giao và kết quả công việc được xác định theo nội dung contract, proposal và các thỏa thuận bằng văn bản giữa hai bên.",
+  },
+  {
+    title: "10. Công cụ AI và bên thứ ba",
+    body: "Không bên nào được đưa thông tin mật, source code, dữ liệu khách hàng hoặc dữ liệu production vào công cụ AI, kho mã nguồn, dịch vụ lưu trữ hay nền tảng của bên thứ ba nếu chưa được bên cung cấp thông tin cho phép. Trường hợp được phép, bên sử dụng phải áp dụng cấu hình bảo mật phù hợp và chịu trách nhiệm với nhà cung cấp phụ trợ của mình.",
+  },
+  {
+    title: "11. Sự cố bảo mật",
+    body: "Khi phát hiện truy cập trái phép, thất thoát, tiết lộ hoặc sử dụng sai mục đích thông tin mật, bên phát hiện phải thông báo sớm cho bên còn lại qua kênh liên hệ trên hệ thống, phối hợp khoanh vùng, bảo toàn bằng chứng và thực hiện biện pháp khắc phục hợp lý.",
+  },
+  {
+    title: "12. Bằng chứng điện tử và liên hệ trên hệ thống",
+    body: "Thời điểm ký NDA, lịch sử cập nhật, tệp đính kèm, nhật ký truy cập và thông báo được ghi nhận trên AI Tasker có thể được sử dụng để đối chiếu việc thực hiện nghĩa vụ bảo mật. Mỗi bên có trách nhiệm duy trì thông tin liên hệ và tài khoản của mình ở trạng thái chính xác, an toàn.",
+  },
+  {
+    title: "13. Hủy ngang hợp đồng và bồi thường",
+    body: "Hủy ngang là thao tác chấm dứt ngay hợp đồng đang ở trạng thái Đang hoạt động theo yêu cầu đơn phương của một bên. Mức bồi thường cố định là 10% tổng giá trị hợp đồng, được tính theo công thức: tổng giá trị hợp đồng × 10/100. Ví dụ, hợp đồng trị giá 1.000.000 đồng thì khoản bồi thường là 100.000 đồng. Nếu Doanh nghiệp hủy ngang, 100.000 đồng được khấu trừ từ khoản ký quỹ của Doanh nghiệp và chuyển cho Chuyên gia; khoản ký quỹ còn lại của hai bên được hoàn theo quy trình hệ thống. Nếu Chuyên gia hủy ngang, 100.000 đồng được khấu trừ từ khoản ký quỹ của Chuyên gia và chuyển cho Doanh nghiệp; khoản ký quỹ của Doanh nghiệp được hoàn theo quy trình hệ thống. Hệ thống chỉ thực hiện khi cả hai khoản ký quỹ đang được giữ, người yêu cầu xác nhận khoản phạt và hợp đồng không có yêu cầu chấm dứt, tranh chấp, mốc đang nghiệm thu hoặc mốc đang tranh chấp. Quy định này không áp dụng cho việc từ chối draft contract, hủy draft contract trước khi kích hoạt, hoặc chấm dứt theo thỏa thuận/quyết định của staff/admin.",
+  },
 ];
 
 export function normalizeContractStatus(status?: string) {
@@ -72,7 +96,7 @@ export function translateContractStatus(status?: string) {
     case "ACTIVE":
       return "Đang hoạt động";
     case "AWAITING_CONTINUATION_DECISION":
-      return "Cho Business quyet dinh";
+      return "Chờ Business quyết định";
     case "IN_PROGRESS":
       return "Đang thực hiện";
     case "COMPLETED":
@@ -187,13 +211,20 @@ export function canBackendReviewMilestone(status?: string) {
   ].includes(normalized);
 }
 
-export function ContractLifecycle({ status }: { status: string }) {
-  const steps = ["DRAFT", "PENDING", "ACTIVE", "COMPLETED"];
+export function ContractLifecycle({
+  status,
+  terminationReason,
+}: {
+  status: string;
+  terminationReason?: string;
+}) {
+  const steps = ["DRAFT", "PENDING", "ACTIVE", "COMPLETED", "CLOSED"];
   const labels: Record<string, string> = {
     DRAFT: "Nháp",
-    PENDING: "Chờ kí quỹ",
+    PENDING: "Chờ ký quỹ",
     ACTIVE: "Đang hoạt động",
     COMPLETED: "Hoàn thành",
+    CLOSED: terminationReason ? "Đã hủy ngang" : "Đã tất toán",
   };
   const normalizedStatus = normalizeContractStatus(status);
   const currentIndex = steps.indexOf(normalizedStatus);
@@ -267,11 +298,30 @@ export function getContractNextAction({
       description: `${activeDisputeCount} dispute chưa xử lý xong. Hai bên nên ưu tiên xử lý trước khi tiếp tục nghiệm thu/thanh toán.`,
     };
   }
+  if (
+    contractStatus === "CLOSED" &&
+    (contract.terminationReason || contract.terminatedAt)
+  ) {
+    return {
+      tone: "danger",
+      title: "Hợp đồng đã bị hủy ngang.",
+      description:
+        "Hợp đồng đã chấm dứt ngay theo yêu cầu đơn phương. Các milestone và thao tác tiếp theo đã được khóa; khoản bồi thường đã được xử lý theo quy định hệ thống.",
+    };
+  }
+  if (contractStatus === "CLOSED") {
+    return {
+      tone: "success",
+      title: "Hợp đồng đã đóng và hoàn ký quỹ.",
+      description:
+        "Hệ thống đã xử lý hoàn ký quỹ và các khoản liên quan. Hai bên có thể gửi đánh giá đối tác.",
+    };
+  }
   if (contractStatus === "COMPLETED") {
     return {
       tone: "success",
-      title: "Contract đã hoàn tất.",
-      description: "Tất cả milestone đã hoàn thành theo logic backend.",
+      title: "Hệ thống đang hoàn ký quỹ.",
+      description: "Tất cả cột mốc đã hoàn thành. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng.",
     };
   }
   if (contractStatus === "CANCELLED") {
@@ -434,7 +484,7 @@ export function Participant({
   value: string;
   details?: Array<[string, string | undefined]>;
 }) {
-  return (
+ return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <p className="text-xs font-bold text-slate-400">{label}</p>
       <p className="mt-1 font-extrabold text-ink">{value}</p>
@@ -506,10 +556,10 @@ export function SignatureBlock({
         }
       >
         {completed
-          ? "Đã ký đủ contract và NDA"
+          ? "Đã ký đủ hợp đồng và NDA"
           : waitingForNda
             ? `Đã ký contract lúc ${formatDateTime(signedAt)}, chờ ký NDA`
-            : "Đang chờ ký contract"}
+            : "Đang chờ ký hợp đồng"}
       </p>
     </div>
   );
@@ -553,7 +603,7 @@ export function CreateDisputeInline({
               Hủy
             </Button>
             <Button variant="danger" onClick={submit}>
-              Gửi dispute
+              Gửi tranh chấp
             </Button>
           </>
         }
@@ -602,7 +652,7 @@ export function ContractQuickLinks({ contract }: { contract: Contract }) {
       ))}
       <span className="inline-flex items-center gap-2 rounded-2xl bg-mint-50 px-3 py-2 text-sm font-bold text-mint-600">
         <ReceiptText className="h-4 w-4" />
-        VNPay transaction ready
+        Sẵn sàng giao dịch qua VNPay
       </span>
     </div>
   );

@@ -1,5 +1,5 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, Review, TerminationRequest } from "../types";
+import type { AcceptanceCriteria, CaseAttachment, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
 
 export const contractApi = {
   listContracts() {
@@ -30,6 +30,18 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/nda-sign`,
     });
   },
+  rejectContract(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/reject`,
+    });
+  },
+  cancelDraft(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/cancel-draft`,
+    });
+  },
   payDeposit(contractId: number) {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
@@ -40,6 +52,16 @@ export const contractApi = {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/expert-deposit/pay`,
+    });
+  },
+  refundContractDeposits(
+    contractId: number,
+    payload?: { adminNote?: string; refundAmount?: number; resolvedAmount?: number },
+  ) {
+    return call<ContractDeposit[]>({
+      method: "POST",
+      url: `/api/v1/admin/contracts/${contractId}/deposits/refund`,
+      data: payload,
     });
   },
   immediateTermination(
@@ -66,6 +88,12 @@ export const contractApi = {
     return call<TerminationRequest[]>({
       method: "GET",
       url: `/api/v1/contracts/${contractId}/termination-requests`,
+    });
+  },
+  getTerminationRequest(terminationRequestId: number) {
+    return call<TerminationRequest>({
+      method: "GET",
+      url: `/api/v1/termination-requests/${terminationRequestId}`,
     });
   },
   disputeTerminationRequest(terminationRequestId: number, reason?: string) {
@@ -135,6 +163,20 @@ export const contractApi = {
     return call<TerminationRequest>({
       method: "POST",
       url: `/api/v1/termination-requests/${terminationRequestId}/refund-deposit`,
+      data: payload,
+    });
+  },
+  listCaseAttachments(ownerType: string, ownerId: number) {
+    return call<CaseAttachment[]>({
+      method: "GET",
+      url: "/api/v1/case-attachments",
+      params: { ownerType, ownerId },
+    });
+  },
+  createCaseAttachment(payload: Partial<CaseAttachment>) {
+    return call<CaseAttachment>({
+      method: "POST",
+      url: "/api/v1/case-attachments",
       data: payload,
     });
   },
@@ -212,7 +254,7 @@ export const contractApi = {
     });
   },
   requestProgressReport(contractId: number, milestoneId: number) {
-    return call<Milestone>({
+    return call<ProgressReportRequestRecord>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-report-request`,
     });
@@ -223,11 +265,27 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports`,
     });
   },
+  acknowledgeProgressReport(
+    contractId: number,
+    milestoneId: number,
+    progressReportId: number,
+  ) {
+    return call<MilestoneProgressReport>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/progress-reports/${progressReportId}/acknowledge`,
+    });
+  },
   feedbackProgressReport(
     contractId: number,
     milestoneId: number,
     progressReportId: number,
-    payload: { feedback: string; requiresAdjustment?: boolean },
+    payload: {
+      feedback: string;
+      requiresAdjustment?: boolean;
+      category?: string;
+      severity?: string;
+      dodItems?: unknown;
+    },
   ) {
     return call<MilestoneProgressReport>({
       method: "POST",
@@ -270,6 +328,13 @@ export const contractApi = {
     return call<Milestone>({
       method: "POST",
       url: `/api/v1/milestones/${milestoneId}/complete`,
+    });
+  },
+  updateMilestone(milestoneId: number, payload: Partial<Milestone>) {
+    return call<Milestone>({
+      method: "PATCH",
+      url: `/api/v1/milestones/${milestoneId}`,
+      data: payload,
     });
   },
   checkOverdueMilestones(contractId: number) {

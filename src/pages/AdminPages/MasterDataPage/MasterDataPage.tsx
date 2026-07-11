@@ -2,7 +2,6 @@ import { Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   catalogApi,
-  contractApi,
   type Domain,
   type Skill,
 } from "../../../lib/api";

@@ -1,13 +1,12 @@
-import {
+﻿import {
   CheckCircle2,
-  Clock3,
   FileText,
   LockKeyhole,
   ShieldCheck,
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   contractApi,
@@ -30,14 +29,12 @@ import {
   Button,
   Card,
   EmptyState,
-  Field,
   LinkButton,
   Modal,
   Notice,
   PageHeader,
   SectionHeading,
   StatusBadge,
-  Textarea,
 } from "../../../components/ui";
 import {
   calculateExpertSecurityDeposit,
@@ -48,6 +45,7 @@ import {
   formatTotalMilestoneDuration,
   getContractNextAction,
   getMilestoneBudget,
+  getMilestoneDurationLabel,
   NDA_TERMS,
   normalizeContractStatus,
   Participant,
@@ -66,8 +64,7 @@ type ContactSource = {
 };
 
 function firstContactValue(...values: Array<string | undefined>) {
-  return values
-    .find((value) => typeof value === "string" && value.trim())
+  return values.find((value) => typeof value === "string" && value.trim())
     ?.trim();
 }
 
@@ -90,14 +87,6 @@ function contactPhone(profile?: ContactSource | null, fallback?: string) {
   );
 }
 
-function displayTerminateReason(value: string) {
-  if (value === "CLIENT_STOP_PROJECT") {
-    return "Doanh nghiệp dừng dự án";
-  }
-
-  return value;
-}
-
 export function ContractDetailPage() {
   const { contractId } = useParams();
   const session = useSession();
@@ -113,25 +102,20 @@ export function ContractDetailPage() {
     expert: null,
   });
   const [contractNotice, setContractNotice] = useState<{
-    tone: "success" | "danger" | "info" | "warning";
+    tone: "success" | "danger" | "info";
     title: string;
-    message?: ReactNode;
-  } | null>(null);
-  const [actionNotice, setActionNotice] = useState<{
-    tone: "success" | "danger" | "info" | "warning";
-    title: string;
-    message?: ReactNode;
+    message?: string;
   } | null>(null);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
   const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
-  const [terminateOpen, setTerminateOpen] = useState(false);
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
     null,
   );
   const [ndaSubmitting, setNdaSubmitting] = useState(false);
-  const [reason, setReason] = useState("CLIENT_STOP_PROJECT");
 
   useEffect(() => {
     contractApi
@@ -228,11 +212,49 @@ export function ContractDetailPage() {
     };
   }, [contract, session?.role]);
 
+  const pollingContractId = contract?.contractId;
+  const pollingContractStatus = contract?.status;
+
+  useEffect(() => {
+    if (
+      !pollingContractId ||
+      normalizeContractStatus(pollingContractStatus) !== "COMPLETED"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const timer = window.setInterval(async () => {
+      attempts += 1;
+      try {
+        const updated = await contractApi.getContract(pollingContractId);
+        if (cancelled) return;
+        setContract(updated);
+        if (
+          normalizeContractStatus(updated.status) === "CLOSED" ||
+          attempts >= 8
+        ) {
+          window.clearInterval(timer);
+        }
+      } catch {
+        if (attempts >= 8) {
+          window.clearInterval(timer);
+        }
+      }
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [pollingContractId, pollingContractStatus]);
+
   if (!contract) {
     return (
       <EmptyState
         title="Không tìm thấy hợp đồng"
-        description="Dữ liệu hợp đồng được lấy trực tiếp từ hệ thống."
+        description=""
       />
     );
   }
@@ -268,7 +290,8 @@ export function ContractDetailPage() {
       setContractNotice({
         tone: "success",
         title: "Ký NDA thành công.",
-        message: "Hệ thống đã ghi nhận chữ ký NDA của bạn cho hợp đồng này.",
+        message:
+          "Hệ thống đã ghi nhận chữ ký NDA của bạn cho hợp đồng này.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -279,6 +302,33 @@ export function ContractDetailPage() {
             ? error.message
             : "Không thể ký NDA. Vui lòng thử lại.",
       });
+    }
+  };
+
+  const rejectContract = async () => {
+    setRejectLoading(true);
+    setContractNotice(null);
+    try {
+      const updated = await contractApi.rejectContract(contract.contractId);
+      setContract(updated);
+      setRejectConfirmOpen(false);
+      setContractNotice({
+        tone: "success",
+        title: "Đã từ chối hợp đồng.",
+        message:
+          "Hợp đồng đã được hủy trước khi kích hoạt. Dự án sẽ được mở lại để Doanh nghiệp chọn proposal khác.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể từ chối hợp đồng. Vui lòng thử lại.",
+      });
+    } finally {
+      setRejectLoading(false);
     }
   };
 
@@ -297,7 +347,6 @@ export function ContractDetailPage() {
   const payDeposit = async () => {
     setDepositLoading(true);
     setContractNotice(null);
-    setActionNotice(null);
     try {
       const isExpertDeposit = session?.role === "EXPERT";
       const result = isExpertDeposit
@@ -306,7 +355,7 @@ export function ContractDetailPage() {
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
-          title: "Ví chưa đủ để ký quỹ hợp đồng.",
+          title: "Ví chưa đủ để ký quỹ contract.",
           message: result.missingAmount
             ? `Cần nạp thêm ${formatCurrency(result.missingAmount)}.`
             : result.message,
@@ -325,36 +374,14 @@ export function ContractDetailPage() {
       setPaymentWallet(updatedWallet);
       setDepositConfirmOpen(false);
       window.dispatchEvent(new Event("aitasker:reload-wallet"));
-      sessionStorage.setItem("justActivatedContract", "true");
       setContractNotice({
         tone: "success",
-        title: "Đã ký quỹ và kích hoạt hợp đồng.",
-        message: updatedWallet ? (
-          <div className="flex flex-col gap-1 mt-1">
-            <span>
-              Hệ thống đã giữ {formatCurrency(depositAmount)} trong quỹ bảo
-              chứng.
-            </span>
-            <span>
-              Số dư khả dụng còn{" "}
-              {formatCurrency(updatedWallet.availableBalance)}.
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1 mt-1">
-            <span>
-              Hệ thống đã giữ {formatCurrency(depositAmount)} trong quỹ bảo
-              chứng và cập nhật hợp đồng/mốc công việc.
-            </span>
-          </div>
-        ),
+        title: "Đã giữ tiền ký quỹ hợp đồng.",
+        message: updatedWallet
+          ? `Hệ thống đã giữ ${formatCurrency(depositAmount)} vào tiền ký quỹ. Số dư khả dụng còn ${formatCurrency(updatedWallet.availableBalance)}, tiền ký quỹ hiện tại ${formatCurrency(updatedWallet.escrowBalance)}.`
+          : `Hệ thống đã giữ ${formatCurrency(depositAmount)} vào tiền ký quỹ. Hợp đồng sẽ được kích hoạt khi cả Doanh nghiệp và Chuyên gia đều đã ký quỹ.`,
       });
-      setActionNotice({
-        tone: "warning",
-        title: "Việc tiếp theo",
-        message: "Vui lòng truy cập Không gian làm việc để triển khai dự án.",
-      });
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setDepositPaidLocally(true);
     } catch (err) {
       setContractNotice({
         tone: "danger",
@@ -365,14 +392,10 @@ export function ContractDetailPage() {
       setDepositLoading(false);
     }
   };
-  const terminate = async () => {
-    await contractApi.requestTermination(contract.contractId, {
-      requestReason: reason,
-    });
-    await refreshContract();
-    setTerminateOpen(false);
-  };
-  const contractTitle = contract.contractTitle || contract.title || "Hợp đồng";
+  const contractTitle =
+    contract.contractTitle ||
+    contract.title ||
+    `Contract #${contract.contractId}`;
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
@@ -385,7 +408,7 @@ export function ContractDetailPage() {
       : securityDepositAmount;
   const currentDepositPercentage = session?.role === "EXPERT" ? 10 : 20;
   const currentDepositRoleLabel =
-    session?.role === "EXPERT" ? "Expert" : "Business";
+    session?.role === "EXPERT" ? "Chuyên gia" : "Doanh nghiệp";
   const ndaSigned = Boolean(
     contract.ndaSigned ||
     (contract.businessNdaSignedAt && contract.expertNdaSignedAt),
@@ -425,11 +448,11 @@ export function ContractDetailPage() {
   const businessDisplayName =
     contract.businessName ||
     participants.business?.companyName ||
-    `Doanh nghiệp #${contract.businessId}`;
+    `Business #${contract.businessId}`;
   const expertDisplayName =
     contract.expertName ||
     participants.expert?.fullName ||
-    `Chuyên gia #${contract.expertId}`;
+    `Expert #${contract.expertId}`;
   const sessionPhone = session?.phone;
   const isBusinessSession =
     session?.role === "BUSINESS" &&
@@ -456,14 +479,14 @@ export function ContractDetailPage() {
   const contractStartDate = contract.createdAt || contract.activatedAt;
   const contractEndDate = contractStartDate
     ? new Date(
-        new Date(contractStartDate).getTime() +
-          Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
-      ).toISOString()
+      new Date(contractStartDate).getTime() +
+      Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
+    ).toISOString()
     : undefined;
   const contractTimelineLabel =
     contractStartDate && contractEndDate
       ? `${formatDate(contractStartDate)} - ${formatDate(contractEndDate)}`
-      : "Chưa có thời gian dự kiến";
+      : "Chưa có timeline";
   const nextAction = getContractNextAction({
     contract,
     role: session?.role,
@@ -478,10 +501,10 @@ export function ContractDetailPage() {
     (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
     contractStatus === "PENDING" &&
     !depositPaidLocally;
-  const canTerminate =
-    (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
-    !contractInProgress &&
-    !["COMPLETED", "CANCELLED"].includes(contractStatus);
+  const canExpertRejectContract =
+    session?.role === "EXPERT" &&
+    ["DRAFT", "PENDING"].includes(contractStatus) &&
+    !expertAccepted;
   const availableBalance = paymentWallet?.availableBalance ?? 0;
   const depositMissingAmount = Math.max(
     0,
@@ -546,7 +569,7 @@ export function ContractDetailPage() {
         <PageHeader
           eyebrow="CHI TIẾT HỢP ĐỒNG"
           title={contractTitle}
-          description="Thông tin chi tiết của hợp đồng, bao gồm các bên tham gia, trạng thái ký hợp đồng và NDA, mốc công việc, ngân sách và thời gian thực hiện."
+          description="Thông tin chi tiết của hợp đồng, bao gồm các bên tham gia, trạng thái ký hợp đồng, NDA, mốc công việc, ngân sách và thời gian thực hiện."
           actions={
             <>
               <Button variant="secondary" onClick={openNdaPreview}>
@@ -559,29 +582,21 @@ export function ContractDetailPage() {
               >
                 Không gian làm việc
               </LinkButton>
-              <LinkButton to="/app/finance" variant="secondary">
-                Ký quỹ
-              </LinkButton>
+              
             </>
           }
         />
       </div>
       {contractNotice && (
-        <Notice tone={contractNotice.tone as any} title={contractNotice.title}>
+        <Notice tone={contractNotice.tone} title={contractNotice.title}>
           {contractNotice.message}
         </Notice>
       )}
-      {actionNotice && (
-        <Notice
-          tone={actionNotice.tone as any}
-          title={actionNotice.title}
-          className="mt-4"
-        >
-          {actionNotice.message}
-        </Notice>
-      )}
       <Card className="p-4">
-        <SectionHeading title="Vòng đời hợp đồng" />
+        <SectionHeading
+          title="Vòng đời hợp đồng"
+          description="Các bước này thể hiện trạng thái hiện tại của hợp đồng trên hệ thống."
+        />
         <ContractLifecycle status={contract.status} />
       </Card>
       <div className="grid gap-6">
@@ -597,7 +612,7 @@ export function ContractDetailPage() {
           {contractInProgress && (
             <Notice
               tone="info"
-              title="Hợp đồng đang ở trạng thái đang thực hiện/đang hoạt động, các thao tác đổi trạng thái đã bị khóa."
+              title="Hợp đồng đang trong quá trình thực hiện, các thao tác đổi trạng thái đã bị khóa."
               className="mb-5"
             />
           )}
@@ -619,7 +634,7 @@ export function ContractDetailPage() {
               value={formatCurrency(securityDepositAmount)}
             />
             <ContractMetric
-              label="Thời gian"
+              label="Timeline"
               value={formatTimelineWeeks(contract.timelineDays)}
             />
             <ContractMetric
@@ -666,6 +681,7 @@ export function ContractDetailPage() {
                       ? `${participants.expert.yearsOfExperience} năm`
                       : undefined,
                   ],
+                  ["KYC", participants.expert?.kycStatus],
                 ]}
               />
             </div>
@@ -697,7 +713,7 @@ export function ContractDetailPage() {
                 label="Thời hạn"
                 value={formatTimelineWeeks(contract.timelineDays)}
               />
-              <ContractMetric label="Thời gian" value={contractTimelineLabel} />
+              <ContractMetric label="Timeline" value={contractTimelineLabel} />
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SignatureBlock
@@ -738,10 +754,10 @@ export function ContractDetailPage() {
               className="mt-4"
             >
               {contractStatus === "ACTIVE"
-                ? "Hợp đồng đã được kích hoạt, ngân sách mốc công việc và trạng thái công việc đã được hệ thống cập nhật."
+                ? "Hợp đồng đã hoạt động, ngân sách cột mốc và trạng thái công việc đã được hệ thống cập nhật."
                 : readyToActivate
-                  ? "Doanh nghiệp và chuyên gia đã hoàn tất hợp đồng cùng NDA. Doanh nghiệp có thể tiếp tục ký quỹ để kích hoạt luồng làm việc."
-                  : "Bên đã ký sẽ được ghi nhận ngay khi hệ thống trả thời điểm ký/xác thực."}
+                  ? "Doanh nghiệp và Chuyên gia đã hoàn tất hợp đồng cùng NDA. Doanh nghiệp có thể tiếp tục ký quỹ để kích hoạt luồng làm việc."
+                  : "Bên đã ký sẽ được ghi nhận ngay khi backend trả thời điểm ký/xác thực."}
             </Notice>
             {signatureProgress.length > 0 && !readyToActivate && (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -780,7 +796,7 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
               title="Mốc công việc"
-              description="Danh sách các mốc công việc được hệ thống lưu cho hợp đồng này, bao gồm thời gian dự kiến và ngân sách gốc/đã chốt."
+              description="Các ngân sách chốt được tạo từ dự án và proposal đã được chấp nhận."
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
@@ -793,109 +809,46 @@ export function ContractDetailPage() {
               }
             />
             <div className="mt-4 grid gap-3">
-              {renderedMilestones.map((milestone) => {
-                const criteriaList = (() => {
-                  if (
-                    (milestone as any).criteria &&
-                    Array.isArray((milestone as any).criteria)
-                  ) {
-                    return (milestone as any).criteria;
+              {renderedMilestones.map((milestone) => (
+                <div
+                  key={
+                    "contractMilestoneId" in milestone
+                      ? milestone.contractMilestoneId
+                      : milestone.milestoneId
                   }
-                  if ((milestone as any).criteriaSnapshot) {
-                    try {
-                      const snapshot = (milestone as any).criteriaSnapshot;
-                      if (typeof snapshot === "string") {
-                        return snapshot
-                          .split(/\r?\n/)
-                          .map((item) => item.trim())
-                          .filter(Boolean)
-                          .map((desc, i) => ({
-                            criteriaId: `snap-${i}`,
-                            description: desc,
-                          }));
-                      }
-                    } catch {
-                      return [];
-                    }
-                  }
-                  return [];
-                })();
-
-                return (
-                  <div
-                    key={
-                      "contractMilestoneId" in milestone
-                        ? milestone.contractMilestoneId
-                        : milestone.milestoneId
-                    }
-                    className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
-                        Mốc {milestone.orderIndex}
+                  className="grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_160px_160px]"
+                >
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-ink">
+                      {milestone.orderIndex}. {milestone.milestoneName}
+                    </p>
+                    {milestone.description && (
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        {milestone.description}
                       </p>
-                      <p className="break-words text-sm font-extrabold text-ink">
-                        {milestone.milestoneName}
-                      </p>
-                      {milestone.description && (
-                        <p className="mt-1 text-sm leading-6 text-slate-500">
-                          {milestone.description}
-                        </p>
-                      )}
-                      <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
-                        <Clock3 className="h-3.5 w-3.5" />
-                        {(() => {
-                          const dVal =
-                            (milestone as any).durationValue ??
-                            (milestone as any).duration;
-                          const unit =
-                            (milestone as any).durationUnit === "WEEK"
-                              ? "TUẦN"
-                              : (milestone as any).durationUnit || "TUẦN";
-                          return dVal && dVal > 0
-                            ? `${dVal} ${unit}`
-                            : "Chưa xác định";
-                        })()}
-                      </p>
-
-                      {criteriaList && criteriaList.length > 0 && (
-                        <div className="mt-3 space-y-1.5 border-t border-slate-200/60 pt-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                            Tiêu chí nghiệm thu
-                          </p>
-                          <ul className="grid gap-1.5">
-                            {criteriaList.map((c: any, i: number) => (
-                              <li
-                                key={c.criteriaId || i}
-                                className="flex items-start gap-2 text-sm text-slate-600"
-                              >
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                                <span>{c.description}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                    <ContractMetric
-                      label="Ngân sách gốc"
-                      value={formatCurrency(
-                        "originalBudget" in milestone
-                          ? milestone.originalBudget
-                          : milestone.fundsAllocated,
-                      )}
-                    />
-                    <ContractMetric
-                      label="Ngân sách đã chốt"
-                      value={formatCurrency(getMilestoneBudget(milestone))}
-                    />
+                    )}
+                    <p className="mt-2 text-xs font-bold text-slate-400">
+                      Thời gian: {getMilestoneDurationLabel(milestone)}
+                    </p>
                   </div>
-                );
-              })}
+                  <ContractMetric
+                    label="Ngân sách gốc"
+                    value={formatCurrency(
+                      "originalBudget" in milestone
+                        ? milestone.originalBudget
+                        : milestone.fundsAllocated,
+                    )}
+                  />
+                  <ContractMetric
+                    label="Ngân sách chốt"
+                    value={formatCurrency(getMilestoneBudget(milestone))}
+                  />
+                </div>
+              ))}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có bản nháp mốc công việc"
-                  description="Hệ thống chưa trả dữ liệu mốc công việc cho hợp đồng này."
+                  title="Chưa có mốc draft"
+                  description="Hệ thống chưa có dữ liệu mốc cho hợp đồng này."
                 />
               )}
             </div>
@@ -905,6 +858,15 @@ export function ContractDetailPage() {
               <Button onClick={signContract} disabled={currentPartyAccepted}>
                 <CheckCircle2 className="h-4 w-4" />
                 Chấp nhận hợp đồng
+              </Button>
+            )}
+            {canExpertRejectContract && (
+              <Button
+                variant="danger"
+                onClick={() => setRejectConfirmOpen(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                Từ chối hợp đồng
               </Button>
             )}
             {canCurrentPartyAct && contractStatus === "DRAFT" && (
@@ -921,12 +883,6 @@ export function ContractDetailPage() {
               <Button onClick={() => setDepositConfirmOpen(true)}>
                 <WalletCards className="h-4 w-4" />
                 Thanh toán ký quỹ {currentDepositRoleLabel}
-              </Button>
-            )}
-            {canTerminate && (
-              <Button variant="danger" onClick={() => setTerminateOpen(true)}>
-                <XCircle className="h-4 w-4" />
-                Hủy hợp đồng
               </Button>
             )}
           </div>
@@ -996,10 +952,41 @@ export function ContractDetailPage() {
       </Modal>
 
       <Modal
+        open={rejectConfirmOpen}
+        onClose={() => !rejectLoading && setRejectConfirmOpen(false)}
+        title="Xác nhận từ chối hợp đồng"
+        description="Thao tác này chỉ áp dụng khi hợp đồng chưa kích hoạt. Sau khi từ chối, hợp đồng sẽ bị hủy và dự án được mở lại để Doanh nghiệp chọn proposal khác."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setRejectConfirmOpen(false)}
+              disabled={rejectLoading}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="danger"
+              onClick={rejectContract}
+              loading={rejectLoading}
+            >
+              <XCircle className="h-4 w-4" />
+              Từ chối hợp đồng
+            </Button>
+          </>
+        }
+      >
+        <Notice tone="warning" title={`Hợp đồng: ${contractTitle}`}>
+          Bạn đang từ chối hợp đồng trước khi kích hoạt. Thao tác này không phải
+          hủy ngang hợp đồng, không phát sinh bồi thường.
+        </Notice>
+      </Modal>
+
+      <Modal
         open={depositConfirmOpen}
         onClose={() => !depositLoading && setDepositConfirmOpen(false)}
         title="Xác nhận ký quỹ hợp đồng"
-        description="Số tiền ký quỹ bằng 20% tổng ngân sách hợp đồng và sẽ được giữ trong quỹ bảo chứng."
+        description={`Số tiền ký quỹ ${currentDepositRoleLabel} bằng ${currentDepositPercentage}% tổng ngân sách hợp đồng và sẽ được giữ trong escrow.`}
         size="lg"
         footer={
           <>
@@ -1018,7 +1005,7 @@ export function ContractDetailPage() {
                     new CustomEvent("aitasker:open-wallet-topup", {
                       detail: {
                         amount: depositMissingAmount,
-                        description: `Nạp ví để ký quỹ hợp đồng #${contract.contractId}`,
+                        description: `Nạp ví để ký quỹ contract #${contract.contractId}`,
                       },
                     }),
                   )
@@ -1040,7 +1027,7 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng giá trị hợp đồng"
+              label="Tổng contract"
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
@@ -1065,68 +1052,40 @@ export function ContractDetailPage() {
               tone="warning"
               title="Bạn có chắc chắn muốn ký quỹ hợp đồng này?"
             >
-              Sau khi xác nhận, hệ thống sẽ giữ 20% giá trị hợp đồng trong quỹ
-              bảo chứng, chuyển hợp đồng sang trạng thái hoạt động và cập nhật
-              ngân sách mốc công việc theo đề xuất đã được chấp nhận.
+              Sau khi xác nhận, hệ thống sẽ giữ {currentDepositPercentage}% giá trị hợp đồng vào escrow,
+              sau đó kích hoạt hợp đồng khi cả Doanh nghiệp và Chuyên gia đều đã ký quỹ.
             </Notice>
           )}
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Điều kiện trước khi ký quỹ"
-              description="Hợp đồng phải ở trạng thái chờ xử lý và đã đủ chữ ký/xác thực của hai bên."
+              description="Hợp đồng phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
-              <span>Hợp đồng: {contract.contractTitle}</span>
-              <span>
-                Trạng thái: {translateContractStatus(contract.status)}
-              </span>
+              <span>Hợp đồng: #{contract.contractId}</span>
+              <span>Status: {contract.status}</span>
               <span>
                 Chữ ký/xác thực:{" "}
                 {readyToActivate
                   ? "Đã đủ hai bên"
                   : signatureProgress.length > 0
                     ? signatureProgress
-                        .map((item) =>
-                          item.completed
-                            ? `${item.label} đã hoàn tất`
-                            : `${item.label} đã ký hợp đồng`,
-                        )
-                        .join(", ")
+                      .map((item) =>
+                        item.completed
+                          ? `${item.label} đã hoàn tất`
+                          : `${item.label} đã ký hợp đồng`,
+                      )
+                      .join(", ")
                     : "Chưa có bên nào hoàn tất"}
               </span>
             </div>
           </div>
         </div>
       </Modal>
-
-      <Modal
-        open={terminateOpen}
-        onClose={() => setTerminateOpen(false)}
-        title="Chấm dứt hợp đồng"
-        description="Giao diện hiển thị tổng quan chấm dứt dù hệ thống hiện mới đổi trạng thái hợp đồng."
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setTerminateOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="danger" onClick={terminate}>
-              Xác nhận chấm dứt
-            </Button>
-          </>
-        }
-      >
-        <Notice tone="warning" title="Tổng quan tiến độ">
-          Mốc đã giải ngân sẽ thuộc về chuyên gia; mốc chưa hoàn thành sẽ hoàn
-          tiền cho doanh nghiệp. Logic chi tiết đang chờ hệ thống xử lý.
-        </Notice>
-        <Field label="Lý do" className="mt-4">
-          <Textarea
-            value={displayTerminateReason(reason)}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </Field>
-      </Modal>
     </div>
   );
 }
+
+
+
 

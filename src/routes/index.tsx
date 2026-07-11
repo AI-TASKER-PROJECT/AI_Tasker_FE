@@ -18,7 +18,6 @@ import {
   MasterDataPage,
   ReportsPage,
   SettingsPage,
-  StaffAssignmentPage,
   StaffPage,
   SystemWalletPage,
 } from "../pages/AdminPages";
@@ -58,14 +57,7 @@ import {
   JobsPage,
   LandingPage,
 } from "../pages/PublicPages";
-import {
-  DisputeDetailPage,
-  DisputeProjectInfoPage,
-  DisputesPage,
-  NewDisputePage,
-  VerificationDetailPage,
-  VerificationsPage,
-} from "../pages/RiskPages";
+import { VerificationDetailPage, VerificationsPage } from "../pages/RiskPages";
 import { Card, LinkButton } from "../components/ui";
 
 function ProtectedRoute() {
@@ -317,14 +309,16 @@ export function AppRoutes() {
             </PageTransition>
           }
         />
-        <Route
-          path="reviews"
-          element={
-            <PageTransition>
-              <ReviewsPage />
-            </PageTransition>
-          }
-        />
+        <Route element={<RoleProtectedRoute roles={["BUSINESS", "EXPERT"]} />}>
+          <Route
+            path="reviews"
+            element={
+              <PageTransition>
+                <ReviewsPage />
+              </PageTransition>
+            }
+          />
+        </Route>
 
         {/* Payment */}
         <Route
@@ -343,68 +337,6 @@ export function AppRoutes() {
             </PageTransition>
           }
         />
-
-        {/* Disputes */}
-        <Route
-          path="disputes"
-          element={
-            <PageTransition>
-              <DisputesPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="disputes/new"
-          element={
-            <PageTransition>
-              <NewDisputePage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="disputes/:disputeId"
-          element={
-            <PageTransition>
-              <DisputeDetailPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="disputes/:disputeId/project"
-          element={
-            <PageTransition>
-              <DisputeProjectInfoPage />
-            </PageTransition>
-          }
-        />
-
-        {/* Staff dispute handling */}
-        <Route element={<RoleProtectedRoute roles={["STAFF"]} />}>
-          <Route
-            path="tickets"
-            element={
-              <PageTransition>
-                <DisputesPage staffMode />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="tickets/:disputeId"
-            element={
-              <PageTransition>
-                <DisputeDetailPage staffMode />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="tickets/:disputeId/project"
-            element={
-              <PageTransition>
-                <DisputeProjectInfoPage />
-              </PageTransition>
-            }
-          />
-        </Route>
 
         {/* Staff/Admin verifications */}
         <Route element={<RoleProtectedRoute roles={["STAFF", "ADMIN"]} />}>
@@ -465,14 +397,6 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <StaffPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="admin/staff-assignment"
-            element={
-              <PageTransition>
-                <StaffAssignmentPage />
               </PageTransition>
             }
           />

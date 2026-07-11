@@ -199,7 +199,7 @@ export function ManageJobPage() {
           setRecommendationResult(result);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [jobId]);
 
   const generateRecommendations = async () => {
@@ -212,7 +212,7 @@ export function ManageJobPage() {
       if (result.recommendations?.length === 0) {
         setAiMessage(
           result.message ||
-            "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
+          "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
         );
         setAiMessageTone("warning");
       } else {
@@ -220,7 +220,7 @@ export function ManageJobPage() {
           result.generatedByAi
             ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
             : (result.message ??
-                "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
+              "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
@@ -254,6 +254,15 @@ export function ManageJobPage() {
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
   contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
+  const contractProposalMilestones = parseProposalMilestones(
+    contractModal?.proposalMilestone,
+  );
+  const totalProjectBudget = milestones.reduce((total, milestone) => {
+    const proposalMilestone = contractProposalMilestones.find(
+      (item) => item.milestoneId === milestone.milestoneId,
+    );
+    return total + (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0);
+  }, 0);
 
   const review = async (
     proposalId: number,
@@ -650,11 +659,16 @@ export function ManageJobPage() {
               title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc nghiệm thu (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
             />
           )}
-          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-4">
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-5">
             <ContractPreviewMetric
               label="Tổng thời gian mốc nghiệm thu"
               value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
+            <ContractPreviewMetric
+              label="Tổng tiền dự án"
+              value={formatCurrency(totalProjectBudget)}
+            />
+
             <ContractPreviewMetric
               label="Ngày bắt đầu dự kiến"
               value={formatDate(contractStartDate.toISOString())}
@@ -671,16 +685,16 @@ export function ManageJobPage() {
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Ngân sách sẽ dưa vào hợp đồng"
-              // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
+            // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
             />
             <div className="mt-4 grid gap-3">
               {milestones
                 .slice()
                 .sort((a, b) => a.orderIndex - b.orderIndex)
                 .map((milestone) => {
-                  const proposalMilestone = parseProposalMilestones(
-                    contractModal?.proposalMilestone,
-                  ).find((item) => item.milestoneId === milestone.milestoneId);
+                  const proposalMilestone = contractProposalMilestones.find(
+                    (item) => item.milestoneId === milestone.milestoneId,
+                  );
                   const finalBudget =
                     proposalMilestone?.proposedBudget ??
                     milestone.fundsAllocated;
@@ -826,7 +840,7 @@ function ProposalCard({
           setExpertProfile(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       ignore = true;
@@ -1360,7 +1374,7 @@ function ExpertRecommendationCard({
       .then((data) => {
         if (!ignore) setExpert(data);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       ignore = true;
     };
@@ -1486,9 +1500,8 @@ function ExpertRecommendationCard({
           <p className="mt-0.5 text-xs font-semibold text-slate-400">
             {expert?.yearsOfExperience
               ? `${expert.yearsOfExperience} năm kinh nghiệm`
-              : `Expert ID: ${rec.expertId}${
-                  rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""
-                }`}
+              : `Expert ID: ${rec.expertId}${rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""
+              }`}
           </p>
         </div>
 
