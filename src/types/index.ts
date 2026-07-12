@@ -415,6 +415,7 @@ export interface BusinessProfile {
   industry?: string;
   description?: string;
   followersCount?: number;
+  averageRating?: number;
   logoUrl?: string;
   kybStatus: string;
   approvedBy?: number;
@@ -454,6 +455,7 @@ export interface ExpertProfile {
   contactPhone?: string;
   phoneNumber?: string;
   title?: string;
+  averageRating?: number;
   rating?: number;
   completedProjects?: number;
   skills?: string[];

@@ -1192,6 +1192,8 @@ function ProposalCard({
             <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
           </div>
 
+          <ProfileRating value={expertProfile?.averageRating ?? expertProfile?.rating} />
+
           <SectionHeading title="Portfolio" />
 
           <div className="grid gap-3">
@@ -1232,6 +1234,31 @@ function ProposalCard({
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function ProfileRating({ value }: { value?: number }) {
+  const rating = Number(value);
+  const hasRating = Number.isFinite(rating) && rating > 0;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        Điểm đánh giá trung bình
+      </p>
+      {hasRating ? (
+        <div className="mt-2 flex items-center gap-3">
+          <span className="text-2xl font-black text-amber-500">{rating.toFixed(1)}/5</span>
+          <div className="flex items-center gap-1" aria-label={`${rating.toFixed(1)} trên 5 sao`}>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Star key={index} className="h-5 w-5 fill-amber-400 text-amber-400" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-slate-400">Chưa có đánh giá</p>
+      )}
     </div>
   );
 }

@@ -88,6 +88,49 @@ function txIcon(type: WalletTransaction["transactionType"]) {
   return <ArrowUpRight className="h-4 w-4" />;
 }
 
+const walletTransactionLabels: Record<string, string> = {
+  CONTRACT_SECURITY_DEPOSIT_HOLD: "Giữ ký quỹ hợp đồng",
+  BUSINESS_CONTRACT_DEPOSIT_HOLD: "Giữ ký quỹ Doanh nghiệp",
+  EXPERT_CONTRACT_DEPOSIT_HOLD: "Giữ ký quỹ Chuyên gia",
+  CONTRACT_SECURITY_DEPOSIT_REFUND: "Hoàn ký quỹ hợp đồng",
+  BUSINESS_CONTRACT_DEPOSIT_REFUND: "Hoàn ký quỹ Doanh nghiệp",
+  EXPERT_CONTRACT_DEPOSIT_REFUND: "Hoàn ký quỹ Chuyên gia",
+  DEPOSIT_REFUND: "Hoàn ký quỹ",
+  MILESTONE_ESCROW_DEPOSIT: "Ký quỹ cột mốc",
+  MILESTONE_ESCROW_RELEASE: "Giải ngân cột mốc",
+  IMMEDIATE_TERMINATION_COMPENSATION: "Bồi thường hủy ngang hợp đồng",
+};
+
+function walletTransactionDisplayTitle(tx: WalletTransaction) {
+  return tx.title || walletTransactionLabels[tx.transactionType] || txTypeLabel(tx.transactionType);
+}
+
+function walletTransactionDescription(tx: WalletTransaction) {
+  const contractContext = tx.contractTitle
+    ? `Hợp đồng “${tx.contractTitle}”`
+    : tx.contractId
+      ? `hợp đồng #${tx.contractId}`
+      : "hợp đồng";
+
+  if (walletTransactionLabels[tx.transactionType]?.includes("Hoàn ký quỹ")) {
+    return `Hệ thống đã hoàn ${formatCurrency(tx.amount)} ký quỹ cho ${contractContext}.`;
+  }
+  if (tx.transactionType === "IMMEDIATE_TERMINATION_COMPENSATION") {
+    return `Khoản ${formatCurrency(tx.amount)} bồi thường do hủy ngang ${contractContext}.`;
+  }
+  if (tx.transactionType === "MILESTONE_ESCROW_RELEASE") {
+    return tx.jobTitle
+      ? `Đã giải ngân ${formatCurrency(tx.amount)} cho cột mốc “${tx.jobTitle}”.`
+      : `Đã giải ngân ${formatCurrency(tx.amount)} sau khi nghiệm thu cột mốc.`;
+  }
+  if (tx.transactionType === "MILESTONE_ESCROW_DEPOSIT") {
+    return tx.jobTitle
+      ? `Đã giữ ${formatCurrency(tx.amount)} cho cột mốc “${tx.jobTitle}”.`
+      : `Đã giữ ${formatCurrency(tx.amount)} trong ký quỹ cột mốc.`;
+  }
+  return tx.description || tx.rawDescription || "Giao dịch ví đã được hệ thống ghi nhận.";
+}
+
 function withdrawStatusLabel(status: string) {
   const map: Record<string, string> = {
     PENDING: "Đang chờ",
@@ -515,11 +558,15 @@ export function WalletPage() {
                     </span>
                     <div>
                       <p className="text-sm font-bold text-ink">
-                        {txTypeLabel(tx.transactionType)}
+                        {walletTransactionDisplayTitle(tx)}
                       </p>
-                      {tx.description && (
-                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">
-                          {tx.description}
+                      <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">
+                        {walletTransactionDescription(tx)}
+                      </p>
+                      {(tx.contractTitle || tx.contractId || tx.jobTitle) && (
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {tx.contractTitle || (tx.contractId ? `Hợp đồng #${tx.contractId}` : "")}
+                          {tx.jobTitle ? ` · Cột mốc: ${tx.jobTitle}` : ""}
                         </p>
                       )}
                     </div>

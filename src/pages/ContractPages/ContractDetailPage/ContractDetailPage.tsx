@@ -3,6 +3,7 @@
   FileText,
   LockKeyhole,
   ShieldCheck,
+  Star,
   WalletCards,
   XCircle,
 } from "lucide-react";
@@ -110,6 +111,8 @@ export function ContractDetailPage() {
   const [depositConfirmOpen, setDepositConfirmOpen] = useState(false);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [cancelDraftConfirmOpen, setCancelDraftConfirmOpen] = useState(false);
+  const [cancelDraftLoading, setCancelDraftLoading] = useState(false);
   const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
@@ -332,6 +335,33 @@ export function ContractDetailPage() {
     }
   };
 
+  const cancelDraftContract = async () => {
+    setCancelDraftLoading(true);
+    setContractNotice(null);
+    try {
+      const updated = await contractApi.cancelDraft(contract.contractId);
+      setContract(updated);
+      setCancelDraftConfirmOpen(false);
+      setContractNotice({
+        tone: "success",
+        title: "Đã hủy hợp đồng nháp.",
+        message:
+          "Hợp đồng đã được hủy trước khi ký. Thao tác này không liên quan đến hủy ngang và không phát sinh bồi thường.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể hủy hợp đồng nháp. Vui lòng thử lại.",
+      });
+    } finally {
+      setCancelDraftLoading(false);
+    }
+  };
+
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
     setContract(updated);
@@ -487,16 +517,32 @@ export function ContractDetailPage() {
     contractStartDate && contractEndDate
       ? `${formatDate(contractStartDate)} - ${formatDate(contractEndDate)}`
       : "Chưa có timeline";
-  const nextAction = getContractNextAction({
-    contract,
-    role: session?.role,
-    businessAccepted,
-    expertAccepted,
-    businessNdaSigned,
-    expertNdaSigned,
-    underReviewCount,
-    activeDisputeCount: activeDisputes.length,
-  });
+  const cancelledByBusiness =
+    contract.cancelledByRole?.toUpperCase() === "BUSINESS" ||
+    contract.cancelledByAccountId === contract.businessId;
+  const cancelledByExpert =
+    contract.cancelledByRole?.toUpperCase() === "EXPERT" ||
+    contract.cancelledByAccountId === contract.expertId;
+  const nextAction =
+    contractStatus === "CANCELLED" && (cancelledByBusiness || cancelledByExpert)
+      ? {
+          tone: "danger" as const,
+          title: cancelledByBusiness
+            ? `Doanh nghiệp ${businessDisplayName} đã hủy hợp đồng nháp.`
+            : `Chuyên gia ${expertDisplayName} đã từ chối hợp đồng.`,
+          description:
+            "Hợp đồng đã bị hủy trước khi ký hoặc kích hoạt. Các cột mốc không thể tiếp tục thực hiện.",
+        }
+      : getContractNextAction({
+          contract,
+          role: session?.role,
+          businessAccepted,
+          expertAccepted,
+          businessNdaSigned,
+          expertNdaSigned,
+          underReviewCount,
+          activeDisputeCount: activeDisputes.length,
+        });
   const canPayDeposit =
     (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
     contractStatus === "PENDING" &&
@@ -505,6 +551,10 @@ export function ContractDetailPage() {
     session?.role === "EXPERT" &&
     ["DRAFT", "PENDING"].includes(contractStatus) &&
     !expertAccepted;
+  const canBusinessCancelDraft =
+    session?.role === "BUSINESS" &&
+    contractStatus === "DRAFT" &&
+    !businessAccepted;
   const availableBalance = paymentWallet?.availableBalance ?? 0;
   const depositMissingAmount = Math.max(
     0,
@@ -582,6 +632,15 @@ export function ContractDetailPage() {
               >
                 Không gian làm việc
               </LinkButton>
+              {contractStatus === "CLOSED" && (
+                <LinkButton
+                  to={`/app/reviews?contractId=${contract.contractId}`}
+                  variant="secondary"
+                >
+                  <Star className="h-4 w-4" />
+                  Đánh giá đối tác
+                </LinkButton>
+              )}
               
             </>
           }
@@ -590,6 +649,23 @@ export function ContractDetailPage() {
       {contractNotice && (
         <Notice tone={contractNotice.tone} title={contractNotice.title}>
           {contractNotice.message}
+        </Notice>
+      )}
+      {canPayDeposit && (
+        <Notice
+          tone="warning"
+          title="NDA đã ký. Bước tiếp theo: thanh toán ký quỹ."
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <span>
+              Thanh toán {currentDepositRoleLabel} để hoàn tất kích hoạt hợp đồng
+              sau khi cả hai bên đã ký quỹ.
+            </span>
+            <Button onClick={() => setDepositConfirmOpen(true)}>
+              <WalletCards className="h-4 w-4" />
+              Thanh toán ký quỹ
+            </Button>
+          </div>
         </Notice>
       )}
       <Card className="p-4">
@@ -854,10 +930,13 @@ export function ContractDetailPage() {
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            {canCurrentPartyAct && contractStatus === "DRAFT" && (
-              <Button onClick={signContract} disabled={currentPartyAccepted}>
-                <CheckCircle2 className="h-4 w-4" />
-                Chấp nhận hợp đồng
+            {canBusinessCancelDraft && (
+              <Button
+                variant="danger"
+                onClick={() => setCancelDraftConfirmOpen(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                Hủy hợp đồng nháp
               </Button>
             )}
             {canExpertRejectContract && (
@@ -870,6 +949,12 @@ export function ContractDetailPage() {
               </Button>
             )}
             {canCurrentPartyAct && contractStatus === "DRAFT" && (
+              <Button onClick={signContract} disabled={currentPartyAccepted}>
+                <CheckCircle2 className="h-4 w-4" />
+                Chấp nhận hợp đồng
+              </Button>
+            )}
+            {canCurrentPartyAct && contractStatus === "DRAFT" && (
               <Button
                 variant="secondary"
                 onClick={openNdaSigning}
@@ -877,12 +962,6 @@ export function ContractDetailPage() {
               >
                 <ShieldCheck className="h-4 w-4" />
                 Ký NDA
-              </Button>
-            )}
-            {canPayDeposit && (
-              <Button onClick={() => setDepositConfirmOpen(true)}>
-                <WalletCards className="h-4 w-4" />
-                Thanh toán ký quỹ {currentDepositRoleLabel}
               </Button>
             )}
           </div>
@@ -979,6 +1058,37 @@ export function ContractDetailPage() {
         <Notice tone="warning" title={`Hợp đồng: ${contractTitle}`}>
           Bạn đang từ chối hợp đồng trước khi kích hoạt. Thao tác này không phải
           hủy ngang hợp đồng, không phát sinh bồi thường.
+        </Notice>
+      </Modal>
+
+      <Modal
+        open={cancelDraftConfirmOpen}
+        onClose={() => !cancelDraftLoading && setCancelDraftConfirmOpen(false)}
+        title="Xác nhận hủy hợp đồng nháp"
+        description="Hợp đồng nháp sẽ chuyển sang trạng thái đã hủy trước khi hai bên ký hoặc ký NDA."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setCancelDraftConfirmOpen(false)}
+              disabled={cancelDraftLoading}
+            >
+              Quay lại
+            </Button>
+            <Button
+              variant="danger"
+              onClick={cancelDraftContract}
+              loading={cancelDraftLoading}
+            >
+              <XCircle className="h-4 w-4" />
+              Xác nhận hủy
+            </Button>
+          </>
+        }
+      >
+        <Notice tone="warning" title="Hủy hợp đồng nháp">
+          Đây là thao tác hủy trước khi kích hoạt, không phải hủy ngang và không
+          phát sinh bồi thường.
         </Notice>
       </Modal>
 

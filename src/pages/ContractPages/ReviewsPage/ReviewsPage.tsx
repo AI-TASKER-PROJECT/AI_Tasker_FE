@@ -22,11 +22,47 @@ function isClosedContract(contract: Contract) {
   return (contract.status || "").trim().toUpperCase() === "CLOSED";
 }
 
+function isReviewByCurrentAccount(review: Review, accountId?: number) {
+  const currentId = Number(accountId);
+  if (!Number.isFinite(currentId) || currentId <= 0) return false;
+
+  const reviewerId = Number(review.reviewerId);
+  if (Number.isFinite(reviewerId) && reviewerId > 0) {
+    if (reviewerId === currentId) return true;
+
+    // BE lưu revieweeId là accountId của người nhận. Khi reviewerId của dữ liệu
+    // cũ không khớp, revieweeId vẫn cho biết review còn lại là của tài khoản này.
+    const revieweeId = Number(review.revieweeId);
+    if (Number.isFinite(revieweeId) && revieweeId === currentId) return false;
+  }
+
+  const revieweeId = Number(review.revieweeId);
+  return Number.isFinite(revieweeId) && revieweeId !== currentId;
+}
+
+function hasCurrentAccountReview(reviews: Review[], accountId?: number) {
+  // BE giới hạn mỗi hợp đồng tối đa một đánh giá cho mỗi bên. Với dữ liệu cũ
+  // thiếu reviewerId hoặc reviewerId khác kiểu, 2 đánh giá đồng nghĩa hai bên
+  // đã hoàn tất đánh giá chéo.
+  return (
+    reviews.some((review) => isReviewByCurrentAccount(review, accountId)) ||
+    reviews.length >= 2
+  );
+}
+
 function contractLabel(contract: Contract) {
   return contract.contractTitle || contract.title || `Contract #${contract.contractId}`;
 }
 
 function partnerRoleLabel(role?: string) {
+  return role === "BUSINESS" ? "Chuyên gia" : "Doanh nghiệp";
+}
+
+function reviewActorLabel(review: Review, role?: string, accountId?: number) {
+  const isCurrentAccountReviewer = isReviewByCurrentAccount(review, accountId);
+  if (isCurrentAccountReviewer) {
+    return role === "BUSINESS" ? "Doanh nghiệp" : "Chuyên gia";
+  }
   return role === "BUSINESS" ? "Chuyên gia" : "Doanh nghiệp";
 }
 
@@ -89,8 +125,9 @@ export function ReviewsPage() {
     () =>
       closedContracts.filter(
         (contract) =>
-          !(reviewsByContract[contract.contractId] || []).some(
-            (review) => review.reviewerId === session?.accountId,
+          !hasCurrentAccountReview(
+            reviewsByContract[contract.contractId] || [],
+            session?.accountId,
           ),
       ),
     [closedContracts, reviewsByContract, session?.accountId],
@@ -117,9 +154,7 @@ export function ReviewsPage() {
     ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
       reviews.length
     : 0;
-  const hasReviewed = reviews.some(
-    (review) => review.reviewerId === session?.accountId,
-  );
+  const hasReviewed = hasCurrentAccountReview(reviews, session?.accountId);
   const partnerName = selectedContract
     ? session?.role === "BUSINESS"
       ? selectedContract.expertName || "Chuyên gia"
@@ -500,9 +535,9 @@ export function ReviewsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-extrabold text-ink">
-                      {review.reviewerId === session?.accountId
+                      {isReviewByCurrentAccount(review, session?.accountId)
                         ? `Bạn đã đánh giá ${partnerType}`
-                        : `Đánh giá từ ${partnerType}`}
+                        : `Đánh giá từ ${reviewActorLabel(review, session?.role, session?.accountId)}`}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
                       {review.reviewerName || "Thành viên hợp đồng"}
