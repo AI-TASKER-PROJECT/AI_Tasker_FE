@@ -19,7 +19,6 @@ import { useSession } from "../../../lib/session";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
 import type {
   AcceptanceCriteria,
-  CaseAttachment,
   Contract,
   Deliverable,
   Dispute,
@@ -56,6 +55,23 @@ const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "
 
 function normalizeStatus(status?: string) {
   return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
+}
+
+function formatDisputeType(type?: string) {
+  switch (normalizeStatus(type)) {
+    case "BUSINESS_REJECTED_DELIVERABLE":
+      return "Phản đối kết quả bàn giao";
+    case "EXPERT_SCOPE_CONCERN":
+      return "Phản ánh yêu cầu ngoài phạm vi";
+    case "EXPERT_NO_REVIEW_RESPONSE":
+      return "Chưa nhận được phản hồi nghiệm thu";
+    case "EXPERT_BAD_FAITH_REJECTION":
+      return "Từ chối không phù hợp tiêu chí";
+    case "OTHER":
+      return "Lý do khác";
+    default:
+      return "";
+  }
 }
 
 function normalizeExternalUrl(value?: string) {
@@ -359,32 +375,32 @@ function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
 function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
-    title: dispute ? `Tranh chấp #${dispute.disputeId}` : "Tranh chấp",
+    title: dispute ? "Tranh chấp đang xử lý" : "Tranh chấp",
     message: "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
   };
   const messages: Record<string, { title: string; message: string }> = {
     PENDING_SELF_RESOLVE: {
-      title: `Tranh chấp #${dispute?.disputeId} - Hai bên đang tự xử lý`,
+      title: "Tranh chấp - Hai bên đang tự xử lý",
       message:
         "Doanh nghiệp và Chuyên gia đang tự trao đổi. Nếu không thống nhất, hãy gửi yêu cầu staff can thiệp.",
     },
     ESCALATION_REQUESTED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Đã gửi yêu cầu staff`,
+      title: "Tranh chấp - Đã gửi yêu cầu staff",
       message:
         "Yêu cầu can thiệp đã được gửi. Hệ thống đang tự động định tuyến Staff phù hợp để tiếp nhận.",
     },
     STAFF_REVIEWING: {
-      title: `Tranh chấp #${dispute?.disputeId} - Staff đang kiểm tra`,
+      title: "Tranh chấp - Staff đang kiểm tra",
       message:
         "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ ra quyết định xử lý.",
     },
     STAFF_DECIDED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Staff đã ra quyết định`,
+      title: "Tranh chấp - Staff đã ra quyết định",
       message:
         "Staff đã gửi báo cáo kỹ thuật và tỷ lệ phân bổ ký quỹ. Hệ thống đang chờ bước quyết toán.",
     },
     RESOLVED: {
-      title: `Tranh chấp #${dispute?.disputeId} - Đã xử lý xong`,
+      title: "Tranh chấp - Đã xử lý xong",
       message:
         "Tranh chấp đã được quyết toán. Doanh nghiệp và Chuyên gia có thể xem kết quả giao dịch cuối cùng.",
     },
@@ -527,11 +543,7 @@ export function WorkspacePage() {
   const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [escalateDisputeNote, setEscalateDisputeNote] = useState("");
-  const [evidenceOpen, setEvidenceOpen] = useState<Dispute | null>(null);
-  const [evidenceAttachments, setEvidenceAttachments] = useState<CaseAttachment[]>([]);
   const [evidenceFileUrl, setEvidenceFileUrl] = useState("");
-  const [evidenceFileName, setEvidenceFileName] = useState("");
-  const [evidenceNote, setEvidenceNote] = useState("");
   const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
     tone: NoticeTone;
@@ -1080,76 +1092,10 @@ export function WorkspacePage() {
     }
   };
 
-  const openEvidencePanel = async (dispute: Dispute) => {
+  const openDisputeProfile = (dispute: Dispute) => {
     if (!dispute.disputeId) return;
-    setEvidenceOpen(dispute);
-    setEvidenceFileUrl("");
-    setEvidenceFileName("");
-    setEvidenceNote("");
-    setActionLoading(`evidence-load:${dispute.disputeId}`);
-    try {
-      const [latestDispute, attachments] = await Promise.all([
-        disputeApi.get(dispute.disputeId),
-        contractApi.listCaseAttachments("DISPUTE", dispute.disputeId),
-      ]);
-      setEvidenceAttachments(attachments);
-      setDisputesByMilestone((current) => {
-        const next = { ...current };
-        const milestoneEntry = Object.entries(next).find(
-          ([, item]) => item.disputeId === latestDispute.disputeId,
-        );
-        if (milestoneEntry) next[Number(milestoneEntry[0])] = latestDispute;
-        return next;
-      });
-      setEvidenceOpen(latestDispute);
-    } catch (error) {
-      setMilestoneNotice(dispute.milestoneId, {
-        tone: "danger",
-        title: getApiErrorMessage(error),
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const submitEvidence = async () => {
-    if (!evidenceOpen) return;
-    const fileUrl = evidenceFileUrl.trim();
-    if (!fileUrl) {
-      setWorkspaceNotice({
-        tone: "warning",
-        title: "Vui lòng nhập đường dẫn bằng chứng.",
-        message: "BE hiện nhận bằng chứng dưới dạng URL file hoặc link chia sẻ.",
-      });
-      return;
-    }
-    setActionLoading(`evidence-submit:${evidenceOpen.disputeId}`);
-    try {
-      await disputeApi.createEvidence(evidenceOpen.disputeId, {
-        fileUrl,
-        fileName: evidenceFileName.trim() || undefined,
-        note: evidenceNote.trim() || undefined,
-      });
-      const attachments = await contractApi.listCaseAttachments(
-        "DISPUTE",
-        evidenceOpen.disputeId,
-      );
-      setEvidenceAttachments(attachments);
-      setEvidenceFileUrl("");
-      setEvidenceFileName("");
-      setEvidenceNote("");
-      setMilestoneNotice(evidenceOpen.milestoneId, {
-        tone: "success",
-        title: "Đã gửi bằng chứng cho Staff.",
-      });
-    } catch (error) {
-      setMilestoneNotice(evidenceOpen.milestoneId, {
-        tone: "danger",
-        title: getApiErrorMessage(error),
-      });
-    } finally {
-      setActionLoading(null);
-    }
+    const basePath = session?.role === "STAFF" ? "/app/tickets" : "/app/disputes";
+    navigate(`${basePath}/${dispute.disputeId}`);
   };
 
   const checkOverdueMilestones = async () => {
@@ -1396,7 +1342,7 @@ export function WorkspacePage() {
         <PageHeader
           title={`Workspace: ${contract.contractTitle ||
             contract.title ||
-            `Contract #${contract.contractId}`
+            "Hợp đồng chưa có tên"
             }`}
           description="Business ký quỹ từng cột mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
           actions={
@@ -1942,7 +1888,7 @@ export function WorkspacePage() {
                         setDisputeReason(
                           currentDispute.evidenceReport?.trim() ||
                             currentDispute.escalationReason?.trim() ||
-                            currentDispute.initiationType ||
+                            formatDisputeType(currentDispute.initiationType) ||
                             "Lý do tranh chấp chưa được cung cấp.",
                         );
                         setEvidenceFileUrl(
@@ -2073,11 +2019,7 @@ export function WorkspacePage() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => openEvidencePanel(currentDispute)}
-                          loading={
-                            actionLoading ===
-                            `evidence-load:${currentDispute.disputeId}`
-                          }
+                          onClick={() => openDisputeProfile(currentDispute)}
                         >
                           Xem và bổ sung bằng chứng
                         </Button>
@@ -2997,89 +2939,6 @@ export function WorkspacePage() {
               Yêu cầu Chuyên gia điều chỉnh nội dung trong các báo cáo hoặc sản phẩm tiếp theo.
             </span>
           </label>
-        </div>
-      </Modal>
-
-      <Modal
-        open={Boolean(evidenceOpen)}
-        onClose={() => !actionLoading && setEvidenceOpen(null)}
-        title="Bằng chứng gửi Staff"
-        description="Thêm link source, demo, file hoặc tài liệu liên quan để Staff có đủ thông tin xử lý tranh chấp."
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setEvidenceOpen(null)}
-              disabled={Boolean(actionLoading)}
-            >
-              Đóng
-            </Button>
-            <Button
-              variant="danger"
-              onClick={submitEvidence}
-              loading={
-                evidenceOpen
-                  ? actionLoading === `evidence-submit:${evidenceOpen.disputeId}`
-                  : false
-              }
-            >
-              Gửi bằng chứng
-            </Button>
-          </>
-        }
-      >
-        <div className="grid gap-4">
-          {evidenceAttachments.length > 0 && (
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm font-extrabold text-ink">Bằng chứng đã gửi</p>
-              <div className="mt-3 grid gap-2">
-                {evidenceAttachments.map((attachment) => (
-                  <div
-                    key={attachment.attachmentId || attachment.fileUrl}
-                    className="rounded-xl bg-white p-3 text-sm"
-                  >
-                    <a
-                      href={attachment.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="break-all font-bold text-brand-600 hover:text-brand-700"
-                    >
-                      {attachment.fileName || attachment.fileUrl}
-                    </a>
-                    {attachment.note && (
-                      <p className="mt-1 text-slate-500">{attachment.note}</p>
-                    )}
-                    {attachment.createdAt && (
-                      <p className="mt-1 text-xs font-bold text-slate-400">
-                        {formatDateTime(attachment.createdAt)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <Field label="Đường dẫn bằng chứng *">
-            <Input
-              value={evidenceFileUrl}
-              onChange={(event) => setEvidenceFileUrl(event.target.value)}
-              placeholder="https://..."
-            />
-          </Field>
-          <Field label="Tên file hoặc tài liệu">
-            <Input
-              value={evidenceFileName}
-              onChange={(event) => setEvidenceFileName(event.target.value)}
-              placeholder="Ví dụ: source-code.zip, demo.png"
-            />
-          </Field>
-          <Field label="Ghi chú cho Staff">
-            <Textarea
-              value={evidenceNote}
-              onChange={(event) => setEvidenceNote(event.target.value)}
-              placeholder="Mô tả ngắn bằng chứng này chứng minh điều gì..."
-            />
-          </Field>
         </div>
       </Modal>
 

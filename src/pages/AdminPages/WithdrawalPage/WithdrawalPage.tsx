@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi, getApiErrorMessage, withdrawalApi } from "../../../services";
-import { cn, formatCurrency, formatDateTime } from "../../../lib/utils";
+import { cn, formatCurrency, formatDateTime, maskSensitiveValue } from "../../../lib/utils";
 import type { AdminAccount, WithdrawalRequest } from "../../../types";
 import {
   Badge,
@@ -49,7 +49,7 @@ function accountDisplayName(
   );
   if (account?.fullName) return account.fullName;
   if (account?.email) return account.email;
-  return `Account #${withdrawal.accountId}`;
+  return "Tài khoản người dùng";
 }
 
 function accountSubLabel(
@@ -60,7 +60,7 @@ function accountSubLabel(
     (item) => item.accountId === withdrawal.accountId,
   );
   if (account?.email && account.fullName) return account.email;
-  return `Account #${withdrawal.accountId}`;
+  return "Tài khoản người dùng";
 }
 
 function DateCell({ value }: { value?: string }) {
@@ -237,7 +237,7 @@ function ReviewModal({
             <div className="flex justify-between gap-4">
               <span className="font-semibold text-slate-500">Số TK</span>
               <span className="font-mono font-bold text-ink">
-                {withdrawal.bankAccountNumber}
+                {maskSensitiveValue(withdrawal.bankAccountNumber)}
               </span>
             </div>
             <div className="flex justify-between gap-4">
@@ -331,25 +331,13 @@ function ViewDetailsModal({
             <DetailRow label="Ngân hàng" value={withdrawal.bankName} />
             <DetailRow
               label="Số tài khoản"
-              value={withdrawal.bankAccountNumber}
+              value={maskSensitiveValue(withdrawal.bankAccountNumber)}
               mono
             />
             <DetailRow
               label="Chủ tài khoản"
               value={withdrawal.bankAccountHolder}
             />
-            <DetailRow label="Wallet ID" value={withdrawal.walletId} mono />
-            <DetailRow
-              label="Hold transaction"
-              value={withdrawal.holdTransactionId}
-              mono
-            />
-            <DetailRow
-              label="Review transaction"
-              value={withdrawal.reviewTransactionId}
-              mono
-            />
-            <DetailRow label="Admin ID" value={withdrawal.adminId} mono />
             <DetailRow
               label="Ngày tạo"
               value={formatDateTime(withdrawal.requestedAt ?? withdrawal.createdAt)}
@@ -558,8 +546,7 @@ export function AdminWithdrawalPage() {
           </div>
         ) : (
           <div>
-            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-              <span className="w-10">ID</span>
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
               <span>Thông tin ngân hàng</span>
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
@@ -572,12 +559,8 @@ export function AdminWithdrawalPage() {
               {filtered.map((wr) => (
                 <div
                   key={wr.withdrawalId}
-                  className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                 >
-                  <span className="w-10 text-xs font-extrabold text-slate-400">
-                    #{wr.withdrawalId}
-                  </span>
-
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500">
                       <Building className="h-4 w-4" />
@@ -586,7 +569,7 @@ export function AdminWithdrawalPage() {
                       <p className="truncate text-sm font-bold text-ink">
                         {wr.bankName} ·{" "}
                         <span className="font-mono">
-                          {wr.bankAccountNumber}
+                          {maskSensitiveValue(wr.bankAccountNumber)}
                         </span>
                       </p>
                       <p className="text-xs font-bold text-slate-600">

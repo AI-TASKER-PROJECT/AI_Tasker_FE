@@ -36,7 +36,7 @@ export function StaffAssignmentPage() {
           </li>
           <li>
             Response phải trả tên hiển thị, workload, availability và trạng thái
-            conflict-of-interest, không yêu cầu UI hiển thị raw ID.
+            conflict-of-interest, không yêu cầu UI hiển thị mã định danh nội bộ.
           </li>
         </ul>
       </Card>

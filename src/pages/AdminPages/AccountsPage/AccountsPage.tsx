@@ -159,8 +159,7 @@ export function AccountsPage() {
             Bên ngoài
           </Button>
         </div>
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[80px_1fr_150px_130px_180px]">
-          <span>ID</span>
+        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_150px_130px_180px]">
           <span>Account</span>
           <span>Role</span>
           <span>Status</span>
@@ -169,11 +168,8 @@ export function AccountsPage() {
         {visibleAccounts.map((account) => (
           <div
             key={account.accountId}
-            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[80px_1fr_150px_130px_180px] md:items-center"
+            className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_150px_130px_180px] md:items-center"
           >
-            <span className="font-extrabold text-slate-500">
-              #{account.accountId}
-            </span>
             <div>
               <p className="font-extrabold text-ink">{account.fullName}</p>
               <p className="text-slate-500">{account.email}</p>

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Award, BrainCircuit, Cpu, Edit3, FileText, IdCard, Layers3, ShieldCheck } from "lucide-react";
 import { catalogApi, profileApi, type Domain, type Skill, type Technology } from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
+import { maskSensitiveValue } from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Avatar, Button, Card, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { Portfolio } from "../../../types";
@@ -149,7 +150,7 @@ export function ExpertProfilePage() {
         <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-5 md:flex-row md:items-center">
-              <Avatar name={form.nationalId || "Chuyên gia"} size="xl" />
+              <Avatar name="Chuyên gia" size="xl" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
                   Trang cá nhân chuyên gia
@@ -232,7 +233,7 @@ export function ExpertProfilePage() {
               />
               <ProfileRow
                 label="Số CCCD / Hộ chiếu"
-                value={form.nationalId || "Chưa cập nhật"}
+                value={maskSensitiveValue(form.nationalId)}
               />
               <ProfileRow
                 label="Trạng thái KYC"

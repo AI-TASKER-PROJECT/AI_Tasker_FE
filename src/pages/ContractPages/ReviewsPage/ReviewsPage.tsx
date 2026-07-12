@@ -51,7 +51,7 @@ function hasCurrentAccountReview(reviews: Review[], accountId?: number) {
 }
 
 function contractLabel(contract: Contract) {
-  return contract.contractTitle || contract.title || `Contract #${contract.contractId}`;
+  return contract.contractTitle || contract.title || "Hợp đồng chưa có tên";
 }
 
 function partnerRoleLabel(role?: string) {

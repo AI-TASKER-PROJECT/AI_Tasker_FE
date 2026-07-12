@@ -17,7 +17,7 @@ export function skillCountLabel(count: number) {
 export function resolveSkillName(skillId: number, skills: Skill[]) {
   return (
     skills.find((skill) => skill.skillId === skillId)?.skillName ||
-    `Skill #${skillId}`
+    "Kỹ năng chưa có tên"
   );
 }
 
@@ -27,14 +27,14 @@ export function resolveTechnologyName(
 ) {
   return (
     technologies.find((technology) => technology.technologyId === technologyId)
-      ?.technologyName || `Technology #${technologyId}`
+      ?.technologyName || "Công nghệ chưa có tên"
   );
 }
 
 export function resolveDomainName(domainId: number, domains: Domain[]) {
   return (
     domains.find((domain) => domain.domainId === domainId)?.domainName ||
-    `Lĩnh vực #${domainId}`
+    "Lĩnh vực chưa có tên"
   );
 }
 

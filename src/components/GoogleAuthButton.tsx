@@ -105,7 +105,7 @@ export function GoogleAuthButton({
         });
       })
       .catch(() => {
-        const message = 'Không tải dược Google Sign-In. Kiểm tra kết nối mạng hoặc cấu hình client ID.';
+        const message = 'Không tải dược Google Sign-In. Kiểm tra kết nối mạng hoặc cấu hình đăng nhập Google.';
         setError(message);
         onError?.(message);
       });

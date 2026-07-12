@@ -41,11 +41,11 @@ export function skillCountLabel(count: number) {
 }
 
 export function resolveSkillName(skillId: number, skills: Skill[]) {
-  return skills.find((skill) => skill.skillId === skillId)?.skillName || `Skill #${skillId}`;
+  return skills.find((skill) => skill.skillId === skillId)?.skillName || "Kỹ năng chưa có tên";
 }
 
 export function resolveDomainName(domainId: number, domains: Domain[]) {
-  return domains.find((domain) => domain.domainId === domainId)?.domainName || `Lĩnh vực #${domainId}`;
+  return domains.find((domain) => domain.domainId === domainId)?.domainName || "Lĩnh vực chưa có tên";
 }
 
 export function jobDomainLabel(domainIds: number[], domains: Domain[]) {

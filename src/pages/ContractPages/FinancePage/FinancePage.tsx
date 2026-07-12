@@ -234,7 +234,7 @@ export function FinancePage() {
               >
                 <div>
                   <p className="font-extrabold text-ink">
-                    {tx.title || tx.description || `Transaction #${transactionIdOf(tx)}`}
+                    {tx.title || tx.description || "Giao dịch ví"}
                   </p>
                   <p className="mt-1 text-slate-500">
                     {walletTransactionDisplayDescription(tx, session?.role)}
@@ -311,10 +311,7 @@ export function FinancePage() {
                   <p className="font-extrabold text-ink">
                     {contract.contractTitle ||
                       contract.title ||
-                      `Hop dong #${contract.contractId}`}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Hop dong ID: {contract.contractId}
+                      "Hợp đồng chưa có tên"}
                   </p>
                 </div>
                 <span className="font-extrabold text-brand-700">

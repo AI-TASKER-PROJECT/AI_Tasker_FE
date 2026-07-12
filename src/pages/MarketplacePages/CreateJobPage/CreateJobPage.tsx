@@ -265,6 +265,7 @@ export function CreateJobPage() {
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [sowGeneratedLocked, setSowGeneratedLocked] = useState(false);
+  const [isEditingAiMilestones, setIsEditingAiMilestones] = useState(false);
   const [generatedSow, setGeneratedSow] = useState<GeneratedSow | null>(null);
   const [savedJob, setSavedJob] = useState<Job | null>(null);
   const [publishSuccessOpen, setPublishSuccessOpen] = useState(false);
@@ -276,6 +277,7 @@ export function CreateJobPage() {
   const [aiMessageTone, setAiMessageTone] = useState<
     "info" | "success" | "warning" | "danger"
   >("info");
+  const [milestoneEditMessage, setMilestoneEditMessage] = useState("");
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -432,13 +434,40 @@ export function CreateJobPage() {
         ),
         ...technologyNames,
       ],
+      clarificationAlreadyAsked: aiQuestions.length > 0,
     };
   };
 
   const generateSow = async () => {
+    const budget = Number(form.budgetAmount);
+    const duration = Number(form.plannedDurationValue);
+    if (
+      !form.title.trim() ||
+      !form.rawRequirements.trim() ||
+      selectedDomainId === null ||
+      selectedTechnologyIds.length === 0 ||
+      skillAssignments.length === 0 ||
+      !Number.isFinite(budget) ||
+      budget <= 0 ||
+      !Number.isFinite(duration) ||
+      duration <= 0
+    ) {
+      setAttemptedSubmit(true);
+      setAiMessage(
+        "Vui lòng nhập tên dự án, yêu cầu thô, lĩnh vực dự án, công nghệ nền tảng, kỹ năng yêu cầu, ngân sách và thời lượng hợp lệ trước khi dùng AI tạo SoW.",
+      );
+      setAiMessageTone("warning");
+      return;
+    }
+
     setAiLoading(true);
     setAiMessage("");
-    setAiQuestions([]);
+    setMilestoneEditMessage("");
+    setIsEditingAiMilestones(false);
+    const isClarificationRetry = aiQuestions.length > 0;
+    if (!isClarificationRetry) {
+      setAiQuestions([]);
+    }
     setShowAiReplyBox(false);
     try {
       const response = await sowApi.generate(buildAiPayload());
@@ -488,14 +517,16 @@ export function CreateJobPage() {
         setAiAdditionalAnswers(new Array(questions.length).fill(""));
         setShowAiReplyBox(true);
         setAiMessage(
-          "✓ AI đã tạo SoW và cập nhật Project milestones thành công. Có thể chỉnh sửa hoặc bổ sung thêm các thông tin bên dưới để tạo lại 1 mô tả chi tiết và đầy đủ hơn.",
+          "AI đã tạo bản nháp SoW và milestones. Bạn có thể trả lời thêm các câu hỏi bên dưới để AI tinh chỉnh chính xác hơn.",
         );
-        setAiMessageTone("success");
+        setAiMessageTone("warning");
         setSowGeneratedLocked(hasGeneratedContent);
+        setIsEditingAiMilestones(false);
         return;
       }
 
       setSowGeneratedLocked(hasGeneratedContent);
+      setIsEditingAiMilestones(false);
       if (hasGeneratedContent)
         setAiMessage(
           "✓ AI đã tạo SoW và cập nhật Project milestones thành công.",
@@ -514,11 +545,29 @@ export function CreateJobPage() {
   // ── Unlock form to allow re-editing after AI generate ─────────────────────
   const unlockForm = () => {
     setSowGeneratedLocked(false);
+    setIsEditingAiMilestones(false);
     setGeneratedSow(null);
     setAiMessage("");
+    setMilestoneEditMessage("");
     setAiQuestions([]);
     setShowAiReplyBox(false);
     setAiAdditionalAnswers([]);
+  };
+
+  const startMilestoneEdit = () => {
+    setSowGeneratedLocked(false);
+    setIsEditingAiMilestones(true);
+    setMilestoneEditMessage("");
+  };
+
+  const confirmMilestoneEdit = () => {
+    setSowGeneratedLocked(true);
+    setIsEditingAiMilestones(false);
+    setIsDeletingMilestones(false);
+    setIsReorderingMilestones(false);
+    setMilestoneEditMessage(
+      "Đã chỉnh sửa thành công Mốc nghiệm thu của dự án.",
+    );
   };
 
   const saveMilestoneHistory = (currentMilestones: MilestoneDraft[]) => {
@@ -929,7 +978,7 @@ export function CreateJobPage() {
         ? Math.max(0, (quota.jobPostQuotaBalance ?? 0) - 1)
         : 0;
       setCreateMessage(
-        `Đăng bài thành công. Tài khoản còn ${remainingQuota} lượt đăng bài.`,
+        `Đã đăng bài thành công. Tài khoản bạn còn lại ${remainingQuota} lần đăng bài.`,
       );
       setCreateMessageTone("success");
     } catch (error) {
@@ -1213,6 +1262,7 @@ export function CreateJobPage() {
                       variant="ghost"
                       size="sm"
                       onClick={unlockForm}
+                      disabled={aiLoading}
                       title="Mở khóa để chỉnh sửa lại"
                     >
                       <Unlock className="h-4 w-4" />
@@ -1285,6 +1335,7 @@ export function CreateJobPage() {
                         variant="ghost"
                         size="sm"
                         onClick={unlockForm}
+                        disabled={aiLoading}
                         title="Mở khóa để chỉnh sửa lại"
                       >
                         <Unlock className="h-4 w-4" />
@@ -1366,42 +1417,76 @@ export function CreateJobPage() {
 
               {/* Project Milestones */}
               <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <SectionHeading
                     title="Mốc nghiệm thu của dự án"
                     description="Mốc nghiệm thu được đính kèm với dự án, có thể được sử dụng trong hợp đồng sau khi proposal được chấp nhận."
                   />
-                  {/* Budget and Duration indicators */}
-                  {(Number(form.budgetAmount) > 0 ||
-                    Number(form.plannedDurationValue) > 0) && (
-                    <div className="shrink-0 text-right">
-                      {Number(form.budgetAmount) > 0 && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                            Ngân sách
-                          </p>
-                          <p className="text-sm font-extrabold text-brand-600">
-                            {formatCurrency(Number(form.budgetAmount))}
-                          </p>
-                        </div>
-                      )}
-                      {Number(form.plannedDurationValue) > 0 && (
-                        <div
-                          className={
-                            Number(form.budgetAmount) > 0 ? "mt-2" : ""
-                          }
-                        >
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                            Thời gian
-                          </p>
-                          <p className="text-sm font-extrabold text-brand-600">
-                            {form.plannedDurationValue} Tuần
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex shrink-0 flex-col items-start gap-3 sm:flex-row sm:items-start md:justify-end">
+                    {sowGeneratedLocked && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={startMilestoneEdit}
+                        title="Mở khóa để chỉnh sửa lại mốc nghiệm thu"
+                        className="whitespace-nowrap"
+                      >
+                        <Unlock className="h-4 w-4" />
+                        Chỉnh sửa lại
+                      </Button>
+                    )}
+                    {isEditingAiMilestones && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={confirmMilestoneEdit}
+                        title="Xác nhận chỉnh sửa mốc nghiệm thu"
+                        className="whitespace-nowrap"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Xác nhận
+                      </Button>
+                    )}
+                    {/* Budget and Duration indicators */}
+                    {(Number(form.budgetAmount) > 0 ||
+                      Number(form.plannedDurationValue) > 0) && (
+                      <div className="text-left sm:text-right">
+                        {Number(form.budgetAmount) > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              Ngân sách
+                            </p>
+                            <p className="text-sm font-extrabold text-brand-600">
+                              {formatCurrency(Number(form.budgetAmount))}
+                            </p>
+                          </div>
+                        )}
+                        {Number(form.plannedDurationValue) > 0 && (
+                          <div
+                            className={
+                              Number(form.budgetAmount) > 0 ? "mt-2" : ""
+                            }
+                          >
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              Thời gian
+                            </p>
+                            <p className="text-sm font-extrabold text-brand-600">
+                              {form.plannedDurationValue} Tuần
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {milestoneEditMessage && (
+                  <Notice
+                    tone="success"
+                    title={milestoneEditMessage}
+                    className="mt-4"
+                  />
+                )}
 
                 <div className="mt-4 hidden grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
                   <span>Công việc</span>
@@ -1755,26 +1840,6 @@ export function CreateJobPage() {
                   : undefined
               }
             />
-            {createMessage &&
-              (Array.isArray(createMessage) ? (
-                <Notice
-                  tone={createMessageTone}
-                  title="Vui lòng kiểm tra lại thông tin:"
-                  className="mt-2 mb-2"
-                >
-                  <ul className="mt-1 list-inside list-disc space-y-1 text-sm">
-                    {createMessage.map((err, i) => (
-                      <li key={i}>{err}</li>
-                    ))}
-                  </ul>
-                </Notice>
-              ) : (
-                <Notice
-                  tone={createMessageTone}
-                  title={createMessage as string}
-                  className="mt-2 mb-2"
-                />
-              ))}
             <div className="mt-4 rounded-2xl bg-slate-50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -1854,6 +1919,24 @@ export function CreateJobPage() {
                 }))}
             />
             <div className="mt-4 grid gap-2">
+              {createMessage &&
+                (Array.isArray(createMessage) ? (
+                  <Notice
+                    tone={createMessageTone}
+                    title="Vui lòng kiểm tra lại thông tin:"
+                  >
+                    <ul className="mt-1 list-inside list-disc space-y-1 text-sm">
+                      {createMessage.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </Notice>
+                ) : (
+                  <Notice
+                    tone={createMessageTone}
+                    title={createMessage as string}
+                  />
+                ))}
               {publishError && <Notice tone="danger" title={publishError} />}
               <LinkButton
                 to={`/app/jobs/${savedJob.jobId}/detail`}

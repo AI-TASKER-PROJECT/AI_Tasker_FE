@@ -19,7 +19,7 @@ import {
   withdrawalApi,
 } from "../../../services";
 import { useSession } from "../../../context/sessionContext";
-import { cn, formatCurrency } from "../../../lib/utils";
+import { cn, formatCurrency, maskSensitiveValue } from "../../../lib/utils";
 import type {
   PaymentActionResponse,
   SystemWallet,
@@ -586,7 +586,7 @@ export function WalletPage() {
                       {(tx.contractTitle || tx.contractId || tx.jobTitle) && (
                         <p className="mt-1 text-xs font-semibold text-slate-500">
                           {tx.contractTitle ||
-                            (tx.contractId ? `Hợp đồng #${tx.contractId}` : "")}
+                            (tx.contractId ? "Hợp đồng liên quan" : "")}
                           {tx.jobTitle ? ` · Cột mốc: ${tx.jobTitle}` : ""}
                         </p>
                       )}
@@ -648,7 +648,7 @@ export function WalletPage() {
                   <div>
                     <p className="text-sm font-bold text-ink">{wr.bankName}</p>
                     <p className="text-xs text-slate-400">
-                      {wr.bankAccountNumber} · {wr.bankAccountHolder}
+                      {maskSensitiveValue(wr.bankAccountNumber)} · {wr.bankAccountHolder}
                     </p>
                   </div>
                 </div>

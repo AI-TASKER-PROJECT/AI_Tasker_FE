@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Building2, Edit3, MapPin, Save, ShieldCheck } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
+import { maskSensitiveValue } from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Avatar, Badge, Button, Card, EmptyState, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { Job } from "../../../types";
@@ -124,7 +125,7 @@ export function BusinessProfilePage() {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    {form.taxCode || "Chưa có mã số thuế"}
+                    {maskSensitiveValue(form.taxCode)}
                   </span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
                   <span className="inline-flex items-center gap-2">
@@ -199,7 +200,7 @@ export function BusinessProfilePage() {
             <div className="mt-5 space-y-4">
               <ProfileRow
                 label="Mã số thuế"
-                value={form.taxCode || "Chưa cập nhật"}
+                value={maskSensitiveValue(form.taxCode)}
               />
               <ProfileRow
                 label="Địa chỉ"

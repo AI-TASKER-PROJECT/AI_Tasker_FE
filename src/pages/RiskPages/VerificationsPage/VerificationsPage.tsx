@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { profileApi } from "../../../lib/api";
+import { maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
 import { Avatar, Badge, Card, EmptyState, LinkButton, PageHeader, StatusBadge, Tabs } from "../../../components/ui";
 
@@ -73,7 +74,7 @@ export function VerificationsPage() {
             const title = isBusiness
               ? (item as BusinessProfile).companyName
               : (item as ExpertProfile).fullName ||
-                `Expert #${(item as ExpertProfile).expertId}`;
+                "Chuyên gia chưa có tên";
             const status = getStatus(item);
             const id = isBusiness
               ? (item as BusinessProfile).businessId
@@ -89,8 +90,8 @@ export function VerificationsPage() {
                     <p className="font-extrabold text-ink">{title}</p>
                     <p className="text-sm text-slate-500">
                       {isBusiness
-                        ? (item as BusinessProfile).taxCode
-                        : (item as ExpertProfile).nationalId}
+                        ? maskSensitiveValue((item as BusinessProfile).taxCode)
+                        : maskSensitiveValue((item as ExpertProfile).nationalId)}
                     </p>
                     {isBusiness && (
                       <div className="mt-2 flex flex-wrap gap-2">

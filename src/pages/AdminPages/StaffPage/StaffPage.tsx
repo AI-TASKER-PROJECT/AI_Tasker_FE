@@ -70,7 +70,7 @@ export function StaffPage() {
 
   const create = async () => {
     if (!form.accountId.trim()) {
-      setError("Vui lòng nhập Account ID.");
+      setError("Vui lòng nhập tài khoản nhân viên.");
       return;
     }
     if (createDomainIds.length === 0) {
@@ -131,10 +131,10 @@ export function StaffPage() {
               </span>
               <div>
                 <p className="font-extrabold text-ink">
-                  {staff.fullName || `Staff #${staff.staffId}`}
+                  {staff.fullName || "Nhân viên chưa có tên"}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {staff.email || `Account #${staff.accountId}`}
+                  {staff.email || "Chưa có email"}
                 </p>
               </div>
             </div>
@@ -182,7 +182,7 @@ export function StaffPage() {
             </p>
           )}
 
-          <Field label="Account ID">
+          <Field label="Tài khoản nhân viên">
             <Input
               value={form.accountId}
               onChange={(event) =>
@@ -231,7 +231,7 @@ export function StaffPage() {
 
           <Field label="Nhân viên">
             <Input
-              value={editing?.email || `Account #${editing?.accountId || ""}`}
+              value={editing?.email || "Nhân viên chưa có email"}
               readOnly
             />
           </Field>

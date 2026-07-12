@@ -898,7 +898,7 @@ function ProposalCard({
   const expertName =
     expertProfile?.fullName ||
     proposal.expertName ||
-    `Expert #${proposal.expertId}`;
+    "Chuyên gia chưa có tên";
 
   const domainNames = resolveCatalogNames(
     portfolio?.domainIds,
@@ -1486,7 +1486,7 @@ function ExpertRecommendationCard({
   const score = rec.matchScore ?? 0;
 
   const expertName =
-    expertProfile?.fullName || expert?.fullName || `Expert #${rec.expertId}`;
+    expertProfile?.fullName || expert?.fullName || "Chuyên gia chưa có tên";
 
   const expertPhone =
     expertProfile?.phone || expert?.phone || "Chưa có dữ liệu";
@@ -1517,18 +1517,17 @@ function ExpertRecommendationCard({
         <div
           className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${gradientClass} text-white shadow`}
         >
-          <span className="text-xl font-black">#{rec.rankPosition}</span>
+          <span className="text-xl font-black">Hạng {rec.rankPosition}</span>
         </div>
 
         <div className="min-w-0">
           <p className="font-display text-base font-extrabold text-ink">
-            {expert?.fullName || `Expert #${rec.expertId}`}
+            {expert?.fullName || "Chuyên gia chưa có tên"}
           </p>
           <p className="mt-0.5 text-xs font-semibold text-slate-400">
             {expert?.yearsOfExperience
               ? `${expert.yearsOfExperience} năm kinh nghiệm`
-              : `Expert ID: ${rec.expertId}${rec.portfolioId ? ` · Portfolio ID: ${rec.portfolioId}` : ""
-              }`}
+              : "Chưa có thông tin kinh nghiệm"}
           </p>
         </div>
 

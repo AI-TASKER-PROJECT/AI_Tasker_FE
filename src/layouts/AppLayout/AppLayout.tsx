@@ -168,6 +168,11 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <WalletCards className="h-4 w-4" />,
     },
     {
+      label: "Tranh chấp",
+      to: "/app/disputes",
+      icon: <Gavel className="h-4 w-4" />,
+    },
+    {
       label: "Gói thành viên",
       to: "/app/membership",
       icon: <Star className="h-4 w-4" />,
@@ -213,6 +218,11 @@ const roleNav: Record<Role, NavItem[]> = {
       label: "Ví & Thanh toán",
       to: "/app/wallet",
       icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      label: "Tranh chấp",
+      to: "/app/disputes",
+      icon: <Gavel className="h-4 w-4" />,
     },
     {
       label: "Gói thành viên",

@@ -337,7 +337,7 @@ export function ProposalsPage() {
                   </div>
                   <Link to={`/jobs/${proposal.jobId}`} className="group">
                     <h3 className="mt-3 font-display text-xl font-black text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-pink-600">
-                      {job?.title || `Job #${proposal.jobId}`}
+                      {job?.title || "Dự án chưa có tên"}
                     </h3>
                   </Link>
                   <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
@@ -436,7 +436,7 @@ function formatProposalMilestoneTitle(
   milestones: Milestone[],
 ) {
   const milestone = milestones.find((item) => item.milestoneId === milestoneId);
-  if (!milestone) return `Milestone #${milestoneId}`;
+  if (!milestone) return "Mốc chưa có tên";
   return milestone.milestoneName;
 }
 

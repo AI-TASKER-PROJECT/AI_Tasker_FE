@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type JobSkill, type JobTechnology, type Skill, type Technology } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import { formatCurrency } from "../../../lib/utils";
+import { formatCurrency, maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../../types";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Button, Card, LinkButton, Modal, Notice, SectionHeading } from "../../../components/ui";
@@ -247,7 +247,7 @@ export function JobDetailPage() {
             />
             <BusinessInfoItem
               label="Mã số thuế"
-              value={business?.taxCode || "Chưa có dữ liệu"}
+              value={maskSensitiveValue(business?.taxCode)}
             />
             <BusinessInfoItem
               label="Trạng thái KYB"

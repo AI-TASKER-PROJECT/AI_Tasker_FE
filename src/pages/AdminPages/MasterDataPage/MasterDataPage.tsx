@@ -238,8 +238,7 @@ export function MasterDataPage() {
       )}
       {tab === "domains" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
-            <span>ID</span>
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
             <span>Code</span>
             <span>Description</span>
             <span className="text-center">Created</span>
@@ -260,11 +259,8 @@ export function MasterDataPage() {
             sortedDomains.map((domain) => (
               <div
                 key={domain.domainId}
-                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
               >
-                <span className="font-extrabold text-slate-500">
-                  #{domain.domainId}
-                </span>
                 <span className="font-mono text-xs font-bold text-brand-700">
                   {domain.domainCode}
                 </span>
@@ -287,8 +283,7 @@ export function MasterDataPage() {
       )}
       {tab === "skills" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px]">
-            <span>ID</span>
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
             <span>Code</span>
             <span>Description</span>
             <span className="text-center">Created</span>
@@ -309,11 +304,8 @@ export function MasterDataPage() {
             sortedSkills.map((skill) => (
               <div
                 key={skill.skillId}
-                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px] md:items-start"
               >
-                <span className="font-extrabold text-slate-500">
-                  #{skill.skillId}
-                </span>
                 <span className="font-mono text-xs font-bold text-brand-700">
                   {skill.skillCode}
                 </span>
@@ -339,8 +331,7 @@ export function MasterDataPage() {
       )}
       {tab === "criteria" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px]">
-            <span>ID</span>
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_160px_170px_170px]">
             <span>Code</span>
             <span>Description</span>
             <span>Status</span>
@@ -361,11 +352,8 @@ export function MasterDataPage() {
             sortedCriteria.map((item) => (
               <div
                 key={item.criteriaId}
-                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[90px_220px_minmax(0,1fr)_160px_170px_170px] md:items-start"
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[220px_minmax(0,1fr)_160px_170px_170px] md:items-start"
               >
-                <span className="font-extrabold text-slate-500">
-                  #{item.criteriaId}
-                </span>
                 <span className="font-mono text-xs font-bold text-brand-700">
                   {item.criteriaCode}
                 </span>

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { BriefcaseBusiness, ExternalLink, IdCard, Layers3, MapPin, Users } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import { getSession } from "../../../lib/session";
+import { maskSensitiveValue } from "../../../lib/utils";
 import { Avatar, Badge, Button, Card, LinkButton, Notice, SectionHeading, Tabs } from "../../../components/ui";
 import type { BusinessProfile, Job } from "../../../types";
 import { EmptyProfileBlock, ProfileDetailRow, readApiError } from "../ProfilePages.shared";
@@ -145,7 +146,7 @@ export function PublicBusinessProfilePage() {
                 <ProfileDetailRow
                   icon={<IdCard className="h-4 w-4" />}
                   label="Mã số thuế"
-                  value={profile.taxCode || "Chưa cập nhật"}
+                  value={maskSensitiveValue(profile.taxCode)}
                 />
                 <ProfileDetailRow
                   icon={<Layers3 className="h-4 w-4" />}

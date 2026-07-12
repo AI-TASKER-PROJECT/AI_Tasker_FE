@@ -203,84 +203,98 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid items-stretch gap-5 md:grid-cols-3">
         {session?.role === "STAFF" ? (
-          <MetricCard
-            label="Số hồ sơ cần duyệt"
-            value={pendingVerifications}
-            helper="KYC/KYB Pending"
-            icon={<IdCard className="h-5 w-5" />}
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label="Số hồ sơ cần duyệt"
+              value={pendingVerifications}
+              helper="KYC/KYB Pending"
+              icon={<IdCard className="h-5 w-5" />}
+            />
+          </div>
         ) : (
-          <MetricCard
-            label={session.role === "ADMIN" ? "Dự án đang mở" : "Số bài đăng hiện có"}
-            value={jobs.filter((job) => job.status === "OPEN").length}
-            helper={session.role === "ADMIN" ? "Trên hệ thống" : "Từ thị trường"}
-            icon={<BriefcaseBusiness className="h-5 w-5" />}
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label={session.role === "ADMIN" ? "Dự án đang mở" : "Số bài đăng hiện có"}
+              value={jobs.filter((job) => job.status === "OPEN").length}
+              helper={session.role === "ADMIN" ? "Trên hệ thống" : "Từ thị trường"}
+              icon={<BriefcaseBusiness className="h-5 w-5" />}
+            />
+          </div>
         )}
         {session?.role === "BUSINESS" ? (
-          <MetricCard
-            label="Số proposal đã nhận"
-            value={myJobs.reduce(
-              (sum, job) => sum + (job.proposalsCount || 0),
-              0,
-            )}
-            helper="Từ các chuyên gia"
-            icon={<FileCheck2 className="h-5 w-5" />}
-            tone="mint"
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label="Số proposal đã nhận"
+              value={myJobs.reduce(
+                (sum, job) => sum + (job.proposalsCount || 0),
+                0,
+              )}
+              helper="Từ các chuyên gia"
+              icon={<FileCheck2 className="h-5 w-5" />}
+              tone="mint"
+            />
+          </div>
         ) : session?.role === "EXPERT" ? (
-          <MetricCard
-            label="Số proposal đã gửi"
-            value={myProposals.length}
-            helper="Đến doanh nghiệp"
-            icon={<FileCheck2 className="h-5 w-5" />}
-            tone="mint"
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label="Số proposal đã gửi"
+              value={myProposals.length}
+              helper="Đến doanh nghiệp"
+              icon={<FileCheck2 className="h-5 w-5" />}
+              tone="mint"
+            />
+          </div>
         ) : (
-          <MetricCard
-            label={session.role === "ADMIN" ? "Hợp đồng đang thực thi" : "Báo cáo kĩ thuật"}
-            value={
-              contracts.filter((contract) => ["ACTIVE", "IN_PROGRESS"].includes((contract.status || "").toUpperCase()))
-                .length
-            }
-            helper={session.role === "ADMIN" ? "Đang hoạt động" : "Đang thực thi"}
-            icon={<FileCheck2 className="h-5 w-5" />}
-            tone="mint"
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label={session.role === "ADMIN" ? "Hợp đồng đang thực thi" : "Báo cáo kĩ thuật"}
+              value={
+                contracts.filter((contract) => ["ACTIVE", "IN_PROGRESS"].includes((contract.status || "").toUpperCase()))
+                  .length
+              }
+              helper={session.role === "ADMIN" ? "Đang hoạt động" : "Đang thực thi"}
+              icon={<FileCheck2 className="h-5 w-5" />}
+              tone="mint"
+            />
+          </div>
         )}
         {session.role !== "STAFF" && (
-          <MetricCard
-            label={
-              session.role === "EXPERT"
-                ? "Doanh thu cá nhân"
-                : session.role === "BUSINESS"
-                  ? "Tổng đầu tư cho tất cả dự án"
-                  : "Tổng giá trị giao dịch"
-            }
-            value={formatCurrency(
-              contracts
-                .filter((contract) => ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()))
-                .reduce(
-                  (total, contract) =>
-                    total + Number(contract.totalBudget || 0),
-                  0,
-                ),
-            )}
-            helper="Từ tất cả các hợp đồng đã hoàn thành"
-            icon={<WalletCards className="h-5 w-5" />}
-            tone="coral"
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label={
+                session.role === "EXPERT"
+                  ? "Doanh thu cá nhân"
+                  : session.role === "BUSINESS"
+                    ? "Tổng đầu tư cho tất cả dự án"
+                    : "Tổng giá trị giao dịch"
+              }
+              value={formatCurrency(
+                contracts
+                  .filter((contract) => ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()))
+                  .reduce(
+                    (total, contract) =>
+                      total + Number(contract.totalBudget || 0),
+                    0,
+                  ),
+              )}
+              helper="Từ tất cả các hợp đồng đã hoàn thành"
+              icon={<WalletCards className="h-5 w-5" />}
+              tone="coral"
+            />
+          </div>
         )}
         {session?.role === "STAFF" && (
-          <MetricCard
-            label="Lĩnh vực chuyên môn"
-            value={domainsCount}
-            helper="Trên hệ thống"
-            icon={<Layers3 className="h-5 w-5" />}
-            tone="brand"
-          />
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label="Lĩnh vực chuyên môn"
+              value={domainsCount}
+              helper="Trên hệ thống"
+              icon={<Layers3 className="h-5 w-5" />}
+              tone="brand"
+            />
+          </div>
         )}
       </div>
 
@@ -351,7 +365,7 @@ export function DashboardPage() {
                 title={
                   contract.contractTitle ||
                   contract.title ||
-                  `Hợp đồng #${contract.contractId}`
+                  "Hợp đồng chưa có tên"
                 }
                 description={
                   session?.role === "BUSINESS"

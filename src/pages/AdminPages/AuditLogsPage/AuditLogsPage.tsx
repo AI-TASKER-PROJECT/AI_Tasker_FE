@@ -110,10 +110,10 @@ export function AuditLogsPage() {
                 <div className="space-y-1">
                   <p className="font-extrabold text-ink">
                     {log.entityDisplayName ||
-                      `${log.entityName} ${log.entityId ? `#${log.entityId}` : ""}`}
+                      log.entityName}
                   </p>
                   <p className="text-xs font-semibold text-slate-500">
-                    {log.entityName} {log.entityId ? `#${log.entityId}` : ""}
+                    {log.entityName}
                   </p>
                   <div className="space-y-1 pt-1">
                     <p className="font-bold text-slate-700">

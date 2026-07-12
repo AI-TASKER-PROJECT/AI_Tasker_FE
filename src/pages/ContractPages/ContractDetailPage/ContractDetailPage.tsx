@@ -16,7 +16,7 @@ import {
   walletApi,
 } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import { formatCurrency, formatDate, formatDateTime } from "../../../lib/utils";
+import { formatCurrency, formatDate, formatDateTime, maskSensitiveValue } from "../../../lib/utils";
 import type {
   BusinessProfile,
   Contract,
@@ -426,7 +426,7 @@ export function ContractDetailPage() {
   const contractTitle =
     contract.contractTitle ||
     contract.title ||
-    `Contract #${contract.contractId}`;
+    "Hợp đồng chưa có tên";
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
@@ -482,11 +482,11 @@ export function ContractDetailPage() {
   const businessDisplayName =
     contract.businessName ||
     participants.business?.companyName ||
-    `Business #${contract.businessId}`;
+    "Doanh nghiệp";
   const expertDisplayName =
     contract.expertName ||
     participants.expert?.fullName ||
-    `Expert #${contract.expertId}`;
+    "Chuyên gia";
   const sessionPhone = session?.phone;
   const isBusinessSession =
     session?.role === "BUSINESS" &&
@@ -741,7 +741,7 @@ export function ContractDetailPage() {
                 label="Bên A - Doanh nghiệp"
                 value={businessDisplayName}
                 details={[
-                  ["Mã số thuế", participants.business?.taxCode],
+                  ["Mã số thuế", maskSensitiveValue(participants.business?.taxCode)],
                   ["Địa chỉ", participants.business?.address],
 
                   ["Email", businessEmail],
@@ -1125,7 +1125,7 @@ export function ContractDetailPage() {
                     new CustomEvent("aitasker:open-wallet-topup", {
                       detail: {
                         amount: depositMissingAmount,
-                        description: `Nạp ví để ký quỹ contract #${contract.contractId}`,
+                        description: `Nạp ví để ký quỹ hợp đồng "${contractTitle}"`,
                       },
                     }),
                   )
@@ -1183,7 +1183,7 @@ export function ContractDetailPage() {
               description="Hợp đồng phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
-              <span>Hợp đồng: #{contract.contractId}</span>
+              <span>Hợp đồng: {contractTitle}</span>
               <span>Status: {contract.status}</span>
               <span>
                 Chữ ký/xác thực:{" "}

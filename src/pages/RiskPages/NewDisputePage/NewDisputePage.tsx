@@ -29,7 +29,7 @@ export function NewDisputePage() {
       !Number.isFinite(milestoneId) ||
       milestoneId <= 0
     ) {
-      setMessage("Contract ID va Milestone ID phai la so duong tu database.");
+      setMessage("Vui lòng chọn hợp đồng và mốc nghiệm thu hợp lệ.");
       return;
     }
 
@@ -59,7 +59,7 @@ export function NewDisputePage() {
         <form onSubmit={submit} className="grid gap-4">
           {message && <Notice tone="danger" title={message} />}
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Contract ID">
+            <Field label="Hợp đồng">
               <Input
                 type="number"
                 min={1}
@@ -73,7 +73,7 @@ export function NewDisputePage() {
                 required
               />
             </Field>
-            <Field label="Milestone ID">
+            <Field label="Mốc nghiệm thu">
               <Input
                 type="number"
                 min={1}
@@ -95,7 +95,7 @@ export function NewDisputePage() {
         {created && (
           <Notice
             tone="success"
-            title={`Da tao dispute #${created.disputeId}`}
+            title="Đã tạo hồ sơ tranh chấp"
             className="mt-4"
           />
         )}

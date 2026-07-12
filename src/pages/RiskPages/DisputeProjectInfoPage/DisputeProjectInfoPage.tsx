@@ -113,10 +113,10 @@ export function DisputeProjectInfoPage() {
 
   const businessDisplayName =
     contract.businessName?.trim() ||
-    (contract.businessId ? `Business #${contract.businessId}` : "Business");
+    "Doanh nghiệp";
   const expertDisplayName =
     contract.expertName?.trim() ||
-    (contract.expertId ? `Chuyên gia #${contract.expertId}` : "Chuyên gia");
+    "Chuyên gia";
   const sowText = job?.structuredSow?.trim() || job?.rawRequirements?.trim() || "Doanh nghiệp chưa cung cấp đề bài chi tiết.";
   const backTo = session?.role === "ADMIN"
     ? `/app/disputes/${dispute.disputeId}`

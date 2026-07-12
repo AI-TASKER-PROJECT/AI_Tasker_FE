@@ -151,9 +151,6 @@ export function SystemWalletPage() {
                                 {t.status}
                               </Badge>
                               <span className="text-xs font-bold text-slate-400">
-                                #{transactionId}
-                              </span>
-                              <span className="text-xs font-bold text-slate-400">
                                 {formatDateTime(t.createdAt)}
                               </span>
                             </div>
@@ -257,7 +254,7 @@ function walletTransactionActorName(
   if (tx.actorName) return tx.actorName;
   if (!tx.accountId) return "Hệ thống";
   return accounts.find((account) => account.accountId === tx.accountId)?.fullName
-    ?? `Account #${tx.accountId}`;
+    ?? "Tài khoản người dùng";
 }
 
 function walletTransactionPurposeTitle(tx: WalletTransaction) {
@@ -318,8 +315,8 @@ function walletTransactionContextItems(tx: WalletTransaction) {
     tx.businessName ? `Doanh nghiệp: ${tx.businessName}` : null,
     tx.expertName ? `Chuyên gia: ${tx.expertName}` : null,
     tx.packageName ? `Gói: ${tx.packageName}` : null,
-    tx.withdrawalId ? `Rút tiền #${tx.withdrawalId}` : null,
-    tx.providerOrderCode ? `PayOS #${tx.providerOrderCode}` : null,
+    tx.withdrawalId ? "Yêu cầu rút tiền" : null,
+    tx.providerOrderCode ? "Thanh toán qua PayOS" : null,
     tx.bankName ? `Ngân hàng: ${tx.bankName}` : null,
   ].filter(Boolean) as string[];
 }

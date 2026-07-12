@@ -47,6 +47,14 @@ export function formatTime(value?: string) {
   }).format(new Date(value));
 }
 
+export function maskSensitiveValue(value?: string | number | null, visibleTail = 4) {
+  const raw = value == null ? '' : String(value).trim();
+  if (!raw) return 'Chưa cập nhật';
+  const tailLength = Math.min(Math.max(visibleTail, 0), raw.length);
+  const tail = raw.slice(-tailLength);
+  return tail ? `•••• ${tail}` : 'Đã cập nhật';
+}
+
 export function initials(name?: string) {
   if (!name) return 'AI';
   return name

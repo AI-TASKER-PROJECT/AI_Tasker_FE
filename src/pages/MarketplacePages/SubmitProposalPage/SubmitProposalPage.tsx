@@ -430,7 +430,7 @@ export function SubmitProposalPage() {
                                 (technology) =>
                                   technology.technologyId === technologyId,
                               )?.technologyName ||
-                                `Technology #${technologyId}`}
+                                "Công nghệ chưa có tên"}
                             </span>
                           ))
                         ) : (
@@ -450,7 +450,7 @@ export function SubmitProposalPage() {
                             className="inline-flex items-center rounded-full border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
                           >
                             {skills.find((skill) => skill.skillId === skillId)
-                              ?.skillName || `Skill #${skillId}`}
+                              ?.skillName || "Kỹ năng chưa có tên"}
                           </span>
                         ))}
                       </div>

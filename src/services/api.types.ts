@@ -54,6 +54,7 @@ export interface GenerateSowRequest {
   durationUnit: string;
   supportFields?: string[];
   requiredSkills?: string[];
+  clarificationAlreadyAsked?: boolean;
 }
 
 export interface GeneratedSow {

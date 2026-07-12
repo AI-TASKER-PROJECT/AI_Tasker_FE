@@ -91,6 +91,32 @@ function formatInitiationType(type?: string) {
   }
 }
 
+function isRawInitiationTypeText(text?: string, initiationType?: string) {
+  const normalizedText = normalizeStatus(text);
+  if (!normalizedText) return false;
+  return (
+    normalizedText === normalizeStatus(initiationType) ||
+    [
+      "BUSINESS_REJECTED_DELIVERABLE",
+      "EXPERT_SCOPE_CONCERN",
+      "EXPERT_NO_REVIEW_RESPONSE",
+      "EXPERT_BAD_FAITH_REJECTION",
+      "OTHER",
+    ].includes(normalizedText)
+  );
+}
+
+function disputeReasonContent(dispute: Dispute) {
+  const candidates = [
+    dispute.evidenceReport?.trim(),
+    dispute.escalationReason?.trim(),
+  ].filter(Boolean) as string[];
+  const narrative = candidates.find(
+    (item) => !isRawInitiationTypeText(item, dispute.initiationType),
+  );
+  return narrative || formatInitiationType(dispute.initiationType);
+}
+
 function formatInitiator(value?: string) {
   switch (normalizeStatus(value)) {
     case "BUSINESS":
@@ -341,10 +367,7 @@ export function DisputeDetailPage({
               : "50",
         });
         setInterventionForm({
-          reason:
-            disputeData.escalationReason ||
-            disputeData.evidenceReport ||
-            formatInitiationType(disputeData.initiationType),
+          reason: disputeReasonContent(disputeData),
           evidenceFile: disputeData.escalationEvidenceFile || "",
           note: "",
         });
@@ -460,8 +483,7 @@ export function DisputeDetailPage({
       : role === "BUSINESS"
         ? dispute.businessRefundAmount
         : undefined;
-  const baseDisputeReason =
-    dispute.evidenceReport?.trim() || formatInitiationType(dispute.initiationType);
+  const baseDisputeReason = disputeReasonContent(dispute);
   const escalationReasonText = dispute.escalationReason?.trim();
   const supplementalReasonText =
     escalationReasonText && escalationReasonText !== baseDisputeReason
@@ -987,21 +1009,25 @@ export function DisputeDetailPage({
                 </p>
 
                 <div className="mt-4 grid gap-3">
-                  <Field label="Loại nguyên nhân">
-                    <Input
-                      value={formatInitiationType(dispute.initiationType)}
-                      readOnly
-                      className="bg-white/70 text-slate-700"
-                    />
-                  </Field>
-
-                  <Field label="Lý do tranh chấp">
-                    <Textarea
-                      value={interventionForm.reason}
-                      readOnly
-                      className="bg-white/70 text-slate-700"
-                    />
-                  </Field>
+                  <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-extrabold text-slate-800">
+                        Lý do tranh chấp
+                      </p>
+                      <Badge tone="amber">
+                        {formatInitiationType(dispute.initiationType)}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 min-h-28 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-700">
+                        {interventionForm.reason ||
+                          "Chưa có nội dung lý do tranh chấp."}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-amber-700">
+                      Nội dung này được lấy từ lý do đã nhập khi mở tranh chấp.
+                    </p>
+                  </div>
 
                   {interventionForm.evidenceFile && (
                     <Field label="Bằng chứng đã gửi Staff">
@@ -1825,21 +1851,25 @@ export function DisputeDetailPage({
                   </p>
 
                   <div className="mt-4 grid gap-3">
-                    <Field label="Loại nguyên nhân">
-                      <Input
-                        value={formatInitiationType(dispute.initiationType)}
-                        readOnly
-                        className="bg-white/70 text-slate-700"
-                      />
-                    </Field>
-
-                    <Field label="Lý do tranh chấp">
-                      <Textarea
-                        value={interventionForm.reason}
-                        readOnly
-                        className="bg-white/70 text-slate-700"
-                      />
-                    </Field>
+                    <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-extrabold text-slate-800">
+                          Lý do tranh chấp
+                        </p>
+                        <Badge tone="amber">
+                          {formatInitiationType(dispute.initiationType)}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 min-h-28 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-700">
+                          {interventionForm.reason ||
+                            "Chưa có nội dung lý do tranh chấp."}
+                        </p>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-amber-700">
+                        Nội dung này được lấy từ lý do đã nhập khi mở tranh chấp.
+                      </p>
+                    </div>
 
                     {interventionForm.evidenceFile && (
                       <Field label="Bằng chứng đã gửi Staff">

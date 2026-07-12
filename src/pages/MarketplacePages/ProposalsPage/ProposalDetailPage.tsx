@@ -194,7 +194,7 @@ export function ProposalDetailPage() {
                         {technologies.find(
                           (technology) =>
                             technology.technologyId === technologyId,
-                        )?.technologyName || `Technology #${technologyId}`}
+                        )?.technologyName || "Công nghệ chưa có tên"}
                       </span>
                     ))
                   ) : (
@@ -215,7 +215,7 @@ export function ProposalDetailPage() {
                         className="inline-flex items-center rounded-full border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink"
                       >
                         {skills.find((skill) => skill.skillId === skillId)
-                          ?.skillName || `Skill #${skillId}`}
+                          ?.skillName || "Kỹ năng chưa có tên"}
                       </span>
                     ))
                   ) : (
