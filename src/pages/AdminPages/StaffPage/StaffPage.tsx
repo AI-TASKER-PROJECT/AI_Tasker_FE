@@ -52,8 +52,8 @@ export function StaffPage() {
 
   useEffect(() => {
     if (!editing) return;
-    setDomainIds(getStaffDomainIds(editing));
-  }, [editing?.staffId]);
+    queueMicrotask(() => setDomainIds(getStaffDomainIds(editing)));
+  }, [editing]);
 
   const beginCreate = () => {
     setForm({ accountId: "" });

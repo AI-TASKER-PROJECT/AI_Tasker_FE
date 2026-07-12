@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowLeft,
   BadgeCheck,
   BarChart3,
@@ -173,11 +173,6 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Tranh chấp",
-      to: "/app/disputes",
-      icon: <Gavel className="h-4 w-4" />,
-    },
-    {
       label: "Đánh giá",
       to: "/app/reviews",
       icon: <Star className="h-4 w-4" />,
@@ -225,9 +220,9 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Tranh chấp",
-      to: "/app/disputes",
-      icon: <Gavel className="h-4 w-4" />,
+      label: "Đánh giá",
+      to: "/app/reviews",
+      icon: <Star className="h-4 w-4" />,
     },
     {
       label: "Hồ sơ KYC",

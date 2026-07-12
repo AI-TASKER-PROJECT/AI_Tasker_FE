@@ -64,20 +64,6 @@ function SplitDateTime({ value }: { value?: string }) {
   );
 }
 
-function txTypeLabel(type: WalletTransaction["transactionType"]) {
-  const map: Record<WalletTransaction["transactionType"], string> = {
-    TOPUP: "Nạp tiền",
-    MEMBERSHIP_PURCHASE: "Mua gói thành viên",
-    CREDIT_PURCHASE: "Mua credits",
-    CONTRACT_SECURITY_DEPOSIT_HOLD: "Đặt cọc hợp đồng",
-    DEPOSIT_REFUND: "Hoàn cọc",
-    WITHDRAW_HOLD: "Yêu cầu rút tiền",
-    WITHDRAW_APPROVED: "Rút tiền thành công",
-    WITHDRAW_REJECTED: "Rút tiền bị từ chối",
-  };
-  return map[type] ?? type;
-}
-
 function txIcon(type: WalletTransaction["transactionType"]) {
   if (
     type === "TOPUP" ||
@@ -593,8 +579,15 @@ export function WalletPage() {
                         {txDisplayLabel(tx, role)}
                       </p>
                       {txDisplayDescription(tx, role) && (
-                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">
+                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">
                           {txDisplayDescription(tx, role)}
+                        </p>
+                      )}
+                      {(tx.contractTitle || tx.contractId || tx.jobTitle) && (
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {tx.contractTitle ||
+                            (tx.contractId ? `Hợp đồng #${tx.contractId}` : "")}
+                          {tx.jobTitle ? ` · Cột mốc: ${tx.jobTitle}` : ""}
                         </p>
                       )}
                     </div>

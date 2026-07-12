@@ -3,7 +3,6 @@ import {
   Bell,
   BriefcaseBusiness,
   FileCheck2,
-  Gavel,
   IdCard,
   Layers3,
   WalletCards,
@@ -13,17 +12,15 @@ import { Link } from "react-router-dom";
 import {
   catalogApi,
   contractApi,
-  disputeApi,
   marketplaceApi,
   notificationApi,
   profileApi,
 } from "../../../services";
 import { roleLabel, useSession } from "../../../context/sessionContext";
-import { formatCompactCurrency, formatCurrency } from "../../../lib/utils";
+import { formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
 import { formatNotificationTime } from "../../../lib/notifications";
 import type {
   Contract,
-  Dispute,
   Job,
   NotificationItem,
   Proposal,
@@ -42,7 +39,8 @@ export function DashboardPage() {
   const session = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [businessNames, setBusinessNames] = useState<Record<number, string>>({});
+  const [expertNames, setExpertNames] = useState<Record<number, string>>({});
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState(0);
   const [domainsCount, setDomainsCount] = useState(0);
@@ -58,16 +56,45 @@ export function DashboardPage() {
       .listContracts()
       .then(async (items) => {
         setContracts(items);
-        const disputeGroups = await Promise.all(
-          items.map((contract) =>
-            disputeApi.listByContract(contract.contractId).catch(() => []),
-          ),
-        );
-        setDisputes(disputeGroups.flat());
+        const businessIds = Array.from(new Set(items.map((contract) => contract.businessId)))
+          .filter((value): value is number => Number.isFinite(value));
+        const expertIds = Array.from(new Set(items.map((contract) => contract.expertId)))
+          .filter((value): value is number => Number.isFinite(value));
+        const shouldLoadBusinesses = session?.role !== "BUSINESS";
+        const shouldLoadExperts = session?.role !== "EXPERT";
+        const [businessEntries, expertEntries] = await Promise.all([
+          shouldLoadBusinesses
+            ? Promise.all(
+                businessIds.map(async (id) => {
+                  try {
+                    const business = await profileApi.getBusinessById(id);
+                    return [id, business.companyName || "Doanh nghiệp"] as const;
+                  } catch {
+                    return [id, ""] as const;
+                  }
+                }),
+              )
+            : Promise.resolve([] as Array<readonly [number, string]>),
+          shouldLoadExperts
+            ? Promise.all(
+                expertIds.map(async (id) => {
+                  try {
+                    const expert = await profileApi.getExpertById(id);
+                    return [id, expert.fullName || expert.title || "Chuyên gia"] as const;
+                  } catch {
+                    return [id, ""] as const;
+                  }
+                }),
+              )
+            : Promise.resolve([] as Array<readonly [number, string]>),
+        ]);
+        setBusinessNames(Object.fromEntries(businessEntries.filter(([, name]) => name)));
+        setExpertNames(Object.fromEntries(expertEntries.filter(([, name]) => name)));
       })
       .catch(() => {
         setContracts([]);
-        setDisputes([]);
+        setBusinessNames({});
+        setExpertNames({});
       });
     notificationApi
       .list()
@@ -110,6 +137,12 @@ export function DashboardPage() {
 
   if (!session) return null;
 
+  const sortedContracts = [...contracts].sort((left, right) => {
+    const leftDate = new Date(left.createdAt || left.updatedAt || 0).getTime();
+    const rightDate = new Date(right.createdAt || right.updatedAt || 0).getTime();
+    return rightDate - leftDate;
+  });
+
   const roleActions = {
     BUSINESS: [
       [
@@ -135,16 +168,12 @@ export function DashboardPage() {
     ],
     STAFF: [
       ["Duyệt hồ sơ", "/app/verifications", "KYC/KYB pending"],
-      [
-        "Demo testing",
-        "/app/tickets",
-        "Chọn dispute thật dể kiểm thử và ghi nhận kết quả",
-      ],
-      ["Viết technical report", "/app/tickets", "Đề xuất phương án xử lý"],
+      ["Duyệt hồ sơ", "/app/verifications", "Xử lý KYC/KYB đang chờ duyệt"],
+      ["Quản lý hồ sơ", "/app/verifications", "Theo dõi hồ sơ cần xác minh"],
     ],
     ADMIN: [
       ["Analytics", "/app/admin/analytics", "Doanh thu và tỷ lệ thành công"],
-      ["Phân công dispute", "/app/tickets", "Assign staff và resolve"],
+      ["Quản lý nhân viên", "/app/admin/staff", "Quản lý tài khoản Staff"],
       ["System settings", "/app/admin/settings", "SLA, phí sàn, auto-routing"],
     ],
   }[session.role];
@@ -244,18 +273,6 @@ export function DashboardPage() {
             tone="coral"
           />
         )}
-        <MetricCard
-          label="Tranh chấp hiện có"
-          value={
-            disputes.filter(
-              (dispute) =>
-                !["Resolved", "Closed", "Rejected"].includes(dispute.status),
-            ).length
-          }
-          helper="Cần xử lý"
-          icon={<Gavel className="h-5 w-5" />}
-          tone="amber"
-        />
         {session?.role === "STAFF" && (
           <MetricCard
             label="Lĩnh vực chuyên môn"
@@ -327,12 +344,22 @@ export function DashboardPage() {
             }
           />
           <div className="mt-5 grid gap-3">
-            {contracts.map((contract) => (
+            {sortedContracts.map((contract) => (
               <ListLink
                 key={contract.contractId}
                 to={`/app/contracts/${contract.contractId}`}
-                title={contract.title || `Contract #${contract.contractId}`}
-                description={`${contract.businessName} • ${contract.expertName} • ${formatCompactCurrency(contract.totalBudget)}`}
+                title={
+                  contract.contractTitle ||
+                  contract.title ||
+                  `Hợp đồng #${contract.contractId}`
+                }
+                description={
+                  session?.role === "BUSINESS"
+                    ? `Chuyên gia: ${contract.expertName || expertNames[contract.expertId] || "Chưa có tên chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                    : session?.role === "EXPERT"
+                      ? `Doanh nghiệp: ${contract.businessName || businessNames[contract.businessId] || "Chưa có tên doanh nghiệp"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                      : `${contract.businessName || businessNames[contract.businessId] || "Doanh nghiệp"} • ${contract.expertName || expertNames[contract.expertId] || "Chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                }
                 leading={<FileCheck2 className="h-5 w-5 text-brand-500" />}
                 trailing={<StatusBadge status={contract.status} />}
               />

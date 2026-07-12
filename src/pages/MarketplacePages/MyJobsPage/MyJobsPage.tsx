@@ -104,7 +104,7 @@ export function MyJobsPage() {
       setRestrictedActionNotices((prev) => ({
         ...prev,
         [jobId]:
-          "Bài đăng đã bị gỡ xuống nên hệ thống không hỗ trợ tìm kiếm chuyên gia",
+          "Du an da dong hoac hop dong da ket thuc nen khong the mo lai de tim kiem chuyen gia.",
       }));
     } else if (status === "DRAFT") {
       e.preventDefault();
@@ -341,7 +341,7 @@ export function MyJobsPage() {
         {filtered.map((job) => {
           const jobStatus = job.status.trim().toUpperCase();
           const isInProgress = jobStatus === "IN_PROGRESS";
-          const canOpenJob = ["DRAFT", "CLOSED"].includes(jobStatus);
+          const canOpenJob = jobStatus === "DRAFT";
           const canCloseJob = jobStatus === "OPEN";
           return (
             <Card

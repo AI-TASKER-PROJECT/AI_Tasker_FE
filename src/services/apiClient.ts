@@ -1,6 +1,6 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { ApiResponse } from "../types";
-import { getSession } from "../context/sessionContext";
+import { clearSession, getSession } from "../context/sessionContext";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "",
@@ -18,6 +18,27 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+let redirectingToLogin = false;
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const requestUrl = String(error.config?.url || "");
+    const isAuthRequest = requestUrl.includes("/api/auth/login");
+
+    if (status === 401 && !isAuthRequest) {
+      clearSession();
+      if (!redirectingToLogin && window.location.pathname !== "/login") {
+        redirectingToLogin = true;
+        window.location.replace("/login");
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export function setDataMode(mode: "live") {
   localStorage.setItem("aitasker.data-mode", mode);
@@ -84,6 +105,21 @@ export function getApiErrorMessage(error: unknown) {
 
 function mapApiErrorCode(message: string) {
   const normalized = message.trim().toUpperCase();
+  const messages: Record<string, string> = {
+    PROGRESS_REPORT_ACK_PENDING:
+      "Báo cáo tiến độ mới nhất đang chờ Doanh nghiệp xác nhận.",
+    PROGRESS_REPORT_ACK_NOT_ALLOWED:
+      "Báo cáo này không còn đủ điều kiện để xác nhận.",
+    PROGRESS_REPORT_REQUEST_ALREADY_PENDING:
+      "Đã có một yêu cầu báo cáo tiến độ đang chờ xử lý.",
+    CONTRACT_DRAFT_CANCELLATION_NOT_ALLOWED:
+      "Chỉ có thể hủy hợp đồng nháp chưa được ký hoặc xác thực.",
+    DISPUTE_NOT_ESCALATION_REQUESTED:
+      "Tranh chấp chưa ở trạng thái chờ Staff tiếp nhận.",
+    DISPUTE_NOT_STAFF_REVIEWING:
+      "Tranh chấp chưa ở trạng thái Staff đang xử lý.",
+  };
+  if (messages[normalized]) return messages[normalized];
   if (normalized === "INSUFFICIENT_BALANCE") {
     return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }

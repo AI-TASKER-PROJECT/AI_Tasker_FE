@@ -18,7 +18,6 @@ import {
   MasterDataPage,
   ReportsPage,
   SettingsPage,
-  StaffAssignmentPage,
   StaffPage,
   SystemWalletPage,
 } from "../pages/AdminPages";
@@ -317,14 +316,16 @@ export function AppRoutes() {
             </PageTransition>
           }
         />
-        <Route
-          path="reviews"
-          element={
-            <PageTransition>
-              <ReviewsPage />
-            </PageTransition>
-          }
-        />
+        <Route element={<RoleProtectedRoute roles={["BUSINESS", "EXPERT"]} />}>
+          <Route
+            path="reviews"
+            element={
+              <PageTransition>
+                <ReviewsPage />
+              </PageTransition>
+            }
+          />
+        </Route>
 
         {/* Payment */}
         <Route
@@ -465,14 +466,6 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <StaffPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="admin/staff-assignment"
-            element={
-              <PageTransition>
-                <StaffAssignmentPage />
               </PageTransition>
             }
           />

@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, CheckCircle2, Clock3, Target, WalletCards } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Clock3, Star, Target, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type JobSkill, type JobTechnology, type Skill, type Technology } from "../../../lib/api";
@@ -259,6 +259,7 @@ export function JobDetailPage() {
               multiline
             />
           </div>
+          <ProfileRating value={business?.averageRating} />
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
             <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
               Giấy phép kinh doanh
@@ -274,5 +275,30 @@ export function JobDetailPage() {
         </div>
       </Modal>
     </main>
+  );
+}
+
+function ProfileRating({ value }: { value?: number }) {
+  const rating = Number(value);
+  const hasRating = Number.isFinite(rating) && rating > 0;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+        Điểm đánh giá trung bình
+      </p>
+      {hasRating ? (
+        <div className="mt-2 flex items-center gap-3">
+          <span className="text-2xl font-black text-amber-500">{rating.toFixed(1)}/5</span>
+          <div className="flex items-center gap-1" aria-label={`${rating.toFixed(1)} trên 5 sao`}>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Star key={index} className="h-5 w-5 fill-amber-400 text-amber-400" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-slate-400">Chưa có đánh giá</p>
+      )}
+    </div>
   );
 }

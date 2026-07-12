@@ -1,4 +1,4 @@
-import {
+﻿import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
@@ -19,6 +19,7 @@ import { useSession } from "../../../lib/session";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
 import type {
   AcceptanceCriteria,
+  CaseAttachment,
   Contract,
   Deliverable,
   Dispute,
@@ -51,18 +52,18 @@ const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
 const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const DEPOSITABLE_STATUSES = new Set(["PENDING"]);
-const DISPUTABLE_STATUSES = new Set([
-  "IN_PROGRESS",
-  "OVERDUE",
-  "UNDER_REVIEW",
-  "DISPUTED",
-]);
+const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"]);
 
 function normalizeStatus(status?: string) {
-  return (status || "")
-    .trim()
-    .replace(/[\s-]+/g, "_")
-    .toUpperCase();
+  return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
+}
+
+function normalizeExternalUrl(value?: string) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("//")) return `http:${url}`;
+  return `http://${url}`;
 }
 
 function milestoneStatusLabel(status?: string) {
@@ -83,7 +84,7 @@ function contractStatusLabel(status?: string) {
   const normalized = normalizeStatus(status);
   const labels: Record<string, string> = {
     ACTIVE: "Đang thực hiện",
-    AWAITING_CONTINUATION_DECISION: "Chờ Business quyết định",
+    AWAITING_CONTINUATION_DECISION: "Chờ doanh nghiệp quyết định",
     TERMINATION_PENDING: "Chờ xử lý hủy",
     TERMINATED: "Đã hủy",
     CANCELLED: "Đã hủy",
@@ -101,18 +102,216 @@ function milestoneDurationLabel(milestone: Milestone) {
   return `${duration} tuần`;
 }
 
+function isProgressReportAcknowledged(report?: MilestoneProgressReport) {
+  if (!report) return false;
+  return (
+    normalizeStatus(report.acknowledgementState) === "ACKNOWLEDGED" ||
+    Boolean(report.acknowledgedAt || report.businessFeedback || report.feedbackAt)
+  );
+}
+
+function cleanPartyName(value: string | undefined, fallback: string, roleName: string) {
+  let name = String(value || "").trim();
+  if (!name) return fallback;
+  const prefix = new RegExp(`^${roleName}\\s*[:\\-]?\\s+`, "i");
+  while (prefix.test(name)) name = name.replace(prefix, "").trim();
+  if (name.toLowerCase() === roleName.toLowerCase()) return fallback;
+  return name || fallback;
+}
+
+function progressReportSubmissionNotice(
+  report: MilestoneProgressReport,
+  role: string | undefined,
+  businessName: string,
+  expertName: string,
+): { tone: NoticeTone; title: string; message?: string } {
+  if (report.requiresAdjustment) {
+    return role === "BUSINESS"
+      ? {
+          tone: "warning",
+          title: `Bạn đã yêu cầu Chuyên gia ${expertName} điều chỉnh báo cáo tiến độ.`,
+        }
+      : {
+          tone: "danger",
+          title: `Doanh nghiệp ${businessName} yêu cầu bạn điều chỉnh và nộp lại báo cáo tiến độ.`,
+        };
+  }
+
+  if (isProgressReportAcknowledged(report)) {
+    return role === "BUSINESS"
+      ? {
+          tone: "success",
+          title: `Bạn đã xác nhận đã xem báo cáo tiến độ của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "success",
+          title: `Doanh nghiệp ${businessName} đã xác nhận đã xem báo cáo tiến độ này.`,
+        };
+  }
+
+  return role === "BUSINESS"
+    ? {
+        tone: "warning",
+        title: `Chuyên gia ${expertName} đã gửi báo cáo tiến độ này.`,
+        message: "Vui lòng kiểm tra nội dung và bấm “Xác nhận đã xem báo cáo”.",
+      }
+    : {
+        tone: "info",
+        title: "Bạn đã gửi báo cáo tiến độ này.",
+        message: `Đang chờ Doanh nghiệp ${businessName} xác nhận đã xem.`,
+      };
+}
+
+function deliverableSubmissionNotice(
+  deliverable: Deliverable,
+  role: string | undefined,
+  businessName: string,
+  expertName: string,
+  milestoneStatus?: string,
+  isLatest = false,
+): { tone: NoticeTone; title: string; message?: string } {
+  const status = normalizeStatus(deliverable.status);
+
+  if (status === "REJECTED" || deliverable.rejectionFeedback) {
+    return role === "BUSINESS"
+      ? {
+          tone: "danger",
+          title: `Bạn đã từ chối sản phẩm cuối cùng của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "danger",
+          title: `Doanh nghiệp ${businessName} đã từ chối sản phẩm cuối cùng này và yêu cầu nộp lại.`,
+        };
+  }
+
+  if (status === "APPROVED" || (isLatest && normalizeStatus(milestoneStatus) === "COMPLETED")) {
+    return role === "BUSINESS"
+      ? {
+          tone: "success",
+          title: `Bạn đã nghiệm thu sản phẩm cuối cùng của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "success",
+          title: `Doanh nghiệp ${businessName} đã nghiệm thu sản phẩm cuối cùng này.`,
+        };
+  }
+
+  return role === "BUSINESS"
+    ? {
+        tone: "warning",
+        title: `Chuyên gia ${expertName} đã nộp sản phẩm cuối cùng này.`,
+        message: "Vui lòng kiểm tra source/demo và nghiệm thu hoặc từ chối bản nộp.",
+      }
+    : {
+        tone: "info",
+        title: "Bạn đã nộp sản phẩm cuối cùng này.",
+        message: `Đang chờ Doanh nghiệp ${businessName} nghiệm thu.`,
+      };
+}
+
+function milestoneRoleNotice({
+  role,
+  businessName,
+  expertName,
+  latestProgressReport,
+  latestDeliverable,
+  milestoneStatus,
+}: {
+  role?: string;
+  businessName: string;
+  expertName: string;
+  latestProgressReport?: MilestoneProgressReport;
+  latestDeliverable?: Deliverable;
+  milestoneStatus?: string;
+}): { tone: NoticeTone; title: string; message?: string } | null {
+  const status = normalizeStatus(milestoneStatus);
+  const deliverableRejected =
+    latestDeliverable &&
+    (normalizeStatus(latestDeliverable.status) === "REJECTED" ||
+      Boolean(latestDeliverable.rejectionFeedback));
+
+  if (deliverableRejected) {
+    return role === "BUSINESS"
+      ? {
+          tone: "danger",
+          title: `Bạn đã từ chối sản phẩm cuối cùng của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "danger",
+          title: `Doanh nghiệp ${businessName} đã từ chối sản phẩm cuối cùng và yêu cầu bạn nộp lại.`,
+        };
+  }
+
+  if (status === "COMPLETED") {
+    return role === "BUSINESS"
+      ? {
+          tone: "success",
+          title: `Bạn đã nghiệm thu sản phẩm cuối cùng của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "success",
+          title: `Doanh nghiệp ${businessName} đã nghiệm thu sản phẩm cuối cùng của bạn.`,
+        };
+  }
+
+  if (latestProgressReport?.requiresAdjustment) {
+    return role === "BUSINESS"
+      ? {
+          tone: "warning",
+          title: `Bạn đã yêu cầu Chuyên gia ${expertName} điều chỉnh báo cáo tiến độ.`,
+        }
+      : {
+          tone: "danger",
+          title: `Doanh nghiệp ${businessName} yêu cầu bạn điều chỉnh và nộp lại báo cáo tiến độ.`,
+        };
+  }
+
+  if (latestDeliverable && status === "UNDER_REVIEW") {
+    return role === "BUSINESS"
+      ? {
+          tone: "warning",
+          title: `Chuyên gia ${expertName} đã nộp sản phẩm cuối cùng.`,
+          message: "Vui lòng kiểm tra source/demo theo tiêu chí nghiệm thu, sau đó nghiệm thu hoặc từ chối bản nộp này.",
+        }
+      : {
+          tone: "info",
+          title: "Bạn đã nộp sản phẩm cuối cùng.",
+          message: `Đang chờ Doanh nghiệp ${businessName} kiểm tra và nghiệm thu.`,
+        };
+  }
+
+  if (latestProgressReport && isProgressReportAcknowledged(latestProgressReport)) {
+    return role === "BUSINESS"
+      ? {
+          tone: "success",
+          title: `Bạn đã xác nhận đã xem báo cáo tiến độ của Chuyên gia ${expertName}.`,
+        }
+      : {
+          tone: "success",
+          title: `Doanh nghiệp ${businessName} đã xác nhận đã xem báo cáo tiến độ của bạn.`,
+        };
+  }
+
+  if (latestProgressReport) {
+    return role === "BUSINESS"
+      ? {
+          tone: "warning",
+          title: `Chuyên gia ${expertName} đã gửi báo cáo tiến độ.`,
+          message: "Bạn có thể xác nhận đã xem để Chuyên gia biết báo cáo đã được ghi nhận.",
+        }
+      : {
+          tone: "info",
+          title: "Bạn đã gửi báo cáo tiến độ.",
+          message: `Đang chờ Doanh nghiệp ${businessName} xác nhận đã xem báo cáo.`,
+        };
+  }
+
+  return null;
+}
+
 function checkpointLabel(checkpointType?: string) {
   if (!checkpointType) return "Báo cáo tiến độ";
   return "Báo cáo giữa kỳ";
-}
-
-function latestProgressStatusLabel(report: MilestoneProgressReport) {
-  if (report.businessFeedback) {
-    return report.requiresAdjustment
-      ? "Đã feedback, cần chỉnh sửa"
-      : "Đã feedback";
-  }
-  return "Đã nộp, chờ business xem";
 }
 
 function latestDeliverableStatusLabel(milestoneStatus?: string) {
@@ -125,13 +324,9 @@ function latestDeliverableStatusLabel(milestoneStatus?: string) {
 }
 
 function isActiveMilestoneStatus(status?: string) {
-  return [
-    "DEPOSITED",
-    "IN_PROGRESS",
-    "OVERDUE",
-    "UNDER_REVIEW",
-    "DISPUTED",
-  ].includes(normalizeStatus(status));
+  return ["DEPOSITED", "IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"].includes(
+    normalizeStatus(status),
+  );
 }
 
 function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
@@ -164,33 +359,32 @@ function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
 function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
-    title: "Tranh chấp",
-    message:
-      "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
+    title: dispute ? `Tranh chấp #${dispute.disputeId}` : "Tranh chấp",
+    message: "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
   };
   const messages: Record<string, { title: string; message: string }> = {
     PENDING_SELF_RESOLVE: {
-      title: `Tranh chấp - Hai bên đang tự xử lý`,
+      title: `Tranh chấp #${dispute?.disputeId} - Hai bên đang tự xử lý`,
       message:
         "Doanh nghiệp và Chuyên gia đang tự trao đổi. Nếu không thống nhất, hãy gửi yêu cầu staff can thiệp.",
     },
     ESCALATION_REQUESTED: {
-      title: `Tranh chấp - Đã gửi yêu cầu staff`,
+      title: `Tranh chấp #${dispute?.disputeId} - Đã gửi yêu cầu staff`,
       message:
-        "Yêu cầu can thiệp đã được gửi. Hệ thống đang chờ staff phù hợp tiếp nhận hoặc admin phân công.",
+        "Yêu cầu can thiệp đã được gửi. Hệ thống đang tự động định tuyến Staff phù hợp để tiếp nhận.",
     },
     STAFF_REVIEWING: {
-      title: `Tranh chấp - Staff đang kiểm tra`,
+      title: `Tranh chấp #${dispute?.disputeId} - Staff đang kiểm tra`,
       message:
         "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ ra quyết định xử lý.",
     },
     STAFF_DECIDED: {
-      title: `Tranh chấp - Chờ admin quyết toán`,
+      title: `Tranh chấp #${dispute?.disputeId} - Staff đã ra quyết định`,
       message:
-        "Staff đã gửi báo cáo kỹ thuật và tỷ lệ chia tiền ký quỹ. Admin sẽ đọc báo cáo và thực thi quyết toán.",
+        "Staff đã gửi báo cáo kỹ thuật và tỷ lệ phân bổ ký quỹ. Hệ thống đang chờ bước quyết toán.",
     },
     RESOLVED: {
-      title: `Tranh chấp - Đã xử lý xong`,
+      title: `Tranh chấp #${dispute?.disputeId} - Đã xử lý xong`,
       message:
         "Tranh chấp đã được quyết toán. Doanh nghiệp và Chuyên gia có thể xem kết quả giao dịch cuối cùng.",
     },
@@ -291,12 +485,12 @@ export function WorkspacePage() {
     null,
   );
   const [feedbackOpen, setFeedbackOpen] = useState<Milestone | null>(null);
+  const [progressFeedbackDetail, setProgressFeedbackDetail] =
+    useState<MilestoneProgressReport | null>(null);
   const [progressFeedbackOpen, setProgressFeedbackOpen] = useState<{
     milestone: Milestone;
     report: MilestoneProgressReport;
   } | null>(null);
-  const [progressFeedbackDetail, setProgressFeedbackDetail] =
-    useState<MilestoneProgressReport | null>(null);
   const [deliverableFeedbackDetail, setDeliverableFeedbackDetail] = useState<{
     deliverable: Deliverable;
     milestoneName: string;
@@ -305,6 +499,9 @@ export function WorkspacePage() {
   const [initiateDisputeOpen, setInitiateDisputeOpen] = useState<Milestone | null>(null);
   const [initiateDisputeType, setInitiateDisputeType] = useState<string>("OTHER");
   const [escalateDisputeOpen, setEscalateDisputeOpen] = useState<Milestone | null>(null);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState<Milestone | null>(
+    null,
+  );
   const [abruptTerminationOpen, setAbruptTerminationOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deliverableForm, setDeliverableForm] = useState({
@@ -329,8 +526,12 @@ export function WorkspacePage() {
   const [initiateDisputeOtherReason, setInitiateDisputeOtherReason] = useState("");
   const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
-  const [evidenceFileUrl, setEvidenceFileUrl] = useState("");
   const [escalateDisputeNote, setEscalateDisputeNote] = useState("");
+  const [evidenceOpen, setEvidenceOpen] = useState<Dispute | null>(null);
+  const [evidenceAttachments, setEvidenceAttachments] = useState<CaseAttachment[]>([]);
+  const [evidenceFileUrl, setEvidenceFileUrl] = useState("");
+  const [evidenceFileName, setEvidenceFileName] = useState("");
+  const [evidenceNote, setEvidenceNote] = useState("");
   const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
     tone: NoticeTone;
@@ -342,6 +543,16 @@ export function WorkspacePage() {
   >({});
 
   const id = Number(contractId);
+  const businessDisplayName = cleanPartyName(
+    contract?.businessName,
+    "đối tác",
+    "Doanh nghiệp",
+  );
+  const expertDisplayName = cleanPartyName(
+    contract?.expertName,
+    "đối tác",
+    "Chuyên gia",
+  );
 
   const loadWorkspace = useCallback(async () => {
     if (!Number.isFinite(id) || id <= 0) return;
@@ -393,8 +604,7 @@ export function WorkspacePage() {
   }, [location.pathname, navigate, resolvedDisputeNotice]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadWorkspace();
+    queueMicrotask(() => void loadWorkspace());
   }, [loadWorkspace]);
 
   useEffect(() => {
@@ -446,15 +656,7 @@ export function WorkspacePage() {
         if (status === "OVERDUE") summary.overdue += 1;
         return summary;
       },
-      {
-        done: 0,
-        review: 0,
-        disputed: 0,
-        pending: 0,
-        ready: 0,
-        working: 0,
-        overdue: 0,
-      },
+      { done: 0, review: 0, disputed: 0, pending: 0, ready: 0, working: 0, overdue: 0 },
     );
   }, [milestones]);
 
@@ -491,6 +693,10 @@ export function WorkspacePage() {
       return;
     }
 
+    // Thông báo thành công của thao tác trước không được giữ lại khi người dùng
+    // chuyển sang thao tác khác. Trạng thái hiện tại vẫn được render từ dữ liệu
+    // milestone/report sau khi tải lại.
+    setMilestoneNotices({});
     setActionLoading(`${actionKey}:${sourceMilestoneId}`);
     try {
       await action(sourceMilestoneId);
@@ -520,6 +726,20 @@ export function WorkspacePage() {
       return;
     }
 
+    if (
+      deliverableForm.type === "PROCESS" &&
+      (deliverablesByMilestone[sourceMilestoneId] || []).length > 0
+    ) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "warning",
+        title: "Cột mốc đã có sản phẩm cuối cùng.",
+        message: "Không thể nộp thêm báo cáo tiến độ. Chỉ có thể nộp lại sản phẩm cuối cùng nếu cần chỉnh sửa.",
+      });
+      setDeliverableOpen(null);
+      return;
+    }
+
+    setMilestoneNotices({});
     setActionLoading(`submit:${sourceMilestoneId}`);
     try {
       const notes = deliverableForm.submissionNotes.trim();
@@ -537,15 +757,15 @@ export function WorkspacePage() {
           percentComplete: Number.isFinite(percentComplete)
             ? percentComplete
             : undefined,
-          sourceCodeUrl: deliverableForm.sourceCodeUrl || undefined,
-          demoLink: deliverableForm.demoLink || undefined,
+          sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
+          demoLink: normalizeExternalUrl(deliverableForm.demoLink) || undefined,
           submissionNotes: notes,
         });
       } else {
         await contractApi.submitDeliverable(sourceMilestoneId, {
           milestoneId: sourceMilestoneId,
-          sourceCodeUrl: deliverableForm.sourceCodeUrl || undefined,
-          demoLink: deliverableForm.demoLink || undefined,
+          sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
+          demoLink: normalizeExternalUrl(deliverableForm.demoLink) || undefined,
           submissionNotes: notes,
         });
       }
@@ -604,8 +824,7 @@ export function WorkspacePage() {
     await runMilestoneAction(
       milestone,
       "feedback",
-      (sourceMilestoneId) =>
-        contractApi.rejectMilestone(sourceMilestoneId, reason),
+      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, reason),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
@@ -613,63 +832,97 @@ export function WorkspacePage() {
     setFeedbackOpen(null);
   };
 
-  const submitProgressFeedback = async () => {
-    if (!progressFeedbackOpen || !contract) return;
-    const sourceMilestoneId = getSourceMilestoneId(
-      progressFeedbackOpen.milestone,
-    );
-    const feedback = progressFeedbackForm.feedback.trim();
+  const acknowledgeProgressReport = async (
+    milestone: Milestone,
+    report: MilestoneProgressReport,
+  ) => {
+    if (!contract) return;
+    const sourceMilestoneId = getSourceMilestoneId(milestone);
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
         tone: "danger",
-        title: "Không xác định được cột mốc cần phản hồi.",
+        title: "Không xác định được cột mốc cần xác nhận báo cáo.",
       });
       return;
     }
-    if (!feedback) {
-      setWorkspaceNotice({
-        tone: "warning",
-        title: "Vui lòng nhập nội dung phản hồi.",
-      });
-      return;
-    }
-    setActionLoading(
-      `progress-feedback:${progressFeedbackOpen.report.progressReportId}`,
-    );
+
+    setMilestoneNotices({});
+    setActionLoading(`progress-ack:${report.progressReportId}`);
     try {
-      const saved = await contractApi.feedbackProgressReport(
+      const savedReport = await contractApi.acknowledgeProgressReport(
         contract.contractId,
         sourceMilestoneId,
-        progressFeedbackOpen.report.progressReportId,
-        {
-          feedback,
-          category: progressFeedbackForm.category,
-          severity: progressFeedbackForm.severity,
-          dodItems: progressFeedbackForm.dodChecklist,
-          requiresAdjustment: progressFeedbackForm.requiresAdjustment,
-        },
+        report.progressReportId,
       );
-      setProgressReportsByMilestone((current) => ({
-        ...current,
-        [sourceMilestoneId]: (current[sourceMilestoneId] || []).map((item) =>
-          item.progressReportId === saved.progressReportId ? saved : item,
-        ),
-      }));
+      setProgressReportsByMilestone((current) => {
+        const existing = current[sourceMilestoneId] || [];
+        return {
+          ...current,
+          [sourceMilestoneId]: existing.map((item) =>
+            item.progressReportId === savedReport.progressReportId
+              ? savedReport
+              : item,
+          ),
+        };
+      });
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã gửi phản hồi cho báo cáo tiến độ.",
-        message: progressFeedbackForm.requiresAdjustment
-          ? "Expert sẽ thấy yêu cầu điều chỉnh trong thông báo."
-          : "Phản hồi đã được lưu trong lịch sử báo cáo.",
+        title: `Bạn đã xác nhận đã xem báo cáo tiến độ của Chuyên gia ${expertDisplayName}.`,
       });
-      setProgressFeedbackForm({
-        feedback: "",
-        category: "Core Logic",
-        severity: "Medium",
-        dodChecklist: [],
-        requiresAdjustment: false,
+    } catch (error) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
       });
-      setProgressFeedbackOpen(null);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const approveMilestoneAndRefreshContract = async (milestone: Milestone) => {
+    if (!contract) return;
+    const sourceMilestoneId = getSourceMilestoneId(milestone);
+    if (!sourceMilestoneId) {
+      setWorkspaceNotice({
+        tone: "danger",
+        title: "Không xác định được cột mốc cần nghiệm thu.",
+      });
+      return;
+    }
+
+    setMilestoneNotices({});
+    setActionLoading(`approve:${sourceMilestoneId}`);
+    try {
+      await contractApi.approveMilestone(sourceMilestoneId);
+      const [updatedContract, updatedMilestones] = await Promise.all([
+        contractApi.getContract(contract.contractId),
+        contractApi.listMilestones(contract.contractId),
+      ]);
+      setContract(updatedContract);
+      setMilestones(updatedMilestones);
+
+      const allMilestonesCompleted = updatedMilestones.every((item) =>
+        normalizeStatus(item.status) === "COMPLETED"
+      );
+
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "success",
+        title: `Doanh nghiệp ${businessDisplayName} đã nghiệm thu sản phẩm cuối cùng.`,
+        message: allMilestonesCompleted
+          ? "Tất cả cột mốc đã hoàn tất. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng."
+          : "Cột mốc đã hoàn tất nghiệm thu.",
+      });
+
+      if (allMilestonesCompleted) {
+        setWorkspaceNotice({
+          tone: "success",
+          title: "Tất cả cột mốc đã hoàn tất nghiệm thu.",
+          message: "Đang chuyển về trang hợp đồng để cập nhật trạng thái hoàn ký quỹ.",
+        });
+        window.dispatchEvent(new Event("aitasker:reload-wallet"));
+        setTimeout(() => navigate(`/app/contracts/${contract.contractId}`), 900);
+      }
+      setApproveConfirmOpen(null);
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
@@ -765,6 +1018,156 @@ export function WorkspacePage() {
       setActionLoading(null);
     }
   };
+
+  const submitProgressFeedback = async () => {
+    if (!contract || !progressFeedbackOpen) return;
+    const { milestone, report } = progressFeedbackOpen;
+    const sourceMilestoneId = getSourceMilestoneId(milestone);
+    const feedback = progressFeedbackForm.feedback.trim();
+    if (!sourceMilestoneId || !feedback) {
+      setWorkspaceNotice({
+        tone: "warning",
+        title: "Vui lòng nhập nội dung phản hồi cho báo cáo tiến độ.",
+      });
+      return;
+    }
+
+    setMilestoneNotices({});
+    setActionLoading(`progress-feedback:${report.progressReportId}`);
+    try {
+      const savedReport = await contractApi.feedbackProgressReport(
+        contract.contractId,
+        sourceMilestoneId,
+        report.progressReportId,
+        {
+          feedback,
+          category: progressFeedbackForm.category,
+          severity: progressFeedbackForm.severity,
+          dodItems: progressFeedbackForm.dodChecklist,
+          requiresAdjustment: progressFeedbackForm.requiresAdjustment,
+        },
+      );
+      setProgressReportsByMilestone((current) => ({
+        ...current,
+        [sourceMilestoneId]: (current[sourceMilestoneId] || []).map((item) =>
+          item.progressReportId === savedReport.progressReportId
+            ? savedReport
+            : item,
+        ),
+      }));
+      setProgressFeedbackOpen(null);
+      setProgressFeedbackForm({
+        feedback: "",
+        category: "Core Logic",
+        severity: "Medium",
+        dodChecklist: [],
+        requiresAdjustment: false,
+      });
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "success",
+        title: "Đã gửi phản hồi báo cáo tiến độ cho Chuyên gia.",
+        message: progressFeedbackForm.requiresAdjustment
+          ? "Chuyên gia sẽ thấy nội dung cần điều chỉnh trong báo cáo này."
+          : "Phản hồi đã được ghi nhận để theo dõi tiến độ.",
+      });
+    } catch (error) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const openEvidencePanel = async (dispute: Dispute) => {
+    if (!dispute.disputeId) return;
+    setEvidenceOpen(dispute);
+    setEvidenceFileUrl("");
+    setEvidenceFileName("");
+    setEvidenceNote("");
+    setActionLoading(`evidence-load:${dispute.disputeId}`);
+    try {
+      const [latestDispute, attachments] = await Promise.all([
+        disputeApi.get(dispute.disputeId),
+        contractApi.listCaseAttachments("DISPUTE", dispute.disputeId),
+      ]);
+      setEvidenceAttachments(attachments);
+      setDisputesByMilestone((current) => {
+        const next = { ...current };
+        const milestoneEntry = Object.entries(next).find(
+          ([, item]) => item.disputeId === latestDispute.disputeId,
+        );
+        if (milestoneEntry) next[Number(milestoneEntry[0])] = latestDispute;
+        return next;
+      });
+      setEvidenceOpen(latestDispute);
+    } catch (error) {
+      setMilestoneNotice(dispute.milestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const submitEvidence = async () => {
+    if (!evidenceOpen) return;
+    const fileUrl = evidenceFileUrl.trim();
+    if (!fileUrl) {
+      setWorkspaceNotice({
+        tone: "warning",
+        title: "Vui lòng nhập đường dẫn bằng chứng.",
+        message: "BE hiện nhận bằng chứng dưới dạng URL file hoặc link chia sẻ.",
+      });
+      return;
+    }
+    setActionLoading(`evidence-submit:${evidenceOpen.disputeId}`);
+    try {
+      await disputeApi.createEvidence(evidenceOpen.disputeId, {
+        fileUrl,
+        fileName: evidenceFileName.trim() || undefined,
+        note: evidenceNote.trim() || undefined,
+      });
+      const attachments = await contractApi.listCaseAttachments(
+        "DISPUTE",
+        evidenceOpen.disputeId,
+      );
+      setEvidenceAttachments(attachments);
+      setEvidenceFileUrl("");
+      setEvidenceFileName("");
+      setEvidenceNote("");
+      setMilestoneNotice(evidenceOpen.milestoneId, {
+        tone: "success",
+        title: "Đã gửi bằng chứng cho Staff.",
+      });
+    } catch (error) {
+      setMilestoneNotice(evidenceOpen.milestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const checkOverdueMilestones = async () => {
+    if (!contract) return;
+    setActionLoading("check-overdue");
+    try {
+      await contractApi.checkOverdueMilestones(contract.contractId);
+      await refreshAfterAction();
+      setWorkspaceNotice({
+        tone: "success",
+        title: "Đã cập nhật trạng thái quá hạn của các cột mốc.",
+      });
+    } catch (error) {
+      setWorkspaceNotice({ tone: "danger", title: getApiErrorMessage(error) });
+    } finally {
+      setActionLoading(null);
+    }
+  };
   const disputeBusinessTermination = async (request: TerminationRequest) => {
     if (!request.terminationRequestId) return;
     const reason = window.prompt(
@@ -813,7 +1216,7 @@ export function WorkspacePage() {
         tone: "success",
         title: "Da dong y huy contract.",
         message:
-          "Contract da duoc huy. Cac milestone chua hoan thanh se duoc refund cho Business neu milestone do dang giu escrow.",
+          "Hợp đồng đã được hủy. Các cột mốc chưa hoàn thành sẽ được hoàn tiền cho Doanh nghiệp nếu cột mốc đó đang giữ ký quỹ.",
       });
     } catch (error) {
       setWorkspaceNotice({
@@ -892,9 +1295,7 @@ export function WorkspacePage() {
     if (!contract) return;
     setActionLoading("review-sla");
     try {
-      const updated = await contractApi.autoApproveReviewSla(
-        contract.contractId,
-      );
+      const updated = await contractApi.autoApproveReviewSla(contract.contractId);
       await refreshAfterAction();
       setWorkspaceNotice({
         tone: "success",
@@ -922,7 +1323,16 @@ export function WorkspacePage() {
     );
   }
 
-  const allDone = milestones.length > 0 && counts.done === milestones.length;
+  const allDone =
+    milestones.length > 0 && counts.done === milestones.length;
+  const approvingLastMilestone =
+    approveConfirmOpen !== null &&
+    milestones
+      .filter(
+        (item) =>
+          getSourceMilestoneId(item) !== getSourceMilestoneId(approveConfirmOpen),
+      )
+      .every((item) => normalizeStatus(item.status) === "COMPLETED");
   const contractStatus = normalizeStatus(contract.status);
   const awaitingBusinessDecision =
     contractStatus === "AWAITING_CONTINUATION_DECISION";
@@ -936,17 +1346,15 @@ export function WorkspacePage() {
   ].includes(contractStatus);
   const canBusinessDecideAfterDispute =
     session?.role === "BUSINESS" && awaitingBusinessDecision;
-  const hasActiveTermination = terminationRequests.some(
-    (request) =>
-      !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
-        normalizeStatus(request.status),
-      ),
+  const hasActiveTermination = terminationRequests.some((request) =>
+    !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
+      normalizeStatus(request.status),
+    ),
   );
-  const activeTerminationRequest = terminationRequests.find(
-    (request) =>
-      !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
-        normalizeStatus(request.status),
-      ),
+  const activeTerminationRequest = terminationRequests.find((request) =>
+    !["COMPLETED", "CANCELLED", "STAFF_REJECTED"].includes(
+      normalizeStatus(request.status),
+    ),
   );
   const awaitingExpertTerminationResponse =
     normalizeStatus(activeTerminationRequest?.status) ===
@@ -988,20 +1396,30 @@ export function WorkspacePage() {
         <PageHeader
           title={`Workspace: ${contract.contractTitle ||
             contract.title ||
-            `Hợp đồng`
-          }`}
+            `Contract #${contract.contractId}`
+            }`}
           description="Business ký quỹ từng cột mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
           actions={
             <div className="flex flex-wrap gap-2">
               {session?.role === "ADMIN" && (
-                <Button
-                  variant="secondary"
-                  onClick={autoApproveReviewSla}
-                  loading={actionLoading === "review-sla"}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Xử lý nghiệm thu quá hạn
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={checkOverdueMilestones}
+                    loading={actionLoading === "check-overdue"}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Cập nhật quá hạn
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={autoApproveReviewSla}
+                    loading={actionLoading === "review-sla"}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Xử lý nghiệm thu quá hạn
+                  </Button>
+                </>
               )}
               {canShowAbruptTermination && (
                 <Button
@@ -1009,7 +1427,7 @@ export function WorkspacePage() {
                   disabled={!canUseAbruptTermination}
                   title={
                     hasAbruptTerminationBlockedMilestone
-                      ? "Khong the huy ngang khi co milestone dang nghiem thu hoac tranh chap."
+                      ? "Không thể hủy ngang khi có cột mốc đang nghiệm thu hoặc tranh chấp."
                       : undefined
                   }
                   onClick={() => setAbruptTerminationOpen(true)}
@@ -1036,6 +1454,22 @@ export function WorkspacePage() {
           className="mt-2"
         >
           {workspaceNotice.message}
+        </Notice>
+      )}
+
+      {normalizeStatus(contract.status) === "PENDING" && counts.pending > 0 && (
+        <Notice
+          tone="warning"
+          title={
+            session?.role === "BUSINESS"
+              ? "Hợp đồng chưa được ký quỹ."
+              : "Hợp đồng đang chờ Doanh nghiệp ký quỹ."
+          }
+          className="mt-2"
+        >
+          {session?.role === "BUSINESS"
+            ? `Còn ${counts.pending} cột mốc chưa được ký quỹ. Hãy ký quỹ từng cột mốc để Chuyên gia có thể bắt đầu thực hiện.`
+            : `Còn ${counts.pending} cột mốc đang chờ Doanh nghiệp ký quỹ. Bạn chỉ có thể bắt đầu nộp sản phẩm sau khi cột mốc được ký quỹ.`}
         </Notice>
       )}
 
@@ -1104,9 +1538,7 @@ export function WorkspacePage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="amber">
-                  {contractStatusLabel(contract.status)}
-                </Badge>
+                <Badge tone="amber">{contractStatusLabel(contract.status)}</Badge>
                 <Badge tone="slate">Contract tam khoa thao tac</Badge>
               </div>
               <h2 className="mt-3 font-display text-lg font-extrabold text-ink">
@@ -1114,7 +1546,7 @@ export function WorkspacePage() {
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Nếu tiếp tục, contract được mở lại để làm các cột mốc còn lại.
-                Nếu hủy, hệ thống sẽ hủy toàn bộ cột mốc chưa hoàn thành và
+                Nếu hủy, hệ thống sẽ hủy toàn bộ cột mốc chưa hoàn thành và 
                 hoàn tiền cột mốc nào đang giữ tiền ký quỹ về ví Doanh nghiệp.
               </p>
             </div>
@@ -1205,6 +1637,7 @@ export function WorkspacePage() {
             : null;
           const visibleMilestoneNotice =
             milestoneNotice &&
+              milestoneNotice.tone !== "info" &&
               !(
                 status === "UNDER_REVIEW" &&
                 milestoneNotice.title.toLowerCase().includes("feedback")
@@ -1212,8 +1645,7 @@ export function WorkspacePage() {
               ? milestoneNotice
               : null;
           const nextMilestone = milestones.find(
-            (item) =>
-              Number(item.orderIndex) === Number(milestone.orderIndex) + 1,
+            (item) => Number(item.orderIndex) === Number(milestone.orderIndex) + 1,
           );
           const nextMilestoneId = nextMilestone
             ? getSourceMilestoneId(nextMilestone)
@@ -1244,6 +1676,15 @@ export function WorkspacePage() {
             .filter((item) => item.createdAt)
             .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
             .at(-1);
+          const roleNotice = milestoneRoleNotice({
+            role: session?.role,
+            businessName: businessDisplayName,
+            expertName: expertDisplayName,
+            latestProgressReport,
+            latestDeliverable,
+            milestoneStatus: milestone.status,
+          });
+          const visibleRoleNotice = roleNotice?.tone === "info" ? null : roleNotice;
           const isLoading = (action: string) =>
             actionLoading === `${action}:${sourceMilestoneId}`;
           const canDeposit =
@@ -1260,6 +1701,7 @@ export function WorkspacePage() {
             !contractActionsFrozen &&
             (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
             status === "DEPOSITED";
+          const hasSubmittedFinal = milestoneDeliverables.length > 0;
           const canDepositNext =
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
@@ -1273,7 +1715,8 @@ export function WorkspacePage() {
           const canSubmitProgress =
             !contractActionsFrozen &&
             session?.role === "EXPERT" &&
-            PROGRESS_REPORT_STATUSES.has(status);
+            PROGRESS_REPORT_STATUSES.has(status) &&
+            !hasSubmittedFinal;
           const canRequestProgressReport =
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
@@ -1290,14 +1733,19 @@ export function WorkspacePage() {
             (!currentDispute ||
               normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
           const isExpanded = sourceMilestoneId
-            ? (expandedMilestones[sourceMilestoneId] ??
-              isActiveMilestoneStatus(status))
+            ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
             : true;
-          const hintLine = workspaceHintLine(
-            session?.role,
-            status,
-            currentDispute,
-          );
+          const hintLine = workspaceHintLine(session?.role, status, currentDispute);
+          const needsBusinessReview =
+            session?.role === "BUSINESS" &&
+            ((latestProgressReport && !isProgressReportAcknowledged(latestProgressReport)) ||
+              (latestDeliverable && status === "UNDER_REVIEW"));
+          const scrollToSubmission = () => {
+            if (!sourceMilestoneId) return;
+            document
+              .getElementById(`milestone-submissions-${sourceMilestoneId}`)
+              ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          };
 
           return (
             <Card
@@ -1316,29 +1764,36 @@ export function WorkspacePage() {
                       status={milestoneStatusLabel(milestone.status)}
                     />
                   </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <h3 className="font-display text-xl font-extrabold text-ink">
+                      {milestone.milestoneName}
+                    </h3>
+                    {status === "PENDING" ? (
+                      session?.role === "BUSINESS" ? (
+                        <Badge tone="rose">Doanh nghiệp cần ký quỹ</Badge>
+                      ) : (
+                        <Badge tone="amber">Chờ Doanh nghiệp ký quỹ</Badge>
+                      )
+                    ) : status && !["CANCELLED", "TERMINATED"].includes(status) ? (
+                      <Badge tone="mint">Đã ký quỹ</Badge>
+                    ) : null}
+                  </div>
                   {milestone.description && (
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
                       {milestone.description}
                     </p>
                   )}
-                  <div className="mt-3 flex flex-col gap-1 text-sm font-bold text-slate-500">
-                    <span>
-                      Ngân sách mốc:{" "}
-                      {formatCurrency(getMilestoneBudget(milestone))}
-                    </span>
+                  <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold text-slate-500">
+                    <span>Ngân sách mốc: {formatCurrency(getMilestoneBudget(milestone))}</span>
                     <span>Thời gian: {milestoneDurationLabel(milestone)}</span>
                     {milestone.updatedAt && (
-                      <span>
-                        Cập nhật: {formatDateTime(milestone.updatedAt)}
-                      </span>
+                      <span>Cập nhật: {formatDateTime(milestone.updatedAt)}</span>
                     )}
                     {milestone.dueAt && (
                       <span>Hạn nộp: {formatDateTime(milestone.dueAt)}</span>
                     )}
                     {milestone.reviewDueAt && (
-                      <span>
-                        Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}
-                      </span>
+                      <span>Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}</span>
                     )}
                   </div>
                 </div>
@@ -1359,7 +1814,7 @@ export function WorkspacePage() {
                               contract.contractId,
                               sourceMilestoneId,
                             ),
-                          "Đã ký quỹ cột mốc. Chuyên gia cần bấm bắt đầu mốc trước khi nộp tiến độ hoặc sản phẩm cuối cùng.",
+                          "Đã ký quỹ cột mốc.",
                         )
                       }
                     >
@@ -1536,6 +1991,24 @@ export function WorkspacePage() {
                     </div>
                   )}
 
+                  {visibleRoleNotice && (
+                    <div className="mt-4">
+                      <Notice tone={visibleRoleNotice.tone} title={visibleRoleNotice.title}>
+                        {visibleRoleNotice.message}
+                      </Notice>
+                      {needsBusinessReview && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="mt-3"
+                          onClick={scrollToSubmission}
+                        >
+                          Đi đến nội dung cần xử lý
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {milestone.progressReportRequestPending && (
                     <div className="mt-4">
                       <Notice
@@ -1580,18 +2053,41 @@ export function WorkspacePage() {
                   )}
                   {currentDispute && (
                     <div className="mt-4">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        
+                        <Badge tone="brand">
+                          {normalizeStatus(currentDispute.status) === "ESCALATION_REQUESTED"
+                            ? "Đã chuyển yêu cầu đến Staff"
+                            : normalizeStatus(currentDispute.status) === "STAFF_REVIEWING"
+                              ? "Staff đang xử lý"
+                              : disputeWorkspaceNotice(currentDispute).title}
+                        </Badge>
+                      </div>
                       <Notice
                         tone="warning"
                         title={disputeWorkspaceNotice(currentDispute).title}
                       >
                         {disputeWorkspaceNotice(currentDispute).message}
                       </Notice>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => openEvidencePanel(currentDispute)}
+                          loading={
+                            actionLoading ===
+                            `evidence-load:${currentDispute.disputeId}`
+                          }
+                        >
+                          Xem và bổ sung bằng chứng
+                        </Button>
+                      </div>
                     </div>
                   )}
                   <div className="mt-5 grid gap-4">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-sm font-extrabold text-ink">
-                        Definition of Done / Acceptance Criteria
+                        Định nghĩa hoàn thành / Tiêu chí nghiệm thu
                       </p>
                       <div className="mt-3 grid gap-2">
                         {visibleCriteria.map((description, index) => (
@@ -1611,7 +2107,10 @@ export function WorkspacePage() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl bg-slate-50 p-4">
+                    <div
+                      id={`milestone-submissions-${sourceMilestoneId}`}
+                      className="rounded-2xl bg-slate-50 p-4"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-extrabold text-ink">
                           Báo cáo tiến độ / Sản phẩm bàn giao
@@ -1634,17 +2133,7 @@ export function WorkspacePage() {
                                 {item.checkpointType && (
                                   <Badge tone="brand">{checkpointLabel(item.checkpointType)}</Badge>
                                 )}
-                                <Badge
-                                  tone={
-                                    item.businessFeedback
-                                      ? item.requiresAdjustment
-                                        ? "amber"
-                                        : "mint"
-                                      : "slate"
-                                  }
-                                >
-                                  {latestProgressStatusLabel(item)}
-                                </Badge>
+
                                 {latestSubmissionMeta?.kind === "REPORT" &&
                                   latestSubmissionMeta.id === item.progressReportId && (
                                     <Badge tone="violet">Lần nộp mới nhất</Badge>
@@ -1670,7 +2159,7 @@ export function WorkspacePage() {
                                       Source code URL
                                     </p>
                                     <a
-                                      href={item.sourceCodeUrl}
+                                      href={normalizeExternalUrl(item.sourceCodeUrl)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
@@ -1685,7 +2174,7 @@ export function WorkspacePage() {
                                       Demo URL
                                     </p>
                                     <a
-                                      href={item.demoLink}
+                                      href={normalizeExternalUrl(item.demoLink)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
@@ -1700,7 +2189,7 @@ export function WorkspacePage() {
                                       File đính kèm
                                     </p>
                                     <a
-                                      href={item.attachmentUrl}
+                                      href={normalizeExternalUrl(item.attachmentUrl)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
@@ -1719,40 +2208,64 @@ export function WorkspacePage() {
                                 </p>
                               </div>
                             </div>
+                            {(() => {
+                              const notice = progressReportSubmissionNotice(
+                                item,
+                                session?.role,
+                                businessDisplayName,
+                                expertDisplayName,
+                              );
+                              return notice.tone === "info" ? null : (
+                                <Notice tone={notice.tone} title={notice.title} className="mt-3">
+                                  {notice.message}
+                                </Notice>
+                              );
+                            })()}
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {item.businessFeedback && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => setProgressFeedbackDetail(item)}
-                                >
-                                  Mở phản hồi của Business
-                                </Button>
-                              )}
                               {session?.role === "BUSINESS" && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled={
-                                    latestProgressReport?.progressReportId !==
-                                    item.progressReportId
-                                  }
-                                  onClick={() => {
-                                    setProgressFeedbackForm({
-                                      feedback: item.businessFeedback || "",
-                                      category: "Core Logic",
-                                      severity: "Medium",
-                                      dodChecklist: [],
-                                      requiresAdjustment: Boolean(item.requiresAdjustment),
-                                    });
-                                    setProgressFeedbackOpen({ milestone, report: item });
-                                  }}
-                                >
+                                <>
                                   {latestProgressReport?.progressReportId ===
-                                    item.progressReportId
-                                    ? "Phản hồi báo cáo này"
-                                    : "Chỉ phản hồi lần nộp mới nhất"}
-                                </Button>
+                                    item.progressReportId &&
+                                    !item.businessFeedback &&
+                                    !isProgressReportAcknowledged(item) && (
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => {
+                                          setProgressFeedbackForm({
+                                            feedback: item.businessFeedback || "",
+                                            category: "Core Logic",
+                                            severity: "Medium",
+                                            dodChecklist: [],
+                                            requiresAdjustment: Boolean(item.requiresAdjustment),
+                                          });
+                                          setProgressFeedbackOpen({ milestone, report: item });
+                                        }}
+                                      >
+                                        Gửi phản hồi cho Chuyên gia
+                                      </Button>
+                                    )}
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    disabled={
+                                      latestProgressReport?.progressReportId !==
+                                        item.progressReportId ||
+                                      isProgressReportAcknowledged(item)
+                                    }
+                                    loading={
+                                      actionLoading ===
+                                      `progress-ack:${item.progressReportId}`
+                                    }
+                                    onClick={() => acknowledgeProgressReport(milestone, item)}
+                                  >
+                                    {isProgressReportAcknowledged(item)
+                                      ? "Đã xác nhận đã xem"
+                                      : latestProgressReport?.progressReportId === item.progressReportId
+                                        ? "Xác nhận đã xem báo cáo"
+                                        : "Chỉ xác nhận lần nộp mới nhất"}
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
@@ -1798,7 +2311,7 @@ export function WorkspacePage() {
                                     Source code URL
                                   </p>
                                   <a
-                                    href={item.sourceCodeUrl}
+                                    href={normalizeExternalUrl(item.sourceCodeUrl)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
@@ -1813,7 +2326,7 @@ export function WorkspacePage() {
                                     Demo URL
                                   </p>
                                   <a
-                                    href={item.demoLink}
+                                    href={normalizeExternalUrl(item.demoLink)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="mt-1 block break-all font-bold text-brand-600 hover:text-brand-700"
@@ -1833,6 +2346,21 @@ export function WorkspacePage() {
                                 </p>
                               </div>
                             )}
+                            {(() => {
+                              const notice = deliverableSubmissionNotice(
+                                item,
+                                session?.role,
+                                businessDisplayName,
+                                expertDisplayName,
+                                milestone.status,
+                                latestDeliverable?.deliverableId === item.deliverableId,
+                              );
+                              return notice.tone === "info" ? null : (
+                                <Notice tone={notice.tone} title={notice.title} className="mt-3">
+                                  {notice.message}
+                                </Notice>
+                              );
+                            })()}
                             {(item.rejectionFeedback ||
                               (session?.role === "BUSINESS" &&
                                 latestDeliverable?.deliverableId === item.deliverableId &&
@@ -1850,7 +2378,9 @@ export function WorkspacePage() {
                                         })
                                       }
                                     >
-                                      Xem chi tiết feedback
+                                      {session?.role === "BUSINESS"
+                                        ? "Xem phản hồi đã gửi"
+                                        : "Xem phản hồi của Doanh nghiệp"}
                                     </Button>
                                   )}
                                   {session?.role === "BUSINESS" &&
@@ -1860,12 +2390,7 @@ export function WorkspacePage() {
                                         <Button
                                           size="sm"
                                           onClick={() =>
-                                            runMilestoneAction(
-                                              milestone,
-                                              "approve",
-                                              () => contractApi.approveMilestone(sourceMilestoneId!),
-                                              "Đã nghiệm thu sản phẩm và giải ngân milestone.",
-                                            )
+                                            setApproveConfirmOpen(milestone)
                                           }
                                           loading={isLoading("approve")}
                                         >
@@ -2014,6 +2539,12 @@ export function WorkspacePage() {
                   sourceCodeUrl: event.target.value,
                 }))
               }
+              onBlur={() =>
+                setDeliverableForm((value) => ({
+                  ...value,
+                  sourceCodeUrl: normalizeExternalUrl(value.sourceCodeUrl),
+                }))
+              }
             />
           </Field>
           <Field label="Demo link">
@@ -2023,6 +2554,12 @@ export function WorkspacePage() {
                 setDeliverableForm((value) => ({
                   ...value,
                   demoLink: event.target.value,
+                }))
+              }
+              onBlur={() =>
+                setDeliverableForm((value) => ({
+                  ...value,
+                  demoLink: normalizeExternalUrl(value.demoLink),
                 }))
               }
             />
@@ -2048,163 +2585,6 @@ export function WorkspacePage() {
       </Modal>
 
       <Modal
-        open={Boolean(progressFeedbackOpen)}
-        onClose={() => setProgressFeedbackOpen(null)}
-        title="Phản hồi báo cáo tiến độ"
-        description="Phản hồi này chỉ dùng để trao đổi về tiến độ, không chuyển cột mốc sang tranh chấp."
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setProgressFeedbackOpen(null)}
-            >
-              Hủy
-            </Button>
-            <Button
-              onClick={submitProgressFeedback}
-              loading={
-                progressFeedbackOpen
-                  ? actionLoading ===
-                  `progress-feedback:${progressFeedbackOpen.report.progressReportId}`
-                  : false
-              }
-            >
-              <Send className="h-4 w-4" />
-              Gửi phản hồi
-            </Button>
-          </>
-        }
-      >
-        <div className="grid gap-4">
-          <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
-            <p className="text-sm font-extrabold text-ink">
-              Structured feedback panel
-            </p>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Field label="Category">
-                <div className="flex flex-wrap gap-2">
-                  {["Core Logic", "UI/UX", "Security", "Performance"].map(
-                    (category) => (
-                      <Button
-                        key={category}
-                        type="button"
-                        size="sm"
-                        variant={
-                          progressFeedbackForm.category === category
-                            ? "primary"
-                            : "secondary"
-                        }
-                        onClick={() =>
-                          setProgressFeedbackForm((value) => ({
-                            ...value,
-                            category,
-                          }))
-                        }
-                      >
-                        {category}
-                      </Button>
-                    ),
-                  )}
-                </div>
-              </Field>
-              <Field label="Severity">
-                <div className="flex flex-wrap gap-2">
-                  {["Low", "Medium", "High", "Critical"].map((severity) => (
-                    <Button
-                      key={severity}
-                      type="button"
-                      size="sm"
-                      variant={
-                        progressFeedbackForm.severity === severity
-                          ? "primary"
-                          : "secondary"
-                      }
-                      onClick={() =>
-                        setProgressFeedbackForm((value) => ({
-                          ...value,
-                          severity,
-                        }))
-                      }
-                    >
-                      {severity}
-                    </Button>
-                  ))}
-                </div>
-              </Field>
-            </div>
-          </div>
-          {progressFeedbackOpen && (
-            <Field label="DoD checklist liên quan">
-              <div className="grid gap-2">
-                {(
-                  criteriaByMilestone[
-                    getSourceMilestoneId(progressFeedbackOpen.milestone) || -1
-                  ] || []
-                ).map((item) => (
-                  <label
-                    key={item.criteriaId}
-                    className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={progressFeedbackForm.dodChecklist.includes(
-                        item.description,
-                      )}
-                      onChange={(event) =>
-                        setProgressFeedbackForm((value) => ({
-                          ...value,
-                          dodChecklist: event.target.checked
-                            ? [...value.dodChecklist, item.description]
-                            : value.dodChecklist.filter(
-                                (entry) => entry !== item.description,
-                              ),
-                        }))
-                      }
-                    />
-                    <span>{item.description}</span>
-                  </label>
-                ))}
-                {(
-                  criteriaByMilestone[
-                    getSourceMilestoneId(progressFeedbackOpen.milestone) || -1
-                  ] || []
-                ).length === 0 && (
-                  <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-400">
-                    Cột mốc này chưa có tiêu chí nghiệm thu riêng.
-                  </p>
-                )}
-              </div>
-            </Field>
-          )}
-          <Field label="Nội dung phản hồi">
-            <Textarea
-              value={progressFeedbackForm.feedback}
-              onChange={(event) =>
-                setProgressFeedbackForm((value) => ({
-                  ...value,
-                  feedback: event.target.value,
-                }))
-              }
-              placeholder="Ví dụ: cần bổ sung demo cho phần tích hợp, cập nhật tiến độ rõ hơn..."
-            />
-          </Field>
-          <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-600">
-            <input
-              type="checkbox"
-              checked={progressFeedbackForm.requiresAdjustment}
-              onChange={(event) =>
-                setProgressFeedbackForm((value) => ({
-                  ...value,
-                  requiresAdjustment: event.target.checked,
-                }))
-              }
-            />
-            Yêu cầu Chuyên gia điều chỉnh ở báo cáo tiếp theo
-          </label>
-        </div>
-      </Modal>
-
-      <Modal
         open={Boolean(progressFeedbackDetail)}
         onClose={() => setProgressFeedbackDetail(null)}
         title="Phản hồi của Doanh nghiệp"
@@ -2219,22 +2599,7 @@ export function WorkspacePage() {
       >
         {progressFeedbackDetail && (
           <div className="grid gap-3 text-sm text-slate-600">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                tone={
-                  progressFeedbackDetail.requiresAdjustment ? "amber" : "mint"
-                }
-              >
-                {progressFeedbackDetail.requiresAdjustment
-                  ? "Cần điều chỉnh"
-                  : "Đã ghi nhận"}
-              </Badge>
-              {progressFeedbackDetail.feedbackAt && (
-                <span className="text-xs font-bold text-slate-400">
-                  {formatDateTime(progressFeedbackDetail.feedbackAt)}
-                </span>
-              )}
-            </div>
+
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
                 Nội dung phản hồi
@@ -2284,6 +2649,63 @@ export function WorkspacePage() {
                 {deliverableFeedbackDetail.deliverable.rejectionFeedback}
               </p>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(approveConfirmOpen)}
+        onClose={() => !actionLoading && setApproveConfirmOpen(null)}
+        title="Xác nhận nghiệm thu sản phẩm cuối cùng"
+        description={
+          approvingLastMilestone
+            ? "Đây là cột mốc cuối cùng của hợp đồng. Sau khi nghiệm thu, hệ thống sẽ hoàn tất hợp đồng và xử lý hoàn ký quỹ cho hai bên."
+            : "Sau khi xác nhận, cột mốc sẽ được nghiệm thu và hệ thống sẽ giải ngân ngân sách cột mốc theo Flow 4."
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setApproveConfirmOpen(null)}
+              disabled={Boolean(actionLoading)}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={() =>
+                approveConfirmOpen &&
+                approveMilestoneAndRefreshContract(approveConfirmOpen)
+              }
+              loading={
+                approveConfirmOpen
+                  ? actionLoading ===
+                    `approve:${getSourceMilestoneId(approveConfirmOpen)}`
+                  : false
+              }
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Xác nhận nghiệm thu
+            </Button>
+          </>
+        }
+      >
+        {approveConfirmOpen && (
+          <div className="grid gap-3">
+            <Notice
+              tone="warning"
+              title={`Cột mốc ${approveConfirmOpen.orderIndex}: ${approveConfirmOpen.milestoneName}`}
+            >
+              Hãy chắc chắn source code, demo và nội dung bàn giao đã đáp ứng tiêu
+              chí nghiệm thu. Sau khi nghiệm thu, thao tác này sẽ không còn là bước
+              phản hồi sửa sản phẩm.
+            </Notice>
+            {approvingLastMilestone && (
+              <Notice tone="success" title="Bước tiếp theo sau khi nghiệm thu">
+                Hệ thống sẽ tự hoàn ký quỹ của Business và Chuyên gia, chuyển hợp
+                đồng sang trạng thái “Đã đóng” và hiển thị kết quả trên Contract
+                Detail.
+              </Notice>
+            )}
           </div>
         )}
       </Modal>
@@ -2519,6 +2941,149 @@ export function WorkspacePage() {
       </Modal>
 
       <Modal
+        open={Boolean(progressFeedbackOpen)}
+        onClose={() => !actionLoading && setProgressFeedbackOpen(null)}
+        title="Phản hồi báo cáo tiến độ"
+        description="Phản hồi tiến độ chỉ giúp Chuyên gia theo dõi và điều chỉnh công việc; không thay thế nghiệm thu sản phẩm cuối hoặc mở tranh chấp."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setProgressFeedbackOpen(null)}
+              disabled={Boolean(actionLoading)}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={submitProgressFeedback}
+              loading={
+                progressFeedbackOpen
+                  ? actionLoading ===
+                    `progress-feedback:${progressFeedbackOpen.report.progressReportId}`
+                  : false
+              }
+            >
+              Gửi phản hồi
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <Field label="Nội dung phản hồi *">
+            <Textarea
+              value={progressFeedbackForm.feedback}
+              onChange={(event) =>
+                setProgressFeedbackForm((current) => ({
+                  ...current,
+                  feedback: event.target.value,
+                }))
+              }
+              placeholder="Nêu rõ điểm đã đạt, điểm cần bổ sung hoặc đề xuất cải thiện..."
+            />
+          </Field>
+          <label className="flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={progressFeedbackForm.requiresAdjustment}
+              onChange={(event) =>
+                setProgressFeedbackForm((current) => ({
+                  ...current,
+                  requiresAdjustment: event.target.checked,
+                }))
+              }
+              className="mt-1"
+            />
+            <span>
+              Yêu cầu Chuyên gia điều chỉnh nội dung trong các báo cáo hoặc sản phẩm tiếp theo.
+            </span>
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(evidenceOpen)}
+        onClose={() => !actionLoading && setEvidenceOpen(null)}
+        title="Bằng chứng gửi Staff"
+        description="Thêm link source, demo, file hoặc tài liệu liên quan để Staff có đủ thông tin xử lý tranh chấp."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setEvidenceOpen(null)}
+              disabled={Boolean(actionLoading)}
+            >
+              Đóng
+            </Button>
+            <Button
+              variant="danger"
+              onClick={submitEvidence}
+              loading={
+                evidenceOpen
+                  ? actionLoading === `evidence-submit:${evidenceOpen.disputeId}`
+                  : false
+              }
+            >
+              Gửi bằng chứng
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          {evidenceAttachments.length > 0 && (
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm font-extrabold text-ink">Bằng chứng đã gửi</p>
+              <div className="mt-3 grid gap-2">
+                {evidenceAttachments.map((attachment) => (
+                  <div
+                    key={attachment.attachmentId || attachment.fileUrl}
+                    className="rounded-xl bg-white p-3 text-sm"
+                  >
+                    <a
+                      href={attachment.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      {attachment.fileName || attachment.fileUrl}
+                    </a>
+                    {attachment.note && (
+                      <p className="mt-1 text-slate-500">{attachment.note}</p>
+                    )}
+                    {attachment.createdAt && (
+                      <p className="mt-1 text-xs font-bold text-slate-400">
+                        {formatDateTime(attachment.createdAt)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <Field label="Đường dẫn bằng chứng *">
+            <Input
+              value={evidenceFileUrl}
+              onChange={(event) => setEvidenceFileUrl(event.target.value)}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Tên file hoặc tài liệu">
+            <Input
+              value={evidenceFileName}
+              onChange={(event) => setEvidenceFileName(event.target.value)}
+              placeholder="Ví dụ: source-code.zip, demo.png"
+            />
+          </Field>
+          <Field label="Ghi chú cho Staff">
+            <Textarea
+              value={evidenceNote}
+              onChange={(event) => setEvidenceNote(event.target.value)}
+              placeholder="Mô tả ngắn bằng chứng này chứng minh điều gì..."
+            />
+          </Field>
+        </div>
+      </Modal>
+
+      <Modal
         open={abruptTerminationOpen}
         onClose={() => setAbruptTerminationOpen(false)}
         title={
@@ -2572,6 +3137,10 @@ export function WorkspacePage() {
           </Field>
         </div>
       </Modal>
+
     </div>
   );
 }
+
+
+
