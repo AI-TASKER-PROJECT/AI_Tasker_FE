@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
-import { Avatar, Card, EmptyState, LinkButton, PageHeader, StatusBadge, Tabs } from "../../../components/ui";
+import { Avatar, Badge, Card, EmptyState, LinkButton, PageHeader, StatusBadge, Tabs } from "../../../components/ui";
 
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
@@ -91,6 +92,17 @@ export function VerificationsPage() {
                         ? (item as BusinessProfile).taxCode
                         : (item as ExpertProfile).nationalId}
                     </p>
+                    {isBusiness && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge tone="mint">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          MST verified
+                        </Badge>
+                        {(item as BusinessProfile).businessLicenseUrl && (
+                          <Badge tone="slate">Có giấy phép</Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

@@ -88,6 +88,81 @@ function txIcon(type: WalletTransaction["transactionType"]) {
   return <ArrowUpRight className="h-4 w-4" />;
 }
 
+function txDisplayLabel(tx: WalletTransaction, role?: string) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const direction = (tx.direction || "").toUpperCase();
+  const balanceType = (tx.balanceType || "").toUpperCase();
+  const isExpert = role === "EXPERT";
+
+  if (type === "TOPUP") return "Nạp tiền vào ví";
+  if (type === "MEMBERSHIP_PURCHASE") return "Thanh toán gói thành viên";
+  if (type === "CREDIT_PURCHASE") return "Mua lượt sử dụng";
+  if (type === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
+    return isExpert ? "Giữ ký quỹ bảo đảm hợp đồng" : "Giữ tiền ký quỹ dự án";
+  }
+  if (type === "DEPOSIT_REFUND") {
+    return isExpert ? "Hoàn ký quỹ bảo đảm" : "Hoàn tiền ký quỹ dự án";
+  }
+  if (type === "WITHDRAW_HOLD") return "Tạm giữ tiền chờ rút";
+  if (type === "WITHDRAW_APPROVED") return "Rút tiền về ngân hàng";
+  if (type === "WITHDRAW_REJECTED") return "Hoàn tiền do rút bị từ chối";
+
+  if (direction === "CREDIT") return "Tiền cộng vào ví";
+  if (direction === "DEBIT") return "Tiền trừ khỏi ví";
+  if (direction === "HOLD") {
+    if (balanceType === "ESCROW") return "Tiền đang được giữ ký quỹ";
+    if (balanceType === "HOLDING") return "Tiền đang chờ xử lý";
+    if (balanceType === "DISPUTE") return "Tiền đang bị giữ do tranh chấp";
+    return "Tiền đang được tạm giữ";
+  }
+  if (direction === "RELEASE") return "Tiền được giải ngân/hoàn lại";
+
+  return tx.title || tx.description || "Giao dịch ví";
+}
+
+function txExtra(tx: WalletTransaction) {
+  return tx as WalletTransaction & {
+    milestoneNumber?: number | string;
+    milestoneOrderIndex?: number | string;
+    milestoneName?: string;
+  };
+}
+
+function txMilestoneText(tx: WalletTransaction) {
+  const extra = txExtra(tx);
+  const value =
+    extra.milestoneNumber ??
+    extra.milestoneOrderIndex;
+  return value ? String(value) : "";
+}
+
+function txPartyText(value: string | undefined, fallback: string) {
+  return value?.trim() || fallback;
+}
+
+function txDisplayDescription(tx: WalletTransaction, role?: string) {
+  const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const businessName = txPartyText(tx.businessName, "Doanh nghiệp");
+  const expertName = txPartyText(tx.expertName, "Chuyên gia");
+  const contractTitle = txPartyText(tx.contractTitle, "hợp đồng chưa có tên");
+  const milestoneText = txMilestoneText(tx);
+  const milestonePhrase = milestoneText ? `mốc ${milestoneText}` : "mốc tương ứng";
+
+  if (text.includes("deposit milestone escrow")) {
+    return `${businessName} đã ký quỹ ${milestonePhrase} cho hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("dispute business refund")) {
+    return `${businessName} đã nhận tiền hoàn từ quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("dispute settlement debit")) {
+    return role === "EXPERT"
+      ? `${expertName} đã nhận tiền quyết toán tranh chấp ${milestonePhrase} từ hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
+      : `${businessName} đã được quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+
+  return tx.description || tx.rawDescription || tx.contractTitle || tx.jobTitle || "";
+}
+
 function withdrawStatusLabel(status: string) {
   const map: Record<string, string> = {
     PENDING: "Đang chờ",
@@ -490,7 +565,7 @@ export function WalletPage() {
               {/* Header */}
               <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <span className="w-9" />
-                <span>Loại giao dịch</span>
+                <span>Nội dung giao dịch</span>
                 <span className="text-right">Số tiền</span>
                 <span className="w-24 text-center">Trạng thái</span>
                 <span className="w-28 text-right">Thời gian</span>
@@ -515,11 +590,11 @@ export function WalletPage() {
                     </span>
                     <div>
                       <p className="text-sm font-bold text-ink">
-                        {txTypeLabel(tx.transactionType)}
+                        {txDisplayLabel(tx, role)}
                       </p>
-                      {tx.description && (
+                      {txDisplayDescription(tx, role) && (
                         <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">
-                          {tx.description}
+                          {txDisplayDescription(tx, role)}
                         </p>
                       )}
                     </div>

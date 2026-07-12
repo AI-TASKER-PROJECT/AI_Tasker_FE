@@ -2,14 +2,19 @@ import { Gavel } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { disputeApi } from "../../../lib/api";
 import type { Dispute } from "../../../types";
-import { Button, Card, Field, Input, Notice, PageHeader, Textarea } from "../../../components/ui";
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  Notice,
+  PageHeader,
+} from "../../../components/ui";
 
 export function NewDisputePage() {
   const [form, setForm] = useState({
     contractId: "",
     milestoneId: "",
-    evidenceReport: "",
-    proposedAction: "",
   });
   const [created, setCreated] = useState<Dispute | null>(null);
   const [message, setMessage] = useState("");
@@ -17,25 +22,22 @@ export function NewDisputePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const contractId = Number(form.contractId);
-    const milestoneId = form.milestoneId ? Number(form.milestoneId) : undefined;
+    const milestoneId = Number(form.milestoneId);
     if (
       !Number.isFinite(contractId) ||
       contractId <= 0 ||
-      (milestoneId !== undefined &&
-        (!Number.isFinite(milestoneId) || milestoneId <= 0))
+      !Number.isFinite(milestoneId) ||
+      milestoneId <= 0
     ) {
-      setMessage(
-        "Contract ID và Milestone ID phải là số dương từ database thật.",
-      );
+      setMessage("Contract ID va Milestone ID phai la so duong tu database.");
       return;
     }
+
     setMessage("");
     const dispute = await disputeApi.create({
       contractId,
       milestoneId,
-      evidenceReport: form.evidenceReport,
-      proposedAction: form.proposedAction,
-      status: "Open",
+      initiationType: "OTHER",
     });
     setCreated(dispute);
   };
@@ -44,10 +46,15 @@ export function NewDisputePage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Tạo tranh chấp"
-          description="Dùng khi một bên khiếu nại và cần đóng băng dòng tiền milestone."
+          title="Tao tranh chap"
+          description="Tao dispute theo contract va milestone dung voi endpoint backend hien co."
         />
       </div>
+
+      <Notice tone="info" title="Bang chung gui sau khi tao dispute">
+        Backend hien tai khong nhan evidenceReport hoac proposedAction trong API tao dispute. Sau khi tao dispute, bang chung se duoc them qua case attachments o man chi tiet.
+      </Notice>
+
       <Card className="p-6">
         <form onSubmit={submit} className="grid gap-4">
           {message && <Notice tone="danger" title={message} />}
@@ -77,39 +84,18 @@ export function NewDisputePage() {
                     milestoneId: event.target.value,
                   }))
                 }
+                required
               />
             </Field>
           </div>
-          <Field label="Bằng chứng / mô tả">
-            <Textarea
-              value={form.evidenceReport}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  evidenceReport: event.target.value,
-                }))
-              }
-            />
-          </Field>
-          <Field label="Proposed action ban đầu">
-            <Input
-              value={form.proposedAction}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  proposedAction: event.target.value,
-                }))
-              }
-            />
-          </Field>
           <Button type="submit">
-            <Gavel className="h-4 w-4" /> Tạo dispute
+            <Gavel className="h-4 w-4" /> Tao dispute
           </Button>
         </form>
         {created && (
           <Notice
             tone="success"
-            title={`Đã tạo dispute #${created.disputeId}`}
+            title={`Da tao dispute #${created.disputeId}`}
             className="mt-4"
           />
         )}

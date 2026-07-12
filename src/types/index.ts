@@ -246,6 +246,9 @@ export interface MilestoneProgressReport {
   submissionNotes?: string;
   isLate?: boolean;
   businessFeedback?: string;
+  feedbackCategory?: string;
+  feedbackSeverity?: string;
+  feedbackDodItems?: string;
   feedbackByAccountId?: number;
   feedbackAt?: string;
   requiresAdjustment?: boolean;
@@ -308,15 +311,72 @@ export interface Dispute {
   staffName?: string;
 }
 
+export interface AdminDisputeListItem {
+  disputeId: number;
+  contractId: number;
+  milestoneId?: number;
+  status: string;
+  initiatedBy?: string;
+  initiationType?: string;
+  createdAt?: string;
+  assignedStaff?: {
+    staffId?: number;
+    displayName?: string;
+  };
+  staffDecidedAt?: string;
+  expertPayoutPercentage?: number;
+  expertPayoutAmount?: number;
+  businessRefundAmount?: number;
+  settlementExecutedAt?: string;
+  settlementWalletTransactionId?: number;
+}
+
+export interface AdminDisputeListResponse {
+  content: AdminDisputeListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface StaffDisputeListItem {
+  disputeId: number;
+  contractId: number;
+  milestoneId?: number;
+  jobId?: number;
+  jobTitle?: string;
+  status: string;
+  initiatedBy?: string;
+  initiationType?: string;
+  reason?: string;
+  createdAt?: string;
+  jobDomains?: string[];
+  jobSkills?: string[];
+  matchedStaffDomains?: string[];
+  matchedStaffSkills?: string[];
+  evidenceCollectionDueAt?: string;
+  staffSlaDueAt?: string;
+  staffReviewStartedAt?: string;
+  staffDecidedAt?: string;
+  staffDecisionMade?: boolean;
+}
+
+export interface StaffDisputeListResponse {
+  content: StaffDisputeListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface StaffAssignmentCandidate {
   staffId: number;
-  accountId: number;
-  fullName?: string;
-  email?: string;
-  specialization?: string;
-  matchedSpecialization?: boolean;
-  availabilityStatus: "Idle" | "Busy" | string;
-  activeDisputeWorkload: number;
+  displayName?: string;
+  specializationMatch?: string;
+  technologyMatchSummary?: string;
+  availability?: "IDLE" | "BUSY" | string;
+  activeDisputeWorkloadCount?: number;
+  conflictEligible?: boolean;
 }
 
 export interface CaseAttachment {
@@ -382,6 +442,7 @@ export interface BusinessProfile {
   kybStatus: string;
   approvedBy?: number;
   rejectionReason?: string;
+  verifiedRepresentative?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -450,6 +511,18 @@ export interface Staff {
   staffId: number;
   accountId: number;
   specialization?: string;
+  domainIds?: number[];
+  skillIds?: number[];
+  domains?: {
+    domainId: number;
+    domainCode?: string;
+    domainName: string;
+  }[];
+  skills?: {
+    skillId: number;
+    skillCode?: string;
+    skillName: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
   fullName?: string;
@@ -639,6 +712,8 @@ export interface WalletTransaction {
   expertName?: string;
   contractId?: number;
   contractTitle?: string;
+  milestoneNumber?: number;
+  milestoneName?: string;
   jobId?: number;
   jobTitle?: string;
   withdrawalId?: number;

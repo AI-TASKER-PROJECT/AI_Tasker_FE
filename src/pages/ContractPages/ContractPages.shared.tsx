@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { disputeApi } from "../../lib/api";
 import { formatDateTime } from "../../lib/utils";
 import type { Contract, Milestone } from "../../types";
-import { Button, Field, Modal, Textarea } from "../../components/ui";
+import { Button, Modal, Notice } from "../../components/ui";
 
 export const NDA_TERMS = [
   {
@@ -523,16 +523,13 @@ export function CreateDisputeInline({
   milestoneId?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [evidenceReport, setEvidenceReport] = useState("");
 
   const submit = async () => {
     await disputeApi.create({
       contractId,
       milestoneId,
-      evidenceReport,
       initiatedBy: "BUSINESS",
       initiationType: "OTHER",
-      status: "PENDING_SELF_RESOLVE",
     });
     setOpen(false);
   };
@@ -558,12 +555,9 @@ export function CreateDisputeInline({
           </>
         }
       >
-        <Field label="Bằng chứng / mô tả tranh chấp">
-          <Textarea
-            value={evidenceReport}
-            onChange={(event) => setEvidenceReport(event.target.value)}
-          />
-        </Field>
+        <Notice tone="info" title="Bang chung gui sau khi tao dispute">
+          Backend hien tai tao dispute bang contractId va milestoneId. Bang chung se duoc them qua case attachments trong man chi tiet dispute.
+        </Notice>
       </Modal>
     </>
   );

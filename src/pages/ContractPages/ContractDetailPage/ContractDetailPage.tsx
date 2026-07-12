@@ -282,6 +282,9 @@ export function ContractDetailPage() {
     }
   };
 
+  const rejectContract = async () =>
+    setContract(await contractApi.rejectContract(contract.contractId));
+
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
     setContract(updated);
@@ -323,6 +326,7 @@ export function ContractDetailPage() {
         walletApi.current().catch(() => null),
       ]);
       setPaymentWallet(updatedWallet);
+      setDepositPaidLocally(true);
       setDepositConfirmOpen(false);
       window.dispatchEvent(new Event("aitasker:reload-wallet"));
       sessionStorage.setItem("justActivatedContract", "true");
@@ -411,7 +415,10 @@ export function ContractDetailPage() {
         ? expertNdaSigned
         : false;
   const activeDisputes = disputes.filter(
-    (item) => !["Resolved", "Closed"].includes(item.status),
+    (item) =>
+      !["RESOLVED", "CLOSED", "CANCELLED"].includes(
+        (item.status || "").trim().toUpperCase(),
+      ),
   );
   const underReviewCount = jobMilestones.filter(
     (item) => normalizeContractStatus(item.status) === "UNDER_REVIEW",
@@ -482,6 +489,8 @@ export function ContractDetailPage() {
     (session?.role === "BUSINESS" || session?.role === "ADMIN") &&
     !contractInProgress &&
     !["COMPLETED", "CANCELLED"].includes(contractStatus);
+  const canRejectContract =
+    session?.role === "EXPERT" && ["DRAFT", "PENDING"].includes(contractStatus);
   const availableBalance = paymentWallet?.availableBalance ?? 0;
   const depositMissingAmount = Math.max(
     0,
@@ -615,8 +624,8 @@ export function ContractDetailPage() {
               value={formatCurrency(contract.totalBudget)}
             />
             <ContractMetric
-              label="Ký quỹ 20%"
-              value={formatCurrency(securityDepositAmount)}
+              label={`Ký quỹ ${currentDepositPercentage}%`}
+              value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
               label="Thời gian"
@@ -690,8 +699,8 @@ export function ContractDetailPage() {
                 value={formatCurrency(contract.totalBudget)}
               />
               <ContractMetric
-                label="Ký quỹ 20%"
-                value={formatCurrency(securityDepositAmount)}
+                label={`Ký quỹ ${currentDepositPercentage}%`}
+                value={formatCurrency(currentDepositAmount)}
               />
               <ContractMetric
                 label="Thời hạn"
@@ -784,7 +793,7 @@ export function ContractDetailPage() {
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
-                    Tổng thời gian mốc
+                    Tổng thời gian milestone
                   </p>
                   <p className="mt-1 font-display text-lg font-black text-ink">
                     {totalMilestoneDurationLabel}
@@ -923,10 +932,16 @@ export function ContractDetailPage() {
                 Thanh toán ký quỹ {currentDepositRoleLabel}
               </Button>
             )}
+            {canRejectContract && (
+              <Button variant="danger" onClick={rejectContract}>
+                <XCircle className="h-4 w-4" />
+                Từ chối hợp đồng
+              </Button>
+            )}
             {canTerminate && (
               <Button variant="danger" onClick={() => setTerminateOpen(true)}>
                 <XCircle className="h-4 w-4" />
-                Hủy hợp đồng
+                Chấm dứt
               </Button>
             )}
           </div>
@@ -999,7 +1014,7 @@ export function ContractDetailPage() {
         open={depositConfirmOpen}
         onClose={() => !depositLoading && setDepositConfirmOpen(false)}
         title="Xác nhận ký quỹ hợp đồng"
-        description="Số tiền ký quỹ bằng 20% tổng ngân sách hợp đồng và sẽ được giữ trong quỹ bảo chứng."
+        description={`Số tiền ký quỹ ${currentDepositRoleLabel} bằng ${currentDepositPercentage}% tổng ngân sách hợp đồng và sẽ được giữ trong quỹ bảo chứng.`}
         size="lg"
         footer={
           <>
@@ -1065,7 +1080,7 @@ export function ContractDetailPage() {
               tone="warning"
               title="Bạn có chắc chắn muốn ký quỹ hợp đồng này?"
             >
-              Sau khi xác nhận, hệ thống sẽ giữ 20% giá trị hợp đồng trong quỹ
+              Sau khi xác nhận, hệ thống sẽ giữ {currentDepositPercentage}% giá trị hợp đồng trong quỹ
               bảo chứng, chuyển hợp đồng sang trạng thái hoạt động và cập nhật
               ngân sách mốc công việc theo đề xuất đã được chấp nhận.
             </Notice>
@@ -1129,4 +1144,3 @@ export function ContractDetailPage() {
     </div>
   );
 }
-

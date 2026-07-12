@@ -1,5 +1,11 @@
 import { call } from "./apiClient";
-import type { CaseAttachment, Dispute, StaffAssignmentCandidate } from "../types";
+import type {
+  AdminDisputeListResponse,
+  CaseAttachment,
+  Dispute,
+  StaffAssignmentCandidate,
+  StaffDisputeListResponse,
+} from "../types";
 
 export const disputeApi = {
   create(payload: Partial<Dispute>) {
@@ -15,6 +21,7 @@ export const disputeApi = {
         contractId: payload.contractId,
         initiatedBy: payload.initiatedBy,
         initiationType: payload.initiationType || "OTHER",
+        reason: payload.evidenceReport,
       },
     });
   },
@@ -31,11 +38,31 @@ export const disputeApi = {
       url: `/api/v1/contracts/${contractId}/disputes`,
     });
   },
-  listAll(params?: Record<string, any>) {
-    void params;
-    return Promise.reject(
-      new Error("Backend hien khong expose API liet ke tat ca dispute."),
-    );
+  listAdmin(params?: {
+    page?: number;
+    size?: number;
+    status?: string;
+    assignedStaffId?: number;
+    from?: string;
+    to?: string;
+    q?: string;
+  }) {
+    return call<AdminDisputeListResponse>({
+      method: "GET",
+      url: "/api/v1/admin/disputes",
+      params,
+    });
+  },
+  listStaff(params?: {
+    page?: number;
+    size?: number;
+    status?: string;
+  }) {
+    return call<StaffDisputeListResponse>({
+      method: "GET",
+      url: "/api/v1/staff/disputes",
+      params,
+    });
   },
   get(disputeId: number) {
     return call<Dispute>({
@@ -43,10 +70,10 @@ export const disputeApi = {
       url: `/api/v1/disputes/${disputeId}`,
     });
   },
-  assign(disputeId: number, staffId: number) {
+  routeStaff(disputeId: number, staffId?: number) {
     return call<Dispute>({
       method: "POST",
-      url: `/api/v1/disputes/${disputeId}/assign-staff`,
+      url: `/api/v1/disputes/${disputeId}/route-staff`,
       params: { staffId },
     });
   },
@@ -97,13 +124,6 @@ export const disputeApi = {
       method: "POST",
       url: `/api/v1/disputes/${disputeId}/escalation-request`,
       params: { reason, evidenceFile },
-    });
-  },
-  rejectIntervention(disputeId: number, reason?: string) {
-    return call<Dispute>({
-      method: "POST",
-      url: `/api/v1/disputes/${disputeId}/reject-intervention`,
-      params: { reason },
     });
   },
   cancel(disputeId: number, reason?: string) {

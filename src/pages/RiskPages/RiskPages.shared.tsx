@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
 export const businessRejectionReasons = [
-  "Mã số thuế không chính xác",
-  "Địa chỉ không chính xác",
-  "Tên doanh nghiệp không chính xác",
-  "Không xác minh được Giấy phép kinh doanh",
+  "Giấy phép kinh doanh không khớp mã số thuế đã xác minh",
+  "Tên doanh nghiệp trên giấy phép không khớp dữ liệu xác minh",
+  "Địa chỉ hoặc người đại diện trên giấy phép không khớp",
+  "Tài liệu không rõ ràng hoặc không đọc được",
+  "Không xác minh được giấy phép kinh doanh",
 ];
 
 export const expertRejectionReasons = [

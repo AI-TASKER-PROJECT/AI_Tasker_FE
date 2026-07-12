@@ -247,7 +247,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
-      label: "Tranh chấp được giao",
+      label: "Tranh chấp",
       to: "/app/tickets",
       icon: <Gavel className="h-4 w-4" />,
     },
@@ -293,11 +293,7 @@ const roleNav: Record<Role, NavItem[]> = {
       to: "/app/disputes",
       icon: <Gavel className="h-4 w-4" />,
     },
-    {
-      label: "Gán staff tranh chấp",
-      to: "/app/admin/staff-assignment",
-      icon: <ShieldCheck className="h-4 w-4" />,
-    },
+
     {
       label: "Quản lý nhân viên",
       to: "/app/admin/staff",
@@ -1217,7 +1213,9 @@ export function AppShell() {
         >
           <div className="rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4 ring-1 ring-brand-100">
             <div>
-              <p className="text-xs font-bold text-brand-700 uppercase tracking-wide">Số dư khả dụng</p>
+              <p className="text-xs font-bold text-brand-700 uppercase tracking-wide">
+                Số dư khả dụng
+              </p>
               <p className="mt-1 text-lg font-black text-brand-700">
                 {wallet ? formatCurrency(wallet.availableBalance) : "--"}
               </p>

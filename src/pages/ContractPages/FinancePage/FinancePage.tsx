@@ -1,27 +1,104 @@
-import { useEffect, useState } from "react";
-import { financeApi, walletApi, contractApi } from "../../../lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { contractApi, walletApi, walletTransactionApi } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import { formatCurrency } from "../../../lib/utils";
-import type { Contract, SystemWallet, Transaction } from "../../../types";
-import { Badge, Button, Card, EmptyState, Field, Input, Modal, Notice, PageHeader, StatusBadge } from "../../../components/ui";
+import type { Contract, SystemWallet, WalletTransaction } from "../../../types";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "../../../components/ui";
 import { translateContractStatus } from "../ContractPages.shared";
+
+function transactionIdOf(tx: WalletTransaction) {
+  return tx.transactionId ?? tx.id ?? `${tx.referenceType || "tx"}-${tx.referenceId || tx.createdAt}`;
+}
+
+function walletTransactionDisplayLabel(tx: WalletTransaction, role?: string) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const direction = (tx.direction || "").toUpperCase();
+  const balanceType = (tx.balanceType || "").toUpperCase();
+  const isExpert = role === "EXPERT";
+
+  if (type === "TOPUP") return "Nạp tiền vào ví";
+  if (type === "MEMBERSHIP_PURCHASE") return "Thanh toán gói thành viên";
+  if (type === "CREDIT_PURCHASE") return "Mua lượt sử dụng";
+  if (type === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
+    return isExpert ? "Giữ ký quỹ bảo đảm hợp đồng" : "Giữ tiền ký quỹ dự án";
+  }
+  if (type === "DEPOSIT_REFUND") {
+    return isExpert ? "Hoàn ký quỹ bảo đảm" : "Hoàn tiền ký quỹ dự án";
+  }
+  if (type === "WITHDRAW_HOLD") return "Tạm giữ tiền chờ rút";
+  if (type === "WITHDRAW_APPROVED") return "Rút tiền về ngân hàng";
+  if (type === "WITHDRAW_REJECTED") return "Hoàn tiền do rút bị từ chối";
+
+  if (direction === "CREDIT") return "Tiền cộng vào ví";
+  if (direction === "DEBIT") return "Tiền trừ khỏi ví";
+  if (direction === "HOLD") {
+    if (balanceType === "ESCROW") return "Tiền đang được giữ ký quỹ";
+    if (balanceType === "HOLDING") return "Tiền đang chờ xử lý";
+    if (balanceType === "DISPUTE") return "Tiền đang bị giữ do tranh chấp";
+    return "Tiền đang được tạm giữ";
+  }
+  if (direction === "RELEASE") return "Tiền được giải ngân/hoàn lại";
+
+  return tx.title || tx.description || "Giao dịch ví";
+}
+
+function walletTransactionExtra(tx: WalletTransaction) {
+  return tx as WalletTransaction & {
+    milestoneNumber?: number | string;
+    milestoneOrderIndex?: number | string;
+    milestoneName?: string;
+  };
+}
+
+function walletTransactionMilestoneText(tx: WalletTransaction) {
+  const extra = walletTransactionExtra(tx);
+  const value =
+    extra.milestoneNumber ??
+    extra.milestoneOrderIndex;
+  return value ? String(value) : "";
+}
+
+function walletTransactionPartyText(value: string | undefined, fallback: string) {
+  return value?.trim() || fallback;
+}
+
+function walletTransactionDisplayDescription(tx: WalletTransaction, role?: string) {
+  const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const businessName = walletTransactionPartyText(tx.businessName, "Doanh nghiệp");
+  const expertName = walletTransactionPartyText(tx.expertName, "Chuyên gia");
+  const contractTitle = walletTransactionPartyText(tx.contractTitle, "hợp đồng chưa có tên");
+  const milestoneText = walletTransactionMilestoneText(tx);
+  const milestonePhrase = milestoneText ? `mốc ${milestoneText}` : "mốc tương ứng";
+
+  if (text.includes("deposit milestone escrow")) {
+    return `${businessName} đã ký quỹ ${milestonePhrase} cho hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("dispute business refund")) {
+    return `${businessName} đã nhận tiền hoàn từ quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("dispute settlement debit")) {
+    return role === "EXPERT"
+      ? `${expertName} đã nhận tiền quyết toán tranh chấp ${milestonePhrase} từ hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
+      : `${businessName} đã được quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+
+  return tx.contractTitle || tx.jobTitle || tx.rawDescription || "Wallet transaction";
+}
 
 export function FinancePage() {
   const session = useSession();
   const isAdmin = session?.role === "ADMIN";
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
-  const [lookupMilestoneId, setLookupMilestoneId] = useState("");
-  const [transactionOpen, setTransactionOpen] = useState(false);
-  const [form, setForm] = useState({
-    milestoneId: "",
-    amount: "",
-    commissionFee: "0",
-    transactionType: "Deposit",
-    status: "Pending",
-  });
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -42,80 +119,40 @@ export function FinancePage() {
         );
       })
       .catch(() => setContracts([]));
-  }, []);
 
-  const loadTransactions = async (milestoneIdValue = lookupMilestoneId) => {
-    const milestoneId = Number(milestoneIdValue);
-    if (!Number.isFinite(milestoneId) || milestoneId <= 0) {
-      setMessage("Nhập Milestone ID hợp lệ từ database để tải giao dịch.");
-      return;
+    if (isAdmin) {
+      walletTransactionApi
+        .list()
+        .then(setTransactions)
+        .catch(() => {
+          setTransactions([]);
+          setMessage(
+            "Backend hien chi expose wallet transaction history; chua co API transaction legacy theo milestone.",
+          );
+        });
     }
-    setMessage("");
-    setTransactions(await financeApi.listTransactions(milestoneId));
-  };
+  }, [isAdmin]);
 
-  const createTransaction = async () => {
-    const milestoneId = Number(form.milestoneId);
-    const amount = Number(form.amount);
-    const commissionFee = Number(form.commissionFee || 0);
-    if (
-      !Number.isFinite(milestoneId) ||
-      milestoneId <= 0 ||
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      !Number.isFinite(commissionFee) ||
-      commissionFee < 0
-    ) {
-      setMessage("Milestone ID, amount và commission fee phải là số hợp lệ.");
-      return;
-    }
-    const tx = await financeApi.createTransaction({
-      milestoneId,
-      amount,
-      commissionFee,
-      transactionType: form.transactionType as "Deposit",
-      status: form.status,
-    });
-    setLookupMilestoneId(String(tx.milestoneId));
-    await loadTransactions(String(tx.milestoneId));
-    setTransactionOpen(false);
-  };
-  const webhook = async (transactionId: number) => {
-    const updated = await financeApi.paymentWebhook(transactionId, "Success");
-    setTransactions((items) =>
-      items.map((item) =>
-        item.transactionId === transactionId
-          ? { ...item, status: updated.status }
-          : item,
-      ),
-    );
-  };
-  const updateStatus = async (transactionId: number, status: string) => {
-    const updated = await financeApi.updateTransactionStatus(
-      transactionId,
-      status,
-    );
-    setTransactions((items) =>
-      items.map((item) =>
-        item.transactionId === transactionId
-          ? { ...item, status: updated.status }
-          : item,
-      ),
-    );
-  };
+  const successfulTransactions = useMemo(
+    () => transactions.filter((item) => (item.status || "").toUpperCase() === "SUCCESS"),
+    [transactions],
+  );
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={
             session?.role === "EXPERT"
-              ? "Quản lý doanh thu hợp đồng"
-              : "Quản lý quỹ & chi phí dự án"
+              ? "Quan ly doanh thu hop dong"
+              : "Quan ly quy va chi phi du an"
           }
           description={
-            session?.role === "EXPERT"
-              ? "Theo dõi doanh thu từ các dự án và số tiền đang được chờ nghiệm thu."
-              : "Nạp số dư để sử dụng những tính năng của nền tảng và theo dõi giao dịch ký quỹ theo từng giai đoạn."
+            isAdmin
+              ? "Theo doi lich su bien dong vi tu backend wallet transaction."
+              : session?.role === "EXPERT"
+                ? "Theo doi doanh thu tu cac du an va so tien dang cho nghiem thu."
+                : "Theo doi ngan sach, ky quy va cac hop dong dang thuc thi."
           }
           actions={null}
         />
@@ -126,7 +163,7 @@ export function FinancePage() {
           <div className="mb-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Số dư khả dụng
+                So du kha dung
               </p>
               <p className="mt-2 font-display text-2xl font-black text-ink">
                 {formatCurrency(wallet.availableBalance)}
@@ -134,9 +171,7 @@ export function FinancePage() {
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                {session?.role === "EXPERT"
-                  ? "Chờ nghiệm thu"
-                  : "Số tiền kí quỹ"}
+                {session?.role === "EXPERT" ? "Cho nghiem thu" : "So tien ky quy"}
               </p>
               <p className="mt-2 font-display text-2xl font-black text-amber-700">
                 {formatCurrency(wallet.escrowBalance)}
@@ -144,7 +179,7 @@ export function FinancePage() {
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Ví
+                Vi
               </p>
               <p className="mt-2 font-display text-2xl font-black text-brand-700">
                 {wallet.walletType}
@@ -153,105 +188,73 @@ export function FinancePage() {
           </div>
         )}
         {isAdmin && (
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-            <Field label="Tải giao dịch theo Milestone ID">
-              <Input
-                type="number"
-                min={1}
-                value={lookupMilestoneId}
-                onChange={(event) => setLookupMilestoneId(event.target.value)}
-              />
-            </Field>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => loadTransactions()}
-            >
-              Tải từ API
-            </Button>
-          </div>
+          <Notice tone="info" title="Da tat transaction legacy">
+            Backend hien tai khong expose API tao transaction, webhook, hoac cap nhat status theo milestone. Man nay chi doc lich su wallet transaction that.
+          </Notice>
         )}
         {message && <Notice tone="danger" title={message} className="mt-4" />}
       </Card>
-      {isAdmin && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="p-5">
-            <p className="text-sm font-bold text-slate-500">Tổng lưu chuyển</p>
-            <p className="mt-2 font-display text-3xl font-black text-ink">
-              {formatCurrency(
-                transactions.reduce((sum, item) => sum + item.amount, 0),
-              )}
-            </p>
-          </Card>
-          <Card className="p-5">
-            <p className="text-sm font-bold text-slate-500">Phí nền tảng</p>
-            <p className="mt-2 font-display text-3xl font-black text-mint-600">
-              {formatCurrency(
-                transactions.reduce((sum, item) => sum + item.commissionFee, 0),
-              )}
-            </p>
-          </Card>
-          <Card className="p-5">
-            <p className="text-sm font-bold text-slate-500">
-              Giao dịch pending
-            </p>
-            <p className="mt-2 font-display text-3xl font-black text-coral-600">
-              {transactions.filter((item) => item.status === "Pending").length}
-            </p>
-          </Card>
-        </div>
-      )}
 
       {isAdmin && (
-        <Card className="overflow-hidden">
-          <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_120px_120px_130px_260px]">
-            <span>Milestone</span>
-            <span>Loại</span>
-            <span>Số tiền</span>
-            <span>Status</span>
-            <span>Action</span>
+        <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">Tong giao dich thanh cong</p>
+              <p className="mt-2 font-display text-3xl font-black text-ink">
+                {formatCurrency(
+                  successfulTransactions.reduce((sum, item) => sum + item.amount, 0),
+                )}
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">Tong giao dich</p>
+              <p className="mt-2 font-display text-3xl font-black text-mint-600">
+                {transactions.length}
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-bold text-slate-500">Dang cho xu ly</p>
+              <p className="mt-2 font-display text-3xl font-black text-coral-600">
+                {transactions.filter((item) => (item.status || "").toUpperCase() === "PENDING").length}
+              </p>
+            </Card>
           </div>
-          {transactions.map((tx) => (
-            <div
-              key={tx.transactionId}
-              className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_120px_120px_130px_260px] md:items-center"
-            >
-              <div>
-                <p className="font-extrabold text-ink">#{tx.transactionId}</p>
-                <p className="mt-1 text-slate-500">
-                  {tx.milestoneName || `Milestone #${tx.milestoneId}`}
-                </p>
-              </div>
-              <Badge tone="brand">{tx.transactionType}</Badge>
-              <span className="font-extrabold text-ink">
-                {formatCurrency(tx.amount)}
-              </span>
-              <StatusBadge status={translateContractStatus(tx.status)} />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="success"
-                  onClick={() => webhook(tx.transactionId)}
-                >
-                  Webhook
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => updateStatus(tx.transactionId, "Failed")}
-                >
-                  Fail
-                </Button>
-              </div>
+
+          <Card className="overflow-hidden">
+            <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_160px_140px_150px]">
+              <span>Giao dich</span>
+              <span>Nội dung</span>
+              <span>So tien</span>
+              <span>Trang thai</span>
             </div>
-          ))}
-          {transactions.length === 0 && (
-            <EmptyState
-              title="Chưa có giao dịch"
-              description="Nhập Milestone ID thật để tải transaction từ back-end."
-            />
-          )}
-        </Card>
+            {transactions.map((tx) => (
+              <div
+                key={String(transactionIdOf(tx))}
+                className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_160px_140px_150px] md:items-center"
+              >
+                <div>
+                  <p className="font-extrabold text-ink">
+                    {tx.title || tx.description || `Transaction #${transactionIdOf(tx)}`}
+                  </p>
+                  <p className="mt-1 text-slate-500">
+                    {walletTransactionDisplayDescription(tx, session?.role)}
+                  </p>
+                </div>
+                <Badge tone="brand">{walletTransactionDisplayLabel(tx, session?.role)}</Badge>
+                <span className="font-extrabold text-ink">
+                  {formatCurrency(tx.amount)}
+                </span>
+                <StatusBadge status={tx.status} />
+              </div>
+            ))}
+            {transactions.length === 0 && (
+              <EmptyState
+                title="Chua co giao dich"
+                description="Backend wallet transaction chua tra du lieu cho tai khoan hien tai."
+              />
+            )}
+          </Card>
+        </>
       )}
 
       {!isAdmin && (
@@ -259,9 +262,7 @@ export function FinancePage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-5">
               <p className="text-sm font-bold text-slate-500">
-                {session?.role === "EXPERT"
-                  ? "Tổng doanh thu"
-                  : "Tổng ngân sách đã cọc"}
+                {session?.role === "EXPERT" ? "Tong doanh thu" : "Tong ngan sach da coc"}
               </p>
               <p className="mt-2 font-display text-3xl font-black text-ink">
                 {formatCurrency(
@@ -270,9 +271,7 @@ export function FinancePage() {
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">
-                Dự án đang thực thi
-              </p>
+              <p className="text-sm font-bold text-slate-500">Du an dang thuc thi</p>
               <p className="mt-2 font-display text-3xl font-black text-mint-600">
                 {
                   contracts.filter((c) =>
@@ -284,9 +283,7 @@ export function FinancePage() {
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">
-                Dự án đã hoàn thành
-              </p>
+              <p className="text-sm font-bold text-slate-500">Du an da hoan thanh</p>
               <p className="mt-2 font-display text-3xl font-black text-coral-600">
                 {
                   contracts.filter((c) =>
@@ -300,12 +297,10 @@ export function FinancePage() {
           </div>
           <Card className="overflow-hidden">
             <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_150px_150px_150px]">
-              <span>Dự án</span>
-              <span>
-                {session?.role === "EXPERT" ? "Doanh thu" : "Ngân sách"}
-              </span>
-              <span>Thời gian</span>
-              <span>Trạng thái</span>
+              <span>Du an</span>
+              <span>{session?.role === "EXPERT" ? "Doanh thu" : "Ngan sach"}</span>
+              <span>Thoi gian</span>
+              <span>Trang thai</span>
             </div>
             {contracts.map((contract) => (
               <div
@@ -316,99 +311,30 @@ export function FinancePage() {
                   <p className="font-extrabold text-ink">
                     {contract.contractTitle ||
                       contract.title ||
-                      `Hợp đồng #${contract.contractId}`}
+                      `Hop dong #${contract.contractId}`}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Hợp đồng ID: {contract.contractId}
+                    Hop dong ID: {contract.contractId}
                   </p>
                 </div>
                 <span className="font-extrabold text-brand-700">
                   {formatCurrency(contract.totalBudget)}
                 </span>
                 <span className="text-slate-600">
-                  {contract.timelineDays} ngày
+                  {contract.timelineDays} ngay
                 </span>
-                <StatusBadge
-                  status={translateContractStatus(contract.status)}
-                />
+                <StatusBadge status={translateContractStatus(contract.status)} />
               </div>
             ))}
             {contracts.length === 0 && (
               <EmptyState
-                title="Chưa có dự án"
-                description="Chưa có dự án nào được cọc."
+                title="Chua co du an"
+                description="Chua co hop dong nao duoc coc hoac thuc thi."
               />
             )}
           </Card>
         </>
       )}
-
-      <Modal
-        open={transactionOpen}
-        onClose={() => setTransactionOpen(false)}
-        title="Tạo transaction"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setTransactionOpen(false)}
-            >
-              Hủy
-            </Button>
-            <Button onClick={createTransaction}>Tạo</Button>
-          </>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Milestone ID">
-            <Input
-              type="number"
-              min={1}
-              value={form.milestoneId}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  milestoneId: event.target.value,
-                }))
-              }
-            />
-          </Field>
-          <Field label="Amount">
-            <Input
-              type="number"
-              min={1}
-              value={form.amount}
-              onChange={(event) =>
-                setForm((value) => ({ ...value, amount: event.target.value }))
-              }
-            />
-          </Field>
-          <Field label="Commission fee">
-            <Input
-              type="number"
-              min={0}
-              value={form.commissionFee}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  commissionFee: event.target.value,
-                }))
-              }
-            />
-          </Field>
-          <Field label="Transaction type">
-            <Input
-              value={form.transactionType}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  transactionType: event.target.value,
-                }))
-              }
-            />
-          </Field>
-        </div>
-      </Modal>
     </div>
   );
 }

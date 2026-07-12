@@ -1,28 +1,34 @@
-import { CheckCircle2, FileSearch, XCircle } from "lucide-react";
+import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { profileApi } from "../../../lib/api";
-import type { BusinessProfile, ExpertProfile, TaxCheckResponse } from "../../../types";
+import type { BusinessProfile, ExpertProfile } from "../../../types";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
-import { Button, Card, EmptyState, LinkButton, Modal, Notice, PageHeader, SectionHeading, StatusBadge } from "../../../components/ui";
-import { businessRejectionReasons, expertRejectionReasons, FileInfo, Info, TaxCheckRow } from "../RiskPages.shared";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  LinkButton,
+  Modal,
+  Notice,
+  PageHeader,
+  SectionHeading,
+  StatusBadge,
+} from "../../../components/ui";
+import {
+  businessRejectionReasons,
+  expertRejectionReasons,
+  FileInfo,
+  Info,
+} from "../RiskPages.shared";
 
 export function VerificationDetailPage() {
   const { type, id } = useParams();
   const isBusiness = type === "business";
-  const [profile, setProfile] = useState<
-    BusinessProfile | ExpertProfile | null
-  >(null);
-  const [taxCheckResult, setTaxCheckResult] = useState<{
-    provided: Pick<BusinessProfile, "companyName" | "taxCode" | "address">;
-    lookup: Pick<TaxCheckResponse, "companyName" | "taxCode" | "address">;
-  } | null>(null);
-  const [taxCheckLoading, setTaxCheckLoading] = useState(false);
-  const [taxCheckError, setTaxCheckError] = useState("");
+  const [profile, setProfile] = useState<BusinessProfile | ExpertProfile | null>(null);
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [selectedRejectReasons, setSelectedRejectReasons] = useState<string[]>(
-    [],
-  );
+  const [selectedRejectReasons, setSelectedRejectReasons] = useState<string[]>([]);
   const [rejectError, setRejectError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -31,9 +37,7 @@ export function VerificationDetailPage() {
       profileApi
         .listBusinesses()
         .then((items) => {
-          setProfile(
-            items.find((item) => item.businessId === Number(id)) || null,
-          );
+          setProfile(items.find((item) => item.businessId === Number(id)) || null);
         })
         .catch(() => {
           setProfile(null);
@@ -41,9 +45,7 @@ export function VerificationDetailPage() {
     } else {
       Promise.all([profileApi.listExperts(), profileApi.listPortfolios()])
         .then(([items]) => {
-          const matchedProfile =
-            items.find((item) => item.expertId === Number(id)) || null;
-          setProfile(matchedProfile);
+          setProfile(items.find((item) => item.expertId === Number(id)) || null);
         })
         .catch(() => {
           setProfile(null);
@@ -59,8 +61,9 @@ export function VerificationDetailPage() {
     });
   }, [id, isBusiness]);
 
-  if (!profile)
+  if (!profile) {
     return <EmptyState title="Không tìm thấy hồ sơ" description="" />;
+  }
 
   const title = isBusiness
     ? (profile as BusinessProfile).companyName
@@ -75,41 +78,6 @@ export function VerificationDetailPage() {
   const rejectionOptions = isBusiness
     ? businessRejectionReasons
     : expertRejectionReasons;
-
-  const checkTaxCode = async () => {
-    if (!isBusiness) return;
-    setTaxCheckLoading(true);
-    setTaxCheckError("");
-    try {
-      const business = profile as BusinessProfile;
-      const lookup = await profileApi.checkTaxCode(business.taxCode); //api check mã số thuế
-      setTaxCheckResult({
-        provided: {
-          companyName: business.companyName,
-          taxCode: business.taxCode,
-          address: business.address,
-        },
-        lookup: {
-          companyName: lookup.companyName,
-          taxCode: lookup.taxCode,
-          address: lookup.address,
-        },
-      });
-    } catch (error) {
-      const apiError = error as {
-        response?: { data?: { message?: string } };
-        message?: string;
-      };
-      setTaxCheckResult(null);
-      setTaxCheckError(
-        apiError.response?.data?.message ||
-          apiError.message ||
-          "Không thể tra cứu mã số thuế.",
-      );
-    } finally {
-      setTaxCheckLoading(false);
-    }
-  };
 
   const approve = async (
     statusValue: "Approved" | "Rejected",
@@ -161,7 +129,7 @@ export function VerificationDetailPage() {
         <PageHeader
           eyebrow={isBusiness ? "Business KYB" : "Expert KYC"}
           title={title}
-          description="Kiểm tra thông tin dịnh danh và ra quyết dịnh duyệt."
+          description="Kiểm tra thông tin định danh và ra quyết định duyệt."
           actions={
             <LinkButton to="/app/verifications" variant="secondary">
               Danh sách
@@ -169,9 +137,25 @@ export function VerificationDetailPage() {
           }
         />
       </div>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
-          <SectionHeading title="Thông tin hồ sơ" />
+          <SectionHeading
+            title={isBusiness ? "Dữ liệu đã xác minh" : "Thông tin hồ sơ"}
+            description={
+              isBusiness
+                ? "Dữ liệu doanh nghiệp đã được backend tra cứu qua VietQR trước khi vào hàng đợi duyệt."
+                : undefined
+            }
+          />
+          {isBusiness && (
+            <div className="mt-4">
+              <Badge tone="mint">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                MST verified by system
+              </Badge>
+            </div>
+          )}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {isBusiness ? (
               <>
@@ -220,8 +204,9 @@ export function VerificationDetailPage() {
             )}
           </div>
         </Card>
+
         <Card className="p-6">
-          <SectionHeading title="Quyết dịnh" />
+          <SectionHeading title="Quyết định" />
           <div className="mt-5 rounded-3xl bg-slate-50 p-4">
             <p className="text-sm font-bold text-slate-500">Status hiện tại</p>
             <div className="mt-2">
@@ -240,71 +225,18 @@ export function VerificationDetailPage() {
           </div>
           {status === "Rejected" && profile.rejectionReason && (
             <Notice tone="danger" title="Lý do từ chối" className="mt-4">
-              <ul className="list-disc ml-5 mt-1 space-y-1">
+              <ul className="ml-5 mt-1 list-disc space-y-1">
                 {profile.rejectionReason.split(";").map((reason, index) => {
                   const trimmedReason = reason.trim();
-                  // Chỉ render thẻ li nếu chuỗi sau khi xóa khoảng trắng không bị rỗng
-                  return trimmedReason ? (
-                    <li key={index}>{trimmedReason}</li>
-                  ) : null;
+                  return trimmedReason ? <li key={index}>{trimmedReason}</li> : null;
                 })}
               </ul>
             </Notice>
           )}
           {message && <Notice tone="success" title={message} className="mt-4" />}
         </Card>
-        {isBusiness && (
-          <Card className="p-6">
-            <SectionHeading
-              title="Tra cứu mã số thuế"
-              description="Đối chiếu dữ liệu doanh nghiệp cung cấp với nguồn tra cứu công khai."
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              className="mt-5 w-full"
-              loading={taxCheckLoading}
-              onClick={checkTaxCode}
-            >
-              <FileSearch className="h-4 w-4" />
-              Check mã số thuế
-            </Button>
-            {taxCheckError && (
-              <Notice tone="danger" title={taxCheckError} className="mt-4" />
-            )}
-            {taxCheckResult && (
-              <div className="mt-4 overflow-hidden rounded-3xl border border-slate-100 bg-white">
-                <table className="w-full border-collapse">
-                  <thead className="bg-slate-50">
-                    <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-400">
-                      <th className="w-1/3 px-4 py-3">Thông tin</th>
-                      <th className="w-1/3 px-4 py-3">Doanh nghiệp cung cấp</th>
-                      <th className="w-1/3 px-4 py-3">Tra cứu theo MST</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <TaxCheckRow
-                      label="Tên doanh nghiệp"
-                      provided={taxCheckResult.provided.companyName}
-                      lookup={taxCheckResult.lookup.companyName}
-                    />
-                    <TaxCheckRow
-                      label="Mã số thuế"
-                      provided={taxCheckResult.provided.taxCode}
-                      lookup={taxCheckResult.lookup.taxCode}
-                    />
-                    <TaxCheckRow
-                      label="Địa chỉ"
-                      provided={taxCheckResult.provided.address}
-                      lookup={taxCheckResult.lookup.address}
-                    />
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        )}
       </div>
+
       <Modal
         open={rejectOpen}
         onClose={() => setRejectOpen(false)}

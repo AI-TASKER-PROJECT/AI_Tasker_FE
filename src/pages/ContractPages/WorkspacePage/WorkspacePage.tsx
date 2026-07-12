@@ -13,7 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { contractApi, disputeApi, getApiErrorMessage } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
@@ -101,12 +101,6 @@ function milestoneDurationLabel(milestone: Milestone) {
   return `${duration} tuần`;
 }
 
-function roleLabel(role?: string) {
-  if (role === "BUSINESS") return "BUSINESS";
-  if (role === "EXPERT") return "EXPERT";
-  return "OTHER";
-}
-
 function checkpointLabel(checkpointType?: string) {
   if (!checkpointType) return "Báo cáo tiến độ";
   return "Báo cáo giữa kỳ";
@@ -188,7 +182,7 @@ function disputeWorkspaceNotice(dispute?: Dispute) {
     STAFF_REVIEWING: {
       title: `Tranh chấp - Staff đang kiểm tra`,
       message:
-        "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ gửi báo cáo cho admin.",
+        "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ ra quyết định xử lý.",
     },
     STAFF_DECIDED: {
       title: `Tranh chấp - Chờ admin quyết toán`,
@@ -260,7 +254,22 @@ function criteriaSnapshotLines(milestone: Milestone) {
 
 export function WorkspacePage() {
   const { contractId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const session = useSession();
+  const resolvedDisputeNotice = useMemo(() => {
+    const state = location.state as
+      | { disputeResolvedNotice?: { milestoneNumber?: number | string } }
+      | null;
+    const milestoneNumber = state?.disputeResolvedNotice?.milestoneNumber;
+    if (!state?.disputeResolvedNotice) return null;
+
+    return {
+      tone: "success" as NoticeTone,
+      title: "Tranh chấp đã được giải quyết",
+      message: `Tranh chấp của mốc ${milestoneNumber || ""} đã được giải quyết. Hãy tiếp tục tiến hành các mốc tiếp theo của dự án.`,
+    };
+  }, [location.state]);
   const [contract, setContract] = useState<Contract | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [criteriaByMilestone, setCriteriaByMilestone] = useState<
@@ -293,7 +302,9 @@ export function WorkspacePage() {
     milestoneName: string;
     attemptNumber: number;
   } | null>(null);
-  const [disputeOpen, setDisputeOpen] = useState<Milestone | null>(null);
+  const [initiateDisputeOpen, setInitiateDisputeOpen] = useState<Milestone | null>(null);
+  const [initiateDisputeType, setInitiateDisputeType] = useState<string>("OTHER");
+  const [escalateDisputeOpen, setEscalateDisputeOpen] = useState<Milestone | null>(null);
   const [abruptTerminationOpen, setAbruptTerminationOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deliverableForm, setDeliverableForm] = useState({
@@ -315,13 +326,17 @@ export function WorkspacePage() {
   const [expandedMilestones, setExpandedMilestones] = useState<
     Record<number, boolean>
   >({});
+  const [initiateDisputeOtherReason, setInitiateDisputeOtherReason] = useState("");
+  const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
+  const [evidenceFileUrl, setEvidenceFileUrl] = useState("");
+  const [escalateDisputeNote, setEscalateDisputeNote] = useState("");
   const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
     tone: NoticeTone;
     title: string;
     message?: string;
-  } | null>(null);
+  } | null>(resolvedDisputeNotice);
   const [milestoneNotices, setMilestoneNotices] = useState<
     Record<number, { tone: NoticeTone; title: string; message?: string }>
   >({});
@@ -369,6 +384,13 @@ export function WorkspacePage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, []);
+
+  useEffect(() => {
+    if (!resolvedDisputeNotice) return;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, navigate, resolvedDisputeNotice]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -583,7 +605,7 @@ export function WorkspacePage() {
       milestone,
       "feedback",
       (sourceMilestoneId) =>
-        contractApi.rejectMilestone(sourceMilestoneId, structuredReason),
+        contractApi.rejectMilestone(sourceMilestoneId, reason),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
@@ -611,21 +633,6 @@ export function WorkspacePage() {
       });
       return;
     }
-    const checklist =
-      progressFeedbackForm.dodChecklist.length > 0
-        ? progressFeedbackForm.dodChecklist
-            .map((item) => `- ${item}`)
-            .join("\n")
-        : "- Không chọn tiêu chí DoD cụ thể";
-    const structuredFeedback = [
-      `Category: ${progressFeedbackForm.category}`,
-      `Severity: ${progressFeedbackForm.severity}`,
-      `Requires adjustment: ${progressFeedbackForm.requiresAdjustment ? "Yes" : "No"}`,
-      "DoD checklist:",
-      checklist,
-      "Feedback:",
-      feedback,
-    ].join("\n");
     setActionLoading(
       `progress-feedback:${progressFeedbackOpen.report.progressReportId}`,
     );
@@ -635,7 +642,10 @@ export function WorkspacePage() {
         sourceMilestoneId,
         progressFeedbackOpen.report.progressReportId,
         {
-          feedback: structuredFeedback,
+          feedback,
+          category: progressFeedbackForm.category,
+          severity: progressFeedbackForm.severity,
+          dodItems: progressFeedbackForm.dodChecklist,
           requiresAdjustment: progressFeedbackForm.requiresAdjustment,
         },
       );
@@ -670,52 +680,82 @@ export function WorkspacePage() {
     }
   };
 
-  const escalateDispute = async () => {
-    if (!disputeOpen || !contract) return;
-    const sourceMilestoneId = getSourceMilestoneId(disputeOpen);
-    if (!sourceMilestoneId) {
-      setWorkspaceNotice({
-        tone: "danger",
-        title: "Không xác định được milestone gốc để tạo tranh chấp.",
-      });
+  const submitInitiateDispute = async () => {
+    if (!initiateDisputeOpen || !contract) return;
+    const sourceMilestoneId = getSourceMilestoneId(initiateDisputeOpen);
+    if (!sourceMilestoneId) return;
+    if (initiateDisputeType === "OTHER" && !initiateDisputeOtherReason.trim()) {
+      const roleName = session?.role === "EXPERT" ? "Chuyên gia" : "Doanh nghiệp";
+      setInitiateDisputeModalWarning(
+        `Khi chọn Lý do khác, ${roleName} cần mô tả rõ lý do mở hồ sơ tranh chấp.`,
+      );
       return;
     }
-    const reason =
-      disputeReason.trim() || "Hai bên không thống nhất về kết quả milestone.";
-    setActionLoading(`dispute:${sourceMilestoneId}`);
+
+    setInitiateDisputeModalWarning("");
+    setActionLoading(`initiate-dispute:${sourceMilestoneId}`);
     try {
-      const existing = disputesByMilestone[sourceMilestoneId];
-      if (
-        existing &&
-        normalizeStatus(existing.status) !== "PENDING_SELF_RESOLVE"
-      ) {
-        setMilestoneNotice(sourceMilestoneId, {
-          tone: "info",
-          title: "Yêu cầu can thiệp đã được gửi trước đó.",
-          message: disputeWorkspaceNotice(existing).message,
-        });
-        setDisputeOpen(null);
-        return;
-      }
-      const dispute =
-        existing ||
-        (await disputeApi.initiate(
-          contract.contractId,
-          sourceMilestoneId,
-          roleLabel(session?.role),
-        ));
-      if (dispute.disputeId) {
-        await disputeApi.escalate(dispute.disputeId, reason);
-      }
+      await disputeApi.create({
+        contractId: contract.contractId,
+        milestoneId: sourceMilestoneId,
+        initiatedBy: session?.role === "BUSINESS" ? "BUSINESS" : "EXPERT",
+        initiationType: initiateDisputeType,
+        evidenceReport: initiateDisputeOtherReason.trim() || undefined,
+      });
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã gửi tranh chấp cho staff tiếp nhận.",
-        message:
-          "Nếu có staff phù hợp chuyên ngành, hệ thống sẽ gán trực tiếp cho staff đó. Nếu chưa tìm thấy, admin sẽ phân công thủ công.",
+        title: "Đã mở hồ sơ tranh chấp.",
+        message: "Hai bên đang trong giai đoạn tự thương lượng.",
       });
+      setInitiateDisputeOpen(null);
+      setInitiateDisputeType("OTHER");
+      setInitiateDisputeOtherReason("");
+      setInitiateDisputeModalWarning("");
+    } catch (error) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: getApiErrorMessage(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const submitEscalateDispute = async () => {
+    if (!escalateDisputeOpen || !contract) return;
+    const sourceMilestoneId = getSourceMilestoneId(escalateDisputeOpen);
+    if (!sourceMilestoneId) return;
+    const reason = disputeReason.trim();
+    if (!reason) {
+      setWorkspaceNotice({
+        tone: "warning",
+        title: "Không tìm thấy lý do tranh chấp để gửi Staff.",
+      });
+      return;
+    }
+    setActionLoading(`escalate-dispute:${sourceMilestoneId}`);
+    try {
+      const existing = disputesByMilestone[sourceMilestoneId];
+      if (!existing || existing.status !== "PENDING_SELF_RESOLVE") return;
+      const escalationReason = escalateDisputeNote.trim()
+        ? `${reason}\n\nGhi chú bổ sung: ${escalateDisputeNote.trim()}`
+        : reason;
+      await disputeApi.escalate(
+        existing.disputeId,
+        escalationReason,
+        evidenceFileUrl.trim() || undefined,
+      );
+      await refreshAfterAction();
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "success",
+        title: "Đã gửi yêu cầu Staff can thiệp.",
+        message: "Hệ thống sẽ tự động gán Staff phù hợp để xử lý.",
+      });
+      setEscalateDisputeOpen(null);
       setDisputeReason("");
-      setDisputeOpen(null);
+      setEvidenceFileUrl("");
+      setEscalateDisputeNote("");
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
@@ -833,7 +873,7 @@ export function WorkspacePage() {
         title: "Đã hủy ngang hợp đồng.",
         message:
           session?.role === "EXPERT"
-            ? "Hệ thống đã khấu trừ 10% giá trị hợp đồng từ ví Chuyên gia và bồi thường cho Doanh nghiệp."
+            ? "Hệ thống đã chuyển 10% giá trị hợp đồng từ khoản ký quỹ Expert sang Doanh nghiệp."
             : "Hệ thống đã chuyển 10% giá trị hợp đồng từ tiền ký quỹ sang ví Chuyên gia và hoàn phần còn lại cho Doanh nghiệp.",
       });
       setAbruptTerminationOpen(false);
@@ -920,12 +960,6 @@ export function WorkspacePage() {
     session?.role === "EXPERT" &&
     Boolean(activeTerminationRequest) &&
     awaitingExpertTerminationResponse;
-  const hasRejectedDeliverableHistory = milestones.some(
-    (milestone) => Number(milestone.rejectCount || 0) > 0,
-  );
-  const hasExpiredProgressReportRequest = milestones.some(
-    (milestone) => Boolean(milestone.progressReportRequestOverdue),
-  );
   const hasAbruptTerminationBlockedMilestone = milestones.some((milestone) =>
     ["UNDER_REVIEW", "DISPUTED"].includes(normalizeStatus(milestone.status)),
   );
@@ -936,10 +970,7 @@ export function WorkspacePage() {
     !hasActiveTermination;
   const canUseAbruptTermination =
     canShowAbruptTermination &&
-    !hasAbruptTerminationBlockedMilestone &&
-    (session?.role !== "BUSINESS" ||
-      !hasRejectedDeliverableHistory ||
-      hasExpiredProgressReportRequest);
+    !hasAbruptTerminationBlockedMilestone;
   const abruptTerminationPenalty = Number(contract.totalBudget || 0) * 0.1;
   const deliverableOpenStatus = normalizeStatus(deliverableOpen?.status);
   const canOpenProgressReport =
@@ -977,13 +1008,9 @@ export function WorkspacePage() {
                   variant="danger"
                   disabled={!canUseAbruptTermination}
                   title={
-                    hasRejectedDeliverableHistory &&
-                      !hasExpiredProgressReportRequest &&
-                      session?.role === "BUSINESS"
-                      ? "Hop dong da co lich su reject san pham, vui long dung luong yeu cau cham dut de staff/admin phan xu."
-                      : hasAbruptTerminationBlockedMilestone
-                        ? "Khong the huy ngang khi co milestone dang nghiem thu hoac tranh chap."
-                        : undefined
+                    hasAbruptTerminationBlockedMilestone
+                      ? "Khong the huy ngang khi co milestone dang nghiem thu hoac tranh chap."
+                      : undefined
                   }
                   onClick={() => setAbruptTerminationOpen(true)}
                 >
@@ -1231,7 +1258,7 @@ export function WorkspacePage() {
               .every((item) => normalizeStatus(item.status) === "COMPLETED");
           const canStart =
             !contractActionsFrozen &&
-            session?.role === "EXPERT" &&
+            (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
             status === "DEPOSITED";
           const canDepositNext =
             !contractActionsFrozen &&
@@ -1258,7 +1285,7 @@ export function WorkspacePage() {
             REVIEWABLE_STATUSES.has(status);
           const canDispute =
             !contractActionsFrozen &&
-            session?.role === "EXPERT" &&
+            (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
             DISPUTABLE_STATUSES.has(status) &&
             (!currentDispute ||
               normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE");
@@ -1440,15 +1467,38 @@ export function WorkspacePage() {
                       Mở cột mốc tiếp theo
                     </Button>
                   )}
-                  {canDispute && (
+                  {canDispute && !currentDispute && (
                     <Button
                       size="sm"
                       variant="danger"
-                      loading={isLoading("dispute")}
-                      onClick={() => setDisputeOpen(milestone)}
+                      loading={isLoading("initiate-dispute")}
+                      onClick={() => setInitiateDisputeOpen(milestone)}
                     >
                       <Gavel className="h-4 w-4" />
-                      Yêu cầu staff can thiệp
+                      Mở tranh chấp
+                    </Button>
+                  )}
+                  {currentDispute && normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE" && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={isLoading("escalate-dispute")}
+                      onClick={() => {
+                        setDisputeReason(
+                          currentDispute.evidenceReport?.trim() ||
+                            currentDispute.escalationReason?.trim() ||
+                            currentDispute.initiationType ||
+                            "Lý do tranh chấp chưa được cung cấp.",
+                        );
+                        setEvidenceFileUrl(
+                          currentDispute.escalationEvidenceFile || "",
+                        );
+                        setEscalateDisputeNote("");
+                        setEscalateDisputeOpen(milestone);
+                      }}
+                    >
+                      <Gavel className="h-4 w-4" />
+                      Yêu cầu Staff can thiệp
                     </Button>
                   )}
                   {sourceMilestoneId && (
@@ -2292,22 +2342,146 @@ export function WorkspacePage() {
       </Modal>
 
       <Modal
-        open={Boolean(disputeOpen)}
-        onClose={() => setDisputeOpen(null)}
-        title="Yêu cầu hỗ trợ xử lý tranh chấp"
-        description="Gửi yêu cầu để bộ phận phụ trách xem xét khi hai bên không thống nhất."
+        open={Boolean(initiateDisputeOpen)}
+        onClose={() => {
+          setInitiateDisputeOpen(null);
+          setInitiateDisputeOtherReason("");
+          setInitiateDisputeModalWarning("");
+        }}
+        title="Mở hồ sơ tranh chấp"
+        description="Đây là hồ sơ tranh chấp chính thức. Lưu ý: Reject deliverable không tự tạo tranh chấp."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDisputeOpen(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setInitiateDisputeOpen(null);
+                setInitiateDisputeOtherReason("");
+                setInitiateDisputeModalWarning("");
+              }}
+            >
               Hủy
             </Button>
             <Button
               variant="danger"
-              onClick={escalateDispute}
+              onClick={submitInitiateDispute}
               loading={
-                disputeOpen
+                initiateDisputeOpen
                   ? actionLoading ===
-                  `dispute:${getSourceMilestoneId(disputeOpen)}`
+                  `initiate-dispute:${getSourceMilestoneId(initiateDisputeOpen)}`
+                  : false
+              }
+            >
+              <Gavel className="h-4 w-4" />
+              Mở tranh chấp
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <Field label="Tên cột mốc">
+            <Input disabled value={initiateDisputeOpen?.milestoneName || ""} />
+          </Field>
+          <Field label="Trạng thái">
+            <Input disabled value={milestoneStatusLabel(initiateDisputeOpen?.status)} />
+          </Field>
+          <Field label="Loại tranh chấp">
+            <div className="flex flex-wrap gap-2">
+              {(session?.role === "BUSINESS"
+                ? [
+                    { value: "BUSINESS_REJECTED_DELIVERABLE", label: "Phản đối kết quả bàn giao" },
+                    { value: "OTHER", label: "Lý do khác" },
+                  ]
+                : [
+                    { value: "EXPERT_SCOPE_CONCERN", label: "Yêu cầu ngoài phạm vi" },
+                    { value: "EXPERT_NO_REVIEW_RESPONSE", label: "Business chưa phản hồi nghiệm thu" },
+                    { value: "EXPERT_BAD_FAITH_REJECTION", label: "Từ chối không phù hợp tiêu chí" },
+                    { value: "OTHER", label: "Lý do khác" },
+                  ]
+              ).map((opt) => (
+                <Button
+                  key={opt.value}
+                  type="button"
+                  size="sm"
+                  variant={initiateDisputeType === opt.value ? "primary" : "secondary"}
+                  onClick={() => {
+                    setInitiateDisputeType(opt.value);
+                    setInitiateDisputeModalWarning("");
+                    if (opt.value !== "OTHER") {
+                      setInitiateDisputeOtherReason("");
+                    }
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </Field>
+          {initiateDisputeType === "OTHER" && (
+            <>
+              {initiateDisputeModalWarning && (
+                <Notice tone="warning" title="Vui lòng nhập lý do tranh chấp.">
+                  {initiateDisputeModalWarning}
+                </Notice>
+              )}
+              <Field label="Lý do tranh chấp *">
+                <Textarea
+                  value={initiateDisputeOtherReason}
+                  onChange={(event) => {
+                    setInitiateDisputeOtherReason(event.target.value);
+                    if (event.target.value.trim()) {
+                      setInitiateDisputeModalWarning("");
+                    }
+                  }}
+                  placeholder={
+                    session?.role === "EXPERT"
+                      ? "Vui lòng mô tả lý do khác khiến Chuyên gia cần mở hồ sơ tranh chấp..."
+                      : "Vui lòng mô tả lý do khác khiến Doanh nghiệp cần mở hồ sơ tranh chấp..."
+                  }
+                  className={!initiateDisputeOtherReason.trim() ? "border-amber-300 bg-amber-50/40" : undefined}
+                />
+                {!initiateDisputeOtherReason.trim() && (
+                  <p className="mt-2 text-sm font-bold text-amber-700">
+                    Bắt buộc nhập lý do khi chọn Lý do khác.
+                  </p>
+                )}
+              </Field>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(escalateDisputeOpen)}
+        onClose={() => {
+          setEscalateDisputeOpen(null);
+          setDisputeReason("");
+          setEvidenceFileUrl("");
+          setEscalateDisputeNote("");
+        }}
+        title="Yêu cầu Staff can thiệp"
+        description="Hệ thống sẽ tự gán Staff phù hợp để xử lý. Hồ sơ sẽ dùng lại thông tin tranh chấp đã mở."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEscalateDisputeOpen(null);
+                setDisputeReason("");
+                setEvidenceFileUrl("");
+                setEscalateDisputeNote("");
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="danger"
+              onClick={submitEscalateDispute}
+              disabled={!disputeReason.trim()}
+              loading={
+                escalateDisputeOpen
+                  ? actionLoading ===
+                  `escalate-dispute:${getSourceMilestoneId(escalateDisputeOpen)}`
                   : false
               }
             >
@@ -2317,13 +2491,31 @@ export function WorkspacePage() {
           </>
         }
       >
-        <Field label="Lý do cần hỗ trợ">
-          <Textarea
-            value={disputeReason}
-            onChange={(event) => setDisputeReason(event.target.value)}
-            placeholder="Tóm tắt điểm hai bên không thống nhất..."
-          />
-        </Field>
+        <div className="grid gap-4">
+          <Field label="Lý do tranh chấp">
+            <Textarea
+              value={disputeReason}
+              readOnly
+              className="bg-slate-50 text-slate-700"
+            />
+          </Field>
+          {evidenceFileUrl && (
+            <Field label="Bằng chứng đã gửi Staff">
+              <Input
+                value={evidenceFileUrl}
+                readOnly
+                className="bg-slate-50 text-slate-700"
+              />
+            </Field>
+          )}
+          <Field label="Ghi chú bổ sung">
+            <Textarea
+              value={escalateDisputeNote}
+              onChange={(event) => setEscalateDisputeNote(event.target.value)}
+              placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn Staff lưu ý nếu cần..."
+            />
+          </Field>
+        </div>
       </Modal>
 
       <Modal
@@ -2336,7 +2528,7 @@ export function WorkspacePage() {
         }
         description={
           session?.role === "EXPERT"
-            ? `Hệ thống sẽ khấu trừ ${formatCurrency(abruptTerminationPenalty)} từ ví của bạn để bồi thường cho Doanh nghiệp.`
+            ? `Hệ thống sẽ chuyển ${formatCurrency(abruptTerminationPenalty)} từ khoản ký quỹ Expert sang Doanh nghiệp.`
             : `Hành động này sẽ chuyển ${formatCurrency(abruptTerminationPenalty)} từ tiền cọc sang ví Chuyên gia để đền bù ngày công.`
         }
         footer={
@@ -2368,8 +2560,8 @@ export function WorkspacePage() {
             }
           >
             {session?.role === "EXPERT"
-              ? "Nếu ví không đủ số dư khả dụng, hệ thống sẽ từ chối thao tác này."
-              : "Nếu hợp đồng đã từng có sản phẩm bị từ chối, Doanh nghiệp phải dùng luồng yêu cầu chấm dứt để Chuyên viên hỗ trợ phân xử."}
+              ? "Khoản bồi thường được lấy từ ký quỹ Expert đã giữ, không trừ từ số dư khả dụng."
+              : "Khoản bồi thường được lấy từ ký quỹ Business đã giữ; phần còn lại được hoàn theo quy định."}
           </Notice>
           <Field label="Ly do">
             <Textarea

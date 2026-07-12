@@ -30,6 +30,12 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/nda-sign`,
     });
   },
+  rejectContract(contractId: number) {
+    return call<Contract>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/reject`,
+    });
+  },
   payDeposit(contractId: number) {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
@@ -227,7 +233,13 @@ export const contractApi = {
     contractId: number,
     milestoneId: number,
     progressReportId: number,
-    payload: { feedback: string; requiresAdjustment?: boolean },
+    payload: {
+      feedback: string;
+      category?: string;
+      severity?: string;
+      dodItems?: string[];
+      requiresAdjustment?: boolean;
+    },
   ) {
     return call<MilestoneProgressReport>({
       method: "POST",
