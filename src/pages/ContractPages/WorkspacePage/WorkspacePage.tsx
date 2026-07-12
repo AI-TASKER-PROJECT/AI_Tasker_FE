@@ -46,7 +46,7 @@ import {
 } from "../ContractPages.shared";
 
 type NoticeTone = "success" | "danger" | "info" | "warning";
-
+// Milestone status sets for action availability
 const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
 const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
