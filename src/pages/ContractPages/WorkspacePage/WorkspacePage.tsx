@@ -380,9 +380,9 @@ function disputeWorkspaceNotice(dispute?: Dispute) {
   };
   const messages: Record<string, { title: string; message: string }> = {
     PENDING_SELF_RESOLVE: {
-      title: "Tranh chấp - Hai bên đang tự xử lý",
+      title: "Hồ sơ tranh chấp đã được tạo",
       message:
-        "Doanh nghiệp và Chuyên gia đang tự trao đổi. Nếu không thống nhất, hãy gửi yêu cầu staff can thiệp.",
+        "Hồ sơ chưa được gửi đến Staff. Vui lòng gửi yêu cầu Staff can thiệp để nhân viên tiếp nhận xử lý.",
     },
     ESCALATION_REQUESTED: {
       title: "Tranh chấp - Đã gửi yêu cầu staff",
@@ -543,7 +543,6 @@ export function WorkspacePage() {
   const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [escalateDisputeNote, setEscalateDisputeNote] = useState("");
-  const [evidenceFileUrl, setEvidenceFileUrl] = useState("");
   const [abruptTerminationReason, setAbruptTerminationReason] = useState("");
   const [workspaceNotice, setWorkspaceNotice] = useState<{
     tone: NoticeTone;
@@ -960,23 +959,28 @@ export function WorkspacePage() {
     setInitiateDisputeModalWarning("");
     setActionLoading(`initiate-dispute:${sourceMilestoneId}`);
     try {
+      const disputeReason =
+        initiateDisputeOtherReason.trim() ||
+        formatDisputeType(initiateDisputeType) ||
+        "Lý do tranh chấp chưa được cung cấp.";
       await disputeApi.create({
         contractId: contract.contractId,
         milestoneId: sourceMilestoneId,
         initiatedBy: session?.role === "BUSINESS" ? "BUSINESS" : "EXPERT",
         initiationType: initiateDisputeType,
-        evidenceReport: initiateDisputeOtherReason.trim() || undefined,
+        evidenceReport: disputeReason,
       });
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã mở hồ sơ tranh chấp.",
-        message: "Hai bên đang trong giai đoạn tự thương lượng.",
+        title: "Đã tạo hồ sơ tranh chấp.",
+        message: "Bạn có thể gửi yêu cầu Staff can thiệp khi cần nhân viên tiếp nhận xử lý.",
       });
       setInitiateDisputeOpen(null);
       setInitiateDisputeType("OTHER");
       setInitiateDisputeOtherReason("");
       setInitiateDisputeModalWarning("");
+      setEscalateDisputeNote("");
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
@@ -1002,14 +1006,13 @@ export function WorkspacePage() {
     setActionLoading(`escalate-dispute:${sourceMilestoneId}`);
     try {
       const existing = disputesByMilestone[sourceMilestoneId];
-      if (!existing || existing.status !== "PENDING_SELF_RESOLVE") return;
+      if (!existing || normalizeStatus(existing.status) !== "PENDING_SELF_RESOLVE") return;
       const escalationReason = escalateDisputeNote.trim()
         ? `${reason}\n\nGhi chú bổ sung: ${escalateDisputeNote.trim()}`
         : reason;
       await disputeApi.escalate(
         existing.disputeId,
         escalationReason,
-        evidenceFileUrl.trim() || undefined,
       );
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
@@ -1019,7 +1022,6 @@ export function WorkspacePage() {
       });
       setEscalateDisputeOpen(null);
       setDisputeReason("");
-      setEvidenceFileUrl("");
       setEscalateDisputeNote("");
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
@@ -1876,7 +1878,7 @@ export function WorkspacePage() {
                       onClick={() => setInitiateDisputeOpen(milestone)}
                     >
                       <Gavel className="h-4 w-4" />
-                      Mở tranh chấp
+                      Tạo hồ sơ tranh chấp
                     </Button>
                   )}
                   {currentDispute && normalizeStatus(currentDispute.status) === "PENDING_SELF_RESOLVE" && (
@@ -1890,9 +1892,6 @@ export function WorkspacePage() {
                             currentDispute.escalationReason?.trim() ||
                             formatDisputeType(currentDispute.initiationType) ||
                             "Lý do tranh chấp chưa được cung cấp.",
-                        );
-                        setEvidenceFileUrl(
-                          currentDispute.escalationEvidenceFile || "",
                         );
                         setEscalateDisputeNote("");
                         setEscalateDisputeOpen(milestone);
@@ -2712,8 +2711,8 @@ export function WorkspacePage() {
           setInitiateDisputeOtherReason("");
           setInitiateDisputeModalWarning("");
         }}
-        title="Mở hồ sơ tranh chấp"
-        description="Đây là hồ sơ tranh chấp chính thức. Lưu ý: Reject deliverable không tự tạo tranh chấp."
+        title="Tạo hồ sơ tranh chấp"
+        description="Đây là hồ sơ tranh chấp chính thức. Sau khi tạo hồ sơ, bạn có thể yêu cầu Staff can thiệp nếu cần."
         footer={
           <>
             <Button
@@ -2737,7 +2736,7 @@ export function WorkspacePage() {
               }
             >
               <Gavel className="h-4 w-4" />
-              Mở tranh chấp
+              Tạo hồ sơ tranh chấp
             </Button>
           </>
         }
@@ -2820,11 +2819,10 @@ export function WorkspacePage() {
         onClose={() => {
           setEscalateDisputeOpen(null);
           setDisputeReason("");
-          setEvidenceFileUrl("");
           setEscalateDisputeNote("");
         }}
         title="Yêu cầu Staff can thiệp"
-        description="Hệ thống sẽ tự gán Staff phù hợp để xử lý. Hồ sơ sẽ dùng lại thông tin tranh chấp đã mở."
+        description="Hồ sơ đã được tạo. Vui lòng xác nhận lý do và ghi chú bổ sung để gửi Staff xử lý."
         footer={
           <>
             <Button
@@ -2832,7 +2830,6 @@ export function WorkspacePage() {
               onClick={() => {
                 setEscalateDisputeOpen(null);
                 setDisputeReason("");
-                setEvidenceFileUrl("");
                 setEscalateDisputeNote("");
               }}
             >
@@ -2856,6 +2853,34 @@ export function WorkspacePage() {
         }
       >
         <div className="grid gap-4">
+          <Field label="Tên cột mốc">
+            <Input
+              value={escalateDisputeOpen?.milestoneName || ""}
+              readOnly
+              className="bg-slate-50 text-slate-700"
+            />
+          </Field>
+          <Field label="Trạng thái">
+            <Input
+              value={milestoneStatusLabel(escalateDisputeOpen?.status)}
+              readOnly
+              className="bg-slate-50 text-slate-700"
+            />
+          </Field>
+          <Field label="Loại tranh chấp">
+            <Input
+              value={
+                escalateDisputeOpen
+                  ? formatDisputeType(
+                      disputesByMilestone[getSourceMilestoneId(escalateDisputeOpen) || 0]
+                        ?.initiationType,
+                    ) || "Lý do khác"
+                  : ""
+              }
+              readOnly
+              className="bg-slate-50 text-slate-700"
+            />
+          </Field>
           <Field label="Lý do tranh chấp">
             <Textarea
               value={disputeReason}
@@ -2863,15 +2888,6 @@ export function WorkspacePage() {
               className="bg-slate-50 text-slate-700"
             />
           </Field>
-          {evidenceFileUrl && (
-            <Field label="Bằng chứng đã gửi Staff">
-              <Input
-                value={evidenceFileUrl}
-                readOnly
-                className="bg-slate-50 text-slate-700"
-              />
-            </Field>
-          )}
           <Field label="Ghi chú bổ sung">
             <Textarea
               value={escalateDisputeNote}

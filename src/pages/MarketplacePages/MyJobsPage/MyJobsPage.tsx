@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   FileCheck2,
   Plus,
@@ -36,7 +38,6 @@ import type {
   AcceptanceCriteria,
   ExpertProfile,
   Job,
-  Milestone,
   Portfolio,
   Proposal,
 } from "../../../types";
@@ -68,17 +69,13 @@ import {
   type MilestoneDraft,
   type SkillAssignment,
 } from "../marketplacePages.utils";
-import { MilestoneCount, SkillCount } from "../marketplacePages.helpers";
 import { translateStatus } from "../ManageJobPage/ManageJobPage";
+
+const JOBS_PER_PAGE = 6;
+
 export function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
-  const [milestonesByJobId, setMilestonesByJobId] = useState<
-    Record<number, Milestone[]>
-  >({});
-  const [jobSkillsByJobId, setJobSkillsByJobId] = useState<
-    Record<number, JobSkill[]>
-  >({});
   const [jobDomainIdsByJobId, setJobDomainIdsByJobId] = useState<
     Record<number, number[]>
   >({});
@@ -89,6 +86,9 @@ export function MyJobsPage() {
 
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const resetPagination = () => setCurrentPage(1);
 
   const [restrictedActionNotices, setRestrictedActionNotices] = useState<
     Record<number, string>
@@ -137,8 +137,6 @@ export function MyJobsPage() {
   useEffect(() => {
     if (jobs.length === 0) {
       queueMicrotask(() => {
-        setMilestonesByJobId({});
-        setJobSkillsByJobId({});
         setJobDomainIdsByJobId({});
       });
       return;
@@ -146,39 +144,17 @@ export function MyJobsPage() {
     let ignore = false;
 
     async function loadJobCounts() {
-      const [milestoneResults, skillResults, domainResults] = await Promise.all(
-        [
-          Promise.allSettled(
-            jobs.map((job) => contractApi.listJobMilestones(job.jobId)),
-          ),
-          Promise.allSettled(
-            jobs.map((job) => catalogApi.listJobSkills(job.jobId)),
-          ),
-          Promise.allSettled(
-            jobs.map((job) => catalogApi.listJobDomains(job.jobId)),
-          ),
-        ],
+      const domainResults = await Promise.allSettled(
+        jobs.map((job) => catalogApi.listJobDomains(job.jobId)),
       );
       if (ignore) return;
-      const milestoneMap: Record<number, Milestone[]> = {};
-      const skillMap: Record<number, JobSkill[]> = {};
       const domainMap: Record<number, number[]> = {};
-      milestoneResults.forEach((result, index) => {
-        milestoneMap[jobs[index].jobId] =
-          result.status === "fulfilled" ? result.value : [];
-      });
-      skillResults.forEach((result, index) => {
-        skillMap[jobs[index].jobId] =
-          result.status === "fulfilled" ? result.value : [];
-      });
       domainResults.forEach((result, index) => {
         domainMap[jobs[index].jobId] =
           result.status === "fulfilled"
             ? result.value.map((item) => item.id.domainId)
             : [];
       });
-      setMilestonesByJobId(milestoneMap);
-      setJobSkillsByJobId(skillMap);
       setJobDomainIdsByJobId(domainMap);
     }
 
@@ -238,6 +214,12 @@ export function MyJobsPage() {
 
     return matchesQuery && matchesStatus && matchDate;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / JOBS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedJobs = filtered.slice(
+    (effectivePage - 1) * JOBS_PER_PAGE,
+    effectivePage * JOBS_PER_PAGE,
+  );
 
   const updateStatus = async (jobId: number, status: string) => {
     const updated = await marketplaceApi.updateJobStatus(jobId, status);
@@ -269,7 +251,10 @@ export function MyJobsPage() {
                 <button
                   key={tab.value}
                   type="button"
-                  onClick={() => setStatusFilter(tab.value)}
+                  onClick={() => {
+                    setStatusFilter(tab.value);
+                    resetPagination();
+                  }}
                   className={cn(
                     "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
                     isActive
@@ -292,24 +277,30 @@ export function MyJobsPage() {
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-2 px-2">
+          <div className="flex w-full flex-wrap items-center gap-2 px-2 md:w-auto">
             <span className="text-sm font-semibold text-slate-500">
               Tìm kiếm dự án:
             </span>
-            <div className="flex items-center gap-1">
+            <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[1fr_auto_1fr] sm:items-center">
               <Input
                 type="date"
                 value={startDateFilter}
-                onChange={(e) => setStartDateFilter(e.target.value)}
-                className="h-10 w-auto"
+                onChange={(e) => {
+                  setStartDateFilter(e.target.value);
+                  resetPagination();
+                }}
+                className="h-10 w-full sm:w-auto"
                 placeholder="Từ ngày"
               />
-              <span className="text-slate-400">-</span>
+              <span className="hidden text-slate-400 sm:inline">-</span>
               <Input
                 type="date"
                 value={endDateFilter}
-                onChange={(e) => setEndDateFilter(e.target.value)}
-                className="h-10 w-auto"
+                onChange={(e) => {
+                  setEndDateFilter(e.target.value);
+                  resetPagination();
+                }}
+                className="h-10 w-full sm:w-auto"
                 placeholder="Đến ngày"
               />
             </div>
@@ -321,6 +312,7 @@ export function MyJobsPage() {
                 onClick={() => {
                   setStartDateFilter("");
                   setEndDateFilter("");
+                  resetPagination();
                 }}
                 className="text-slate-500"
               >
@@ -333,12 +325,15 @@ export function MyJobsPage() {
       <Card className="p-4">
         <SearchInput
           value={query}
-          onChange={setQuery}
+          onChange={(value) => {
+            setQuery(value);
+            resetPagination();
+          }}
           placeholder="Tìm job của tôi..."
         />
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
-        {filtered.map((job) => {
+        {paginatedJobs.map((job) => {
           const jobStatus = job.status.trim().toUpperCase();
           const isInProgress = jobStatus === "IN_PROGRESS";
           const canOpenJob = jobStatus === "DRAFT";
@@ -347,7 +342,7 @@ export function MyJobsPage() {
             <Card
               id={`job-card-${job.jobId}`}
               key={job.jobId}
-              className="group flex h-full flex-col p-5"
+              className="group flex h-full min-w-0 flex-col p-4 sm:p-5"
             >
               <div className="flex min-h-9 items-start justify-between gap-3">
                 <JobDomainBadge
@@ -358,8 +353,8 @@ export function MyJobsPage() {
                 />
                 <StatusBadge status={translateStatus(job.status)} />
               </div>
-              <Link to={`/jobs/${job.jobId}`} className="group">
-                <h3 className="mt-4 min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
+              <Link to={`/jobs/${job.jobId}`} className="group min-w-0">
+                <h3 className="mt-4 min-h-14 line-clamp-2 break-words font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-brand-700">
                   {job.title}
                 </h3>
               </Link>
@@ -383,21 +378,17 @@ export function MyJobsPage() {
                   </p>
                 </div>
               </div>
-              <SkillCount count={(jobSkillsByJobId[job.jobId] || []).length} />
-              <MilestoneCount
-                count={(milestonesByJobId[job.jobId] || []).length}
-              />
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Link
                   to={`/app/jobs/${job.jobId}/detail`}
-                  className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border-2 border-pink-400 bg-white px-3 text-sm font-extrabold text-pink-500 transition-all hover:-translate-y-0.5 hover:bg-pink-500 hover:text-white hover:shadow-md"
                 >
                   Chi tiết dự án
                 </Link>
                 <Link
                   to={`/app/jobs/${job.jobId}/manage`}
                   onClick={(e) => handleManageClick(e, job.jobId, jobStatus)}
-                  className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border-2 border-pink-400 bg-white px-3 text-sm font-extrabold text-pink-500 transition-all hover:-translate-y-0.5 hover:bg-pink-500 hover:text-white hover:shadow-md"
                 >
                   Lựa chọn chuyên gia
                 </Link>
@@ -427,7 +418,7 @@ export function MyJobsPage() {
                   <Button
                     size="sm"
                     onClick={() => updateStatus(job.jobId, "CLOSED")}
-                    className="bg-red-600 text-white hover:bg-red-700 transition-all hover:-translate-y-1"
+                    className="h-9 px-3 bg-rose-500 text-white hover:bg-rose-600 transition-all hover:-translate-y-0.5"
                   >
                     Đóng dự án
                   </Button>
@@ -437,6 +428,54 @@ export function MyJobsPage() {
           );
         })}
       </div>
+      {filtered.length > JOBS_PER_PAGE && (
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-500">
+            Hiển thị {paginatedJobs.length} trên tổng {filtered.length} dự án
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              title="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+              (page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    "h-9 min-w-9 rounded-xl px-3 text-sm font-extrabold transition",
+                    effectivePage === page
+                      ? "bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.18)]"
+                      : "bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-700",
+                  )}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              title="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

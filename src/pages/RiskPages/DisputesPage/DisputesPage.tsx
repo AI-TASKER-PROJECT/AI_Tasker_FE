@@ -28,7 +28,7 @@ function normalizeStatus(value?: string) {
 function formatDisputeStatus(status?: string) {
   switch (normalizeStatus(status)) {
     case "PENDING_SELF_RESOLVE":
-      return "Đang tự thương lượng";
+      return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
       return "Đã yêu cầu Staff";
     case "STAFF_REVIEWING":
@@ -253,13 +253,13 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     : isAdmin
       ? [
           { value: "ALL", label: "Tất cả tranh chấp" },
-          { value: "PENDING_SELF_RESOLVE", label: "Hai bên tự thương lượng" },
+          { value: "PENDING_SELF_RESOLVE", label: "Tạo hồ sơ" },
           { value: "STAFF_REVIEWING", label: "Nhân viên đang xem xét" },
           { value: "RESOLVED", label: "Nhân viên đã xử lý xong" },
         ]
       : [
           { value: "ALL", label: "Tất cả tranh chấp của tôi" },
-          { value: "PENDING_SELF_RESOLVE", label: "Đang tự thương lượng" },
+          { value: "PENDING_SELF_RESOLVE", label: "Tạo hồ sơ" },
           { value: "UNDER_REVIEW", label: "Đang chờ xem xét" },
           { value: "RESOLVED", label: "Đã giải quyết xong" },
         ];

@@ -8,6 +8,7 @@ import {
   Field,
   Input,
   Modal,
+  Notice,
   PageHeader,
 } from "../../../components/ui";
 import {
@@ -32,6 +33,8 @@ export function AccountsPage() {
   );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AdminAccount | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pageNotice, setPageNotice] = useState<{ tone: "success" | "danger", title: string } | null>(null);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -60,6 +63,7 @@ export function AccountsPage() {
 
   const beginCreate = () => {
     setEditing(null);
+    setErrors({});
     const role: Role = accountTab === "internal" ? "STAFF" : "BUSINESS";
     setForm({
       email: "",
@@ -75,6 +79,7 @@ export function AccountsPage() {
 
   const beginEdit = (account: AdminAccount) => {
     setEditing(account);
+    setErrors({});
     setForm({
       email: account.email,
       password: "",
@@ -91,11 +96,33 @@ export function AccountsPage() {
   };
 
   const saveAccount = async () => {
+    const newErrors: Record<string, string> = {};
+    if (!form.email.trim()) newErrors.email = "Vui lòng không bỏ trống email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Email không hợp lệ.";
+
+    if (!form.password) newErrors.password = "Vui lòng không bỏ trống mật khẩu.";
+    else if (form.password.length < 8) newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
+
+    if (!form.fullName.trim()) newErrors.fullName = "Vui lòng không bỏ trống họ tên.";
+
+    if (!form.phone.trim()) newErrors.phone = "Vui lòng không bỏ trống số điện thoại.";
+    else if (!/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(form.phone.trim())) newErrors.phone = "Số điện thoại không hợp lệ.";
+
+    if (form.role === "STAFF" && form.domainIds.length === 0) {
+      newErrors.domainIds = "Vui lòng chọn ít nhất một lĩnh vực chuyên môn.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     const payload = {
-      email: form.email,
+      email: form.email.trim(),
       password: form.password || undefined,
-      phone: form.phone,
-      fullName: form.fullName,
+      phone: form.phone.trim(),
+      fullName: form.fullName.trim(),
       role: form.role,
       status: form.status,
       specialization:
@@ -103,23 +130,36 @@ export function AccountsPage() {
           ? specializationFromDomains(form.domainIds, domains)
           : undefined,
     };
-    const saved = editing
-      ? await adminApi.updateAccount(editing.accountId, payload)
-      : await adminApi.createAccount(payload);
-    if (!editing && saved.role === "STAFF") {
-      await adminApi.createStaff({
-        accountId: saved.accountId,
-        specialization: payload.specialization,
-      });
+
+    try {
+      const saved = editing
+        ? await adminApi.updateAccount(editing.accountId, payload)
+        : await adminApi.createAccount(payload);
+      if (!editing && saved.role === "STAFF") {
+        await adminApi.createStaff({
+          accountId: saved.accountId,
+          specialization: payload.specialization,
+          domainIds: form.domainIds,
+        });
+      }
+      setAccounts((items) =>
+        editing
+          ? items.map((item) =>
+              item.accountId === saved.accountId ? saved : item,
+            )
+          : [...items, saved],
+      );
+      setOpen(false);
+      setPageNotice({ tone: "success", title: editing ? "Cập nhật tài khoản thành công" : "Tạo tài khoản thành công" });
+      setTimeout(() => setPageNotice(null), 3000);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || "Đã xảy ra lỗi";
+      if (msg.toLowerCase().includes("email") || msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("trùng")) {
+        setErrors({ email: "Email này đã tồn tại trong hệ thống." });
+      } else {
+        setErrors({ general: msg });
+      }
     }
-    setAccounts((items) =>
-      editing
-        ? items.map((item) =>
-            item.accountId === saved.accountId ? saved : item,
-          )
-        : [...items, saved],
-    );
-    setOpen(false);
   };
 
   const changeStatus = async (account: AdminAccount, status: AccountStatus) => {
@@ -133,13 +173,16 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6">
+      {pageNotice && (
+        <Notice tone={pageNotice.tone} title={pageNotice.title} />
+      )}
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Account Management"
           description="Admin can create, update, activate, and deactivate every role account."
           actions={
             <Button onClick={beginCreate}>
-              <Plus className="h-4 w-4" /> Create account
+              <Plus className="h-4 w-4" /> Tạo tài khoản mới
             </Button>
           }
         />
@@ -159,7 +202,7 @@ export function AccountsPage() {
             Bên ngoài
           </Button>
         </div>
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_150px_130px_180px]">
+        <div className="hidden border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[1fr_150px_130px_180px]">
           <span>Account</span>
           <span>Role</span>
           <span>Status</span>
@@ -233,7 +276,12 @@ export function AccountsPage() {
         }
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Email">
+          {errors.general && (
+            <div className="md:col-span-2">
+              <Notice tone="danger" title={errors.general} />
+            </div>
+          )}
+          <Field label="Email" error={errors.email}>
             <Input
               value={form.email}
               onChange={(event) =>
@@ -241,7 +289,7 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label={editing ? "New password" : "Password"}>
+          <Field label={editing ? "New password" : "Password"} error={errors.password}>
             <Input
               type="password"
               value={form.password}
@@ -250,7 +298,7 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label="Full name">
+          <Field label="Full name" error={errors.fullName}>
             <Input
               value={form.fullName}
               onChange={(event) =>
@@ -258,7 +306,7 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label="Phone">
+          <Field label="Phone" error={errors.phone}>
             <Input
               value={form.phone}
               onChange={(event) =>
@@ -311,7 +359,7 @@ export function AccountsPage() {
           </Field>
           {form.role === "STAFF" && (
             <div className="md:col-span-2">
-              <Field label="Staff specialization">
+              <Field label="Staff specialization" error={errors.domainIds}>
                 <SpecializationSelector
                   domains={domains}
                   selectedIds={form.domainIds}

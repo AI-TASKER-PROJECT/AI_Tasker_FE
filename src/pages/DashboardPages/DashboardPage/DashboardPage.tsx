@@ -10,21 +10,20 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  catalogApi,
   contractApi,
+  disputeApi,
   marketplaceApi,
   notificationApi,
   profileApi,
 } from "../../../services";
 import { roleLabel, useSession } from "../../../context/sessionContext";
-import { formatCompactCurrency, formatCurrency, formatDate } from "../../../lib/utils";
+import {
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../../lib/utils";
 import { formatNotificationTime } from "../../../lib/notifications";
-import type {
-  Contract,
-  Job,
-  NotificationItem,
-  Proposal,
-} from "../../../types";
+import type { Contract, Job, NotificationItem, Proposal } from "../../../types";
 import {
   Card,
   LinkButton,
@@ -39,11 +38,13 @@ export function DashboardPage() {
   const session = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [businessNames, setBusinessNames] = useState<Record<number, string>>({});
+  const [businessNames, setBusinessNames] = useState<Record<number, string>>(
+    {},
+  );
   const [expertNames, setExpertNames] = useState<Record<number, string>>({});
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [pendingVerifications, setPendingVerifications] = useState(0);
-  const [domainsCount, setDomainsCount] = useState(0);
+  const [pendingStaffDisputes, setPendingStaffDisputes] = useState(0);
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [myProposals, setMyProposals] = useState<Proposal[]>([]);
 
@@ -56,10 +57,12 @@ export function DashboardPage() {
       .listContracts()
       .then(async (items) => {
         setContracts(items);
-        const businessIds = Array.from(new Set(items.map((contract) => contract.businessId)))
-          .filter((value): value is number => Number.isFinite(value));
-        const expertIds = Array.from(new Set(items.map((contract) => contract.expertId)))
-          .filter((value): value is number => Number.isFinite(value));
+        const businessIds = Array.from(
+          new Set(items.map((contract) => contract.businessId)),
+        ).filter((value): value is number => Number.isFinite(value));
+        const expertIds = Array.from(
+          new Set(items.map((contract) => contract.expertId)),
+        ).filter((value): value is number => Number.isFinite(value));
         const shouldLoadBusinesses = session?.role !== "BUSINESS";
         const shouldLoadExperts = session?.role !== "EXPERT";
         const [businessEntries, expertEntries] = await Promise.all([
@@ -68,7 +71,10 @@ export function DashboardPage() {
                 businessIds.map(async (id) => {
                   try {
                     const business = await profileApi.getBusinessById(id);
-                    return [id, business.companyName || "Doanh nghiệp"] as const;
+                    return [
+                      id,
+                      business.companyName || "Doanh nghiệp",
+                    ] as const;
                   } catch {
                     return [id, ""] as const;
                   }
@@ -80,7 +86,10 @@ export function DashboardPage() {
                 expertIds.map(async (id) => {
                   try {
                     const expert = await profileApi.getExpertById(id);
-                    return [id, expert.fullName || expert.title || "Chuyên gia"] as const;
+                    return [
+                      id,
+                      expert.fullName || expert.title || "Chuyên gia",
+                    ] as const;
                   } catch {
                     return [id, ""] as const;
                   }
@@ -88,8 +97,12 @@ export function DashboardPage() {
               )
             : Promise.resolve([] as Array<readonly [number, string]>),
         ]);
-        setBusinessNames(Object.fromEntries(businessEntries.filter(([, name]) => name)));
-        setExpertNames(Object.fromEntries(expertEntries.filter(([, name]) => name)));
+        setBusinessNames(
+          Object.fromEntries(businessEntries.filter(([, name]) => name)),
+        );
+        setExpertNames(
+          Object.fromEntries(expertEntries.filter(([, name]) => name)),
+        );
       })
       .catch(() => {
         setContracts([]);
@@ -114,10 +127,10 @@ export function DashboardPage() {
         })
         .catch(() => setPendingVerifications(0));
 
-      catalogApi
-        .listDomains()
-        .then((domains) => setDomainsCount(domains.length))
-        .catch(() => setDomainsCount(0));
+      disputeApi
+        .listStaff({ page: 0, size: 1, status: "STAFF_REVIEWING" })
+        .then((response) => setPendingStaffDisputes(response.totalElements))
+        .catch(() => setPendingStaffDisputes(0));
     }
 
     if (session?.role === "BUSINESS") {
@@ -139,7 +152,9 @@ export function DashboardPage() {
 
   const sortedContracts = [...contracts].sort((left, right) => {
     const leftDate = new Date(left.createdAt || left.updatedAt || 0).getTime();
-    const rightDate = new Date(right.createdAt || right.updatedAt || 0).getTime();
+    const rightDate = new Date(
+      right.createdAt || right.updatedAt || 0,
+    ).getTime();
     return rightDate - leftDate;
   });
 
@@ -148,22 +163,30 @@ export function DashboardPage() {
       [
         "Tạo yêu cầu bằng AI",
         "/app/jobs/new",
-        "Chuẩn hóa yêu cầu thô thành SoW",
+        "Chuẩn hóa yêu cầu thô thành mô tả công việc chi tiết",
       ],
-      ["Quản lý dự án", "/app/jobs", "Xem dề xuất và báo giá"],
-      ["Theo dõi escrow", "/app/finance", "Ký quỹ, PayOS"],
+      [
+        "Quản lý dự án",
+        "/app/jobs",
+        "Lựa chọn chuyên gia, theo dõi tiến độ dự án",
+      ],
+      [
+        "Theo dõi tài chính",
+        "/app/finance",
+        "Quản lý các khoản thanh toán và kí quỹ",
+      ],
     ],
     EXPERT: [
       ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho dự án phù hợp"],
       [
         "Cập nhật portfolio",
         "/app/expert/portfolio",
-        "4 thành phần năng lực AI",
+        "Cập nhật hồ sơ chuyên gia để tăng cơ hội nhận dự án",
       ],
       [
-        "Bàn giao milestone",
+        "Bàn giao sản phẩm",
         "/app/contracts",
-        "Chọn hợp đồng thật dể mở workspace",
+        "Quản lý các hợp đồng đang thực thi và bàn giao sản phẩm cho doanh nghiệp",
       ],
     ],
     STAFF: [
@@ -216,9 +239,25 @@ export function DashboardPage() {
         ) : (
           <div className="h-full [&>*]:h-full">
             <MetricCard
-              label={session.role === "ADMIN" ? "Dự án đang mở" : "Số bài đăng hiện có"}
-              value={jobs.filter((job) => job.status === "OPEN").length}
-              helper={session.role === "ADMIN" ? "Trên hệ thống" : "Từ thị trường"}
+              label={
+                session.role === "BUSINESS"
+                  ? "Số bài đăng của tôi"
+                  : session.role === "ADMIN"
+                    ? "Dự án đang mở"
+                    : "Số bài đăng hiện có"
+              }
+              value={
+                session.role === "BUSINESS"
+                  ? myJobs.filter((job) => job.status === "OPEN").length
+                  : jobs.filter((job) => job.status === "OPEN").length
+              }
+              helper={
+                session.role === "BUSINESS"
+                  ? "Từ Dự án của tôi"
+                  : session.role === "ADMIN"
+                    ? "Trên hệ thống"
+                    : "Từ thị trường"
+              }
               icon={<BriefcaseBusiness className="h-5 w-5" />}
             />
           </div>
@@ -249,12 +288,21 @@ export function DashboardPage() {
         ) : (
           <div className="h-full [&>*]:h-full">
             <MetricCard
-              label={session.role === "ADMIN" ? "Hợp đồng đang thực thi" : "Báo cáo kĩ thuật"}
-              value={
-                contracts.filter((contract) => ["ACTIVE", "IN_PROGRESS"].includes((contract.status || "").toUpperCase()))
-                  .length
+              label={
+                session.role === "ADMIN"
+                  ? "Hợp đồng đang thực thi"
+                  : "Báo cáo kĩ thuật"
               }
-              helper={session.role === "ADMIN" ? "Đang hoạt động" : "Đang thực thi"}
+              value={
+                contracts.filter((contract) =>
+                  ["ACTIVE", "IN_PROGRESS"].includes(
+                    (contract.status || "").toUpperCase(),
+                  ),
+                ).length
+              }
+              helper={
+                session.role === "ADMIN" ? "Đang hoạt động" : "Đang thực thi"
+              }
               icon={<FileCheck2 className="h-5 w-5" />}
               tone="mint"
             />
@@ -272,7 +320,11 @@ export function DashboardPage() {
               }
               value={formatCurrency(
                 contracts
-                  .filter((contract) => ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()))
+                  .filter((contract) =>
+                    ["COMPLETED", "RELEASED"].includes(
+                      (contract.status || "").toUpperCase(),
+                    ),
+                  )
                   .reduce(
                     (total, contract) =>
                       total + Number(contract.totalBudget || 0),
@@ -288,9 +340,9 @@ export function DashboardPage() {
         {session?.role === "STAFF" && (
           <div className="h-full [&>*]:h-full">
             <MetricCard
-              label="Lĩnh vực chuyên môn"
-              value={domainsCount}
-              helper="Trên hệ thống"
+              label="Tranh chấp"
+              value={pendingStaffDisputes}
+              helper="Cần xử lý"
               icon={<Layers3 className="h-5 w-5" />}
               tone="brand"
             />
@@ -347,8 +399,9 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6">
-        <Card className="p-6">
+      {session?.role !== "ADMIN" && (
+        <div className="grid gap-6">
+          <Card className="p-6">
           <SectionHeading
             title="Hợp đồng gần đây"
             action={
@@ -379,8 +432,9 @@ export function DashboardPage() {
               />
             ))}
           </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

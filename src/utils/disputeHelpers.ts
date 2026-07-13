@@ -4,7 +4,7 @@ export function formatDisputeStatus(status?: string): string {
   const normalized = (status || "").trim().toUpperCase();
   switch (normalized) {
     case "PENDING_SELF_RESOLVE":
-      return "Đang tự thương lượng";
+      return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
       return "Đã yêu cầu Staff";
     case "STAFF_REVIEWING":

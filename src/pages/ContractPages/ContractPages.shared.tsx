@@ -411,9 +411,9 @@ export function ContractMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-100 p-4">
+    <div className="min-w-0 rounded-3xl border border-slate-100 p-4">
       <p className="text-xs font-bold text-slate-400">{label}</p>
-      <p className="mt-2 font-display text-lg font-black text-ink">{value}</p>
+      <p className="mt-2 break-words font-display text-lg font-black text-ink">{value}</p>
     </div>
   );
 }
@@ -430,7 +430,7 @@ export function OperationStat({
       <p className="min-w-0 text-sm font-bold leading-5 text-slate-500">
         {label}
       </p>
-      <p className="shrink-0 font-display text-lg font-black text-ink">
+      <p className="min-w-0 break-words text-right font-display text-lg font-black text-ink">
         {value}
       </p>
     </div>
@@ -487,7 +487,7 @@ export function Participant({
  return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <p className="text-xs font-bold text-slate-400">{label}</p>
-      <p className="mt-1 font-extrabold text-ink">{value}</p>
+      <p className="mt-1 break-words font-extrabold text-ink">{value}</p>
       {details.length > 0 && (
         <div className="mt-3 grid gap-2 text-sm">
           {details.map(([detailLabel, detailValue]) => (

@@ -545,8 +545,8 @@ export function AdminWithdrawalPage() {
             />
           </div>
         ) : (
-          <div>
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[980px] grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
               <span>Thông tin ngân hàng</span>
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
@@ -559,7 +559,7 @@ export function AdminWithdrawalPage() {
               {filtered.map((wr) => (
                 <div
                   key={wr.withdrawalId}
-                  className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                  className="grid min-w-[980px] grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500">

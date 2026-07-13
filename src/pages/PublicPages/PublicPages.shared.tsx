@@ -336,10 +336,12 @@ export function JobCard({
   job,
   manage = false,
   hideStatus = false,
+  compact = false,
 }: {
   job: Job;
   manage?: boolean;
   hideStatus?: boolean;
+  compact?: boolean;
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
@@ -353,23 +355,25 @@ export function JobCard({
   useEffect(() => {
     let ignore = false;
 
-    contractApi
-      .listJobMilestones(job.jobId)
-      .then((items) => {
-        if (!ignore) setMilestoneCount(items.length);
-      })
-      .catch(() => {
-        if (!ignore) setMilestoneCount(0);
-      });
+    if (!compact) {
+      contractApi
+        .listJobMilestones(job.jobId)
+        .then((items) => {
+          if (!ignore) setMilestoneCount(items.length);
+        })
+        .catch(() => {
+          if (!ignore) setMilestoneCount(0);
+        });
 
-    catalogApi
-      .listJobSkills(job.jobId)
-      .then((items) => {
-        if (!ignore) setSkillCount(items.length);
-      })
-      .catch(() => {
-        if (!ignore) setSkillCount(0);
-      });
+      catalogApi
+        .listJobSkills(job.jobId)
+        .then((items) => {
+          if (!ignore) setSkillCount(items.length);
+        })
+        .catch(() => {
+          if (!ignore) setSkillCount(0);
+        });
+    }
 
     profileApi
       .getBusinessByJob(job.jobId)
@@ -403,10 +407,10 @@ export function JobCard({
     return () => {
       ignore = true;
     };
-  }, [job.jobId]);
+  }, [compact, job.jobId]);
 
   return (
-    <Card hover className="flex h-full flex-col p-5">
+    <Card hover className={cn("flex h-full min-w-0 flex-col", compact ? "p-4" : "p-5")}>
       <div className="flex min-h-9 items-start justify-between gap-3">
         {!isLoadingDomain ? (
           <JobDomainBadge label={domainName || "Chưa có lĩnh vực"} />
@@ -415,20 +419,26 @@ export function JobCard({
         )}
         {!hideStatus && <StatusBadge status={job.status} />}
       </div>
-      <Link to={`/jobs/${job.jobId}`} className="group">
+      <Link to={`/jobs/${job.jobId}`} className="group min-w-0">
         <h3
           className={cn(
-            "min-h-14 line-clamp-2 font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-pink-600",
+            "min-h-14 line-clamp-2 break-words font-display text-lg font-extrabold leading-7 text-ink transition-all duration-200 group-hover:-translate-y-0.5 group-hover:text-pink-600",
             !hideStatus && "mt-4",
           )}
         >
           {job.title}
         </h3>
       </Link>
-      <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
+      <p className={cn(
+        "mt-2 line-clamp-3 text-sm leading-6 text-slate-500",
+        compact ? "min-h-[3.75rem]" : "min-h-[4.5rem]",
+      )}>
         {job.structuredSow || job.rawRequirements}
       </p>
-      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
+      <div className={cn(
+        "grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3",
+        compact ? "mt-3" : "mt-5",
+      )}>
         <div>
           <p className="text-xs font-bold text-slate-400">Ngân sách</p>
           <p className="mt-1 text-sm font-extrabold text-ink">
@@ -436,34 +446,36 @@ export function JobCard({
           </p>
         </div>
         <div>
-          <p className="text-xs font-bold text-slate-400">Proposal</p>
+          <p className="text-xs font-bold text-slate-400">
+            {compact ? "Ngày đăng bài" : "Proposal"}
+          </p>
           <p className="mt-1 text-sm font-extrabold text-ink">
-            {job.proposalsCount || 0}
+            {compact ? formatDate(job.createdAt) : job.proposalsCount || 0}
           </p>
         </div>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {skillCountLabel(skillCount)}
         </p>
-      </div>
-      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+      </div>}
+      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-bold text-slate-400">Mốc nghiệm thu</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {milestoneCount} mốc
         </p>
-      </div>
-      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+      </div>}
+      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-bold text-slate-400">Ngày đăng bài</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {formatDate(job.createdAt)}
         </p>
-      </div>
+      </div>}
       <div className="mt-auto border-t border-slate-100 pt-4">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold text-slate-400">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+          <span className="min-w-0 break-words text-xs font-semibold text-slate-400">
             {businessName}
           </span>
           <LinkButton

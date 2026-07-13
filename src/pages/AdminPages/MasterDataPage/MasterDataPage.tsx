@@ -238,7 +238,7 @@ export function MasterDataPage() {
       )}
       {tab === "domains" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
+          <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
             <span>Code</span>
             <span>Description</span>
             <span className="text-center">Created</span>
@@ -283,7 +283,7 @@ export function MasterDataPage() {
       )}
       {tab === "skills" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
+          <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[220px_minmax(0,1fr)_170px_170px_110px]">
             <span>Code</span>
             <span>Description</span>
             <span className="text-center">Created</span>
@@ -331,7 +331,7 @@ export function MasterDataPage() {
       )}
       {tab === "criteria" && (
         <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[220px_minmax(0,1fr)_160px_170px_170px]">
+          <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[220px_minmax(0,1fr)_160px_170px_170px]">
             <span>Code</span>
             <span>Description</span>
             <span>Status</span>

@@ -48,7 +48,7 @@ function buttonClasses({
     icon: 'h-10 w-10 rounded-2xl',
   };
   return cn(
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex max-w-full items-center justify-center gap-2 whitespace-nowrap font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:pointer-events-none disabled:opacity-50',
     variants[variant],
     sizes[size],
     className,
@@ -115,7 +115,7 @@ export function Card({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28 }}
       className={cn(
-        'rounded-3xl border border-slate-100 bg-white shadow-card',
+        'min-w-0 max-w-full rounded-3xl border border-slate-100 bg-white shadow-card',
         hover && 'transition-all duration-300 hover:-translate-y-1 hover:shadow-soft',
         className,
       )}
@@ -194,6 +194,7 @@ export function StatusBadge({ status }: { status?: string }) {
             normalized.includes('chờphảnhồi') ||
             normalized.includes('chờnghiệmthu') ||
             normalized.includes('đangthựchiện') ||
+            normalized.includes('đangxửlý') ||
             normalized.includes('inprogress')
           ? 'amber'
           : normalized.includes('escalated')
@@ -278,16 +279,16 @@ export function MetricCard({
     amber: 'bg-amber-50 text-amber-600',
   };
   return (
-    <Card className="p-5">
+    <Card className="h-full p-5">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-2 font-display text-2xl font-extrabold tracking-tight text-ink">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium text-slate-500">{label}</p>
+          <p className="mt-2 break-words font-display text-2xl font-extrabold tracking-tight text-ink">
             {value}
           </p>
-          {helper && <p className="mt-1 text-xs font-medium text-slate-400">{helper}</p>}
+          {helper && <p className="mt-1 break-words text-xs font-medium text-slate-400">{helper}</p>}
         </div>
-        <span className={cn('grid h-11 w-11 place-items-center rounded-2xl', tones[tone])}>
+        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl', tones[tone])}>
           {icon}
         </span>
       </div>
@@ -307,19 +308,19 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div>
+    <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="min-w-0 flex-1">
         {eyebrow && (
           <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-brand-600">
             {eyebrow}
           </p>
         )}
-        <h1 className="font-display text-2xl font-extrabold tracking-[-0.035em] text-ink md:text-3xl">
+        <h1 className="break-words font-display text-2xl font-extrabold tracking-[-0.035em] text-ink md:text-3xl">
           {title}
         </h1>
-        {description && <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>}
+        {description && <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-slate-500">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:shrink-0">{actions}</div>}
     </div>
   );
 }
@@ -334,12 +335,12 @@ export function SectionHeading({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className="font-display text-lg font-extrabold tracking-tight text-ink">{title}</h2>
-        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+    <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
+      <div className="min-w-0 flex-1">
+        <h2 className="break-words font-display text-lg font-extrabold tracking-tight text-ink">{title}</h2>
+        {description && <p className="mt-1 break-words text-sm text-slate-500">{description}</p>}
       </div>
-      {action}
+      {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 }
@@ -349,7 +350,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
+        'h-11 min-w-0 w-full max-w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
         className,
       )}
       {...props}
@@ -386,7 +387,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       <textarea
         ref={textareaRef}
         className={cn(
-          'min-h-28 w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
+          'min-h-28 min-w-0 w-full max-w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
           autoResize && 'resize-none overflow-hidden',
           className,
         )}
@@ -408,7 +409,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     <select
       ref={ref}
       className={cn(
-        'h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
+        'h-11 min-w-0 w-full max-w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-50',
         className,
       )}
       {...props}
@@ -493,7 +494,7 @@ export function Modal({
     '2xl': 'max-w-7xl',
   };
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-3 sm:p-4">
       <motion.button
         type="button"
         aria-label="Đóng"
@@ -505,19 +506,19 @@ export function Modal({
       <motion.div
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={cn('relative z-10 w-full rounded-3xl bg-white shadow-soft', sizes[size])}
+        className={cn('relative z-10 my-auto flex max-h-[calc(100dvh-1.5rem)] w-full min-w-0 flex-col overflow-hidden rounded-3xl bg-white shadow-soft sm:max-h-[calc(100dvh-2rem)]', sizes[size])}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-          <div>
-            <h3 className="font-display text-xl font-extrabold tracking-tight text-ink">{title}</h3>
-            {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+        <div className="flex min-w-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
+          <div className="min-w-0 flex-1">
+            <h3 className="break-words font-display text-lg font-extrabold tracking-tight text-ink sm:text-xl">{title}</h3>
+            {description && <p className="mt-1 break-words text-sm text-slate-500">{description}</p>}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button className="shrink-0" variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5">{children}</div>
+        {footer && <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-4 sm:px-6">{footer}</div>}
       </motion.div>
     </div>
   );
@@ -533,14 +534,14 @@ export function Tabs({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+    <div className="flex max-w-full overflow-x-auto rounded-2xl bg-slate-100 p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={cn(
-            'rounded-xl px-3.5 py-2 text-sm font-bold transition-all',
+            'shrink-0 rounded-xl px-3.5 py-2 text-sm font-bold transition-all',
             active === tab.id
               ? 'bg-white text-brand-700 shadow-sm'
               : 'text-slate-500 hover:text-ink',
@@ -598,11 +599,11 @@ export function Notice({
   };
   const Icon = tone === 'success' ? CheckCircle2 : AlertCircle;
   return (
-    <div className={cn('flex gap-3 rounded-2xl border p-4 text-sm', styles[tone], className)}>
+    <div className={cn('flex min-w-0 max-w-full gap-3 rounded-2xl border p-4 text-sm', styles[tone], className)}>
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-      <div>
-        <p className="font-bold">{title}</p>
-        {children && <div className="mt-1 leading-6 opacity-80">{children}</div>}
+      <div className="min-w-0 flex-1">
+        <p className="break-words font-bold">{title}</p>
+        {children && <div className="mt-1 break-words leading-6 opacity-80">{children}</div>}
       </div>
     </div>
   );
@@ -626,9 +627,9 @@ export function ListLink({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-slate-50"
+      className="group flex min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 transition hover:bg-slate-50"
     >
-      {leading}
+      {leading && <span className="shrink-0">{leading}</span>}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-ink">{title}</p>
         {description && (
@@ -642,7 +643,7 @@ export function ListLink({
           </p>
         )}
       </div>
-      {trailing || <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500" />}
+      <span className="shrink-0">{trailing || <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500" />}</span>
     </Link>
   );
 }

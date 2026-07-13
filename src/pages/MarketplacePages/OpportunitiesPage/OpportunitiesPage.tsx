@@ -9,6 +9,8 @@ import {
   Sparkles,
   XCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -66,6 +68,8 @@ import {
   type MilestoneDraft,
   type SkillAssignment,
 } from "../marketplacePages.utils";
+
+const JOBS_PER_PAGE = 6;
 
 function MultiSelect({ label, options, selectedValues, onChange }: { label: string, options: { value: number, label: string }[], selectedValues: number[], onChange: (values: number[]) => void }) {
   const [open, setOpen] = useState(false);
@@ -136,6 +140,9 @@ export function OpportunitiesPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const resetPagination = () => setCurrentPage(1);
 
   useEffect(() => {
     Promise.all([
@@ -180,6 +187,12 @@ export function OpportunitiesPage() {
       }),
     [jobs, query, domainIds, skillIds, techIds],
   );
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedJobs = filteredJobs.slice(
+    (effectivePage - 1) * JOBS_PER_PAGE,
+    effectivePage * JOBS_PER_PAGE,
+  );
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
@@ -192,32 +205,44 @@ export function OpportunitiesPage() {
         <div className="grid gap-3 md:grid-cols-4">
           <SearchInput
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              setQuery(value);
+              resetPagination();
+            }}
             placeholder="Tìm theo từ khóa..."
           />
           <MultiSelect
             label="Tất cả Lĩnh vực"
             options={domains.map(d => ({ value: d.domainId, label: d.domainName }))}
             selectedValues={domainIds}
-            onChange={setDomainIds}
+            onChange={(values) => {
+              setDomainIds(values);
+              resetPagination();
+            }}
           />
           <MultiSelect
             label="Tất cả Kỹ năng"
             options={skills.map(s => ({ value: s.skillId, label: s.skillName }))}
             selectedValues={skillIds}
-            onChange={setSkillIds}
+            onChange={(values) => {
+              setSkillIds(values);
+              resetPagination();
+            }}
           />
           <MultiSelect
             label="Tất cả Công nghệ"
             options={technologies.map(t => ({ value: t.technologyId, label: t.technologyName }))}
             selectedValues={techIds}
-            onChange={setTechIds}
+            onChange={(values) => {
+              setTechIds(values);
+              resetPagination();
+            }}
           />
         </div>
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
-        {filteredJobs.map((job) => (
-          <JobCard key={job.jobId} job={job} hideStatus={true} />
+        {paginatedJobs.map((job) => (
+          <JobCard key={job.jobId} job={job} hideStatus={true} compact />
         ))}
       </div>
       {filteredJobs.length === 0 && (
@@ -225,6 +250,50 @@ export function OpportunitiesPage() {
           title="Chưa có job mở"
           description="Dữ liệu được lấy trực tiếp từ backend `/api/v1/jobs`."
         />
+      )}
+      {filteredJobs.length > JOBS_PER_PAGE && (
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-500">
+            Hiển thị {paginatedJobs.length} trên tổng {filteredJobs.length} cơ hội
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              title="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={cn(
+                  "h-9 min-w-9 rounded-xl px-3 text-sm font-extrabold transition",
+                  effectivePage === page
+                    ? "bg-pink-500 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-pink-100 hover:text-pink-600",
+                )}
+              >
+                {page}
+              </button>
+            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              title="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
       )}
     </div>
   );

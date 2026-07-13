@@ -44,8 +44,8 @@ import type {
 type NoticeTone = "success" | "danger" | "info" | "warning";
 
 const FLOW_STEPS = [
-  { key: "PENDING_SELF_RESOLVE", label: "Tự thương lượng" },
-  { key: "ESCALATION_REQUESTED", label: "Yêu cầu Staff" },
+  { key: "PENDING_SELF_RESOLVE", label: "Tạo hồ sơ" },
+  { key: "ESCALATION_REQUESTED", label: "Gửi Staff" },
   { key: "STAFF_REVIEWING", label: "Staff xem xét" },
   { key: "STAFF_DECIDED", label: "Ra quyết định" },
   { key: "RESOLVED", label: "Hoàn tất" },
@@ -58,7 +58,7 @@ function normalizeStatus(status?: string) {
 function formatStatus(status?: string) {
   switch (normalizeStatus(status)) {
     case "PENDING_SELF_RESOLVE":
-      return "Đang tự thương lượng";
+      return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
       return "Đã yêu cầu Staff";
     case "STAFF_REVIEWING":
@@ -137,9 +137,9 @@ function statusInfo(status?: string): {
     case "PENDING_SELF_RESOLVE":
       return {
         tone: "warning",
-        title: "Hai bên đang tự thương lượng",
+        title: "Hồ sơ tranh chấp đã được tạo",
         message:
-          "Business và Expert có thể tự trao đổi trước. Nếu không thống nhất, một bên gửi yêu cầu Staff can thiệp kèm lý do và bằng chứng.",
+          "Hồ sơ đã được tạo nhưng chưa gửi đến Staff. Vui lòng gửi yêu cầu Staff can thiệp để nhân viên tiếp nhận xử lý.",
       };
     case "ESCALATION_REQUESTED":
       return {
@@ -483,6 +483,17 @@ export function DisputeDetailPage({
       : role === "BUSINESS"
         ? dispute.businessRefundAmount
         : undefined;
+  const hasStaffDecisionData = Boolean(
+    dispute.staffReport?.trim() ||
+    dispute.staffDecisionNote?.trim() ||
+    typeof dispute.staffDecisionPercentage === "number" ||
+    typeof dispute.staffProposedExpertAmount === "number" ||
+    typeof dispute.businessRefundAmount === "number",
+  );
+  const shouldShowParticipantStaffDecision =
+    isParticipant &&
+    ["STAFF_DECIDED", "RESOLVED"].includes(status) &&
+    hasStaffDecisionData;
   const baseDisputeReason = disputeReasonContent(dispute);
   const escalationReasonText = dispute.escalationReason?.trim();
   const supplementalReasonText =
@@ -607,9 +618,7 @@ export function DisputeDetailPage({
 
     addItem(
       "created",
-      status === "PENDING_SELF_RESOLVE"
-        ? "Bắt đầu tự thương lượng"
-        : "Mở hồ sơ tranh chấp",
+      "Mở hồ sơ tranh chấp",
       dispute.createdAt,
       "bg-amber-400 ring-amber-50",
     );
@@ -752,7 +761,7 @@ export function DisputeDetailPage({
   const cancelDispute = async () => {
     const reason = window.prompt(
       "Lý do rút tranh chấp:",
-      "Hai bên đã thống nhất tự xử lý.",
+      "Không cần Staff xử lý nữa.",
     );
     if (reason === null) return;
     setActionLoading("cancel-dispute");
@@ -808,6 +817,91 @@ export function DisputeDetailPage({
       setActionLoading(null);
     }
   };
+
+  const staffDecisionCard = (
+    <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <SectionHeading
+          title="Quyết định của Staff"
+          description="Kết luận kỹ thuật, ghi chú quyết định và kết quả tiền ký quỹ sau xử lý."
+        />
+        <Button
+          variant="secondary"
+          onClick={() => setStaffDecisionExpanded((value) => !value)}
+        >
+          {staffDecisionExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+          {staffDecisionExpanded ? "Thu gọn" : "Mở chi tiết"}
+        </Button>
+      </div>
+
+      {staffDecisionExpanded && (
+        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                Báo cáo kỹ thuật
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                {dispute.staffReport ||
+                  "Staff chưa ra quyết định cho hồ sơ này."}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                Ghi chú quyết định
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                {dispute.staffDecisionNote || "Chưa có ghi chú quyết định."}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
+            <p className="text-sm font-extrabold text-slate-800">
+              Kết quả tiền ký quỹ
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-mint-50 p-3 text-center">
+                <p className="text-xs font-black uppercase text-mint-700">
+                  Expert nhận
+                </p>
+                <p className="mt-1 font-display text-xl font-black text-ink">
+                  {typeof finalExpertPercent === "number"
+                    ? `${finalExpertPercent}%`
+                    : "Chưa có"}
+                </p>
+                {typeof dispute.staffProposedExpertAmount === "number" && (
+                  <p className="mt-1 text-xs font-bold text-slate-600">
+                    {formatCurrency(dispute.staffProposedExpertAmount)}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl bg-rose-50 p-3 text-center">
+                <p className="text-xs font-black uppercase text-rose-700">
+                  Business hoàn
+                </p>
+                <p className="mt-1 font-display text-xl font-black text-ink">
+                  {typeof finalBusinessPercent === "number"
+                    ? `${finalBusinessPercent}%`
+                    : "Chưa có"}
+                </p>
+                {typeof dispute.businessRefundAmount === "number" && (
+                  <p className="mt-1 text-xs font-bold text-slate-600">
+                    {formatCurrency(dispute.businessRefundAmount)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 pb-10">
@@ -873,7 +967,7 @@ export function DisputeDetailPage({
 
           <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-              Cột mốc liên quan
+              Cột mốc tranh chấp
             </p>
             <p className="mt-2 text-sm font-extrabold leading-6 text-slate-800">
               {disputedMilestone?.milestoneName || "Chưa cập nhật"}
@@ -882,7 +976,7 @@ export function DisputeDetailPage({
 
           <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-              Người phụ trách
+              Nhân viên phụ trách
             </p>
             <p className="mt-2 text-sm font-extrabold leading-6 text-slate-800">
               {dispute.staffName || "Hệ thống chưa phân công Staff"}
@@ -952,7 +1046,7 @@ export function DisputeDetailPage({
           </div>
           <Notice tone={info.tone} title="Việc cần lưu ý">
             {status === "PENDING_SELF_RESOLVE"
-              ? "Ưu tiên trao đổi và bổ sung bằng chứng rõ ràng trước khi yêu cầu Staff can thiệp."
+              ? "Gửi yêu cầu Staff can thiệp để nhân viên phù hợp tiếp nhận và xử lý hồ sơ."
               : status === "STAFF_REVIEWING"
                 ? "Staff đang đối chiếu hồ sơ. Hai bên vẫn có thể bổ sung bằng chứng khi được phép."
                 : status === "RESOLVED"
@@ -986,6 +1080,8 @@ export function DisputeDetailPage({
         <Stepper status={dispute.status} dates={stepperDates} />
       </Card>
 
+      {shouldShowParticipantStaffDecision && staffDecisionCard}
+
       {isParticipant && (
         <Card className="border border-pink-100 p-6 shadow-sm md:p-7">
           <div className="flex items-start justify-between gap-3">
@@ -1005,7 +1101,9 @@ export function DisputeDetailPage({
                   Yêu cầu Staff can thiệp
                 </p>
                 <p className="mt-1 text-sm font-medium leading-6 text-amber-800">
-                  Chỉ gửi khi hai bên không thể tự thống nhất. Hồ sơ sẽ dùng lại lý do tranh chấp đã mở và ghi chú bổ sung nếu có.
+                  Gửi hồ sơ cho Staff để nhân viên phù hợp tiếp nhận và xử lý
+                  tranh chấp. Hồ sơ sẽ dùng lại lý do tranh chấp đã mở và ghi
+                  chú bổ sung nếu có.
                 </p>
 
                 <div className="mt-4 grid gap-3">
@@ -1065,7 +1163,7 @@ export function DisputeDetailPage({
             )}
 
             {status === "PENDING_SELF_RESOLVE" && !canRequestIntervention && (
-              <Notice tone="info" title="Đang chờ hai bên tự xử lý">
+              <Notice tone="info" title="Hồ sơ đang chờ gửi Staff">
                 Khi Business hoặc Expert gửi yêu cầu Staff can thiệp, hồ sơ sẽ
                 chuyển sang bước tiếp theo.
               </Notice>
@@ -1354,6 +1452,8 @@ export function DisputeDetailPage({
             )}
           </Card>
 
+          {!isParticipant && (
+          <>
           <Card className="border border-slate-100 p-6">
             <SectionHeading
               title="Tiêu chí nghiệm thu"
@@ -1410,227 +1510,234 @@ export function DisputeDetailPage({
               </Button>
             </div>
 
-            {submissionExpanded && <div className="mt-5 space-y-5">
-              {sortedProgressReports.length > 0 && (
-                <section>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="font-display text-base font-black text-ink">
-                      Báo cáo tiến độ
-                    </h3>
-                    <Badge tone="brand">
-                      {sortedProgressReports.length} báo cáo
-                    </Badge>
-                  </div>
+            {submissionExpanded && (
+              <div className="mt-5 space-y-5">
+                {sortedProgressReports.length > 0 && (
+                  <section>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="font-display text-base font-black text-ink">
+                        Báo cáo tiến độ
+                      </h3>
+                      <Badge tone="brand">
+                        {sortedProgressReports.length} báo cáo
+                      </Badge>
+                    </div>
 
-                  <div className="grid gap-4">
-                    {sortedProgressReports.map((item, index) => (
-                      <article
-                        key={`report-${item.progressReportId}`}
-                        className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="font-extrabold text-ink">
-                              Báo cáo tiến độ{" "}
-                              {sortedProgressReports.length - index}
-                            </p>
-                            <p className="mt-1 text-xs font-bold text-slate-400">
-                              {item.createdAt
-                                ? formatDateTime(item.createdAt)
-                                : "Chưa có thời gian nộp"}
-                            </p>
+                    <div className="grid gap-4">
+                      {sortedProgressReports.map((item, index) => (
+                        <article
+                          key={`report-${item.progressReportId}`}
+                          className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-extrabold text-ink">
+                                Báo cáo tiến độ{" "}
+                                {sortedProgressReports.length - index}
+                              </p>
+                              <p className="mt-1 text-xs font-bold text-slate-400">
+                                {item.createdAt
+                                  ? formatDateTime(item.createdAt)
+                                  : "Chưa có thời gian nộp"}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {item.checkpointType && (
+                                <Badge tone="slate">
+                                  {item.checkpointType}
+                                </Badge>
+                              )}
+                              {typeof item.percentComplete === "number" && (
+                                <Badge tone="mint">
+                                  Hoàn thành {item.percentComplete}%
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {item.checkpointType && (
-                              <Badge tone="slate">{item.checkpointType}</Badge>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            {item.sourceCodeUrl && (
+                              <a
+                                href={item.sourceCodeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                              >
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Mã nguồn
+                                </p>
+                                <p className="mt-1 truncate font-bold text-pink-600">
+                                  {item.sourceCodeUrl}
+                                </p>
+                              </a>
                             )}
-                            {typeof item.percentComplete === "number" && (
-                              <Badge tone="mint">
-                                Hoàn thành {item.percentComplete}%
-                              </Badge>
+
+                            {item.demoLink && (
+                              <a
+                                href={item.demoLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                              >
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Bản chạy thử
+                                </p>
+                                <p className="mt-1 truncate font-bold text-pink-600">
+                                  {item.demoLink}
+                                </p>
+                              </a>
+                            )}
+
+                            {item.attachmentUrl && (
+                              <a
+                                href={item.attachmentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                              >
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Tệp đính kèm
+                                </p>
+                                <p className="mt-1 truncate font-bold text-pink-600">
+                                  {item.attachmentUrl}
+                                </p>
+                              </a>
                             )}
                           </div>
-                        </div>
 
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                          {item.sourceCodeUrl && (
-                            <a
-                              href={item.sourceCodeUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                            >
+                          {(item.submissionNotes || item.content) && (
+                            <div className="mt-3 rounded-xl bg-slate-50 p-4">
                               <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Mã nguồn
+                                Nội dung nộp
                               </p>
-                              <p className="mt-1 truncate font-bold text-pink-600">
-                                {item.sourceCodeUrl}
+                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                                {item.submissionNotes || item.content}
                               </p>
-                            </a>
+                            </div>
                           )}
 
-                          {item.demoLink && (
-                            <a
-                              href={item.demoLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                            >
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Bản chạy thử
+                          {item.businessFeedback && (
+                            <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                              <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                                Phản hồi của Doanh nghiệp
                               </p>
-                              <p className="mt-1 truncate font-bold text-pink-600">
-                                {item.demoLink}
+                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-amber-900">
+                                {item.businessFeedback}
                               </p>
-                            </a>
+                            </div>
                           )}
-
-                          {item.attachmentUrl && (
-                            <a
-                              href={item.attachmentUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                            >
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Tệp đính kèm
-                              </p>
-                              <p className="mt-1 truncate font-bold text-pink-600">
-                                {item.attachmentUrl}
-                              </p>
-                            </a>
-                          )}
-                        </div>
-
-                        {(item.submissionNotes || item.content) && (
-                          <div className="mt-3 rounded-xl bg-slate-50 p-4">
-                            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                              Nội dung nộp
-                            </p>
-                            <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                              {item.submissionNotes || item.content}
-                            </p>
-                          </div>
-                        )}
-
-                        {item.businessFeedback && (
-                          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                            <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
-                              Phản hồi của Doanh nghiệp
-                            </p>
-                            <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-amber-900">
-                              {item.businessFeedback}
-                            </p>
-                          </div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {sortedDeliverables.length > 0 && (
-                <section>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="font-display text-base font-black text-ink">
-                      Sản phẩm bàn giao
-                    </h3>
-                    <Badge tone="violet">
-                      {sortedDeliverables.length} phiên bản
-                    </Badge>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {sortedDeliverables.map((item, index) => (
-                      <article
-                        key={`deliverable-${item.deliverableId}`}
-                        className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="font-extrabold text-ink">
-                              Sản phẩm bàn giao{" "}
-                              {sortedDeliverables.length - index}
-                            </p>
-                            <p className="mt-1 text-xs font-bold text-slate-400">
-                              {item.createdAt
-                                ? formatDateTime(item.createdAt)
-                                : "Chưa có thời gian nộp"}
-                            </p>
-                          </div>
-                          <Badge tone="violet">Sản phẩm bàn giao</Badge>
-                        </div>
-
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                          {item.sourceCodeUrl && (
-                            <a
-                              href={item.sourceCodeUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                            >
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Mã nguồn
-                              </p>
-                              <p className="mt-1 truncate font-bold text-pink-600">
-                                {item.sourceCodeUrl}
-                              </p>
-                            </a>
-                          )}
-
-                          {item.demoLink && (
-                            <a
-                              href={item.demoLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                            >
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Bản chạy thử
-                              </p>
-                              <p className="mt-1 truncate font-bold text-pink-600">
-                                {item.demoLink}
-                              </p>
-                            </a>
-                          )}
-                        </div>
-
-                        {item.submissionNotes && (
-                          <div className="mt-3 rounded-xl bg-slate-50 p-4">
-                            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                              Nội dung bàn giao
-                            </p>
-                            <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                              {item.submissionNotes}
-                            </p>
-                          </div>
-                        )}
-
-                        {item.rejectionFeedback && (
-                          <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
-                            <p className="text-xs font-black uppercase tracking-[0.12em] text-rose-700">
-                              Lý do bị từ chối
-                            </p>
-                            <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-rose-900">
-                              {item.rejectionFeedback}
-                            </p>
-                          </div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {sortedProgressReports.length === 0 &&
-                sortedDeliverables.length === 0 && (
-                  <EmptyState
-                    title="Chưa có bài nộp"
-                    description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến cột mốc này."
-                  />
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 )}
-            </div>}
+
+                {sortedDeliverables.length > 0 && (
+                  <section>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="font-display text-base font-black text-ink">
+                        Sản phẩm bàn giao
+                      </h3>
+                      <Badge tone="violet">
+                        {sortedDeliverables.length} phiên bản
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-4">
+                      {sortedDeliverables.map((item, index) => (
+                        <article
+                          key={`deliverable-${item.deliverableId}`}
+                          className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-extrabold text-ink">
+                                Sản phẩm bàn giao{" "}
+                                {sortedDeliverables.length - index}
+                              </p>
+                              <p className="mt-1 text-xs font-bold text-slate-400">
+                                {item.createdAt
+                                  ? formatDateTime(item.createdAt)
+                                  : "Chưa có thời gian nộp"}
+                              </p>
+                            </div>
+                            <Badge tone="violet">Sản phẩm bàn giao</Badge>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            {item.sourceCodeUrl && (
+                              <a
+                                href={item.sourceCodeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                              >
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Mã nguồn
+                                </p>
+                                <p className="mt-1 truncate font-bold text-pink-600">
+                                  {item.sourceCodeUrl}
+                                </p>
+                              </a>
+                            )}
+
+                            {item.demoLink && (
+                              <a
+                                href={item.demoLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                              >
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                  Bản chạy thử
+                                </p>
+                                <p className="mt-1 truncate font-bold text-pink-600">
+                                  {item.demoLink}
+                                </p>
+                              </a>
+                            )}
+                          </div>
+
+                          {item.submissionNotes && (
+                            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                Nội dung bàn giao
+                              </p>
+                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                                {item.submissionNotes}
+                              </p>
+                            </div>
+                          )}
+
+                          {item.rejectionFeedback && (
+                            <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
+                              <p className="text-xs font-black uppercase tracking-[0.12em] text-rose-700">
+                                Lý do bị từ chối
+                              </p>
+                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-rose-900">
+                                {item.rejectionFeedback}
+                              </p>
+                            </div>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {sortedProgressReports.length === 0 &&
+                  sortedDeliverables.length === 0 && (
+                    <EmptyState
+                      title="Chưa có bài nộp"
+                      description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến cột mốc này."
+                    />
+                  )}
+              </div>
+            )}
           </Card>
+
+          </>
+          )}
 
           {canStaffDecide && (
             <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
@@ -1700,7 +1807,7 @@ export function DisputeDetailPage({
                     />
                   </Field>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-xl bg-mint-50 p-3 text-center">
                       <p className="text-xs font-black uppercase text-mint-700">
                         Expert
@@ -1736,91 +1843,92 @@ export function DisputeDetailPage({
             </Card>
           )}
 
-          <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <SectionHeading
-                title="Quyết định của Staff"
-                description="Kết luận kỹ thuật, ghi chú quyết định và kết quả tiền ký quỹ sau xử lý."
-              />
-              <Button
-                variant="secondary"
-                onClick={() => setStaffDecisionExpanded((value) => !value)}
-              >
-                {staffDecisionExpanded ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-                {staffDecisionExpanded ? "Thu gọn" : "Mở chi tiết"}
-              </Button>
-            </div>
-
-            {staffDecisionExpanded && (
-              <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="grid gap-4">
-                  <div className="rounded-2xl bg-white p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                      Báo cáo kỹ thuật
-                    </p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                      {dispute.staffReport ||
-                        "Staff chưa ra quyết định cho hồ sơ này."}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-white p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                      Ghi chú quyết định
-                    </p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                      {dispute.staffDecisionNote ||
-                        "Chưa có ghi chú quyết định."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-extrabold text-slate-800">
-                    Kết quả tiền ký quỹ
-                  </p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-mint-50 p-3 text-center">
-                      <p className="text-xs font-black uppercase text-mint-700">
-                        Expert nhận
-                      </p>
-                      <p className="mt-1 font-display text-xl font-black text-ink">
-                        {typeof finalExpertPercent === "number"
-                          ? `${finalExpertPercent}%`
-                          : "Chưa có"}
-                      </p>
-                      {typeof dispute.staffProposedExpertAmount ===
-                        "number" && (
-                        <p className="mt-1 text-xs font-bold text-slate-600">
-                          {formatCurrency(dispute.staffProposedExpertAmount)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="rounded-xl bg-rose-50 p-3 text-center">
-                      <p className="text-xs font-black uppercase text-rose-700">
-                        Business hoàn
-                      </p>
-                      <p className="mt-1 font-display text-xl font-black text-ink">
-                        {typeof finalBusinessPercent === "number"
-                          ? `${finalBusinessPercent}%`
-                          : "Chưa có"}
-                      </p>
-                      {typeof dispute.businessRefundAmount === "number" && (
-                        <p className="mt-1 text-xs font-bold text-slate-600">
-                          {formatCurrency(dispute.businessRefundAmount)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {!isParticipant && (
+            <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <SectionHeading
+                  title="Quyết định của Staff"
+                  description="Kết luận kỹ thuật, ghi chú quyết định và kết quả tiền ký quỹ sau xử lý."
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => setStaffDecisionExpanded((value) => !value)}
+                >
+                  {staffDecisionExpanded ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                  {staffDecisionExpanded ? "Thu gọn" : "Mở chi tiết"}
+                </Button>
               </div>
-            )}
-          </Card>
 
+              {staffDecisionExpanded && (
+                <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl bg-white p-5 shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                        Báo cáo kỹ thuật
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                        {dispute.staffReport ||
+                          "Staff chưa ra quyết định cho hồ sơ này."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-5 shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                        Ghi chú quyết định
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                        {dispute.staffDecisionNote ||
+                          "Chưa có ghi chú quyết định."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
+                    <p className="text-sm font-extrabold text-slate-800">
+                      Kết quả tiền ký quỹ
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-mint-50 p-3 text-center">
+                        <p className="text-xs font-black uppercase text-mint-700">
+                          Expert nhận
+                        </p>
+                        <p className="mt-1 font-display text-xl font-black text-ink">
+                          {typeof finalExpertPercent === "number"
+                            ? `${finalExpertPercent}%`
+                            : "Chưa có"}
+                        </p>
+                        {typeof dispute.staffProposedExpertAmount ===
+                          "number" && (
+                          <p className="mt-1 text-xs font-bold text-slate-600">
+                            {formatCurrency(dispute.staffProposedExpertAmount)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-rose-50 p-3 text-center">
+                        <p className="text-xs font-black uppercase text-rose-700">
+                          Business hoàn
+                        </p>
+                        <p className="mt-1 font-display text-xl font-black text-ink">
+                          {typeof finalBusinessPercent === "number"
+                            ? `${finalBusinessPercent}%`
+                            : "Chưa có"}
+                        </p>
+                        {typeof dispute.businessRefundAmount === "number" && (
+                          <p className="mt-1 text-xs font-bold text-slate-600">
+                            {formatCurrency(dispute.businessRefundAmount)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+          </Card>
+          )}
         </main>
 
         <aside className="space-y-6">
@@ -1846,8 +1954,8 @@ export function DisputeDetailPage({
                     Yêu cầu Staff can thiệp
                   </p>
                   <p className="mt-1 text-sm font-medium leading-6 text-amber-800">
-                    Chỉ gửi khi hai bên không thể tự thống nhất. Lý do và bằng
-                    chứng là bắt buộc.
+                    Gửi hồ sơ cho Staff để nhân viên phù hợp tiếp nhận và xử lý
+                    tranh chấp. Lý do và bằng chứng là bắt buộc.
                   </p>
 
                   <div className="mt-4 grid gap-3">
@@ -1867,7 +1975,8 @@ export function DisputeDetailPage({
                         </p>
                       </div>
                       <p className="mt-2 text-xs font-semibold text-amber-700">
-                        Nội dung này được lấy từ lý do đã nhập khi mở tranh chấp.
+                        Nội dung này được lấy từ lý do đã nhập khi mở tranh
+                        chấp.
                       </p>
                     </div>
 
@@ -1907,7 +2016,7 @@ export function DisputeDetailPage({
               )}
 
               {status === "PENDING_SELF_RESOLVE" && !canRequestIntervention && (
-                <Notice tone="info" title="Đang chờ hai bên tự xử lý">
+                <Notice tone="info" title="Hồ sơ đang chờ gửi Staff">
                   Khi Business hoặc Expert gửi yêu cầu Staff can thiệp, hồ sơ sẽ
                   chuyển sang bước tiếp theo.
                 </Notice>

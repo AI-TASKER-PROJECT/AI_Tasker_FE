@@ -52,7 +52,6 @@ import {
   Modal,
   Notice,
   PageHeader,
-  Progress,
   SectionHeading,
   StatusBadge,
 } from "../../../components/ui";
@@ -150,7 +149,9 @@ export function ManageJobPage() {
   const [contractError, setContractError] = useState("");
   const [contractLoading, setContractLoading] = useState(false);
   const [reviewMessage, setReviewMessage] = useState("");
-  const [reviewMessageTone, setReviewMessageTone] = useState<"success" | "danger">("success");
+  const [reviewMessageTone, setReviewMessageTone] = useState<
+    "success" | "danger"
+  >("success");
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
   const [recommendationResult, setRecommendationResult] =
@@ -199,7 +200,7 @@ export function ManageJobPage() {
           setRecommendationResult(result);
         }
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [jobId]);
 
   const generateRecommendations = async () => {
@@ -212,7 +213,7 @@ export function ManageJobPage() {
       if (result.recommendations?.length === 0) {
         setAiMessage(
           result.message ||
-          "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
+            "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
         );
         setAiMessageTone("warning");
       } else {
@@ -220,7 +221,7 @@ export function ManageJobPage() {
           result.generatedByAi
             ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
             : (result.message ??
-              "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
+                "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
@@ -261,7 +262,10 @@ export function ManageJobPage() {
     const proposalMilestone = contractProposalMilestones.find(
       (item) => item.milestoneId === milestone.milestoneId,
     );
-    return total + (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0);
+    return (
+      total +
+      (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0)
+    );
   }, 0);
 
   const review = async (
@@ -276,7 +280,11 @@ export function ManageJobPage() {
         items.map((item) => (item.proposalId === proposalId ? updated : item)),
       );
       setReviewMessageTone(status === "Accepted" ? "success" : "danger");
-      setReviewMessage(status === "Accepted" ? "Đã chấp nhận proposal thành công!" : "Đã từ chối proposal thành công!");
+      setReviewMessage(
+        status === "Accepted"
+          ? "Đã chấp nhận proposal thành công!"
+          : "Đã từ chối proposal thành công!",
+      );
     } catch (error) {
       setReviewMessageTone("danger");
       setReviewMessage(getApiErrorMessage(error));
@@ -685,7 +693,7 @@ export function ManageJobPage() {
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Ngân sách sẽ dưa vào hợp đồng"
-            // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
+              // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
             />
             <div className="mt-4 grid gap-3">
               {milestones
@@ -840,7 +848,7 @@ function ProposalCard({
           setExpertProfile(data);
         }
       })
-      .catch(() => { });
+      .catch(() => {});
 
     return () => {
       ignore = true;
@@ -896,9 +904,7 @@ function ProposalCard({
   }, [expertOpen, proposal.expertId]);
 
   const expertName =
-    expertProfile?.fullName ||
-    proposal.expertName ||
-    "Chuyên gia chưa có tên";
+    expertProfile?.fullName || proposal.expertName || "Chuyên gia chưa có tên";
 
   const domainNames = resolveCatalogNames(
     portfolio?.domainIds,
@@ -1192,7 +1198,9 @@ function ProposalCard({
             <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
           </div>
 
-          <ProfileRating value={expertProfile?.averageRating ?? expertProfile?.rating} />
+          <ProfileRating
+            value={expertProfile?.averageRating ?? expertProfile?.rating}
+          />
 
           <SectionHeading title="Portfolio" />
 
@@ -1249,15 +1257,25 @@ function ProfileRating({ value }: { value?: number }) {
       </p>
       {hasRating ? (
         <div className="mt-2 flex items-center gap-3">
-          <span className="text-2xl font-black text-amber-500">{rating.toFixed(1)}/5</span>
-          <div className="flex items-center gap-1" aria-label={`${rating.toFixed(1)} trên 5 sao`}>
+          <span className="text-2xl font-black text-amber-500">
+            {rating.toFixed(1)}/5
+          </span>
+          <div
+            className="flex items-center gap-1"
+            aria-label={`${rating.toFixed(1)} trên 5 sao`}
+          >
             {Array.from({ length: 5 }, (_, index) => (
-              <Star key={index} className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star
+                key={index}
+                className="h-5 w-5 fill-amber-400 text-amber-400"
+              />
             ))}
           </div>
         </div>
       ) : (
-        <p className="mt-2 text-sm font-semibold text-slate-400">Chưa có đánh giá</p>
+        <p className="mt-2 text-sm font-semibold text-slate-400">
+          Chưa có đánh giá
+        </p>
       )}
     </div>
   );
@@ -1401,7 +1419,7 @@ function ExpertRecommendationCard({
       .then((data) => {
         if (!ignore) setExpert(data);
       })
-      .catch(() => { });
+      .catch(() => {});
     return () => {
       ignore = true;
     };
@@ -1483,8 +1501,6 @@ function ExpertRecommendationCard({
   const gradientClass =
     rankColors[(rec.rankPosition ?? 1) - 1] ?? rankColors[4];
 
-  const score = rec.matchScore ?? 0;
-
   const expertName =
     expertProfile?.fullName || expert?.fullName || "Chuyên gia chưa có tên";
 
@@ -1513,11 +1529,11 @@ function ExpertRecommendationCard({
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:border-brand-100 hover:shadow-card">
       {/* Header */}
-      <div className="grid gap-4 bg-gradient-to-r from-slate-50 to-brand-50/30 p-5 md:grid-cols-[56px_1fr_160px]">
+      <div className="grid gap-4 bg-gradient-to-r from-slate-50 to-brand-50/30 p-5 md:grid-cols-[56px_1fr]">
         <div
           className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${gradientClass} text-white shadow`}
         >
-          <span className="text-xl font-black">Hạng {rec.rankPosition}</span>
+          <span className="text-xl font-black">#{rec.rankPosition}</span>
         </div>
 
         <div className="min-w-0">
@@ -1529,30 +1545,6 @@ function ExpertRecommendationCard({
               ? `${expert.yearsOfExperience} năm kinh nghiệm`
               : "Chưa có thông tin kinh nghiệm"}
           </p>
-        </div>
-
-        <div className="text-right">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-            Match score
-          </p>
-          <p
-            className={cn(
-              "mt-1 font-display text-3xl font-black",
-              score >= 80
-                ? "text-mint-600"
-                : score >= 50
-                  ? "text-amber-500"
-                  : "text-slate-400",
-            )}
-          >
-            {score.toFixed(1)}
-            <span className="text-base font-bold opacity-60">%</span>
-          </p>
-          <Progress
-            value={score}
-            color={score >= 80 ? "mint" : score >= 50 ? "coral" : "brand"}
-            className="mt-2"
-          />
         </div>
       </div>
 

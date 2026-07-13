@@ -1,4 +1,4 @@
-import { Plus, Save, Settings2, Users } from "lucide-react";
+import { Save, Settings2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { adminApi, catalogApi, type Domain } from "../../../lib/api";
 import {
@@ -37,9 +37,6 @@ export function StaffPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [editing, setEditing] = useState<Staff | null>(null);
   const [domainIds, setDomainIds] = useState<number[]>([]);
-  const [createDomainIds, setCreateDomainIds] = useState<number[]>([]);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ accountId: "" });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -55,37 +52,9 @@ export function StaffPage() {
     queueMicrotask(() => setDomainIds(getStaffDomainIds(editing)));
   }, [editing]);
 
-  const beginCreate = () => {
-    setForm({ accountId: "" });
-    setCreateDomainIds([]);
-    setError("");
-    setOpen(true);
-  };
-
   const beginEditStaff = (staff: Staff) => {
     setEditing(staff);
     setDomainIds(getStaffDomainIds(staff));
-    setError("");
-  };
-
-  const create = async () => {
-    if (!form.accountId.trim()) {
-      setError("Vui lòng nhập tài khoản nhân viên.");
-      return;
-    }
-    if (createDomainIds.length === 0) {
-      setError("Vui lòng chọn ít nhất một lĩnh vực chuyên môn cho nhân viên.");
-      return;
-    }
-
-    const specialization = specializationFromDomains(createDomainIds, domains);
-    const staff = await adminApi.createStaff({
-      accountId: Number(form.accountId),
-      specialization,
-      domainIds: createDomainIds,
-    });
-    setStaffs((items) => [...items, staff]);
-    setOpen(false);
     setError("");
   };
 
@@ -114,11 +83,6 @@ export function StaffPage() {
         <PageHeader
           title="Quản lý nhân viên"
           description="Tạo hồ sơ nhân viên nội bộ và gán lĩnh vực chuyên môn để hệ thống tự phân công tranh chấp."
-          actions={
-            <Button onClick={beginCreate}>
-              <Plus className="h-4 w-4" /> Tạo nhân viên
-            </Button>
-          }
         />
       </div>
 
@@ -158,51 +122,6 @@ export function StaffPage() {
           </Card>
         ))}
       </div>
-
-      <Modal
-        open={open}
-        onClose={() => {
-          setOpen(false);
-          setError("");
-        }}
-        title="Tạo nhân viên"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={create}>Tạo</Button>
-          </>
-        }
-      >
-        <div className="grid gap-4">
-          {error && (
-            <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              {error}
-            </p>
-          )}
-
-          <Field label="Tài khoản nhân viên">
-            <Input
-              value={form.accountId}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  accountId: event.target.value,
-                }))
-              }
-            />
-          </Field>
-
-          <Field label="Lĩnh vực chuyên môn">
-            <SpecializationSelector
-              domains={domains}
-              selectedIds={createDomainIds}
-              onChange={setCreateDomainIds}
-            />
-          </Field>
-        </div>
-      </Modal>
 
       <Modal
         open={Boolean(editing)}

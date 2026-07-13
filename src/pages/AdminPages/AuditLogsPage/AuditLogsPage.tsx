@@ -68,7 +68,7 @@ export function AuditLogsPage() {
             Làm mới
           </Button>
         </div>
-        <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[150px_1.1fr_1.2fr_1fr]">
+        <div className="hidden border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[150px_1.1fr_1.2fr_1fr]">
           <span>Thời gian</span>
           <span>Hành động</span>
           <span>Đối tượng</span>

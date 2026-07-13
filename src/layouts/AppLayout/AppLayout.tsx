@@ -741,7 +741,7 @@ export function AppShell() {
   const activePackageName = quota?.activePackageName || activePackageTier;
 
   return (
-    <div className="relative min-h-screen bg-[#f7faff] text-ink">
+    <div className="relative min-h-screen min-w-0 overflow-x-hidden bg-[#f7faff] text-ink">
       <div className="pointer-events-none fixed inset-0 z-0 opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
       <aside
         className={cn(
@@ -837,7 +837,7 @@ export function AppShell() {
 
       <div
         className={cn(
-          "transition-[padding] duration-300",
+          "min-w-0 transition-[padding] duration-300",
           sidebarCollapsed ? "lg:pl-24" : "lg:pl-64",
         )}
       >
@@ -1116,8 +1116,8 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="px-4 py-6 md:px-6 md:py-8">
-          <div className="mx-auto max-w-[1440px]">
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 md:px-6 md:py-8">
+          <div className="mx-auto min-w-0 w-full max-w-[1440px]">
             {showBackButton && (
               <Button
                 type="button"

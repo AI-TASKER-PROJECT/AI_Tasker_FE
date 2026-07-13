@@ -739,6 +739,7 @@ export interface WalletTransaction {
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
   referenceType?: string;
   referenceId?: number;
+  operationKey?: string;
   rawDescription?: string;
   title?: string;
   description?: string;

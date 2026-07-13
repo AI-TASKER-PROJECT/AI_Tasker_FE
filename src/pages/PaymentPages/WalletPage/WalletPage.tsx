@@ -13,7 +13,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
+  contractApi,
+  disputeApi,
   getApiErrorMessage,
+  profileApi,
   walletApi,
   walletTransactionApi,
   withdrawalApi,
@@ -22,6 +25,11 @@ import { useSession } from "../../../context/sessionContext";
 import { cn, formatCurrency, maskSensitiveValue } from "../../../lib/utils";
 import type {
   PaymentActionResponse,
+  BusinessProfile,
+  Contract,
+  Dispute,
+  ExpertProfile,
+  Milestone,
   SystemWallet,
   WalletTransaction,
   WithdrawalRequest,
@@ -70,8 +78,8 @@ function txIcon(type: WalletTransaction["transactionType"]) {
     type === "DEPOSIT_REFUND" ||
     type === "WITHDRAW_REJECTED"
   )
-    return <ArrowDownLeft className="h-4 w-4" />;
-  return <ArrowUpRight className="h-4 w-4" />;
+    return <ArrowDownLeft className="h-5 w-5" />;
+  return <ArrowUpRight className="h-5 w-5" />;
 }
 
 function txDisplayLabel(tx: WalletTransaction, role?: string) {
@@ -85,6 +93,12 @@ function txDisplayLabel(tx: WalletTransaction, role?: string) {
   if (type === "CREDIT_PURCHASE") return "Mua lượt sử dụng";
   if (type === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
     return isExpert ? "Giữ ký quỹ bảo đảm hợp đồng" : "Giữ tiền ký quỹ dự án";
+  }
+  if (type === "EXPERT_CONTRACT_DEPOSIT_HOLD") {
+    return "Ký quỹ bảo đảm hợp đồng";
+  }
+  if (type === "EXPERT_CONTRACT_DEPOSIT_REFUND") {
+    return "Hoàn ký quỹ bảo đảm hợp đồng";
   }
   if (type === "DEPOSIT_REFUND") {
     return isExpert ? "Hoàn ký quỹ bảo đảm" : "Hoàn tiền ký quỹ dự án";
@@ -126,8 +140,20 @@ function txPartyText(value: string | undefined, fallback: string) {
   return value?.trim() || fallback;
 }
 
+function cleanWalletDescription(value?: string) {
+  if (!value) return "";
+  return value
+    .replace(/Thời hạn từ\s+\S+\s+đến\s+\S+\.?/gi, "")
+    .replace(/về\s+Ngân hàng:\s*[^.]+\.?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\./g, ".")
+    .trim();
+}
+
 function txDisplayDescription(tx: WalletTransaction, role?: string) {
   const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const type = (tx.transactionType || "").toUpperCase();
+  const isExpert = role === "EXPERT";
   const businessName = txPartyText(tx.businessName, "Doanh nghiệp");
   const expertName = txPartyText(tx.expertName, "Chuyên gia");
   const contractTitle = txPartyText(tx.contractTitle, "hợp đồng chưa có tên");
@@ -135,18 +161,90 @@ function txDisplayDescription(tx: WalletTransaction, role?: string) {
   const milestonePhrase = milestoneText ? `mốc ${milestoneText}` : "mốc tương ứng";
 
   if (text.includes("deposit milestone escrow")) {
-    return `${businessName} đã ký quỹ ${milestonePhrase} cho hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+    return isExpert
+      ? `${businessName} đã ký quỹ ${milestonePhrase} cho hợp đồng "${contractTitle}" với bạn. Khoản tiền này đang được giữ để thanh toán sau khi mốc được nghiệm thu.`
+      : `${businessName} đã ký quỹ ${milestonePhrase} cho hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("milestone approved payout")) {
+    return isExpert
+      ? `Bạn đã nhận thanh toán cho ${milestonePhrase} của hợp đồng "${contractTitle}" sau khi doanh nghiệp ${businessName} nghiệm thu.`
+      : `${expertName} đã nhận thanh toán nghiệm thu ${milestonePhrase} của hợp đồng "${contractTitle}".`;
+  }
+  if (text.includes("release approved milestone escrow")) {
+    return isExpert
+      ? `Tiền ký quỹ ${milestonePhrase} của hợp đồng "${contractTitle}" đã được giải ngân vào ví của bạn.`
+      : `${businessName} đã giải ngân tiền ký quỹ ${milestonePhrase} của hợp đồng "${contractTitle}" cho chuyên gia ${expertName}.`;
+  }
+  if (text.includes("review sla auto-approval payout")) {
+    return isExpert
+      ? `Bạn đã nhận thanh toán ${milestonePhrase} của hợp đồng "${contractTitle}" do mốc được tự động nghiệm thu sau thời hạn phản hồi.`
+      : `${expertName} đã nhận thanh toán ${milestonePhrase} của hợp đồng "${contractTitle}" do mốc được tự động nghiệm thu sau thời hạn phản hồi.`;
+  }
+  if (text.includes("immediate termination milestone refund")) {
+    return `${businessName} đã được hoàn tiền ký quỹ ${milestonePhrase} của hợp đồng "${contractTitle}" do hợp đồng bị chấm dứt.`;
   }
   if (text.includes("dispute business refund")) {
-    return `${businessName} đã nhận tiền hoàn từ quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+    return isExpert
+      ? `${businessName} đã nhận phần tiền hoàn từ quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" theo quyết định xử lý.`
+      : `${businessName} đã nhận tiền hoàn từ quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
+  }
+  if (text.includes("dispute expert payout")) {
+    return isExpert
+      ? `Bạn đã nhận phần tiền được quyết toán từ tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
+      : `${expertName} đã nhận phần tiền được quyết toán từ tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}".`;
   }
   if (text.includes("dispute settlement debit")) {
-    return role === "EXPERT"
-      ? `${expertName} đã nhận tiền quyết toán tranh chấp ${milestonePhrase} từ hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
+    return isExpert
+      ? `Bạn đã nhận phần tiền được quyết toán từ tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
       : `${businessName} đã được quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
   }
+  if (text.includes("termination expert payout")) {
+    return isExpert
+      ? `Bạn đã nhận phần tiền được quyết toán khi chấm dứt hợp đồng "${contractTitle}" với doanh nghiệp ${businessName}.`
+      : `${expertName} đã nhận phần tiền được quyết toán khi chấm dứt hợp đồng "${contractTitle}".`;
+  }
+  if (text.includes("termination business refund")) {
+    return `${businessName} đã nhận phần tiền hoàn khi chấm dứt hợp đồng "${contractTitle}" theo quyết định xử lý.`;
+  }
+  if (text.includes("termination settlement debit")) {
+    return `Tiền ký quỹ của hợp đồng "${contractTitle}" đã được quyết toán theo yêu cầu chấm dứt hợp đồng.`;
+  }
+  if (
+    type === "EXPERT_CONTRACT_DEPOSIT_HOLD" ||
+    text.includes("expert contract deposit") ||
+    text.includes("expert security deposit hold")
+  ) {
+    return isExpert
+      ? `Bạn đã ký quỹ bảo đảm cho hợp đồng "${contractTitle}". Khoản tiền này được giữ trong thời gian thực hiện hợp đồng.`
+      : `${expertName} đã ký quỹ bảo đảm cho hợp đồng "${contractTitle}".`;
+  }
+  if (
+    type === "EXPERT_CONTRACT_DEPOSIT_REFUND" ||
+    text.includes("expert security deposit refund")
+  ) {
+    return isExpert
+      ? `Bạn đã được hoàn lại tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}".`
+      : `${expertName} đã được hoàn ký quỹ bảo đảm của hợp đồng "${contractTitle}".`;
+  }
+  if (text.includes("refund participant contract deposit")) {
+    return isExpert
+      ? `Bạn đã được hoàn lại tiền ký quỹ tham gia hợp đồng "${contractTitle}".`
+      : `Tiền ký quỹ tham gia hợp đồng "${contractTitle}" đã được hoàn cho bên liên quan.`;
+  }
+  if (text.includes("refund contract security deposit")) {
+    return `${businessName} đã được hoàn lại tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}".`;
+  }
+  if (text.includes("admin resolved contract security deposit")) {
+    return `Tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}" đã được xử lý theo quyết định của Admin.`;
+  }
 
-  return tx.description || tx.rawDescription || tx.contractTitle || tx.jobTitle || "";
+  return (
+    cleanWalletDescription(tx.description) ||
+    cleanWalletDescription(tx.rawDescription) ||
+    tx.contractTitle ||
+    tx.jobTitle ||
+    ""
+  );
 }
 
 function withdrawStatusLabel(status: string) {
@@ -168,6 +266,182 @@ function transactionStatusLabel(status?: string) {
     CANCELLED: "Đã huỷ",
   };
   return map[status.toUpperCase()] ?? status;
+}
+
+function parseMilestoneOperationContext(tx: WalletTransaction) {
+  const operationKey = tx.operationKey || "";
+  const match = operationKey.match(
+    /^MILESTONE_ESCROW_(?:DEPOSIT|RELEASE|REFUND|SETTLEMENT_PAYOUT|SETTLEMENT_REFUND):(\d+):(\d+)/i,
+  );
+  if (match) {
+    return {
+      contractId: Number(match[1]),
+      milestoneId: Number(match[2]),
+    };
+  }
+  if (
+    String(tx.referenceType || "").toUpperCase() === "MILESTONE" &&
+    tx.contractId &&
+    tx.referenceId
+  ) {
+    return {
+      contractId: Number(tx.contractId),
+      milestoneId: Number(tx.referenceId),
+    };
+  }
+  return null;
+}
+
+function parseContractOperationContext(tx: WalletTransaction) {
+  const operationKey = tx.operationKey || "";
+  const type = String(tx.transactionType || "").toUpperCase();
+  const referenceType = String(tx.referenceType || "").toUpperCase();
+  const contractHoldMatch = operationKey.match(/^CONTRACT_DEPOSIT_HOLD:/i);
+  if (
+    contractHoldMatch &&
+    referenceType === "CONTRACT_DEPOSIT" &&
+    tx.referenceId
+  ) {
+    return { contractId: Number(tx.referenceId) };
+  }
+  if (
+    type === "EXPERT_CONTRACT_DEPOSIT_HOLD" &&
+    referenceType === "CONTRACT_DEPOSIT" &&
+    tx.referenceId
+  ) {
+    return { contractId: Number(tx.referenceId) };
+  }
+  return null;
+}
+
+function parseDisputeOperationId(tx: WalletTransaction) {
+  const operationKey = tx.operationKey || "";
+  const match = operationKey.match(/^DISPUTE_SETTLEMENT:(\d+)/i);
+  if (match) return Number(match[1]);
+  if (String(tx.referenceType || "").toUpperCase() === "DISPUTE" && tx.referenceId) {
+    return Number(tx.referenceId);
+  }
+  return null;
+}
+
+function needsContractContext(tx: WalletTransaction) {
+  const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const type = String(tx.transactionType || "").toUpperCase();
+  const isMilestoneWalletTx =
+    text.includes("deposit milestone escrow") ||
+    text.includes("milestone approved payout") ||
+    text.includes("release approved milestone escrow") ||
+    text.includes("review sla auto-approval escrow release") ||
+    text.includes("review sla auto-approval payout") ||
+    text.includes("immediate termination milestone refund") ||
+    text.includes("dispute business refund") ||
+    text.includes("dispute expert payout") ||
+    text.includes("dispute settlement debit") ||
+    text.includes("expert contract deposit") ||
+    type === "EXPERT_CONTRACT_DEPOSIT_HOLD" ||
+    type === "EXPERT_CONTRACT_DEPOSIT_REFUND" ||
+    type.startsWith("MILESTONE_ESCROW_");
+
+  if (!isMilestoneWalletTx) return false;
+  return !tx.businessName || !tx.expertName || !tx.contractTitle || !tx.milestoneNumber;
+}
+
+async function enrichWalletTransactions(
+  transactions: WalletTransaction[],
+): Promise<WalletTransaction[]> {
+  const contextByIndex = new Map<number, { contractId: number; milestoneId?: number }>();
+  transactions.forEach((tx, index) => {
+    if (!needsContractContext(tx)) return;
+    const context =
+      parseMilestoneOperationContext(tx) ||
+      parseContractOperationContext(tx);
+    if (context) contextByIndex.set(index, context);
+  });
+
+  const disputeRequests = transactions
+    .map((tx, index) => ({ index, disputeId: needsContractContext(tx) ? parseDisputeOperationId(tx) : null }))
+    .filter((item): item is { index: number; disputeId: number } => Number.isFinite(item.disputeId));
+
+  const disputeByIndex = new Map<number, Dispute | null>();
+  await Promise.all(
+    disputeRequests.map(async ({ index, disputeId }) => {
+      const dispute = await disputeApi.get(disputeId).catch(() => null);
+      disputeByIndex.set(index, dispute);
+      if (dispute?.contractId) {
+        contextByIndex.set(index, {
+          contractId: Number(dispute.contractId),
+          milestoneId: dispute.milestoneId ? Number(dispute.milestoneId) : undefined,
+        });
+      }
+    }),
+  );
+
+  const contractIds = [...new Set([...contextByIndex.values()].map((item) => item.contractId))];
+  if (contractIds.length === 0) return transactions;
+
+  const contextByContract = new Map<
+    number,
+    {
+      contract: Contract | null;
+      milestones: Milestone[];
+      business: BusinessProfile | null;
+      expert: ExpertProfile | null;
+    }
+  >();
+
+  await Promise.all(
+    contractIds.map(async (contractId) => {
+      const [contract, milestones] = await Promise.all([
+        contractApi.getContract(contractId).catch(() => null),
+        contractApi.listMilestones(contractId).catch(() => [] as Milestone[]),
+      ]);
+      const [business, expert] = await Promise.all([
+        contract?.businessId
+          ? profileApi.getBusinessById(contract.businessId).catch(() => null)
+          : Promise.resolve(null),
+        contract?.expertId
+          ? profileApi.getExpertById(contract.expertId).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      contextByContract.set(contractId, { contract, milestones, business, expert });
+    }),
+  );
+
+  return transactions.map((tx, index) => {
+    if (!needsContractContext(tx)) return tx;
+    const context = contextByIndex.get(index);
+    if (!context) return tx;
+    const data = contextByContract.get(context.contractId);
+    if (!data) return tx;
+
+    const milestone = data.milestones.find((item) => {
+      const jobMilestoneId = (item as Milestone & { jobMilestoneId?: number }).jobMilestoneId;
+      return item.milestoneId === context.milestoneId || jobMilestoneId === context.milestoneId;
+    });
+    const dispute = disputeByIndex.get(index);
+
+    return {
+      ...tx,
+      contractId: tx.contractId ?? context.contractId,
+      contractTitle:
+        tx.contractTitle ||
+        data.contract?.contractTitle ||
+        data.contract?.title ||
+        dispute?.jobTitle ||
+        undefined,
+      businessName:
+        tx.businessName ||
+        data.contract?.businessName ||
+        data.business?.companyName,
+      expertName:
+        tx.expertName ||
+        data.contract?.expertName ||
+        data.expert?.fullName ||
+        data.expert?.title,
+      milestoneNumber: tx.milestoneNumber ?? milestone?.orderIndex,
+      milestoneName: tx.milestoneName || milestone?.milestoneName,
+    };
+  });
 }
 
 // ── WithdrawalModal ───────────────────────────────────────────────────────────
@@ -380,7 +654,9 @@ export function WalletPage() {
         withdrawalApi.listMy(),
       ]);
       if (w.status === "fulfilled") setWallet(w.value);
-      if (txs.status === "fulfilled") setTransactions(txs.value);
+      if (txs.status === "fulfilled") {
+        setTransactions(await enrichWalletTransactions(txs.value));
+      }
       if (wdrs.status === "fulfilled") setWithdrawals(wdrs.value);
     } finally {
       setLoading(false);
@@ -547,9 +823,9 @@ export function WalletPage() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-slate-100 overflow-x-auto">
               {/* Header */}
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              <div className="grid min-w-[760px] grid-cols-[auto_1fr_auto_auto_auto] gap-4 bg-slate-100/80 px-6 py-3.5 text-xs font-black uppercase tracking-wide text-slate-600">
                 <span className="w-9" />
                 <span>Nội dung giao dịch</span>
                 <span className="text-right">Số tiền</span>
@@ -562,11 +838,11 @@ export function WalletPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                    className="grid min-w-[760px] grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-6 py-5 transition hover:bg-slate-50/80"
                   >
                     <span
                       className={cn(
-                        "grid h-9 w-9 place-items-center rounded-2xl",
+                        "grid h-11 w-11 place-items-center rounded-2xl",
                         isCredit
                           ? "bg-mint-50 text-mint-600"
                           : "bg-coral-50 text-coral-600",
@@ -574,17 +850,17 @@ export function WalletPage() {
                     >
                       {txIcon(tx.transactionType)}
                     </span>
-                    <div>
-                      <p className="text-sm font-bold text-ink">
+                    <div className="min-w-0">
+                      <p className="text-base font-extrabold leading-snug text-ink">
                         {txDisplayLabel(tx, role)}
                       </p>
                       {txDisplayDescription(tx, role) && (
-                        <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">
+                        <p className="mt-1 max-w-4xl text-sm font-medium leading-relaxed text-slate-700">
                           {txDisplayDescription(tx, role)}
                         </p>
                       )}
                       {(tx.contractTitle || tx.contractId || tx.jobTitle) && (
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                        <p className="mt-1.5 text-sm font-semibold text-slate-500">
                           {tx.contractTitle ||
                             (tx.contractId ? "Hợp đồng liên quan" : "")}
                           {tx.jobTitle ? ` · Cột mốc: ${tx.jobTitle}` : ""}
@@ -593,8 +869,8 @@ export function WalletPage() {
                     </div>
                     <span
                       className={cn(
-                        "text-right text-sm font-extrabold",
-                        isCredit ? "text-mint-600" : "text-coral-600",
+                        "whitespace-nowrap text-right text-base font-black",
+                        isCredit ? "text-emerald-600" : "text-rose-600",
                       )}
                     >
                       {isCredit ? "+" : "-"}
@@ -603,7 +879,7 @@ export function WalletPage() {
                     <span className="w-24 text-center">
                       <StatusBadge status={transactionStatusLabel(tx.status)} />
                     </span>
-                    <span className="w-28 text-right text-xs font-semibold text-slate-400">
+                    <span className="w-28 text-right text-sm font-bold text-slate-600">
                       <SplitDateTime value={tx.createdAt} />
                     </span>
                   </div>
@@ -627,9 +903,9 @@ export function WalletPage() {
             />
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-100 overflow-x-auto">
             {/* Header */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            <div className="grid min-w-[700px] grid-cols-[1fr_auto_auto_auto_auto] gap-4 bg-slate-100/80 px-6 py-3.5 text-xs font-black uppercase tracking-wide text-slate-600">
               <span>Ngân hàng</span>
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
@@ -639,29 +915,29 @@ export function WalletPage() {
             {withdrawals.map((wr) => (
               <div
                 key={wr.withdrawalId}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                className="grid min-w-[700px] grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-6 py-5 transition hover:bg-slate-50/80"
               >
                 <div className="flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-slate-50 text-slate-500">
-                    <Building className="h-4 w-4" />
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-slate-600">
+                    <Building className="h-5 w-5" />
                   </span>
-                  <div>
-                    <p className="text-sm font-bold text-ink">{wr.bankName}</p>
-                    <p className="text-xs text-slate-400">
-                      {maskSensitiveValue(wr.bankAccountNumber)} · {wr.bankAccountHolder}
+                  <div className="min-w-0">
+                    <p className="text-base font-extrabold leading-snug text-ink">{wr.bankName}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-600">
+                      {maskSensitiveValue(wr.bankAccountNumber)}
                     </p>
                   </div>
                 </div>
-                <span className="text-right text-sm font-extrabold text-ink">
+                <span className="whitespace-nowrap text-right text-base font-black text-ink">
                   {formatCurrency(wr.amount)}
                 </span>
                 <span className="w-24 text-center">
                   <StatusBadge status={withdrawStatusLabel(wr.status)} />
                 </span>
-                <span className="w-28 text-right text-xs font-semibold text-slate-400">
+                <span className="w-28 text-right text-sm font-bold text-slate-600">
                   <SplitDateTime value={wr.requestedAt ?? wr.createdAt} />
                 </span>
-                <span className="w-28 text-right text-xs font-semibold text-slate-400">
+                <span className="w-28 text-right text-sm font-bold text-slate-600">
                   <SplitDateTime value={wr.reviewedAt} />
                 </span>
               </div>

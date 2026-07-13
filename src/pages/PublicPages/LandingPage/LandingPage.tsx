@@ -182,8 +182,8 @@ export function LandingPage() {
         <div className="absolute right-[-10rem] top-0 h-[50rem] w-[50rem] rounded-full bg-[#ffb0cc]/30 blur-3xl" />
         <div className="absolute left-[-12rem] top-[-12rem] h-[38rem] w-[38rem] rounded-full bg-[#d8e2ff]/30 blur-3xl" />
 
-        <ScrollReveal className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-center gap-20 lg:grid-cols-2">
-          <div className="flex flex-col gap-12">
+        <ScrollReveal className="relative z-10 mx-auto grid w-full min-w-0 max-w-7xl grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-20">
+          <div className="flex min-w-0 flex-col gap-8 sm:gap-12">
             <div className="flex flex-col gap-3">
               <Badge
                 tone="brand"
@@ -193,7 +193,7 @@ export function LandingPage() {
                 Nền tảng AI Freelance số 1
               </Badge>
 
-              <h1 className="max-w-xl text-[3.25rem] font-bold leading-[1.06] tracking-[-0.04em] text-[#27171d] md:text-[4.25rem]">
+              <h1 className="max-w-xl break-words text-4xl font-bold leading-[1.06] tracking-[-0.04em] text-[#27171d] sm:text-[3.25rem] md:text-[4.25rem]">
                 Nền tảng kết nối doanh nghiệp với{" "}
                 <span className="relative inline-block text-[#b30069]">
                   chuyên gia AI
@@ -224,7 +224,7 @@ export function LandingPage() {
               </LinkButton>
             </div>
 
-            <div className="flex items-center gap-4 border-t border-[#f8dbe3] pt-7">
+            <div className="flex flex-wrap items-center gap-4 border-t border-[#f8dbe3] pt-7">
               <div className="flex -space-x-2">
                 <Avatar
                   name="Lan Anh"
@@ -245,7 +245,7 @@ export function LandingPage() {
                   5k+
                 </span>
               </div>
-              <p className="text-[18px] text-[#594048]">
+              <p className="min-w-0 break-words text-base text-[#594048] sm:text-[18px]">
                 Hơn{" "}
                 <span className="font-extrabold text-[#27171d]">5,000+</span>{" "}
                 chuyên gia đã tham gia
@@ -593,7 +593,7 @@ export function LandingPage() {
       </section>
 
       <section className="px-4 py-24 md:px-10">
-        <ScrollReveal className="relative z-10 mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#b30069]/70 backdrop-blur-xl border border-white/20 px-8 py-14 text-center text-white shadow-[0_28px_60px_rgba(129,19,78,.28)] md:px-12">
+        <ScrollReveal className="relative z-10 mx-auto w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/20 bg-[#b30069]/70 px-5 py-10 text-center text-white shadow-[0_28px_60px_rgba(129,19,78,.28)] backdrop-blur-xl sm:px-8 sm:py-14 md:px-12">
           <div className="absolute -left-20 -top-20 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
           <div className="absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[#4bb8ff]/20 blur-3xl" />
 
@@ -627,7 +627,7 @@ export function LandingPage() {
       </section>
 
       <section className="bg-white px-4 pb-24 md:px-10">
-        <ScrollReveal className="relative z-10 mx-auto grid max-w-7xl gap-8 rounded-[2rem] border border-[#f0dbe3] bg-[#fff8f8] p-8 lg:grid-cols-[1.2fr_.8fr] lg:p-10">
+        <ScrollReveal className="relative z-10 mx-auto grid w-full min-w-0 max-w-7xl gap-8 rounded-[2rem] border border-[#f0dbe3] bg-[#fff8f8] p-5 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:p-10">
           <div>
             <h2 className="text-[2rem] font-bold text-[#27171d]">
               AITASKER dành cho hệ sinh thái doanh nghiệp

@@ -115,7 +115,7 @@ export function SystemWalletPage() {
                 description="Theo dõi giao dịch ví nền tảng, mục đích thanh toán và đối tượng liên quan."
               />
               <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
-                <div className="grid gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid-cols-[1fr_180px_160px] md:items-center">
+                <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid md:grid-cols-[1fr_180px_160px] md:items-center">
                   <span>Thanh toán cho việc gì</span>
                   <span>Người thực hiện</span>
                   <span className="md:text-right">Số tiền</span>

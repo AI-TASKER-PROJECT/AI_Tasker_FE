@@ -127,7 +127,7 @@ export function FinancePage() {
         .catch(() => {
           setTransactions([]);
           setMessage(
-            "Backend hien chi expose wallet transaction history; chua co API transaction legacy theo milestone.",
+            "Backend hiện chỉ expose wallet transaction history; chưa có API transaction legacy theo milestone.",
           );
         });
     }
@@ -144,15 +144,15 @@ export function FinancePage() {
         <PageHeader
           title={
             session?.role === "EXPERT"
-              ? "Quan ly doanh thu hop dong"
-              : "Quan ly quy va chi phi du an"
+              ? "Quản lý doanh thu hợp đồng"
+              : "Quản lý quỹ và chi phí dự án"
           }
           description={
             isAdmin
-              ? "Theo doi lich su bien dong vi tu backend wallet transaction."
+              ? "Theo dõi lịch sử biến động ví từ backend wallet transaction."
               : session?.role === "EXPERT"
-                ? "Theo doi doanh thu tu cac du an va so tien dang cho nghiem thu."
-                : "Theo doi ngan sach, ky quy va cac hop dong dang thuc thi."
+                ? "Theo dõi doanh thu từ các dự án và số tiền đang chờ nghiệm thu."
+                : "Theo dõi ngân sách, ký quỹ và các hợp đồng đang thực thi."
           }
           actions={null}
         />
@@ -163,7 +163,7 @@ export function FinancePage() {
           <div className="mb-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                So du kha dung
+                Số dư khả dụng
               </p>
               <p className="mt-2 font-display text-2xl font-black text-ink">
                 {formatCurrency(wallet.availableBalance)}
@@ -171,7 +171,7 @@ export function FinancePage() {
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                {session?.role === "EXPERT" ? "Cho nghiem thu" : "So tien ky quy"}
+                {session?.role === "EXPERT" ? "Chờ nghiệm thu" : "Số tiền ký quỹ"}
               </p>
               <p className="mt-2 font-display text-2xl font-black text-amber-700">
                 {formatCurrency(wallet.escrowBalance)}
@@ -179,7 +179,7 @@ export function FinancePage() {
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Vi
+                Ví
               </p>
               <p className="mt-2 font-display text-2xl font-black text-brand-700">
                 {wallet.walletType}
@@ -188,8 +188,8 @@ export function FinancePage() {
           </div>
         )}
         {isAdmin && (
-          <Notice tone="info" title="Da tat transaction legacy">
-            Backend hien tai khong expose API tao transaction, webhook, hoac cap nhat status theo milestone. Man nay chi doc lich su wallet transaction that.
+          <Notice tone="info" title="Đã tắt transaction legacy">
+            Backend hiện tại không expose API tạo transaction, webhook, hoặc cập nhật status theo milestone. Màn này chỉ đọc lịch sử wallet transaction thật.
           </Notice>
         )}
         {message && <Notice tone="danger" title={message} className="mt-4" />}
@@ -199,7 +199,7 @@ export function FinancePage() {
         <>
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">Tong giao dich thanh cong</p>
+              <p className="text-sm font-bold text-slate-500">Tổng giao dịch thành công</p>
               <p className="mt-2 font-display text-3xl font-black text-ink">
                 {formatCurrency(
                   successfulTransactions.reduce((sum, item) => sum + item.amount, 0),
@@ -207,13 +207,13 @@ export function FinancePage() {
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">Tong giao dich</p>
+              <p className="text-sm font-bold text-slate-500">Tổng giao dịch</p>
               <p className="mt-2 font-display text-3xl font-black text-mint-600">
                 {transactions.length}
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">Dang cho xu ly</p>
+              <p className="text-sm font-bold text-slate-500">Đang chờ xử lý</p>
               <p className="mt-2 font-display text-3xl font-black text-coral-600">
                 {transactions.filter((item) => (item.status || "").toUpperCase() === "PENDING").length}
               </p>
@@ -221,11 +221,11 @@ export function FinancePage() {
           </div>
 
           <Card className="overflow-hidden">
-            <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_160px_140px_150px]">
-              <span>Giao dich</span>
+            <div className="hidden border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[1fr_160px_140px_150px]">
+              <span>Giao dịch</span>
               <span>Nội dung</span>
-              <span>So tien</span>
-              <span>Trang thai</span>
+              <span>Số tiền</span>
+              <span>Trạng thái</span>
             </div>
             {transactions.map((tx) => (
               <div
@@ -249,8 +249,8 @@ export function FinancePage() {
             ))}
             {transactions.length === 0 && (
               <EmptyState
-                title="Chua co giao dich"
-                description="Backend wallet transaction chua tra du lieu cho tai khoan hien tai."
+                title="Chưa có giao dịch"
+                description="Backend wallet transaction chưa trả dữ liệu cho tài khoản hiện tại."
               />
             )}
           </Card>
@@ -262,7 +262,7 @@ export function FinancePage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-5">
               <p className="text-sm font-bold text-slate-500">
-                {session?.role === "EXPERT" ? "Tong doanh thu" : "Tong ngan sach da coc"}
+                {session?.role === "EXPERT" ? "Tổng doanh thu" : "Tổng ngân sách đã cọc"}
               </p>
               <p className="mt-2 font-display text-3xl font-black text-ink">
                 {formatCurrency(
@@ -271,7 +271,7 @@ export function FinancePage() {
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">Du an dang thuc thi</p>
+              <p className="text-sm font-bold text-slate-500">Dự án đang thực thi</p>
               <p className="mt-2 font-display text-3xl font-black text-mint-600">
                 {
                   contracts.filter((c) =>
@@ -283,7 +283,7 @@ export function FinancePage() {
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-bold text-slate-500">Du an da hoan thanh</p>
+              <p className="text-sm font-bold text-slate-500">Dự án đã hoàn thành</p>
               <p className="mt-2 font-display text-3xl font-black text-coral-600">
                 {
                   contracts.filter((c) =>
@@ -296,11 +296,11 @@ export function FinancePage() {
             </Card>
           </div>
           <Card className="overflow-hidden">
-            <div className="grid border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid-cols-[1fr_150px_150px_150px]">
-              <span>Du an</span>
-              <span>{session?.role === "EXPERT" ? "Doanh thu" : "Ngan sach"}</span>
-              <span>Thoi gian</span>
-              <span>Trang thai</span>
+            <div className="hidden border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[1fr_150px_150px_150px]">
+              <span>Dự án</span>
+              <span>{session?.role === "EXPERT" ? "Doanh thu" : "Ngân sách"}</span>
+              <span>Thời gian</span>
+              <span>Trạng thái</span>
             </div>
             {contracts.map((contract) => (
               <div
@@ -318,15 +318,15 @@ export function FinancePage() {
                   {formatCurrency(contract.totalBudget)}
                 </span>
                 <span className="text-slate-600">
-                  {contract.timelineDays} ngay
+                  {contract.timelineDays} ngày
                 </span>
                 <StatusBadge status={translateContractStatus(contract.status)} />
               </div>
             ))}
             {contracts.length === 0 && (
               <EmptyState
-                title="Chua co du an"
-                description="Chua co hop dong nao duoc coc hoac thuc thi."
+                title="Chưa có dự án"
+                description="Chưa có hợp đồng nào được cọc hoặc thực thi."
               />
             )}
           </Card>
