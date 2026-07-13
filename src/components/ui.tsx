@@ -309,7 +309,7 @@ export function PageHeader({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
         {eyebrow && (
           <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-brand-600">
             {eyebrow}
@@ -335,13 +335,13 @@ export function SectionHeading({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
-      <div className="min-w-0 flex-1">
-        <h2 className="break-words font-display text-lg font-extrabold tracking-tight text-ink">{title}</h2>
-        {description && <p className="mt-1 break-words text-sm text-slate-500">{description}</p>}
+      <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="break-words font-display text-lg font-extrabold tracking-tight text-ink">{title}</h2>
+          {description && <p className="mt-1 break-words text-sm text-slate-500">{description}</p>}
+        </div>
+        {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
-      {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
-    </div>
   );
 }
 

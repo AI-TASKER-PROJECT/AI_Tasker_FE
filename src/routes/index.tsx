@@ -41,16 +41,15 @@ import {
 } from "../pages/MarketplacePages";
 import { MyJobDetailPage } from "../pages/MarketplacePages/MyJobsPage/MyJobDetailPage";
 import {
+  BusinessProfilePage,
   ExpertPortfolioPage,
+  ExpertProfilePage,
   MyPublicBusinessProfilePage,
   MyPublicExpertProfilePage,
   PublicBusinessProfilePage,
   PublicExpertProfilePage,
+  StaffProfilePage,
 } from "../pages/ProfilePages";
-import {
-  BusinessVerificationProfilePage,
-  ExpertVerificationProfilePage,
-} from "../pages/ProfilePages/VerificationProfilePages";
 import {
   ExpertDirectoryPage,
   JobDetailPage,
@@ -146,6 +145,14 @@ export function AppRoutes() {
             </PageTransition>
           }
         />
+        <Route
+          path="staff/profile"
+          element={
+            <PageTransition>
+              <StaffProfilePage />
+            </PageTransition>
+          }
+        />
 
         {/* Jobs (BUSINESS only) */}
         <Route element={<RoleProtectedRoute roles={["BUSINESS"]} />}>
@@ -193,7 +200,7 @@ export function AppRoutes() {
             path="business/profile"
             element={
               <PageTransition>
-                <BusinessVerificationProfilePage />
+                <BusinessProfilePage />
               </PageTransition>
             }
           />
@@ -253,7 +260,7 @@ export function AppRoutes() {
             path="expert/profile"
             element={
               <PageTransition>
-                <ExpertVerificationProfilePage />
+                <ExpertProfilePage />
               </PageTransition>
             }
           />

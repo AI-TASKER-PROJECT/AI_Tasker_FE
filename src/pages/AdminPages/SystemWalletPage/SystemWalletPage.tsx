@@ -1,12 +1,14 @@
 import {
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   ShieldAlert,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminApi } from "../../../lib/api";
-import { formatCurrency, formatDateTime } from "../../../lib/utils";
+import { formatCurrency, formatDateTime, walletTypeLabel } from "../../../lib/utils";
 import {
   Badge,
   Button,
@@ -22,6 +24,8 @@ export function SystemWalletPage() {
   const [history, setHistory] = useState<WalletTransaction[]>([]);
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyPageSize = 5;
 
   const load = useCallback(async (sync = false) => {
     setLoading(true);
@@ -34,6 +38,7 @@ export function SystemWalletPage() {
       setWallet(w);
       setHistory(h);
       setAccounts(accs);
+      setHistoryPage(1);
     } finally {
       setLoading(false);
     }
@@ -42,6 +47,12 @@ export function SystemWalletPage() {
   useEffect(() => {
     void Promise.resolve().then(() => load());
   }, [load]);
+
+  const historyPageCount = Math.max(1, Math.ceil(history.length / historyPageSize));
+  const visibleHistory = useMemo(
+    () => history.slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize),
+    [history, historyPage],
+  );
 
   return (
     <div className="space-y-6">
@@ -90,7 +101,7 @@ export function SystemWalletPage() {
                 description="Các số liệu chung của sổ cái."
               />
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <WalletFact label="Loại ví" value={wallet.walletType} />
+                <WalletFact label="Loại ví" value={walletTypeLabel(wallet.walletType)} />
                 <WalletFact
                   label="Khả dụng"
                   value={formatCurrency(wallet.availableBalance)}
@@ -116,8 +127,8 @@ export function SystemWalletPage() {
               />
               <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
                 <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid md:grid-cols-[1fr_180px_160px] md:items-center">
-                  <span>Thanh toán cho việc gì</span>
-                  <span>Người thực hiện</span>
+                  <span>Mục đích và dòng tiền</span>
+                  <span>Người nhận / tài khoản</span>
                   <span className="md:text-right">Số tiền</span>
                 </div>
 
@@ -127,16 +138,15 @@ export function SystemWalletPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100">
-                    {history.map((t) => {
+                    {visibleHistory.map((t) => {
                       const transactionId = t.transactionId ?? t.id;
-                      const contextItems = walletTransactionContextItems(t);
                       const isPositive =
                         t.direction === "CREDIT" || t.direction === "RELEASE";
 
                       return (
                         <div
                           key={transactionId}
-                          className="grid gap-4 px-5 py-5 transition hover:bg-slate-50/70 md:grid-cols-[1fr_180px_160px] md:items-start"
+                          className="grid gap-3 px-5 py-4 transition hover:bg-slate-50/70 md:grid-cols-[minmax(0,1fr)_180px_160px] md:items-center"
                         >
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -148,40 +158,30 @@ export function SystemWalletPage() {
                                 {walletTransactionTypeLabel(t.transactionType)}
                               </Badge>
                               <Badge tone={walletTransactionStatusTone(t.status)}>
-                                {t.status}
+                                {walletTransactionStatusLabel(t.status)}
                               </Badge>
                               <span className="text-xs font-bold text-slate-400">
                                 {formatDateTime(t.createdAt)}
                               </span>
                             </div>
 
-                            <p className="mt-3 text-base font-extrabold text-ink">
+                            <p className="mt-2 truncate text-base font-extrabold text-ink">
                               {walletTransactionPurposeTitle(t)}
                             </p>
-                            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                              {walletTransactionPurposeDescription(t)}
+                            <p className="mt-1 truncate text-xs text-slate-400">
+                              {walletTransactionReadableDescription(t, accounts)}
                             </p>
-
-                            {contextItems.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {contextItems.map((item) => (
-                                  <span
-                                    key={item}
-                                    className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-500 ring-1 ring-inset ring-slate-100"
-                                  >
-                                    {item}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
 
                           <div className="grid gap-1 text-sm">
+                            <span className="text-xs font-bold text-slate-400">
+                              {walletTransactionPartyLabel(t)}
+                            </span>
                             <span className="font-extrabold text-slate-700">
-                              {walletTransactionActorName(t, accounts)}
+                              {walletTransactionPartyName(t, accounts)}
                             </span>
                             <span className="text-xs font-bold text-slate-400">
-                              {t.balanceType || "BALANCE"}
+                              {walletTransactionBalanceLabel(t.balanceType)}
                             </span>
                           </div>
 
@@ -197,12 +197,40 @@ export function SystemWalletPage() {
                               {formatCurrency(t.amount)}
                             </div>
                             <div className="mt-1 text-xs font-bold text-slate-400">
-                              {t.direction}
+                              {walletTransactionDirectionLabel(t.direction)}
                             </div>
                           </div>
                         </div>
                       );
                     })}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                      <span className="text-xs font-bold text-slate-400">
+                        Hiển thị {(historyPage - 1) * historyPageSize + 1}–{Math.min(historyPage * historyPageSize, history.length)} trong {history.length} giao dịch
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                          disabled={historyPage === 1}
+                          aria-label="Trang trước"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="min-w-20 text-center text-xs font-extrabold text-slate-500">
+                          Trang {historyPage}/{historyPageCount}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setHistoryPage((page) => Math.min(historyPageCount, page + 1))}
+                          disabled={historyPage === historyPageCount}
+                          aria-label="Trang sau"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -225,23 +253,69 @@ function walletTransactionTypeLabel(type?: string) {
     WITHDRAW_APPROVED: "Duyệt rút tiền",
     WITHDRAW_REJECTED: "Từ chối rút tiền",
   };
-  return labels[type ?? ""] ?? type ?? "Giao dịch";
+  return labels[type ?? ""] ?? walletTransactionTypeFallback(type);
 }
 
-function walletTransactionBadgeTone(type?: string) {
-  if (type === "TOPUP" || type === "WITHDRAW_APPROVED") return "mint";
-  if (type === "CONTRACT_SECURITY_DEPOSIT_HOLD" || type === "DEPOSIT_REFUND") {
-    return "amber";
-  }
-  if (type === "WITHDRAW_REJECTED" || type === "WITHDRAW_HOLD") return "coral";
-  if (type === "MEMBERSHIP_PURCHASE" || type === "CREDIT_PURCHASE") {
-    return "violet";
-  }
-  return "slate";
+function walletTransactionTypeFallback(type?: string) {
+  const labels: Record<string, string> = {
+    EXPERT_CONTRACT_DEPOSIT_REFUND: "Hoàn ký quỹ cho chuyên gia",
+    CONTRACT_SECURITY_DEPOSIT_REFUND: "Hoàn ký quỹ hợp đồng",
+    MILESTONE_ESCROW_RELEASE: "Giải ngân theo giai đoạn",
+    MILESTONE_ESCROW_DEPOSIT: "Ký quỹ theo giai đoạn",
+    "MILESTONE ESCROW DEPOSIT": "Ký quỹ theo giai đoạn",
+    "MILESTONE APPROVED PAYOUT": "Giải ngân giai đoạn đã duyệt",
+    EXPERT_CONTRACT_DEPOSIT_HOLD: "Ký quỹ hợp đồng chuyên gia",
+    "EXPERT CONTRACT DEPOSIT HOLD": "Ký quỹ hợp đồng chuyên gia",
+    IMMEDIATE_TERMINATION_PENALTY: "Phạt chấm dứt hợp đồng ngay",
+    "IMMEDIATE TERMINATION PENALTY": "Phạt chấm dứt hợp đồng ngay",
+    MILESTONE_ESCROW_REFUND: "Hoàn ký quỹ theo giai đoạn",
+    "MILESTONE ESCROW REFUND": "Hoàn ký quỹ theo giai đoạn",
+  };
+  const normalizedType = type?.trim().toUpperCase();
+  if (normalizedType && labels[normalizedType]) return labels[normalizedType];
+  return type
+    ? type.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ")
+    : "Giao dịch";
+}
+
+function walletTransactionStatusLabel(status?: string) {
+  const labels: Record<string, string> = {
+    POSTED: "Đã ghi nhận",
+    SUCCESS: "Thành công",
+    PENDING: "Đang chờ xử lý",
+    FAILED: "Thất bại",
+    CANCELLED: "Đã hủy",
+  };
+  return labels[status ?? ""] ?? "Đã ghi nhận";
+}
+
+function walletTransactionBalanceLabel(balanceType?: string) {
+  const labels: Record<string, string> = {
+    AVAILABLE: "Số dư khả dụng",
+    ESCROW: "Số dư ký quỹ",
+    HOLDING: "Đang tạm giữ",
+    DISPUTE: "Đang tranh chấp",
+  };
+  return labels[balanceType ?? ""] ?? "Số dư ví";
+}
+
+function walletTransactionDirectionLabel(direction?: string) {
+  const labels: Record<string, string> = {
+    CREDIT: "Cộng tiền",
+    DEBIT: "Trừ tiền",
+    HOLD: "Tạm giữ",
+    RELEASE: "Giải tỏa",
+  };
+  return labels[direction ?? ""] ?? "Điều chỉnh số dư";
+}
+
+function walletTransactionBadgeTone(type?: string): "violet" {
+  void type;
+  return "violet";
 }
 
 function walletTransactionStatusTone(status?: string) {
-  if (status === "SUCCESS") return "mint";
+  if (status === "SUCCESS" || status === "POSTED") return "mint";
   if (status === "PENDING") return "amber";
   if (status === "FAILED" || status === "CANCELLED") return "coral";
   return "slate";
@@ -257,8 +331,25 @@ function walletTransactionActorName(
     ?? "Tài khoản người dùng";
 }
 
+function walletTransactionPartyName(
+  tx: WalletTransaction,
+  accounts: AdminAccount[],
+) {
+  if (tx.direction === "DEBIT" && tx.counterpartyName) return tx.counterpartyName;
+  return walletTransactionActorName(tx, accounts);
+}
+
+function walletTransactionPartyLabel(tx: WalletTransaction) {
+  if (tx.direction === "DEBIT") return "Bên nhận tiền";
+  if (tx.direction === "CREDIT" || tx.direction === "RELEASE") return "Người nhận tiền";
+  return "Bên liên quan";
+}
+
 function walletTransactionPurposeTitle(tx: WalletTransaction) {
-  if (tx.title) return tx.title;
+  if (tx.transactionType === "EXPERT_CONTRACT_DEPOSIT_REFUND") return "Hoàn ký quỹ cho chuyên gia";
+  if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_REFUND") return "Hoàn ký quỹ hợp đồng";
+  if (tx.transactionType === "MILESTONE_ESCROW_RELEASE") return "Giải ngân theo giai đoạn";
+  if (tx.title) return walletTransactionTitleLabel(tx.title);
   if (tx.transactionType === "TOPUP") return "Nạp tiền vào ví";
   if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
     return `Mua gói ${tx.packageName ?? "thành viên"}`;
@@ -276,47 +367,39 @@ function walletTransactionPurposeTitle(tx: WalletTransaction) {
   return walletTransactionTypeLabel(tx.transactionType);
 }
 
-function walletTransactionPurposeDescription(tx: WalletTransaction) {
-  if (tx.description) return tx.description;
-  if (tx.rawDescription) return tx.rawDescription;
-
+function walletTransactionReadableDescription(
+  tx: WalletTransaction,
+  accounts: AdminAccount[],
+) {
+  const recipient = walletTransactionPartyName(tx, accounts);
   const amount = formatCurrency(tx.amount);
-  if (tx.transactionType === "TOPUP") {
-    return `Người dùng nạp ${amount} vào ví${tx.providerOrderCode ? ` qua mã thanh toán ${tx.providerOrderCode}` : ""}.`;
-  }
-  if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
-    return `Thanh toán ${amount} để mua gói ${tx.packageName ?? "thành viên"}.`;
-  }
-  if (tx.transactionType === "CREDIT_PURCHASE") {
-    return `Thanh toán ${amount} để mua thêm lượt đăng job hoặc lượt nộp proposal.`;
-  }
-  if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
-    return `Doanh nghiệp ký quỹ ${amount} cho hợp đồng${tx.contractTitle ? ` "${tx.contractTitle}"` : ""}.`;
-  }
-  if (tx.transactionType === "DEPOSIT_REFUND") {
-    return `Admin xử lý hoàn ký quỹ ${amount}${tx.contractTitle ? ` cho hợp đồng "${tx.contractTitle}"` : ""}.`;
-  }
-  if (tx.transactionType === "WITHDRAW_HOLD") {
-    return `Hệ thống giữ ${amount} khi người dùng tạo yêu cầu rút tiền.`;
-  }
-  if (tx.transactionType === "WITHDRAW_APPROVED") {
-    return `Admin duyệt rút ${amount} về tài khoản ngân hàng.`;
-  }
-  if (tx.transactionType === "WITHDRAW_REJECTED") {
-    return `Yêu cầu rút ${amount} bị từ chối và tiền được hoàn về ví khả dụng.`;
-  }
-  return "Giao dịch ví nền tảng được backend ghi nhận.";
+  const balance = walletTransactionBalanceLabel(tx.balanceType).toLowerCase();
+  const direction = walletTransactionDirectionLabel(tx.direction).toLowerCase();
+  const purpose = tx.contractTitle
+    ? `cho hợp đồng "${tx.contractTitle}"`
+    : tx.jobTitle
+      ? `cho dự án "${tx.jobTitle}"`
+      : tx.milestoneName
+        ? `cho giai đoạn "${tx.milestoneName}"`
+        : tx.packageName
+          ? `để mua gói "${tx.packageName}"`
+          : "theo nghiệp vụ nền tảng";
+
+  return `${direction} ${amount} vào ${balance} của ${recipient}, ${purpose}.`;
 }
 
-function walletTransactionContextItems(tx: WalletTransaction) {
-  return [
-    tx.contractTitle ? `Contract: ${tx.contractTitle}` : null,
-    tx.jobTitle ? `Job: ${tx.jobTitle}` : null,
-    tx.businessName ? `Doanh nghiệp: ${tx.businessName}` : null,
-    tx.expertName ? `Chuyên gia: ${tx.expertName}` : null,
-    tx.packageName ? `Gói: ${tx.packageName}` : null,
-    tx.withdrawalId ? "Yêu cầu rút tiền" : null,
-    tx.providerOrderCode ? "Thanh toán qua PayOS" : null,
-    tx.bankName ? `Ngân hàng: ${tx.bankName}` : null,
-  ].filter(Boolean) as string[];
+function walletTransactionTitleLabel(title: string) {
+  const labels: Record<string, string> = {
+    "Milestone Escrow Deposit": "Ký quỹ theo giai đoạn",
+    "Milestone Approved Payout": "Giải ngân giai đoạn đã duyệt",
+    "Release approved milestone escrow": "Giải tỏa ký quỹ giai đoạn đã duyệt",
+    "Refund participant contract deposit": "Hoàn ký quỹ cho người tham gia hợp đồng",
+    "Expert Contract Deposit Hold": "Ký quỹ hợp đồng chuyên gia",
+    "Immediate Termination Penalty": "Phạt chấm dứt hợp đồng ngay",
+    "Milestone Escrow Refund": "Hoàn ký quỹ theo giai đoạn",
+    "Ví được cộng tiền": "Tiền được cộng vào ví",
+    "Ví được giải tỏa tiền": "Tiền được giải tỏa khỏi ví",
+    "Ví bị trừ tiền": "Tiền được trừ khỏi ví",
+  };
+  return labels[title.trim()] ?? walletTransactionTypeFallback(title);
 }

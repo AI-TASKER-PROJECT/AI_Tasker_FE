@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { contractApi, walletApi, walletTransactionApi } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import { formatCurrency } from "../../../lib/utils";
+import { formatCurrency, walletTypeLabel } from "../../../lib/utils";
 import type { Contract, SystemWallet, WalletTransaction } from "../../../types";
 import {
   Badge,
@@ -182,7 +182,7 @@ export function FinancePage() {
                 Ví
               </p>
               <p className="mt-2 font-display text-2xl font-black text-brand-700">
-                {wallet.walletType}
+                {walletTypeLabel(wallet.walletType)}
               </p>
             </div>
           </div>
