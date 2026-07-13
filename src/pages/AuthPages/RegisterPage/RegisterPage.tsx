@@ -109,8 +109,8 @@ export function RegisterPage() {
       saveSession(session);
       navigate(
         googleSignup.role === "BUSINESS"
-          ? "/app/business/profile"
-          : "/app/expert/profile",
+          ? "/app/business/kyb"
+          : "/app/expert/kyc",
       );
     } catch {
       setMessageTone("danger");
@@ -255,8 +255,8 @@ export function RegisterPage() {
       saveSession(session);
       navigate(
         form.role === "BUSINESS"
-          ? "/app/business/profile"
-          : "/app/expert/profile",
+          ? "/app/business/kyb"
+          : "/app/expert/kyc",
       );
     } catch {
       setMessageTone("danger");

@@ -1405,7 +1405,9 @@ export function CreateJobPage() {
                     }))
                   }
                   className={
-                    sowGeneratedLocked ? "bg-slate-50 text-slate-500" : ""
+                    sowGeneratedLocked
+                      ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
+                      : ""
                   }
                 />
                 {attemptedSubmit && !form.structuredSow.trim() && (
@@ -1544,6 +1546,7 @@ export function CreateJobPage() {
                         value={milestone.milestoneName}
                         placeholder="Chi tiết công việc"
                         disabled={sowGeneratedLocked}
+                        className={sowGeneratedLocked ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black" : ""}
                         onChange={(event) =>
                           updateMilestone(index, {
                             milestoneName: event.target.value,
@@ -1563,6 +1566,7 @@ export function CreateJobPage() {
                         }
                         placeholder="VND"
                         disabled={sowGeneratedLocked}
+                        className={sowGeneratedLocked ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black" : ""}
                         onChange={(event) =>
                           updateMilestoneBudgetAmount(
                             index,
@@ -1578,6 +1582,7 @@ export function CreateJobPage() {
                         placeholder="GĐ"
                         readOnly
                         disabled
+                        className="bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
                       />
                       <div
                         className={`flex h-11 self-start rounded-2xl border border-slate-200 px-3 ${
@@ -1590,7 +1595,7 @@ export function CreateJobPage() {
                           min={1}
                           value={milestone.durationValue}
                           placeholder="Thời lượng"
-                          className="h-full border-0 px-0 shadow-none focus:ring-0"
+                          className={`h-full border-0 px-0 shadow-none focus:ring-0 ${sowGeneratedLocked ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black" : ""}`}
                           disabled={sowGeneratedLocked}
                           onChange={(event) =>
                             updateMilestoneDurationValue(
@@ -1622,7 +1627,7 @@ export function CreateJobPage() {
                                     suppressContentEditableWarning
                                     aria-label={`Tieu chi nghiem thu ${criterionIndex + 1} cua moc ${index + 1}`}
                                     data-placeholder="Ví dụ: Bàn giao đúng tài liệu/API/demo đã thống nhất."
-                                    className={`min-h-[32px] flex-1 min-w-0 border-0 bg-transparent px-1 py-1.5 text-xs font-semibold shadow-none focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:font-normal break-words ${sowGeneratedLocked ? "cursor-default text-slate-500" : "cursor-text"}`}
+                                    className={`min-h-[32px] flex-1 min-w-0 border-0 bg-transparent px-1 py-1.5 text-xs shadow-none focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:font-normal break-words ${sowGeneratedLocked ? "cursor-default text-black font-bold" : "cursor-text font-semibold"}`}
                                     onBlur={(event) =>
                                       updateMilestoneCriterion(
                                         index,
@@ -1802,7 +1807,10 @@ export function CreateJobPage() {
                 <Notice tone="danger" title={publishError} />
               </div>
             )}
-            {createMessage && !savedJob && (
+            {createMessage &&
+              (!savedJob ||
+                (typeof createMessage === "string" &&
+                  createMessage.includes("nháp"))) && (
               <div className="mt-4">
                 {Array.isArray(createMessage) ? (
                   <Notice
@@ -1920,6 +1928,10 @@ export function CreateJobPage() {
             />
             <div className="mt-4 grid gap-2">
               {createMessage &&
+                !(
+                  typeof createMessage === "string" &&
+                  createMessage.includes("nháp")
+                ) &&
                 (Array.isArray(createMessage) ? (
                   <Notice
                     tone={createMessageTone}

@@ -45,7 +45,7 @@ export function AuditLogsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Nhật ký audit"
+          title="Nhật ký hệ thống"
           description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
         />
       </div>
@@ -109,8 +109,7 @@ export function AuditLogsPage() {
                 <span className="font-extrabold text-ink">{log.action}</span>
                 <div className="space-y-1">
                   <p className="font-extrabold text-ink">
-                    {log.entityDisplayName ||
-                      log.entityName}
+                    {log.entityDisplayName || log.entityName}
                   </p>
                   <p className="text-xs font-semibold text-slate-500">
                     {log.entityName}

@@ -271,7 +271,8 @@ export function notificationHref(
   if (contractIdFromText) return `/app/contracts/${contractIdFromText[1]}`;
 
   if (targetUrl === "/expert/proposals") return "/app/proposals";
-  if (targetUrl === "/business/kyb") return "/app/business/profile";
+  if (targetUrl === "/business/kyb") return "/app/business/kyb";
+  if (targetUrl === "/expert/kyc") return "/app/expert/kyc";
   if (targetUrl === "/expert/profile") return "/app/expert/profile";
 
   const staffDisputeMatch = targetUrl.match(

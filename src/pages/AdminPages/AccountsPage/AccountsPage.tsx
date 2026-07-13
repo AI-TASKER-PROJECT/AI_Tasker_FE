@@ -19,11 +19,7 @@ import {
   specializationFromDomains,
   SpecializationSelector,
 } from "../AdminPages.shared";
-import type {
-  AccountStatus,
-  AdminAccount,
-  Role,
-} from "../../../types";
+import type { AccountStatus, AdminAccount, Role } from "../../../types";
 
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
@@ -34,7 +30,10 @@ export function AccountsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AdminAccount | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [pageNotice, setPageNotice] = useState<{ tone: "success" | "danger", title: string } | null>(null);
+  const [pageNotice, setPageNotice] = useState<{
+    tone: "success" | "danger";
+    title: string;
+  } | null>(null);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -98,15 +97,21 @@ export function AccountsPage() {
   const saveAccount = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.email.trim()) newErrors.email = "Vui lòng không bỏ trống email.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Email không hợp lệ.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      newErrors.email = "Email không hợp lệ.";
 
-    if (!form.password) newErrors.password = "Vui lòng không bỏ trống mật khẩu.";
-    else if (form.password.length < 8) newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
+    if (!form.password)
+      newErrors.password = "Vui lòng không bỏ trống mật khẩu.";
+    else if (form.password.length < 8)
+      newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
 
-    if (!form.fullName.trim()) newErrors.fullName = "Vui lòng không bỏ trống họ tên.";
+    if (!form.fullName.trim())
+      newErrors.fullName = "Vui lòng không bỏ trống họ tên.";
 
-    if (!form.phone.trim()) newErrors.phone = "Vui lòng không bỏ trống số điện thoại.";
-    else if (!/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(form.phone.trim())) newErrors.phone = "Số điện thoại không hợp lệ.";
+    if (!form.phone.trim())
+      newErrors.phone = "Vui lòng không bỏ trống số điện thoại.";
+    else if (!/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(form.phone.trim()))
+      newErrors.phone = "Số điện thoại không hợp lệ.";
 
     if (form.role === "STAFF" && form.domainIds.length === 0) {
       newErrors.domainIds = "Vui lòng chọn ít nhất một lĩnh vực chuyên môn.";
@@ -150,11 +155,21 @@ export function AccountsPage() {
           : [...items, saved],
       );
       setOpen(false);
-      setPageNotice({ tone: "success", title: editing ? "Cập nhật tài khoản thành công" : "Tạo tài khoản thành công" });
+      setPageNotice({
+        tone: "success",
+        title: editing
+          ? "Cập nhật tài khoản thành công"
+          : "Tạo tài khoản thành công",
+      });
       setTimeout(() => setPageNotice(null), 3000);
     } catch (error: any) {
-      const msg = error?.response?.data?.message || error?.message || "Đã xảy ra lỗi";
-      if (msg.toLowerCase().includes("email") || msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("trùng")) {
+      const msg =
+        error?.response?.data?.message || error?.message || "Đã xảy ra lỗi";
+      if (
+        msg.toLowerCase().includes("email") ||
+        msg.toLowerCase().includes("exist") ||
+        msg.toLowerCase().includes("trùng")
+      ) {
         setErrors({ email: "Email này đã tồn tại trong hệ thống." });
       } else {
         setErrors({ general: msg });
@@ -173,13 +188,11 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      {pageNotice && (
-        <Notice tone={pageNotice.tone} title={pageNotice.title} />
-      )}
+      {pageNotice && <Notice tone={pageNotice.tone} title={pageNotice.title} />}
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Account Management"
-          description="Admin can create, update, activate, and deactivate every role account."
+          title="Quản lý tài khoản"
+          description="Tạo, chỉnh sửa và quản lý tài khoản người dùng trong hệ thống."
           actions={
             <Button onClick={beginCreate}>
               <Plus className="h-4 w-4" /> Tạo tài khoản mới
@@ -289,7 +302,10 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label={editing ? "New password" : "Password"} error={errors.password}>
+          <Field
+            label={editing ? "New password" : "Password"}
+            error={errors.password}
+          >
             <Input
               type="password"
               value={form.password}

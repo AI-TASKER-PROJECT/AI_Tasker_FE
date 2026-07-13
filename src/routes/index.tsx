@@ -42,8 +42,10 @@ import {
 import { MyJobDetailPage } from "../pages/MarketplacePages/MyJobsPage/MyJobDetailPage";
 import {
   BusinessProfilePage,
+  BusinessVerificationProfilePage,
   ExpertPortfolioPage,
   ExpertProfilePage,
+  ExpertVerificationProfilePage,
   MyPublicBusinessProfilePage,
   MyPublicExpertProfilePage,
   PublicBusinessProfilePage,
@@ -205,6 +207,14 @@ export function AppRoutes() {
             }
           />
           <Route
+            path="business/kyb"
+            element={
+              <PageTransition>
+                <BusinessVerificationProfilePage />
+              </PageTransition>
+            }
+          />
+          <Route
             path="business/public-profile"
             element={
               <PageTransition>
@@ -261,6 +271,14 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <ExpertProfilePage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="expert/kyc"
+            element={
+              <PageTransition>
+                <ExpertVerificationProfilePage />
               </PageTransition>
             }
           />

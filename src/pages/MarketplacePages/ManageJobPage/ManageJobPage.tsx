@@ -462,7 +462,7 @@ export function ManageJobPage() {
             {jobInProgress && (
               <Notice
                 tone="info"
-                title="Job đang IN_PROGRESS, các thao tác dổi proposal và tạo hợp đồng đã bị khóa."
+                title="Dự án đã tạo hợp đồng, các thao tác với proposal và tạo hợp đồng mới sẽ không có hiệu lực."
                 className="mt-4"
               />
             )}

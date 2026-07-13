@@ -1,10 +1,6 @@
 import { Plus, Save } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  catalogApi,
-  type Domain,
-  type Skill,
-} from "../../../lib/api";
+import { catalogApi, type Domain, type Skill } from "../../../lib/api";
 import {
   Badge,
   Button,
@@ -193,8 +189,8 @@ export function MasterDataPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Catalog Management"
-          description="Quan ly domain va skill dung cho job, staff specialization va ho so chuyen gia."
+          title="Quản lý dữ liệu nền tảng"
+          description="Quản lý danh mục lĩnh vực, kỹ năng"
           actions={
             tab === "criteria" ? (
               <Button onClick={beginCreateCriteria}>
@@ -223,12 +219,6 @@ export function MasterDataPage() {
           onClick={() => setTab("skills")}
         >
           Skills
-        </Button>
-        <Button
-          variant={tab === "criteria" ? "primary" : "secondary"}
-          onClick={() => setTab("criteria")}
-        >
-          Acceptance criteria
         </Button>
       </Card>
       {error && (

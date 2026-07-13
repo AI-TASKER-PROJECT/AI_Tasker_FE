@@ -3,7 +3,16 @@ import { ShieldCheck } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import { maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
-import { Avatar, Badge, Card, EmptyState, LinkButton, PageHeader, StatusBadge, Tabs } from "../../../components/ui";
+import {
+  Avatar,
+  Badge,
+  Card,
+  EmptyState,
+  LinkButton,
+  PageHeader,
+  StatusBadge,
+  Tabs,
+} from "../../../components/ui";
 
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
@@ -37,8 +46,12 @@ export function VerificationsPage() {
           active={tab}
           onChange={setTab}
           tabs={[
-            { id: "business", label: "Business KYB", count: businesses.length },
-            { id: "expert", label: "Expert KYC", count: experts.length },
+            {
+              id: "business",
+              label: "Doanh nghiệp - KYB",
+              count: businesses.length,
+            },
+            { id: "expert", label: "Chuyên gia - KYC", count: experts.length },
           ]}
         />
         <div className="mt-4">
@@ -46,22 +59,22 @@ export function VerificationsPage() {
             active={statusFilter}
             onChange={setStatusFilter}
             tabs={[
-              { id: "All", label: "All", count: list.length },
+              { id: "All", label: "Tất cả", count: list.length },
               {
                 id: "Pending",
-                label: "Pending",
+                label: "Đang chờ",
                 count: list.filter((item) => getStatus(item) === "Pending")
                   .length,
               },
               {
                 id: "Approved",
-                label: "Approved",
+                label: "Chấp nhận",
                 count: list.filter((item) => getStatus(item) === "Approved")
                   .length,
               },
               {
                 id: "Rejected",
-                label: "Rejected",
+                label: "Từ chối",
                 count: list.filter((item) => getStatus(item) === "Rejected")
                   .length,
               },
@@ -73,8 +86,7 @@ export function VerificationsPage() {
             const isBusiness = tab === "business";
             const title = isBusiness
               ? (item as BusinessProfile).companyName
-              : (item as ExpertProfile).fullName ||
-                "Chuyên gia chưa có tên";
+              : (item as ExpertProfile).fullName || "Chuyên gia chưa có tên";
             const status = getStatus(item);
             const id = isBusiness
               ? (item as BusinessProfile).businessId
@@ -91,7 +103,9 @@ export function VerificationsPage() {
                     <p className="text-sm text-slate-500">
                       {isBusiness
                         ? maskSensitiveValue((item as BusinessProfile).taxCode)
-                        : maskSensitiveValue((item as ExpertProfile).nationalId)}
+                        : maskSensitiveValue(
+                            (item as ExpertProfile).nationalId,
+                          )}
                     </p>
                     {isBusiness && (
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -107,7 +121,17 @@ export function VerificationsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={status} />
+                  <StatusBadge
+                    status={
+                      status === "Pending"
+                        ? "Đang chờ"
+                        : status === "Approved"
+                        ? "Chấp nhận"
+                        : status === "Rejected"
+                        ? "Từ chối"
+                        : status
+                    }
+                  />
                   <LinkButton
                     to={`/app/verifications/${tab}/${id}`}
                     variant="secondary"
