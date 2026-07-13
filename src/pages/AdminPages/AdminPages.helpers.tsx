@@ -2,6 +2,7 @@ export { AccountsPage } from "./AccountsPage/AccountsPage";
 export { AnalyticsPage } from "./AnalyticsPage/AnalyticsPage";
 export { AuditLogsPage } from "./AuditLogsPage/AuditLogsPage";
 export { MasterDataPage } from "./MasterDataPage/MasterDataPage";
+export { MembershipPackagesPage } from "./MembershipPackagesPage/MembershipPackagesPage";
 export { ReportsPage } from "./ReportsPage/ReportsPage";
 export { SettingsPage } from "./SettingsPage/SettingsPage";
 export { StaffPage } from "./StaffPage/StaffPage";

@@ -696,6 +696,150 @@ export interface AnalyticsOverview {
   transactionVolume: number;
 }
 
+export interface SystemSettingRequest {
+  settingKey?: string;
+  settingValue?: string;
+  valueType?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface MembershipPackageRequest {
+  roleType?: "BUSINESS" | "EXPERT";
+  packageCode?: string;
+  packageName?: string;
+  price?: number;
+  badgeDurationDays?: number;
+  jobPostQuota?: number;
+  proposalQuota?: number;
+  recommendVisibility?: boolean;
+  isActive?: boolean;
+}
+
+export interface DashboardBreakdownItem {
+  key: string;
+  label: string;
+  count: number;
+  amount?: number;
+}
+
+export interface DashboardTimeSeriesPoint {
+  period: string;
+  periodStart?: string;
+  count: number;
+  amount?: number;
+}
+
+export interface DashboardSummaryResponse {
+  totalUsers: number;
+  businessUsers: number;
+  expertUsers: number;
+  staffUsers: number;
+  pendingProfileReviews: number;
+  totalJobs: number;
+  openJobs: number;
+  totalProposals: number;
+  acceptedProposals: number;
+  totalContracts: number;
+  activeContracts: number;
+  completedContracts: number;
+  closedContracts: number;
+  terminatedContracts: number;
+  totalDisputes: number;
+  openDisputes: number;
+  totalMembershipPurchases: number;
+  totalMembershipRevenue: number;
+  grossTransactionVolume: number;
+  systemAvailableBalance: number;
+  systemEscrowBalance: number;
+  pendingWithdrawalAmount: number;
+}
+
+export interface DashboardSeriesResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalAmount: number;
+  totalCount: number;
+  series: DashboardTimeSeriesPoint[];
+  breakdown: DashboardBreakdownItem[];
+}
+
+export interface DashboardContractsResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalContracts: number;
+  activeContracts: number;
+  completedContracts: number;
+  closedContracts: number;
+  terminatedContracts: number;
+  statusBreakdown: DashboardBreakdownItem[];
+  createdTrend: DashboardTimeSeriesPoint[];
+}
+
+export interface DashboardUsersResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalUsers: number;
+  pendingProfileReviews: number;
+  roleBreakdown: DashboardBreakdownItem[];
+  statusBreakdown: DashboardBreakdownItem[];
+  newUsersTrend: DashboardTimeSeriesPoint[];
+}
+
+export interface DashboardJobsProposalsResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalJobs: number;
+  openJobs: number;
+  totalProposals: number;
+  acceptedProposals: number;
+  proposalAcceptanceRatePercent: number;
+  jobStatusBreakdown: DashboardBreakdownItem[];
+  proposalStatusBreakdown: DashboardBreakdownItem[];
+  jobCreatedTrend: DashboardTimeSeriesPoint[];
+  proposalCreatedTrend: DashboardTimeSeriesPoint[];
+}
+
+export interface DashboardDisputesResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalDisputes: number;
+  openDisputes: number;
+  resolvedDisputes: number;
+  overdueStaffSlaDisputes: number;
+  statusBreakdown: DashboardBreakdownItem[];
+  createdTrend: DashboardTimeSeriesPoint[];
+}
+
+export interface DashboardMembershipResponse {
+  from?: string;
+  to?: string;
+  groupBy?: string;
+  totalPurchases: number;
+  totalRevenue: number;
+  packageBreakdown: DashboardBreakdownItem[];
+  purchaseTrend: DashboardTimeSeriesPoint[];
+}
+
+export interface DashboardFinanceBreakdownResponse {
+  from?: string;
+  to?: string;
+  systemCurrentBalance: number;
+  systemAvailableBalance: number;
+  systemEscrowBalance: number;
+  systemTotalRevenue: number;
+  pendingWithdrawalAmount: number;
+  approvedWithdrawalAmount: number;
+  grossTransactionVolume: number;
+  transactionTypeBreakdown: DashboardBreakdownItem[];
+  withdrawalStatusBreakdown: DashboardBreakdownItem[];
+}
+
 export interface NotificationItem {
   notificationId: number;
   type: string;

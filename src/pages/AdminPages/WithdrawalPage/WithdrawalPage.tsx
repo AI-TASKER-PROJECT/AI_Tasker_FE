@@ -455,8 +455,7 @@ export function AdminWithdrawalPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          eyebrow="Admin · Payments"
-          title="Quản lý rút tiền"
+          title="Quản lý yêu cầu rút tiền"
           description="Duyệt hoặc từ chối các yêu cầu rút tiền. Hãy chuyển khoản thủ công trước khi nhấn Duyệt."
           actions={
             <Button variant="secondary" onClick={load} disabled={loading}>

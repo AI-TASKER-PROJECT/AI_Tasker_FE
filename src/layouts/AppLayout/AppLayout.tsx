@@ -315,6 +315,11 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <BriefcaseBusiness className="h-4 w-4" />,
     },
     {
+      label: "Gói thành viên",
+      to: "/app/admin/membership-packages",
+      icon: <BadgeCheck className="h-4 w-4" />,
+    },
+    {
       label: "Nhật ký hệ thống",
       to: "/app/admin/audit-logs",
       icon: <ReceiptText className="h-4 w-4" />,

@@ -16,6 +16,7 @@ import {
   AnalyticsPage,
   AuditLogsPage,
   MasterDataPage,
+  MembershipPackagesPage,
   ReportsPage,
   SettingsPage,
   StaffPage,
@@ -507,6 +508,14 @@ export function AppRoutes() {
             element={
               <PageTransition>
                 <MasterDataPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="admin/membership-packages"
+            element={
+              <PageTransition>
+                <MembershipPackagesPage />
               </PageTransition>
             }
           />

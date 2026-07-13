@@ -24,7 +24,13 @@ import {
   formatDate,
 } from "../../../lib/utils";
 import { formatNotificationTime } from "../../../lib/notifications";
-import type { Contract, Job, NotificationItem, Proposal, SystemWallet } from "../../../types";
+import type {
+  Contract,
+  Job,
+  NotificationItem,
+  Proposal,
+  SystemWallet,
+} from "../../../types";
 import {
   Card,
   LinkButton,
@@ -204,9 +210,13 @@ export function DashboardPage() {
       ["Quản lý hồ sơ", "/app/verifications", "Theo dõi hồ sơ cần xác minh"],
     ],
     ADMIN: [
-      ["Analytics", "/app/admin/analytics", "Doanh thu và tỷ lệ thành công"],
-      ["Quản lý nhân viên", "/app/admin/staff", "Quản lý tài khoản Staff"],
-      ["System settings", "/app/admin/settings", "SLA, phí sàn, auto-routing"],
+      ["Phân tích", "/app/admin/analytics", "Doanh thu và tỷ lệ thành công"],
+      ["Quản lý nhân viên", "/app/admin/staff", "Quản lý tài khoản nhân viên"],
+      [
+        "Cấu hình hệ thống",
+        "/app/admin/settings",
+        "Cấu hình các thông số hệ thống",
+      ],
     ],
   }[session.role];
 
@@ -417,36 +427,36 @@ export function DashboardPage() {
       {session?.role !== "ADMIN" && (
         <div className="grid gap-6">
           <Card className="p-6">
-          <SectionHeading
-            title="Hợp đồng gần đây"
-            action={
-              <LinkButton to="/app/contracts" variant="secondary" size="sm">
-                Xem tất cả
-              </LinkButton>
-            }
-          />
-          <div className="mt-5 grid gap-3">
-            {sortedContracts.map((contract) => (
-              <ListLink
-                key={contract.contractId}
-                to={`/app/contracts/${contract.contractId}`}
-                title={
-                  contract.contractTitle ||
-                  contract.title ||
-                  "Hợp đồng chưa có tên"
-                }
-                description={
-                  session?.role === "BUSINESS"
-                    ? `Chuyên gia: ${contract.expertName || expertNames[contract.expertId] || "Chưa có tên chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
-                    : session?.role === "EXPERT"
-                      ? `Doanh nghiệp: ${contract.businessName || businessNames[contract.businessId] || "Chưa có tên doanh nghiệp"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
-                      : `${contract.businessName || businessNames[contract.businessId] || "Doanh nghiệp"} • ${contract.expertName || expertNames[contract.expertId] || "Chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
-                }
-                leading={<FileCheck2 className="h-5 w-5 text-brand-500" />}
-                trailing={<StatusBadge status={contract.status} />}
-              />
-            ))}
-          </div>
+            <SectionHeading
+              title="Hợp đồng gần đây"
+              action={
+                <LinkButton to="/app/contracts" variant="secondary" size="sm">
+                  Xem tất cả
+                </LinkButton>
+              }
+            />
+            <div className="mt-5 grid gap-3">
+              {sortedContracts.map((contract) => (
+                <ListLink
+                  key={contract.contractId}
+                  to={`/app/contracts/${contract.contractId}`}
+                  title={
+                    contract.contractTitle ||
+                    contract.title ||
+                    "Hợp đồng chưa có tên"
+                  }
+                  description={
+                    session?.role === "BUSINESS"
+                      ? `Chuyên gia: ${contract.expertName || expertNames[contract.expertId] || "Chưa có tên chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                      : session?.role === "EXPERT"
+                        ? `Doanh nghiệp: ${contract.businessName || businessNames[contract.businessId] || "Chưa có tên doanh nghiệp"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                        : `${contract.businessName || businessNames[contract.businessId] || "Doanh nghiệp"} • ${contract.expertName || expertNames[contract.expertId] || "Chuyên gia"} • ${formatCompactCurrency(contract.totalBudget)} • Ngày: ${formatDate(contract.createdAt || contract.updatedAt)}`
+                  }
+                  leading={<FileCheck2 className="h-5 w-5 text-brand-500" />}
+                  trailing={<StatusBadge status={contract.status} />}
+                />
+              ))}
+            </div>
           </Card>
         </div>
       )}

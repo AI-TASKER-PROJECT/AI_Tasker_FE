@@ -177,7 +177,7 @@ export function BusinessVerificationProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="Hồ sơ xác minh doanh nghiệp"
-        description="Nhập mã số thuế và tải giấy phép kinh doanh. Tên, địa chỉ và người đại diện được lấy từ nguồn xác minh VietQR."
+        description="Hãy điền đầy đủ thông tin và gửi hồ sơ để được xác minh doanh nghiệp. Sau khi hồ sơ được duyệt, bạn sẽ có thể sử dụng các tính năng dành cho doanh nghiệp."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
