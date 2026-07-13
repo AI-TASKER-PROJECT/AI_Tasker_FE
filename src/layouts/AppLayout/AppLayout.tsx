@@ -143,8 +143,8 @@ const commonNav: NavItem[] = [
 const roleNav: Record<Role, NavItem[]> = {
   BUSINESS: [
     {
-      label: "Trang chủ",
-      to: "/home",
+      label: "Hồ sơ cá nhân",
+      to: "/app/business/profile",
       icon: <Building2 className="h-4 w-4" />,
     },
     {
@@ -182,16 +182,11 @@ const roleNav: Record<Role, NavItem[]> = {
       to: "/app/reviews",
       icon: <Star className="h-4 w-4" />,
     },
-    {
-      label: "Hồ sơ KYB",
-      to: "/app/business/profile",
-      icon: <Building2 className="h-4 w-4" />,
-    },
   ],
   EXPERT: [
     {
-      label: "Trang chủ",
-      to: "/home",
+      label: "Hồ sơ cá nhân",
+      to: "/app/expert/profile",
       icon: <IdCard className="h-4 w-4" />,
     },
     {
@@ -235,17 +230,17 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Hồ sơ KYC",
-      to: "/app/expert/profile",
-      icon: <IdCard className="h-4 w-4" />,
-    },
-    {
       label: "Portfolio AI",
       to: "/app/expert/portfolio",
       icon: <ClipboardCheck className="h-4 w-4" />,
     },
   ],
   STAFF: [
+    {
+      label: "Hồ sơ cá nhân",
+      to: "/app/staff/profile",
+      icon: <IdCard className="h-4 w-4" />,
+    },
     {
       label: "Duyệt hồ sơ",
       to: "/app/verifications",
@@ -837,7 +832,7 @@ export function AppShell() {
 
       <div
         className={cn(
-          "transition-[padding] duration-300",
+          "min-w-0 transition-[padding] duration-300",
           sidebarCollapsed ? "lg:pl-24" : "lg:pl-64",
         )}
       >
@@ -1116,8 +1111,8 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="px-4 py-6 md:px-6 md:py-8">
-          <div className="mx-auto max-w-[1440px]">
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 md:px-6 md:py-8">
+          <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {showBackButton && (
               <Button
                 type="button"

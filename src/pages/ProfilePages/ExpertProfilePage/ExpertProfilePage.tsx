@@ -27,8 +27,7 @@ export function ExpertProfilePage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const session = getSession();
-  const canEdit = session?.role === "EXPERT";
+  const canEdit = false;
 
   useEffect(() => {
     Promise.all([
@@ -173,7 +172,7 @@ export function ExpertProfilePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" type="button" className="min-w-40">
+              <Button variant="secondary" type="button" className="hidden min-w-40">
                 Theo dõi chuyên gia
               </Button>
               {canEdit && (

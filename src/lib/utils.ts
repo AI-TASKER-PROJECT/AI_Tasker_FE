@@ -18,6 +18,16 @@ export function formatCompactCurrency(value?: number) {
   return formatCurrency(value);
 }
 
+export function walletTypeLabel(walletType?: string) {
+  const labels: Record<string, string> = {
+    ADMIN_SYSTEM: 'Ví hệ thống quản trị',
+    BUSINESS: 'Ví doanh nghiệp',
+    EXPERT: 'Ví chuyên gia',
+    STAFF: 'Ví nhân viên',
+  };
+  return labels[(walletType || '').toUpperCase()] || 'Ví người dùng';
+}
+
 export function formatDate(value?: string) {
   if (!value) return 'Chưa cập nhật';
   return new Intl.DateTimeFormat('vi-VN', {

@@ -547,9 +547,9 @@ export function WalletPage() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="overflow-x-auto divide-y divide-slate-50">
               {/* Header */}
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              <div className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <span className="w-9" />
                 <span>Nội dung giao dịch</span>
                 <span className="text-right">Số tiền</span>
@@ -562,7 +562,7 @@ export function WalletPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                    className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                   >
                     <span
                       className={cn(
@@ -627,9 +627,9 @@ export function WalletPage() {
             />
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="overflow-x-auto divide-y divide-slate-50">
             {/* Header */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+            <div className="grid min-w-[700px] grid-cols-[minmax(260px,1fr)_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
               <span>Ngân hàng</span>
               <span className="text-right">Số tiền</span>
               <span className="w-24 text-center">Trạng thái</span>
@@ -639,7 +639,7 @@ export function WalletPage() {
             {withdrawals.map((wr) => (
               <div
                 key={wr.withdrawalId}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                className="grid min-w-[700px] grid-cols-[minmax(260px,1fr)_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
               >
                 <div className="flex items-center gap-3">
                   <span className="grid h-9 w-9 place-items-center rounded-2xl bg-slate-50 text-slate-500">

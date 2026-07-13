@@ -41,6 +41,14 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -49,6 +57,20 @@ body {
     radial-gradient(circle at top left, rgba(223, 14, 132, 0.08), transparent 32rem),
     radial-gradient(circle at top right, rgba(38, 194, 129, 0.08), transparent 28rem),
     #fff8f8;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select,
+button {
+  max-width: 100%;
 }
 
 button,
