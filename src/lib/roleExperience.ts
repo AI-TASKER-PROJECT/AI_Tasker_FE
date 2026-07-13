@@ -74,7 +74,7 @@ const roleExperience: Record<Role, PublicExperience> = {
 };
 
 export function getVerificationPath(role: Role) {
-  return role === "BUSINESS" ? "/app/business/profile" : "/app/expert/profile";
+  return role === "BUSINESS" ? "/app/business/kyb" : "/app/expert/kyc";
 }
 
 export function needsVerification(session?: SessionUser | null) {

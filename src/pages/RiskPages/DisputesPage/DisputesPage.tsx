@@ -313,7 +313,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
       </Card>
 
       {isAdmin && total !== null && (
-        <Notice tone="info" title="Danh sách tranh chấp toàn hệ thống">
+        <Notice tone="success" title="Danh sách tranh chấp toàn hệ thống">
           Đang hiển thị {items.length} trên tổng {total} hồ sơ tranh chấp theo bộ lọc hiện tại.
         </Notice>
       )}

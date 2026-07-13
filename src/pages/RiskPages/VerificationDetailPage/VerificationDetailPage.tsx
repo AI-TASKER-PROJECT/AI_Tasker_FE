@@ -1,4 +1,4 @@
-import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { profileApi } from "../../../lib/api";
@@ -6,7 +6,6 @@ import { maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import {
-  Badge,
   Button,
   Card,
   EmptyState,
@@ -27,9 +26,13 @@ import {
 export function VerificationDetailPage() {
   const { type, id } = useParams();
   const isBusiness = type === "business";
-  const [profile, setProfile] = useState<BusinessProfile | ExpertProfile | null>(null);
+  const [profile, setProfile] = useState<
+    BusinessProfile | ExpertProfile | null
+  >(null);
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [selectedRejectReasons, setSelectedRejectReasons] = useState<string[]>([]);
+  const [selectedRejectReasons, setSelectedRejectReasons] = useState<string[]>(
+    [],
+  );
   const [rejectError, setRejectError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -38,7 +41,9 @@ export function VerificationDetailPage() {
       profileApi
         .listBusinesses()
         .then((items) => {
-          setProfile(items.find((item) => item.businessId === Number(id)) || null);
+          setProfile(
+            items.find((item) => item.businessId === Number(id)) || null,
+          );
         })
         .catch(() => {
           setProfile(null);
@@ -46,7 +51,9 @@ export function VerificationDetailPage() {
     } else {
       Promise.all([profileApi.listExperts(), profileApi.listPortfolios()])
         .then(([items]) => {
-          setProfile(items.find((item) => item.expertId === Number(id)) || null);
+          setProfile(
+            items.find((item) => item.expertId === Number(id)) || null,
+          );
         })
         .catch(() => {
           setProfile(null);
@@ -68,8 +75,7 @@ export function VerificationDetailPage() {
 
   const title = isBusiness
     ? (profile as BusinessProfile).companyName
-    : (profile as ExpertProfile).fullName ||
-      "Chuyên gia chưa có tên";
+    : (profile as ExpertProfile).fullName || "Chuyên gia chưa có tên";
   const status = isBusiness
     ? (profile as BusinessProfile).kybStatus
     : (profile as ExpertProfile).kycStatus;
@@ -128,7 +134,9 @@ export function VerificationDetailPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          eyebrow={isBusiness ? "Business KYB" : "Expert KYC"}
+          eyebrow={
+            isBusiness ? "Hồ sơ doanh nghiệp KYB" : "Hồ sơ chuyên gia KYC"
+          }
           title={title}
           description="Kiểm tra thông tin định danh và ra quyết định duyệt."
           actions={
@@ -141,22 +149,7 @@ export function VerificationDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
-          <SectionHeading
-            title={isBusiness ? "Dữ liệu đã xác minh" : "Thông tin hồ sơ"}
-            description={
-              isBusiness
-                ? "Dữ liệu doanh nghiệp đã được backend tra cứu qua VietQR trước khi vào hàng đợi duyệt."
-                : undefined
-            }
-          />
-          {isBusiness && (
-            <div className="mt-4">
-              <Badge tone="mint">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                MST verified by system
-              </Badge>
-            </div>
-          )}
+          <SectionHeading title="Thông tin hồ sơ" />
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {isBusiness ? (
               <>
@@ -166,7 +159,9 @@ export function VerificationDetailPage() {
                 />
                 <Info
                   label="Mã số thuế"
-                  value={maskSensitiveValue((profile as BusinessProfile).taxCode)}
+                  value={maskSensitiveValue(
+                    (profile as BusinessProfile).taxCode,
+                  )}
                 />
                 <Info
                   label="Địa chỉ"
@@ -184,7 +179,9 @@ export function VerificationDetailPage() {
               <>
                 <Info
                   label="Giấy tờ định danh"
-                  value={maskSensitiveValue((profile as ExpertProfile).nationalId)}
+                  value={maskSensitiveValue(
+                    (profile as ExpertProfile).nationalId,
+                  )}
                 />
                 <FileInfo label="Tệp Portfolio">
                   <FirebaseFileLink
@@ -194,7 +191,7 @@ export function VerificationDetailPage() {
                   />
                 </FileInfo>
                 <Info
-                  label="Years of experience"
+                  label="Số năm kinh nghiệm"
                   value={
                     (profile as ExpertProfile).yearsOfExperience == null
                       ? "Chưa có"
@@ -209,19 +206,31 @@ export function VerificationDetailPage() {
         <Card className="p-6">
           <SectionHeading title="Quyết định" />
           <div className="mt-5 rounded-3xl bg-slate-50 p-4">
-            <p className="text-sm font-bold text-slate-500">Status hiện tại</p>
+            <p className="text-sm font-bold text-slate-500">
+              Trạng thái hiện tại
+            </p>
             <div className="mt-2">
-              <StatusBadge status={status} />
+              <StatusBadge
+                status={
+                  status === "Approved"
+                    ? "Chấp nhận"
+                    : status === "Rejected"
+                      ? "Từ chối"
+                      : status === "Pending"
+                        ? "Chờ duyệt"
+                        : status
+                }
+              />
             </div>
           </div>
           <div className="mt-5 grid gap-2">
             <Button variant="success" onClick={() => approve("Approved")}>
               <CheckCircle2 className="h-4 w-4" />
-              Approve
+              Chấp nhận
             </Button>
             <Button variant="danger" onClick={beginReject}>
               <XCircle className="h-4 w-4" />
-              Reject
+              Từ chối
             </Button>
           </div>
           {status === "Rejected" && profile.rejectionReason && (
@@ -229,12 +238,16 @@ export function VerificationDetailPage() {
               <ul className="ml-5 mt-1 list-disc space-y-1">
                 {profile.rejectionReason.split(";").map((reason, index) => {
                   const trimmedReason = reason.trim();
-                  return trimmedReason ? <li key={index}>{trimmedReason}</li> : null;
+                  return trimmedReason ? (
+                    <li key={index}>{trimmedReason}</li>
+                  ) : null;
                 })}
               </ul>
             </Notice>
           )}
-          {message && <Notice tone="success" title={message} className="mt-4" />}
+          {message && (
+            <Notice tone="success" title={message} className="mt-4" />
+          )}
         </Card>
       </div>
 

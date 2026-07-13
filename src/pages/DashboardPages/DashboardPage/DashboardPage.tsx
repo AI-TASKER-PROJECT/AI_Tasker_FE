@@ -16,6 +16,7 @@ import {
   notificationApi,
   profileApi,
 } from "../../../services";
+import { adminApi } from "../../../lib/api";
 import { roleLabel, useSession } from "../../../context/sessionContext";
 import {
   formatCompactCurrency,
@@ -23,7 +24,7 @@ import {
   formatDate,
 } from "../../../lib/utils";
 import { formatNotificationTime } from "../../../lib/notifications";
-import type { Contract, Job, NotificationItem, Proposal } from "../../../types";
+import type { Contract, Job, NotificationItem, Proposal, SystemWallet } from "../../../types";
 import {
   Card,
   LinkButton,
@@ -47,6 +48,7 @@ export function DashboardPage() {
   const [pendingStaffDisputes, setPendingStaffDisputes] = useState(0);
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [myProposals, setMyProposals] = useState<Proposal[]>([]);
+  const [systemWallet, setSystemWallet] = useState<SystemWallet | null>(null);
 
   useEffect(() => {
     marketplaceApi
@@ -145,6 +147,13 @@ export function DashboardPage() {
         .listMyProposals()
         .then(setMyProposals)
         .catch(() => setMyProposals([]));
+    }
+
+    if (session?.role === "ADMIN") {
+      adminApi
+        .getSystemWallet()
+        .then(setSystemWallet)
+        .catch(() => setSystemWallet(null));
     }
   }, [session?.role]);
 
@@ -316,22 +325,28 @@ export function DashboardPage() {
                   ? "Doanh thu cá nhân"
                   : session.role === "BUSINESS"
                     ? "Tổng đầu tư cho tất cả dự án"
-                    : "Tổng giá trị giao dịch"
+                    : "Tổng doanh thu"
               }
               value={formatCurrency(
-                contracts
-                  .filter((contract) =>
-                    ["COMPLETED", "RELEASED"].includes(
-                      (contract.status || "").toUpperCase(),
-                    ),
-                  )
-                  .reduce(
-                    (total, contract) =>
-                      total + Number(contract.totalBudget || 0),
-                    0,
-                  ),
+                session.role === "ADMIN"
+                  ? systemWallet?.totalRevenue || 0
+                  : contracts
+                      .filter((contract) =>
+                        ["COMPLETED", "RELEASED"].includes(
+                          (contract.status || "").toUpperCase(),
+                        ),
+                      )
+                      .reduce(
+                        (total, contract) =>
+                          total + Number(contract.totalBudget || 0),
+                        0,
+                      ),
               )}
-              helper="Từ tất cả các hợp đồng đã hoàn thành"
+              helper={
+                session.role === "ADMIN"
+                  ? "Từ thu nhập của hệ thống"
+                  : "Từ tất cả các hợp đồng đã hoàn thành"
+              }
               icon={<WalletCards className="h-5 w-5" />}
               tone="coral"
             />

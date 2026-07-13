@@ -148,6 +148,11 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Building2 className="h-4 w-4" />,
     },
     {
+      label: "Hồ sơ KYB",
+      to: "/app/business/kyb",
+      icon: <ShieldCheck className="h-4 w-4" />,
+    },
+    {
       label: "Dự án của tôi",
       to: "/app/jobs",
       icon: <BriefcaseBusiness className="h-4 w-4" />,
@@ -188,6 +193,11 @@ const roleNav: Record<Role, NavItem[]> = {
       label: "Hồ sơ cá nhân",
       to: "/app/expert/profile",
       icon: <IdCard className="h-4 w-4" />,
+    },
+    {
+      label: "Hồ sơ KYC",
+      to: "/app/expert/kyc",
+      icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
       label: "Cơ hội dự án",
@@ -360,12 +370,16 @@ export function AppShell() {
     accountStatus !== "Approved";
   const verificationPath =
     session?.role === "BUSINESS"
+      ? "/app/business/kyb"
+      : "/app/expert/kyc";
+  const personalProfilePath =
+    session?.role === "BUSINESS"
       ? "/app/business/profile"
       : "/app/expert/profile";
   const verificationAllowedPaths = useMemo(() => {
     if (!session) return [];
-    return [verificationPath, "/app/notifications"];
-  }, [session, verificationPath]);
+    return [verificationPath, personalProfilePath, "/app/notifications"];
+  }, [personalProfilePath, session, verificationPath]);
   const navItems = useMemo(() => {
     if (!role) return [];
     if (needsVerification) {

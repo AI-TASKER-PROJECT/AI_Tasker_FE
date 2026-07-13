@@ -1,5 +1,7 @@
 export { BusinessProfilePage } from "./BusinessProfilePage/BusinessProfilePage";
+export { BusinessVerificationProfilePage } from "./BusinessVerificationProfilePage/BusinessVerificationProfilePage";
 export { ExpertProfilePage } from "./ExpertProfilePage/ExpertProfilePage";
+export { ExpertVerificationProfilePage } from "./ExpertVerificationProfilePage/ExpertVerificationProfilePage";
 export { StaffProfilePage } from "./StaffProfilePage/StaffProfilePage";
 export { ExpertPortfolioPage } from "./ExpertPortfolioPage/ExpertPortfolioPage";
 export { MyPublicBusinessProfilePage } from "./MyPublicBusinessProfilePage/MyPublicBusinessProfilePage";
