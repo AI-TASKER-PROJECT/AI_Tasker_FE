@@ -1,0 +1,396 @@
+﻿---PAGE 8---
+4.2.  Descriptions  This  part  describes  the  use  cases,  you  can  follow  the  table  form  as  below] 
+ID  Feature  Use  Case  Use  Case  Description  UC-01  Registration  Register  Allows  a  guest  to  create  a  new  account  on  the  AI  Tasker  platform.  
+UC-02  Registration  Register  by  Email  
+Allows  a  guest  to  register  an  account  using  an  email  address  and  required  personal  information.  UC-03  Authentication  Login  Allows  registered  users  to  access  the  system.  UC-04  Authentication  Login  by  Email  Allows  users  to  log  in  using  their  registered  email  and  password.  
+UC-05  Public  Access  
+View  public  jobs  and  expert  profiles  
+Allows  guests,  businesses,  and  experts  to  view  public  job  posts  and  expert  profiles.  
+UC-06  Verification  
+Submit  verification  profile  
+Allows  businesses  and  AI  experts  to  submit  required  verification  information  before  using  transaction  features.  
+UC-07  Verification  
+Review  verification  profiles  Allows  Staff  to  review  and  approve  submitted  verification  profiles.  
+UC-08  
+Expert  Profile  Management  
+Manage  AI  portfolio  
+Allows  AI  experts  to  create  and  update  their  professional  profile,  skills,  experience,  certificates,  and  portfolio.  
+UC-09  
+Proposal  Management  Submit  proposal  
+Allows  AI  experts  to  submit  proposals  for  public  jobs  with  bid  amount,  timeline,  and  solution  summary.  
+UC-10  
+Project  Management  
+Manage  assigned  projects  
+Allows  AI  experts  to  view  and  manage  projects  assigned  to  them  after  being  selected  by  a  business.  
+UC-11  
+Project  Execution  
+Submit  milestone  deliverables  
+Allows  AI  experts  to  submit  deliverables  for  each  project  milestone.  
+UC-12  
+Job  Management  Create  job  post  
+Allows  businesses  to  create  a  new  job  post  with  project  requirements,  budget,  timeline,  and  description.  
+UC-13  
+AI  Job  Assistant  
+Use  AI  Job  Assistant  
+Allows  businesses  to  use  AI  support  to  improve  project  descriptions  and  clarify  requirements.  
+UC-14  
+AI  Job  Assistant  
+Generate  AI  job  description  
+Allows  the  AI  service  system  to  generate  a  clearer  job  description  from  the  business�s  initial  input.  
+UC-15  
+AI  Job  Assistant  
+Review  AI-generated  project  description  
+Allows  businesses  to  review  and  confirm  AI-generated  project  descriptions  before  publishing.  
+UC-16  
+AI  Job  Assistant  
+Extract  skills  and  keywords  
+Allows  the  AI  service  system  to  extract  important  skills  and  keywords  from  the  project  description.  
+UC-17  
+AI  Job  Assistant  
+Generate  milestones  and  acceptance  criteria  
+Allows  the  AI  service  system  to  generate  suggested  milestones  and  acceptance  criteria  for  the  project.  
+UC-18  
+AI  Job  Assistant  
+Edit  AI-generated  milestones  and  acceptance  criteria  
+Allows  businesses  to  edit  AI-generated  milestones  and  acceptance  criteria  before  using  them  officially.  
+UC-19  
+Expert  Matching  
+View  AI-recommended  experts  
+Allows  businesses  to  view  experts  recommended  by  the  system  based  on  project  requirements.  
+UC-20  
+Expert  Matching  
+Recommend  experts  
+Allows  the  AI  service  system  to  recommend  suitable  AI  experts  based  on  skills,  keywords,  and  profile  matching.  
+UC-21  
+Proposal  Management  
+View  submitted  proposals  
+Allows  businesses  to  view  proposals  submitted  by  AI  experts  for  a  job  post.  
+8  |  Page  
+---PAGE 9---
+UC-22  
+Hiring  Management  Select  expert  Allows  businesses  to  select  a  suitable  AI  expert  for  a  project.  
+UC-23  
+Contract  Management  Negotiate  contract  
+Allows  businesses  and  AI  experts  to  negotiate  project  scope,  budget,  timeline,  and  deliverables.  
+UC-24  
+Contract  Management  
+Modification  request  
+Allows  either  party  to  request  changes  to  contract  terms  before  final  acceptance.  
+UC-25  
+Contract  Management  Sign  the  contract  
+Allows  both  the  business  and  AI  expert  to  confirm  and  activate  the  contract.  
+UC-26  
+Contract  Management  Confirm  NDA  
+Allows  both  parties  to  confirm  the  electronic  NDA  before  accessing  confidential  project  data.  
+UC-27  
+Payment  &  Escrow  
+Deposit  escrow  payment  
+Allows  businesses  to  deposit  project  payment  into  escrow  before  the  expert  starts  working.  
+UC-28  
+Payment  &  Escrow  
+Process  escrow  payment  via  PayOS  
+Allows  the  system  to  communicate  with  the  payment  gateway  to  process  escrow  payment.  
+UC-29  
+Project  Execution  
+Review  milestone  deliverables  
+Allows  businesses  to  review  submitted  deliverables  based  on  agreed  acceptance  criteria.  
+UC-30  
+Project  Execution  
+Approve  milestone  deliverables  
+Allows  businesses  to  approve  milestone  deliverables  when  acceptance  criteria  are  satisfied.  
+UC-31  
+Project  Execution  
+Auto-approve  milestone  after  SLA  
+Allows  the  system  to  automatically  approve  a  milestone  if  the  business  does  not  respond  within  the  SLA  period  and  no  dispute  is  opened.  
+UC-32  
+Dispute  Management  Open  dispute  
+Allows  businesses  or  AI  experts  to  open  a  dispute  when  there  is  disagreement  about  contract  execution  or  deliverables.  
+UC-33  
+Dispute  Management  
+Submit  dispute  reason  and  evidence  Allows  users  to  submit  dispute  reasons  and  supporting  evidence.  
+UC-34  
+Dispute  Management  Freeze  cash  flow  
+Allows  the  system  to  temporarily  freeze  related  payments  when  a  dispute  is  opened.  
+UC-35  
+Dispute  Management  
+Assign  dispute  to  Staff  
+Allows  the  system  to  assign  a  dispute  case  to  a  suitable  Staff  member  based  on  specialization.  
+UC-36  
+Dispute  Management  
+View  dispute  status  
+Allows  businesses  and  AI  experts  to  track  the  current  status  of  a  dispute.  
+UC-37  Staff  Support  
+Support  dispute  handling  Allows  Staff  to  support  the  dispute  handling  process.  
+UC-38  Staff  Support  
+Evaluate  project  deliverables  
+Allows  Staff  to  evaluate  submitted  deliverables  based  on  agreed  acceptance  criteria.  
+UC-39  Staff  Support  
+Create  technical  report  
+Allows  Staff  to  create  a  technical  report  after  evaluating  project  deliverables.  
+UC-40  
+Admin  Management  
+Approve  dispute  resolution  
+Allows  Admin  to  approve  the  final  dispute  resolution  based  on  Staff�s  technical  report.  
+UC-41  
+Review  &  Reputation  
+Confirm  project  completion  
+Allows  businesses  to  confirm  that  the  project  has  been  completed.  
+UC-42  
+Review  &  Reputation  Review  partner  
+Allows  businesses  and  AI  experts  to  review  each  other  after  project  completion.  
+UC-43  
+Contract  Management  Terminate  contract  
+Allows  a  contract  to  be  terminated  according  to  project  status  and  dispute  results.  
+9  |  Page  
+---PAGE 10---
+UC-44  
+Payment  &  Escrow  Process  refund  
+Allows  the  system  to  process  refunds  when  a  contract  is  terminated  or  a  dispute  requires  repayment.  
+UC-45  
+Admin  Management  
+Manage  users  and  platform  data  
+Allows  Admin  to  manage  user  accounts,  jobs,  contracts,  transactions,  reviews,  and  platform  data.  
+UC-46  
+Admin  Management  View  audit  logs  Allows  Admin  to  view  recorded  system  logs  for  important  actions.  
+UC-47  
+Admin  Management  
+Manage  system  admins  Allows  Admin  to  manage  administrator  accounts  in  the  system.  
+UC-48  
+Admin  Management  
+Manage  Staff  accounts  Allows  Admin  to  create,  update,  and  manage  Staff  accounts.  
+UC-49  
+Admin  Management  
+Configure  system  parameters  
+Allows  Admin  to  configure  platform  settings  such  as  commission  fee,  SLA  duration,  and  minimum  service  price.  
+UC-50  
+Analytics  &  Reporting  
+View  analytics  dashboard  
+Allows  Admin  to  view  platform  statistics  such  as  revenue,  project  completion  rate,  dispute  rate,  and  user  growth.   
+5.  System  Functions  5.1.  Screen  Flow Link  screen  flow 
+ 
+  
+ 
+10  |  Page  
+
+---PAGE 11---
+ 
+ 
+ 
+5.2.  Screen  Details  [Provide  the  descriptions  for  the  screens  in  the  Screens  Flow  above]  #  Feature  Screen  Description  1  Authentication  Login  Page  Allows  users  to  log  into  the  system  using  a  local  account  (Email/Password)  or  via  a  third-party  authentication  provider  (Google  Auth).  
+2  Authentication  Register  Page  
+Allows  new  users  to  create  an  account  by  entering  basic  information,  selecting  an  initial  role,  and  triggering  the  email  OTP  verification  flow.  
+3  Authentication  Forget  Password  Page  
+Provides  an  interface  for  users  to  recover  their  passwords  by  verifying  their  registered  email  address.  
+4  Authentication  Google  Profile  Page  
+A  mandatory  onboarding  page  for  first-time  Google  sign-ins  to  complement  basic  profile  data  and  select  their  system  role.  
+5  Core  Dashboard  
+Dashboard  Home  
+The  central  landing  area  post-login,  displaying  metric  overviews  and  quick  navigation  shortcuts  customized  according  to  the  user's  active  role  (Business/Expert/Staff/Admin).  
+6  Core  Dashboard  
+Notification  Center  Page  
+Stores  and  displays  the  full  repository  of  detailed,  real-time  system  notifications  sent  to  the  user  account.  
+7  Core  Dashboard  
+Verification  Profile  Page  
+A  mandatory  warning  and  redirect  guard  page  for  Business/Expert  users  who  have  not  passed  KYC/KYB  verification,  restricting  access  to  core  system  modules.  
+11  |  Page  
+---PAGE 12---
+8  Business  Management  
+My  Jobs  Page  
+A  comprehensive  management  dashboard  displaying  all  jobs  and  vacancy  postings  created  and  published  by  the  active  Business  user.  
+9  Business  Management  
+Create  Job  Page  
+A  detailed  data  entry  form  for  Business  users  to  post  new  jobs,  including  the  Statement  of  Work  (SoW),  budget  metrics,  duration,  milestones,  and  acceptance  criteria.  
+10  Business  Management  
+Manage  Job  Page  
+An  advanced  management  interface  for  a  specific  job,  showcasing  received  proposals  from  Experts  and  allowing  the  Business  client  to  accept  or  reject  bids.  
+11  Business  Management  
+Business  Profile  KYB  Page  
+The  corporate  verification  interface  where  Business  users  update  legal  business  information  and  upload  their  Business  License  for  Staff  inspection.  
+12  Expert  Marketplace  
+Opportunities  Page  
+A  dedicated  job  board  for  verified  Experts  featuring  search  filters  and  recommendations  for  available  job  orders  matching  their  specific  skill  domains.  
+13  Expert  Marketplace  
+Submit  Proposal  Page  
+A  structured  application  workspace  for  Experts  to  submit  a  proposal  for  a  specific  job,  including  technical  solution  details,  bid  amount,  estimated  delivery  days,  and  attachments.  
+14  Expert  Marketplace  
+My  Proposals  Page  
+A  personal  pipeline  pipeline  dashboard  for  Experts  to  track,  manage,  and  monitor  the  review  status  of  all  their  submitted  project  applications.  
+15  Expert  Marketplace  
+Expert  Profile  KYC  Page  
+The  identity  verification  interface  for  Experts  to  update  personal  identification  data  (National  ID/Passport)  and  upload  background  evaluation  documents  for  KYC  approval.  
+12  |  Page  
+---PAGE 13---
+16  Expert  Marketplace  
+Expert  Portfolio  Page  
+A  professional  portfolio  resume  editor  allowing  Experts  to  manage  their  professional  profiles,  including  years  of  experience,  bio  descriptions,  tech  stacks,  and  certifications.  
+17  Contract  Execution  
+Contract  Detail  Page  
+Displays  all  legally  binding  contract  terms  between  the  Business  and  the  Expert,  integrating  workflows  for  signing  NDAs,  change  requests,  or  contract  termination.  
+18  Contract  Execution  
+Workspace  Page  
+The  collaborative  project  space  for  an  active  contract  milestone,  enabling  deliverable  submissions,  acceptance  criteria  check-offs,  and  dispute  triggers.  
+19  Contract  Execution  
+Finance  Page  
+An  escrow  ledger  interface  for  tracking  funding  allocation,  commission  deductions,  and  disbursement  histories  across  active  project  milestones.  
+20  Contract  Execution  
+Reviews  Page  
+A  formal  performance  feedback  page  allowing  both  parties  to  evaluate  each  other  on  a  1-5  star  scale  accompanied  by  written  comments  upon  contract  completion.  
+21  Back-Office  Admin/Staff  
+Verifications  List  Page  
+A  centralized  control  panel  for  back-office  operators  to  monitor  incoming  rows  of  pending  KYC  (Expert)  and  KYB  (Business)  verification  requests.  
+22  Back-Office  Admin/Staff  
+Verification  Detail  Page  
+Displays  specific  legal  credentials  of  a  profile,  providing  tax  code  verification  tools  and  backend  triggers  to  approve  or  reject  the  documentation  with  a  reason  modal.  
+23  Back-Office  Admin/Staff  
+Staff  Tickets  List  Page  
+A  helpdesk  summary  dashboard  tracking  all  active  milestone  dispute  tickets  escalated  by  
+13  |  Page  
+---PAGE 14---
+users  and  assigned  to  specific  Staff  or  Admin  members  for  resolution.  
+24  Back-Office  Admin/Staff  
+Staff  Ticket  Detail  Page  
+A  comprehensive  dispute  handling  workspace  for  logging  demo  tests,  submitting  technical  arbitration  reports,  and  executing  final  escrow  payout,  split,  or  refund  decisions.  
+25  System  Control  
+Accounts  Management  Page  
+An  exclusive  master  console  for  Admins  to  view  all  system  accounts,  manage  user  credentials,  edit  roles,  and  dynamically  activate,  deactivate,  or  lock  accounts.  
+26  System  Control  
+Staff  Management  Page  
+An  internal  administrative  portal  allowing  Admins  to  provision,  update,  or  edit  back-office  operations  access  for  platform  Staff  accounts.  
+27  System  Control  
+System  Settings  Page  
+A  configuration  console  where  the  Admin  modifies  global  system  constraints  such  as  platform  commission  rates,  auto-approval  SLA  timeframes,  and  feature  toggles.  
+28  System  Control  
+Master  Data  Catalog  Page  
+A  dictionary  taxonomy  management  interface  for  the  Admin  to  standardize  available  data  lists,  including  active  Domains,  Skills,  and  Criteria  templates.  
+29  System  Control  
+Audit  Logs  Page  
+An  immutable  tracking  viewer  providing  comprehensive  log  history  (Actor,  Action,  Entity,  and  Old/New  database  value  deltas)  for  security  compliance  audits.  
+30  System  Control  
+System  Wallet  Page  
+A  financial  supervision  console  providing  real-time  data  on  current  and  available  balances  across  the  platform's  root  escrow  corporate  wallets.  
+ 
+14  |  Page  
+---PAGE 15---
+5.3.  User  Authorization  [Provide  the  system  roles  authorization  to  the  system  features  (down  to  screens,  and  event  to  the  
+screen
+ 
+activities
+ 
+if
+ 
+applicable)
+ 
+in
+ 
+the
+ 
+table
+ 
+form
+ 
+as
+ 
+below
+ 
+�
+ 
+replace
+ 
+Role1,
+ 
+Role2,
+�
+ 
+with
+ 
+the
+ 
+specific
+ 
+system
+ 
+user
+ 
+role
+ 
+names]
+ 
+ 
+ 
+Screen  Role  1  Role  2  Role  3  Role  4  Role  5  
+Landing  Page  / X  X  X  X  X  
+How  It  Works  Page  X  X  X  X  X  
+About  Page  X  X  X  X  X  
+Jobs  List  Page  X  X  X  X  X  
+Job  Detail  Page  X  X  X    
+Expert  Directory  Page  X  X  X    
+Public  Business  Profile  X  X  X    
+Public  Expert  Profile  X  X  X    
+Login  Page  X      
+Register  Page  X      
+Forgot  Password  Page  X      
+15  |  Page  
+---PAGE 16---
+Reset  Password  Page  X      
+Google  Profile  Page   X  X    
+Dashboard  Home   X  X  X  X  
+Query  Own  Dashboard  Widgets   X  X  X  X  
+Query  System  Analytics     X  X  
+Notification  Center   X  X  X  X  
+User  Wallet  Page   X  X    
+Membership  Page   X  X    
+Staff  Profile  Page     X   
+Verification  Profile  Guard   X  X    
+Update  Own  KYB  Document   X     
+Update  Own  KYC  Document    X    
+My  Jobs  Page   X     
+Create  Job  Page   X     
+16  |  Page  
+---PAGE 17---
+Manage  Job  Page   X     
+Generate  AI  SoW   X     
+Opportunities  Page    X    
+Submit  Proposal  Page    X    
+My  Proposals  Page    X    
+Expert  Profile  KYC  Page    X    
+Expert  Portfolio  Page    X    
+Contract  List  Page   X  X    
+Contract  Detail  Page   X  X    
+Sign  NDA   X  X    
+Request  Contract  Change   X  X    
+Terminate  Contract   X  X    
+Workspace  Page   X  X    
+View  Milestones  &  Progress   X  X    
+17  |  Page  
+---PAGE 18---
+Add  Milestone  /  Criteria   X  X    
+Submit  Deliverable    X    
+Review  /  Accept  Deliverable   X     
+Trigger  Dispute   X  X    
+Finance  Page   X  X    
+Create  Escrow  Deposit   X     
+Track  Milestone  Cashflow   X  X    
+Reviews  Page   X  X    
+Submit  1�5  Star  Review   X  X    
+Disputes  List  Page   X  X    
+Create  Dispute  Page   X  X    
+Dispute  Detail  Page   X  X  X  X  
+Dispute  Project  Info  Page   X  X  X  X  
+Staff  Tickets  List  Page     X  X  
+18  |  Page  
+---PAGE 19---
+Staff  Ticket  Detail  Page     X  X  
+Submit  Technical  Report     X  X  
+Resolve  /  Refund  /  Split  Payout     X  X  
+Verification  List  Page     X  X  
+Verification  Detail  Page     X  X  
+Tax  Code  Verification     X  X  
+Approve  /  Reject  Verification     X  X  
+Accounts  Management  Page      X  
+Create  /  Edit  /  Lock  Account      X  
+Staff  Management  Page      X  
+Create  /  Edit  Staff      X  
+System  Settings  Page      X  
+Modify  Configuration      X  
+Master  Data  Catalog  Page      X  
+19  |  Page  

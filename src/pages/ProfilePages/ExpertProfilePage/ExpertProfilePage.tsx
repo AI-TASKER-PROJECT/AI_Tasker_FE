@@ -20,6 +20,7 @@ export function ExpertProfilePage() {
   const [status, setStatus] = useState("Chưa gửi");
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expertName, setExpertName] = useState("");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -45,6 +46,7 @@ export function ExpertProfilePage() {
           skillItems,
           technologyItems,
         ]) => {
+          setExpertName(profile.fullName || getSession()?.fullName || "");
           setForm({
             nationalId: profile.nationalId || "",
             portfolioUrl: profile.portfolioUrl || "",
@@ -123,6 +125,7 @@ export function ExpertProfilePage() {
         portfolioUrl: profile.portfolioUrl || "",
         yearsOfExperience: String(profile.yearsOfExperience ?? 1),
       });
+      setExpertName(profile.fullName || getSession()?.fullName || "");
       setStatus(profile.kycStatus);
       setRejectionReason(profile.rejectionReason || "");
 
@@ -142,6 +145,7 @@ export function ExpertProfilePage() {
   };
 
   const isApproved = status?.toLowerCase() === "approved";
+  const displayName = expertName || getSession()?.fullName || "Chuyên gia";
 
   return (
     <div className="space-y-6">
@@ -149,13 +153,13 @@ export function ExpertProfilePage() {
         <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-5 md:flex-row md:items-center">
-              <Avatar name="Chuyên gia" size="xl" />
+              <Avatar name={displayName} size="xl" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
                   Trang cá nhân chuyên gia
                 </p>
                 <h1 className="mt-2 text-3xl font-black md:text-4xl">
-                  {portfolio?.selfDescription ? "Chuyên gia AI" : "Chuyên gia"}
+                  {displayName}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
                   <span className="inline-flex items-center gap-2">
