@@ -21,6 +21,20 @@ import {
 } from "../AdminPages.shared";
 import type { AccountStatus, AdminAccount, Role } from "../../../types";
 
+const roleLabels: Record<Role, string> = {
+  ADMIN: "Quản trị viên",
+  STAFF: "Nhân viên",
+  BUSINESS: "Doanh nghiệp",
+  EXPERT: "Chuyên gia",
+};
+
+const statusLabels: Record<AccountStatus, string> = {
+  Pending: "Chờ duyệt",
+  Approved: "Đã duyệt",
+  Rejected: "Đã từ chối",
+  Lock: "Đã khóa",
+};
+
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -100,9 +114,9 @@ export function AccountsPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       newErrors.email = "Email không hợp lệ.";
 
-    if (!form.password)
+    if (!editing && !form.password)
       newErrors.password = "Vui lòng không bỏ trống mật khẩu.";
-    else if (form.password.length < 8)
+    else if (form.password && form.password.length < 8)
       newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
 
     if (!form.fullName.trim())
@@ -189,7 +203,7 @@ export function AccountsPage() {
   return (
     <div className="space-y-6">
       {pageNotice && <Notice tone={pageNotice.tone} title={pageNotice.title} />}
-      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[linear-gradient(135deg,#ffffff_0%,#eef7ff_55%,#f7fbf5_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Quản lý tài khoản"
           description="Tạo, chỉnh sửa và quản lý tài khoản người dùng trong hệ thống."
@@ -216,10 +230,10 @@ export function AccountsPage() {
           </Button>
         </div>
         <div className="hidden border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[1fr_150px_130px_180px]">
-          <span>Account</span>
-          <span>Role</span>
-          <span>Status</span>
-          <span>Actions</span>
+          <span>Tài khoản</span>
+          <span>Vai trò</span>
+          <span>Trạng thái</span>
+          <span>Thao tác</span>
         </div>
         {visibleAccounts.map((account) => (
           <div
@@ -239,7 +253,7 @@ export function AccountsPage() {
                     : "brand"
               }
             >
-              {account.role}
+              {roleLabels[account.role]}
             </Badge>
             <Badge
               tone={
@@ -252,11 +266,11 @@ export function AccountsPage() {
                       : "amber"
               }
             >
-              {account.status}
+              {statusLabels[account.status]}
             </Badge>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => beginEdit(account)}>
-                Edit
+                Sửa
               </Button>
               <Button
                 variant="ghost"
@@ -267,7 +281,7 @@ export function AccountsPage() {
                   )
                 }
               >
-                {account.status === "Lock" ? "Unlock" : "Lock"}
+                {account.status === "Lock" ? "Mở khóa" : "Khóa"}
               </Button>
             </div>
           </div>
@@ -276,14 +290,14 @@ export function AccountsPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? "Edit account" : "Create account"}
+        title={editing ? "Cập nhật tài khoản" : "Tạo tài khoản"}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button onClick={saveAccount}>
-              <Save className="h-4 w-4" /> Save
+              <Save className="h-4 w-4" /> Lưu
             </Button>
           </>
         }
@@ -297,13 +311,15 @@ export function AccountsPage() {
           <Field label="Email" error={errors.email}>
             <Input
               value={form.email}
+              disabled={Boolean(editing)}
               onChange={(event) =>
                 setForm((value) => ({ ...value, email: event.target.value }))
               }
             />
           </Field>
           <Field
-            label={editing ? "New password" : "Password"}
+            label={editing ? "Mật khẩu mới" : "Mật khẩu"}
+            hint={editing ? "Để trống nếu không đổi mật khẩu." : undefined}
             error={errors.password}
           >
             <Input
@@ -314,7 +330,7 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label="Full name" error={errors.fullName}>
+          <Field label="Họ tên" error={errors.fullName}>
             <Input
               value={form.fullName}
               onChange={(event) =>
@@ -322,7 +338,7 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label="Phone" error={errors.phone}>
+          <Field label="Số điện thoại" error={errors.phone}>
             <Input
               value={form.phone}
               onChange={(event) =>
@@ -330,9 +346,10 @@ export function AccountsPage() {
               }
             />
           </Field>
-          <Field label="Role">
+          <Field label="Vai trò">
             <select
               value={form.role}
+              disabled={Boolean(editing)}
               onChange={(event) => {
                 const role = event.target.value as Role;
                 setForm((value) => ({
@@ -344,18 +361,18 @@ export function AccountsPage() {
                       : value.status,
                 }));
               }}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none disabled:bg-slate-50 disabled:text-slate-500"
             >
               {(accountTab === "internal" ? internalRoles : externalRoles).map(
                 (role) => (
                   <option key={role} value={role}>
-                    {role}
+                    {roleLabels[role]}
                   </option>
                 ),
               )}
             </select>
           </Field>
-          <Field label="Status">
+          <Field label="Trạng thái">
             <select
               value={form.status}
               onChange={(event) =>
@@ -368,14 +385,14 @@ export function AccountsPage() {
             >
               {accountStatuses.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {statusLabels[status]}
                 </option>
               ))}
             </select>
           </Field>
           {form.role === "STAFF" && (
             <div className="md:col-span-2">
-              <Field label="Staff specialization" error={errors.domainIds}>
+              <Field label="Lĩnh vực chuyên môn của nhân viên" error={errors.domainIds}>
                 <SpecializationSelector
                   domains={domains}
                   selectedIds={form.domainIds}

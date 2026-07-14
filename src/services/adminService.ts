@@ -3,12 +3,29 @@ import type {
   AdminAccount,
   AnalyticsOverview,
   AuditLog,
+  DashboardContractsResponse,
+  DashboardDisputesResponse,
+  DashboardFinanceBreakdownResponse,
+  DashboardJobsProposalsResponse,
+  DashboardMembershipResponse,
+  DashboardSeriesResponse,
+  DashboardSummaryResponse,
+  DashboardUsersResponse,
+  MembershipPackage,
+  MembershipPackageRequest,
   Review,
   Staff,
   SystemSetting,
+  SystemSettingRequest,
   SystemWallet,
   WalletTransaction,
 } from "../types";
+
+type DashboardParams = {
+  from?: string;
+  to?: string;
+  groupBy?: "day" | "week" | "month" | string;
+};
 
 export const adminApi = {
   createReview(payload: Partial<Review>) {
@@ -37,6 +54,26 @@ export const adminApi = {
       params: { value, isActive },
     });
   },
+  createSetting(payload: SystemSettingRequest) {
+    return call<SystemSetting>({
+      method: "POST",
+      url: "/api/v1/admin/settings",
+      data: payload,
+    });
+  },
+  updateSettingBody(settingKey: string, payload: SystemSettingRequest) {
+    return call<SystemSetting>({
+      method: "PUT",
+      url: `/api/v1/admin/settings/${settingKey}`,
+      data: payload,
+    });
+  },
+  deleteSetting(settingKey: string) {
+    return call<SystemSetting>({
+      method: "DELETE",
+      url: `/api/v1/admin/settings/${settingKey}`,
+    });
+  },
   listStaffs() {
     return call<Staff[]>({ method: "GET", url: "/api/v1/admin/staffs" });
   },
@@ -58,6 +95,61 @@ export const adminApi = {
     return call<AnalyticsOverview>({
       method: "GET",
       url: "/api/v1/admin/analytics/overview",
+    });
+  },
+  dashboardSummary() {
+    return call<DashboardSummaryResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/summary",
+    });
+  },
+  dashboardRevenue(params?: DashboardParams) {
+    return call<DashboardSeriesResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/revenue",
+      params,
+    });
+  },
+  dashboardContracts(params?: DashboardParams) {
+    return call<DashboardContractsResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/contracts",
+      params,
+    });
+  },
+  dashboardUsers(params?: DashboardParams) {
+    return call<DashboardUsersResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/users",
+      params,
+    });
+  },
+  dashboardJobsProposals(params?: DashboardParams) {
+    return call<DashboardJobsProposalsResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/jobs-proposals",
+      params,
+    });
+  },
+  dashboardDisputes(params?: DashboardParams) {
+    return call<DashboardDisputesResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/disputes",
+      params,
+    });
+  },
+  dashboardMembership(params?: DashboardParams) {
+    return call<DashboardMembershipResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/membership",
+      params,
+    });
+  },
+  dashboardFinanceBreakdown(params?: Omit<DashboardParams, "groupBy">) {
+    return call<DashboardFinanceBreakdownResponse>({
+      method: "GET",
+      url: "/api/v1/admin/dashboard/finance-breakdown",
+      params,
     });
   },
   getSystemWallet() {
@@ -117,6 +209,33 @@ export const adminApi = {
       method: "GET",
       url: "/api/v1/admin/audit-logs",
       params: { actorGroup },
+    });
+  },
+  listMembershipPackages(activeOnly = false) {
+    return call<MembershipPackage[]>({
+      method: "GET",
+      url: "/api/v1/admin/membership/packages",
+      params: { activeOnly },
+    });
+  },
+  createMembershipPackage(payload: MembershipPackageRequest) {
+    return call<MembershipPackage>({
+      method: "POST",
+      url: "/api/v1/admin/membership/packages",
+      data: payload,
+    });
+  },
+  updateMembershipPackage(packageId: number, payload: MembershipPackageRequest) {
+    return call<MembershipPackage>({
+      method: "PATCH",
+      url: `/api/v1/admin/membership/packages/${packageId}`,
+      data: payload,
+    });
+  },
+  deleteMembershipPackage(packageId: number) {
+    return call<MembershipPackage>({
+      method: "DELETE",
+      url: `/api/v1/admin/membership/packages/${packageId}`,
     });
   },
 };

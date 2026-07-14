@@ -32,6 +32,10 @@ api.interceptors.response.use(
       clearSession();
       if (!redirectingToLogin && window.location.pathname !== "/login") {
         redirectingToLogin = true;
+        sessionStorage.setItem(
+          "aitasker:login-message",
+          "Phiên đăng nhập đã hết hiệu lực. Tài khoản có thể đã đăng nhập ở nơi khác.",
+        );
         window.location.replace("/login");
       }
     }
@@ -64,7 +68,7 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   if (error.code === "ECONNABORTED") {
-    return "Request bị quá thời gian chờ. Generate SoW có thể mất lâu hơn bình thường do backend đang gọi AI.";
+    return "Yêu cầu bị quá thời gian chờ. Tác vụ AI có thể mất lâu hơn bình thường.";
   }
 
   const status = error.response?.status;
@@ -88,13 +92,13 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   if (status === 401) {
-    return "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.";
+    return "Phiên đăng nhập đã hết hiệu lực. Tài khoản có thể đã đăng nhập ở nơi khác.";
   }
   if (status === 403) {
-    return "Tài khoản hiện tại không có quyền gọi chức năng này.";
+    return "Tài khoản hiện tại không có quyền dùng chức năng này.";
   }
   if (status === 502) {
-    return "Backend không gọi được AI API hoặc OPENAI_API_KEY chưa được cấu hình đúng.";
+    return "Backend không gọi được AI API hoặc khóa cấu hình chưa đúng.";
   }
   if (status) {
     return `Backend trả lỗi HTTP ${status}.`;
@@ -124,7 +128,7 @@ function mapApiErrorCode(message: string) {
     return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }
   if (normalized === "CONTRACT_INVALID_STATUS") {
-    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Cần để hai bên chấp nhận contract và ký NDA trước.";
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Hai bên cần chấp nhận hợp đồng và ký NDA trước.";
   }
   if (normalized === "DEPOSIT_ALREADY_HELD") {
     return "Hợp đồng này đã được ký quỹ rồi.";
