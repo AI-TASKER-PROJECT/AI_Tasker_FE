@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { profileApi } from "../../../lib/api";
-import { maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
 import {
   Avatar,
@@ -10,9 +9,17 @@ import {
   EmptyState,
   LinkButton,
   PageHeader,
+  Select,
   StatusBadge,
   Tabs,
 } from "../../../components/ui";
+
+const statusLabel = (status?: string) => {
+  if (status === "Pending") return "Đang chờ";
+  if (status === "Approved") return "Chấp nhận";
+  if (status === "Rejected") return "Từ chối";
+  return status || "Chưa có trạng thái";
+};
 
 export function VerificationsPage() {
   const [tab, setTab] = useState("business");
@@ -21,8 +28,8 @@ export function VerificationsPage() {
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
 
   useEffect(() => {
-    profileApi.listBusinesses().then(setBusinesses); //api lấy ds DN
-    profileApi.listExperts().then(setExperts); // api lấy ds CG
+    profileApi.listBusinesses().then(setBusinesses);
+    profileApi.listExperts().then(setExperts);
   }, []);
 
   const getStatus = (item: BusinessProfile | ExpertProfile) =>
@@ -31,6 +38,24 @@ export function VerificationsPage() {
       : (item as ExpertProfile).kycStatus;
 
   const list = tab === "business" ? businesses : experts;
+  const statusOptions = [
+    { id: "All", label: "Tất cả", count: list.length },
+    {
+      id: "Pending",
+      label: "Đang chờ",
+      count: list.filter((item) => getStatus(item) === "Pending").length,
+    },
+    {
+      id: "Approved",
+      label: "Chấp nhận",
+      count: list.filter((item) => getStatus(item) === "Approved").length,
+    },
+    {
+      id: "Rejected",
+      label: "Từ chối",
+      count: list.filter((item) => getStatus(item) === "Rejected").length,
+    },
+  ];
   const filteredList =
     statusFilter === "All"
       ? list
@@ -42,44 +67,32 @@ export function VerificationsPage() {
         <PageHeader title="Duyệt hồ sơ KYC/KYB" description="" />
       </div>
       <Card className="p-5">
-        <Tabs
-          active={tab}
-          onChange={setTab}
-          tabs={[
-            {
-              id: "business",
-              label: "Doanh nghiệp - KYB",
-              count: businesses.length,
-            },
-            { id: "expert", label: "Chuyên gia - KYC", count: experts.length },
-          ]}
-        />
-        <div className="mt-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <Tabs
-            active={statusFilter}
-            onChange={setStatusFilter}
+            active={tab}
+            onChange={setTab}
             tabs={[
-              { id: "All", label: "Tất cả", count: list.length },
               {
-                id: "Pending",
-                label: "Đang chờ",
-                count: list.filter((item) => getStatus(item) === "Pending")
-                  .length,
+                id: "business",
+                label: "Doanh nghiệp - KYB",
+                count: businesses.length,
               },
-              {
-                id: "Approved",
-                label: "Chấp nhận",
-                count: list.filter((item) => getStatus(item) === "Approved")
-                  .length,
-              },
-              {
-                id: "Rejected",
-                label: "Từ chối",
-                count: list.filter((item) => getStatus(item) === "Rejected")
-                  .length,
-              },
+              { id: "expert", label: "Chuyên gia - KYC", count: experts.length },
             ]}
           />
+          <div className="w-full lg:w-64">
+            <Select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Lọc trạng thái hồ sơ"
+            >
+              {statusOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label} ({option.count})
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
         <div className="mt-5 grid gap-3">
           {filteredList.map((item) => {
@@ -91,6 +104,9 @@ export function VerificationsPage() {
             const id = isBusiness
               ? (item as BusinessProfile).businessId
               : (item as ExpertProfile).expertId;
+            const identifier = isBusiness
+              ? (item as BusinessProfile).taxCode || "Chưa có mã số thuế"
+              : (item as ExpertProfile).nationalId || "Chưa có giấy tờ định danh";
             return (
               <div
                 key={id}
@@ -100,12 +116,9 @@ export function VerificationsPage() {
                   <Avatar name={title} />
                   <div>
                     <p className="font-extrabold text-ink">{title}</p>
-                    <p className="text-sm text-slate-500">
-                      {isBusiness
-                        ? maskSensitiveValue((item as BusinessProfile).taxCode)
-                        : maskSensitiveValue(
-                            (item as ExpertProfile).nationalId,
-                          )}
+                    <p className="text-sm font-semibold text-slate-500">
+                      {isBusiness ? "Mã số thuế: " : "Giấy tờ định danh: "}
+                      <span className="text-slate-700">{identifier}</span>
                     </p>
                     {isBusiness && (
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -121,17 +134,7 @@ export function VerificationsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge
-                    status={
-                      status === "Pending"
-                        ? "Đang chờ"
-                        : status === "Approved"
-                        ? "Chấp nhận"
-                        : status === "Rejected"
-                        ? "Từ chối"
-                        : status
-                    }
-                  />
+                  <StatusBadge status={statusLabel(status)} />
                   <LinkButton
                     to={`/app/verifications/${tab}/${id}`}
                     variant="secondary"

@@ -377,14 +377,10 @@ export function AppShell() {
     session?.role === "BUSINESS"
       ? "/app/business/kyb"
       : "/app/expert/kyc";
-  const personalProfilePath =
-    session?.role === "BUSINESS"
-      ? "/app/business/profile"
-      : "/app/expert/profile";
   const verificationAllowedPaths = useMemo(() => {
     if (!session) return [];
-    return [verificationPath, personalProfilePath, "/app/notifications"];
-  }, [personalProfilePath, session, verificationPath]);
+    return [verificationPath];
+  }, [session, verificationPath]);
   const navItems = useMemo(() => {
     if (!role) return [];
     if (needsVerification) {

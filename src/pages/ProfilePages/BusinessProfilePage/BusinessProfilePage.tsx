@@ -319,7 +319,11 @@ export function BusinessProfilePage() {
                   file={licenseFile}
                   onChange={setLicenseFile}
                   buttonText="Chọn giấy phép"
-                  emptyText="Chưa chọn giấy phép kinh doanh"
+                  emptyText={
+                    form.businessLicenseUrl
+                      ? "Đã có giấy phép kinh doanh. Chọn tệp mới nếu muốn thay đổi."
+                      : "Chưa chọn giấy phép kinh doanh"
+                  }
                 />
                 <p className="mt-2 text-xs font-semibold text-slate-500">
                   Nộp kèm giấy phép kinh doanh để Staff đối chiếu thông tin doanh nghiệp.

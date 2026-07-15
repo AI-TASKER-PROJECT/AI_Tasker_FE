@@ -2,7 +2,6 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { profileApi } from "../../../lib/api";
-import { maskSensitiveValue } from "../../../lib/utils";
 import type { BusinessProfile, ExpertProfile } from "../../../types";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import {
@@ -160,9 +159,7 @@ export function VerificationDetailPage() {
                 />
                 <Info
                   label="Mã số thuế"
-                  value={maskSensitiveValue(
-                    (profile as BusinessProfile).taxCode,
-                  )}
+                  value={(profile as BusinessProfile).taxCode || "Chưa có"}
                 />
                 <Info
                   label="Địa chỉ"
@@ -180,9 +177,7 @@ export function VerificationDetailPage() {
               <>
                 <Info
                   label="Giấy tờ định danh"
-                  value={maskSensitiveValue(
-                    (profile as ExpertProfile).nationalId,
-                  )}
+                  value={(profile as ExpertProfile).nationalId || "Chưa có"}
                 />
                 <FileInfo label="Tệp Portfolio">
                   <FirebaseFileLink

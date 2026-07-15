@@ -165,7 +165,7 @@ export function ProfileFilePicker({
             type="file"
             accept={accept}
             className="hidden"
-            required={required}
+            aria-required={required}
             onChange={(event) => {
               onChange(event.target.files?.[0] || null);
               event.target.value = "";

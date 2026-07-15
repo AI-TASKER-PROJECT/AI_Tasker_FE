@@ -8,6 +8,8 @@ import {
   Save,
   Sparkles,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -69,6 +71,9 @@ import {
   type MilestoneDraft,
   type SkillAssignment,
 } from "../marketplacePages.utils";
+
+const PROPOSALS_PER_PAGE = 6;
+
 export function ProposalsPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [jobsById, setJobsById] = useState<Record<number, Job>>({});
@@ -88,6 +93,9 @@ export function ProposalsPage() {
   >("ALL");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const resetPagination = () => setCurrentPage(1);
 
   useEffect(() => {
     let ignore = false;
@@ -232,6 +240,16 @@ export function ProposalsPage() {
     return matchStatus && matchDate;
   });
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProposals.length / PROPOSALS_PER_PAGE),
+  );
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedProposals = filteredProposals.slice(
+    (effectivePage - 1) * PROPOSALS_PER_PAGE,
+    effectivePage * PROPOSALS_PER_PAGE,
+  );
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
@@ -254,7 +272,10 @@ export function ProposalsPage() {
                 <button
                   key={tab.value}
                   type="button"
-                  onClick={() => setProposalStatusFilter(tab.value)}
+                  onClick={() => {
+                    setProposalStatusFilter(tab.value);
+                    resetPagination();
+                  }}
                   className={cn(
                     "inline-flex h-12 items-center gap-3 rounded-2xl border px-5 text-sm font-extrabold transition",
                     isActive
@@ -285,7 +306,10 @@ export function ProposalsPage() {
               <Input
                 type="date"
                 value={startDateFilter}
-                onChange={(e) => setStartDateFilter(e.target.value)}
+                onChange={(e) => {
+                  setStartDateFilter(e.target.value);
+                  resetPagination();
+                }}
                 className="h-10 w-auto"
                 placeholder="Từ ngày"
               />
@@ -293,7 +317,10 @@ export function ProposalsPage() {
               <Input
                 type="date"
                 value={endDateFilter}
-                onChange={(e) => setEndDateFilter(e.target.value)}
+                onChange={(e) => {
+                  setEndDateFilter(e.target.value);
+                  resetPagination();
+                }}
                 className="h-10 w-auto"
                 placeholder="Đến ngày"
               />
@@ -305,6 +332,7 @@ export function ProposalsPage() {
                 onClick={() => {
                   setStartDateFilter("");
                   setEndDateFilter("");
+                  resetPagination();
                 }}
               >
                 Xóa lọc
@@ -314,8 +342,8 @@ export function ProposalsPage() {
         </div>
       </Card>
       {loading && <Notice tone="info" title="Đang tải proposal..." />}
-      <div className="grid gap-4">
-        {filteredProposals.map((proposal) => {
+      <div className="grid gap-4 lg:grid-cols-3">
+        {paginatedProposals.map((proposal) => {
           const job = jobsById[proposal.jobId];
           const milestones = milestonesByJobId[proposal.jobId] || [];
           const proposalMilestones = parseProposalMilestones(
@@ -323,9 +351,9 @@ export function ProposalsPage() {
           );
           const contract = contractsByProposalId[proposal.proposalId];
           return (
-            <Card key={proposal.proposalId} className="overflow-hidden">
-              <div className="grid gap-4 bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5 lg:grid-cols-[1fr_auto]">
-                <div>
+            <Card key={proposal.proposalId} className="flex min-h-[360px] flex-col overflow-hidden">
+              <div className="flex flex-1 flex-col bg-[linear-gradient(135deg,#ffffff,#eef7ff)] p-5">
+                <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <JobDomainBadge
                       label={jobDomainLabel(
@@ -344,7 +372,7 @@ export function ProposalsPage() {
                     {proposal.proposalDescription || proposal.technicalSolution}
                   </p>
                 </div>
-                <div className="flex flex-col justify-center rounded-3xl bg-white/85 px-6 py-4 text-left shadow-sm lg:text-right min-w-[180px]">
+                <div className="mt-5 rounded-3xl bg-white/85 px-5 py-4 text-left shadow-sm">
                   <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
                     Ngân sách
                   </p>
@@ -353,7 +381,7 @@ export function ProposalsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white p-5 pt-4">
+              <div className="flex flex-col gap-3 border-t border-slate-100 bg-white p-5 pt-4">
                 <p className="text-xs font-bold text-slate-400">
                   Gửi lúc:{" "}
                   {proposal.createdAt
@@ -387,6 +415,50 @@ export function ProposalsPage() {
           title="Chưa có proposal"
           description="Không có proposal phù hợp với trạng thái đang lọc."
         />
+      )}
+      {filteredProposals.length > PROPOSALS_PER_PAGE && (
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-500">
+            Hiển thị {paginatedProposals.length} trên tổng {filteredProposals.length} proposal
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              title="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={cn(
+                  "h-9 min-w-9 rounded-xl px-3 text-sm font-extrabold transition",
+                  effectivePage === page
+                    ? "bg-pink-500 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-pink-100 hover:text-pink-600",
+                )}
+              >
+                {page}
+              </button>
+            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              title="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
       )}
     </div>
   );
