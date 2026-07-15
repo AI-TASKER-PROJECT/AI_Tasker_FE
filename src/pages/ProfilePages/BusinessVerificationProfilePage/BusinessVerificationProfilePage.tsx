@@ -14,6 +14,7 @@ import {
   StatusBadge,
 } from "../../../components/ui";
 import type { TaxCheckResponse } from "../../../types";
+import { ProfileFilePicker, translateVerificationStatus } from "../ProfilePages.shared";
 import { accountStatus } from "../VerificationProfilePages.shared";
 
 const taxCodePattern = /^\d{10}$|^\d{13}$/;
@@ -23,6 +24,7 @@ const duplicateTaxCodeMessage = "Mã số thuế đã tồn tại trong hệ th�
 const submitSuccessMessage =
   "Đã gửi hồ sơ thành công. Hãy đợi nhân viên duyệt để mở khóa chức năng cho tài khoản.";
 
+// Chức năng 1: Kiểm tra lỗi backend trả về có phải lỗi trùng mã số thuế hay không.
 function isDuplicateTaxCodeError(cause: unknown) {
   const message = cause instanceof Error ? cause.message : String(cause || "");
   const normalized = message
@@ -36,6 +38,7 @@ function isDuplicateTaxCodeError(cause: unknown) {
   );
 }
 
+// Chức năng 2: Hiển thị và xử lý form định danh doanh nghiệp.
 export function BusinessVerificationProfilePage() {
   const [form, setForm] = useState({
     taxCode: "",
@@ -53,6 +56,7 @@ export function BusinessVerificationProfilePage() {
   const [taxPreviewLoading, setTaxPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Chức năng 3: Xóa dữ liệu xác minh mã số thuế đang xem trước trên form.
   const clearVerifiedInfo = () => {
     setTaxPreview(null);
     setForm((value) => ({
@@ -63,6 +67,7 @@ export function BusinessVerificationProfilePage() {
   };
 
   useEffect(() => {
+    // Tải thông tin hồ sơ doanh nghiệp hiện tại của user để hiển thị trong form.
     profileApi
       .getMyBusiness()
       .then((profile) => {
@@ -85,6 +90,7 @@ export function BusinessVerificationProfilePage() {
       .catch(() => undefined);
   }, []);
 
+  // Chức năng 4: Kiểm tra mã số thuế và lấy thông tin doanh nghiệp trước khi gửi hồ sơ.
   const previewTaxCode = async () => {
     if (!taxCodePattern.test(form.taxCode)) {
       setTaxCodeError("Mã số thuế phải gồm đúng 10 hoặc 13 chữ số liền nhau.");
@@ -113,6 +119,7 @@ export function BusinessVerificationProfilePage() {
     }
   };
 
+  // Chức năng 5: Validate dữ liệu, upload giấy phép và gửi hồ sơ định danh doanh nghiệp.
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -129,6 +136,7 @@ export function BusinessVerificationProfilePage() {
       const businessLicenseUrl = licenseFile
         ? await profileApi.uploadBusinessLicense(licenseFile)
         : form.businessLicenseUrl;
+      //hàm Gửi hồ sơ xác minh doanh nghiệp, gồm mã số thuế và tệp giấy phép kinh doanh.
       const profile = await profileApi.upsertBusiness({
         taxCode: form.taxCode,
         businessLicenseUrl,
@@ -253,15 +261,17 @@ export function BusinessVerificationProfilePage() {
 
             <Field
               label="Tệp giấy phép kinh doanh"
-              hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
+              hint="Tệp giấy phép kinh doanh trong hồ sơ KYB. Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
             >
-              <Input
-                type="file"
-                accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                onChange={(event) =>
-                  setLicenseFile(event.target.files?.[0] || null)
-                }
+              <ProfileFilePicker
+                file={licenseFile}
+                onChange={setLicenseFile}
+                buttonText="Chọn giấy phép"
+                emptyText="Chưa chọn giấy phép kinh doanh"
               />
+              <p className="mt-2 text-xs font-semibold text-slate-500">
+                Nộp kèm giấy phép kinh doanh để Staff đối chiếu thông tin doanh nghiệp.
+              </p>
               <FirebaseFileLink
                 path={form.businessLicenseUrl}
                 emptyText="Chưa có giấy phép"
@@ -274,7 +284,7 @@ export function BusinessVerificationProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
-                Gửi hồ sơ
+                Nộp hồ sơ KYB
               </Button>
             </div>
           </form>
@@ -305,7 +315,7 @@ export function BusinessVerificationProfilePage() {
             <div>
               <p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p>
               <div className="mt-1">
-                <StatusBadge status={status} />
+                <StatusBadge status={translateVerificationStatus(status)} />
               </div>
             </div>
           </div>

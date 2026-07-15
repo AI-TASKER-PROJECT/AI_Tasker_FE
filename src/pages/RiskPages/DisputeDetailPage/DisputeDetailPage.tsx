@@ -51,10 +51,14 @@ const FLOW_STEPS = [
   { key: "RESOLVED", label: "Hoàn tất" },
 ];
 
+// Chuẩn hóa status dispute để các điều kiện xử lý không phụ thuộc chữ hoa/thường.
+// Chức năng 1: Chuẩn hóa trạng thái tranh chấp để so sánh trong UI.
 function normalizeStatus(status?: string) {
   return (status || "").trim().toUpperCase();
 }
 
+// Đổi mã trạng thái dispute thành nhãn tiếng Việt trên màn chi tiết.
+// Chức năng 2: Chuyển trạng thái tranh chấp sang nhãn tiếng Việt.
 function formatStatus(status?: string) {
   switch (normalizeStatus(status)) {
     case "PENDING_SELF_RESOLVE":
@@ -74,6 +78,7 @@ function formatStatus(status?: string) {
   }
 }
 
+// Đổi loại khởi tạo tranh chấp sang mô tả nghiệp vụ dễ hiểu.
 function formatInitiationType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
@@ -91,6 +96,7 @@ function formatInitiationType(type?: string) {
   }
 }
 
+// Kiểm tra nội dung lý do có chỉ là mã initiationType thô hay không.
 function isRawInitiationTypeText(text?: string, initiationType?: string) {
   const normalizedText = normalizeStatus(text);
   if (!normalizedText) return false;
@@ -106,6 +112,8 @@ function isRawInitiationTypeText(text?: string, initiationType?: string) {
   );
 }
 
+// Lấy nội dung lý do tranh chấp ưu tiên từ evidence/escalation và loại bỏ mã loại thô.
+// Chức năng 3: Lấy nội dung lý do tranh chấp ưu tiên từ các trường dữ liệu.
 function disputeReasonContent(dispute: Dispute) {
   const candidates = [
     dispute.evidenceReport?.trim(),
@@ -117,6 +125,7 @@ function disputeReasonContent(dispute: Dispute) {
   return narrative || formatInitiationType(dispute.initiationType);
 }
 
+// Đổi bên khởi tạo tranh chấp sang nhãn hiển thị.
 function formatInitiator(value?: string) {
   switch (normalizeStatus(value)) {
     case "BUSINESS":
@@ -128,6 +137,8 @@ function formatInitiator(value?: string) {
   }
 }
 
+// Trả về metadata hiển thị tương ứng với từng trạng thái dispute.
+// Chức năng 4: Tạo thông tin mô tả theo trạng thái hiện tại của tranh chấp.
 function statusInfo(status?: string): {
   tone: NoticeTone;
   title: string;
@@ -184,6 +195,7 @@ function statusInfo(status?: string): {
   }
 }
 
+// Lấy id milestone gốc của Job để đối chiếu dispute với milestone hợp đồng.
 function getJobMilestoneId(milestone: Milestone) {
   return Number(
     (milestone as Milestone & { jobMilestoneId?: number }).jobMilestoneId ??
@@ -200,6 +212,8 @@ function formatDateOnly(value?: string) {
   }).format(new Date(value));
 }
 
+// Hiển thị tiến trình xử lý tranh chấp từ tạo hồ sơ đến Staff quyết định và hoàn tất.
+// Chức năng 5: Hiển thị tiến trình xử lý tranh chấp theo từng trạng thái.
 function Stepper({
   status,
   dates = {},
@@ -296,6 +310,7 @@ function Stepper({
   );
 }
 
+// Chức năng 6: Hiển thị và xử lý chi tiết một hồ sơ tranh chấp.
 export function DisputeDetailPage({
   staffMode = false,
 }: {
@@ -346,6 +361,8 @@ export function DisputeDetailPage({
     note: "",
   });
 
+  // Tải chi tiết tranh chấp, bằng chứng, hợp đồng, milestone và dữ liệu bàn giao liên quan.
+  //hàm Staff có thể xem chi tiết tranh chấp
   useEffect(() => {
     const id = Number(disputeId);
     if (!Number.isFinite(id) || id <= 0) return;
@@ -414,6 +431,7 @@ export function DisputeDetailPage({
     })();
   }, [disputeId]);
 
+  // Sắp xếp báo cáo tiến độ mới nhất lên trước để Staff dễ kiểm tra.
   const sortedProgressReports = useMemo(
     () =>
       [...progressReports].sort((a, b) =>
@@ -421,6 +439,7 @@ export function DisputeDetailPage({
       ),
     [progressReports],
   );
+  // Sắp xếp deliverable mới nhất lên trước để Staff xem bài nộp hiện hành.
   const sortedDeliverables = useMemo(
     () =>
       [...deliverables].sort((a, b) =>
@@ -649,6 +668,8 @@ export function DisputeDetailPage({
     return items;
   })();
 
+  // Quay lại workspace hợp đồng sau khi tranh chấp đã được giải quyết.
+  // Chức năng 7: Điều hướng người dùng quay lại workspace để tiếp tục dự án.
   const continueProject = () => {
     navigate(`/app/contracts/${dispute.contractId}/workspace`, {
       state: {
@@ -659,6 +680,8 @@ export function DisputeDetailPage({
     });
   };
 
+  //hàm Gửi yêu cầu Staff can thiệp
+  // Chức năng 8: Gửi yêu cầu Staff can thiệp vào tranh chấp.
   const requestIntervention = async () => {
     if (!interventionForm.reason.trim()) {
       setNotice({
@@ -691,6 +714,8 @@ export function DisputeDetailPage({
     }
   };
 
+  // Nhận/gán hồ sơ tranh chấp cho Staff hiện tại khi backend cho phép route thủ công.
+  // Chức năng 9: Gán tranh chấp cho Staff hiện tại xử lý.
   const routeToMe = async () => {
     setActionLoading("route-staff");
     try {
@@ -709,6 +734,8 @@ export function DisputeDetailPage({
     }
   };
 
+  // hàm Staff ra quyết định xử lý tranh chấp và tỷ lệ quyết toán tiền ký quỹ.
+  // Chức năng 10: Staff gửi quyết định phân bổ tiền và báo cáo xử lý tranh chấp.
   const submitStaffDecision = async () => {
     let hasError = false;
     const errors = { staffReport: "", expertPercent: "", note: "" };
@@ -737,6 +764,7 @@ export function DisputeDetailPage({
 
     setActionLoading("staff-decision");
     try {
+      //hàm Staff ra quyết định xử lý tranh chấp và tỷ lệ quyết toán tiền ký quỹ.
       const saved = await disputeApi.staffDecision(
         dispute.disputeId,
         expertPercent,
@@ -758,6 +786,8 @@ export function DisputeDetailPage({
     }
   };
 
+  // Rút tranh chấp khi chưa có Staff xử lý hoặc hai bên không cần can thiệp nữa.
+  // Chức năng 11: Rút hoặc hủy hồ sơ tranh chấp khi chưa tiếp tục can thiệp.
   const cancelDispute = async () => {
     const reason = window.prompt(
       "Lý do rút tranh chấp:",
@@ -783,6 +813,8 @@ export function DisputeDetailPage({
     }
   };
 
+  // Thêm bằng chứng vào hồ sơ tranh chấp để Staff có thêm dữ liệu đánh giá.
+  // Chức năng 12: Thêm bằng chứng vào hồ sơ tranh chấp để Staff đánh giá.
   const submitEvidence = async () => {
     if (!evidenceForm.fileUrl.trim()) {
       setNotice({

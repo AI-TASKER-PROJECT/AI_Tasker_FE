@@ -19,6 +19,7 @@ export function NewDisputePage() {
   const [created, setCreated] = useState<Dispute | null>(null);
   const [message, setMessage] = useState("");
 
+  // Tạo tranh chấp thủ công theo contractId và milestoneId khi cần kiểm thử hoặc mở hồ sơ trực tiếp.
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const contractId = Number(form.contractId);

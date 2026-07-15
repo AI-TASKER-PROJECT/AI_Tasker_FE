@@ -219,16 +219,13 @@ export function ManageJobPage() {
       } else {
         setAiMessage(
           result.generatedByAi
-            ? "AI đã phân tích SoW và chọn top chuyên gia phù hợp nhất."
-            : (result.message ??
-                "Đề xuất dược tạo bằng rule-based ranking (AI không khả dụng)."),
+            ? "AI đã phân tích thông tin dự án và chọn top chuyên gia phù hợp nhất."
+            : (result.message ?? "Chức năng đang bảo trì (AI không khả dụng)."),
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
-    } catch {
-      setAiMessage(
-        `Tài khoản chưa đăng kí gói Premium. Vui lòng đăng kí để sử dụng tính năng này !`,
-      );
+    } catch (error) {
+      setAiMessage(getApiErrorMessage(error));
       setAiMessageTone("danger");
     } finally {
       setAiLoading(false);
@@ -422,7 +419,7 @@ export function ManageJobPage() {
                     />
                   ))}
                   <p className="text-center text-sm font-semibold text-brand-600">
-                    AI đang phân tích SoW và lọc chuyên gia phù hợp...
+                    AI đang phân tích và tìm kiếm chuyên gia phù hợp...
                   </p>
                 </div>
               )}

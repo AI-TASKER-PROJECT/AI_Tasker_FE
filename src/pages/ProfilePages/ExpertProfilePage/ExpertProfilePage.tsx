@@ -6,7 +6,7 @@ import { maskSensitiveValue } from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Avatar, Button, Card, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { Portfolio } from "../../../types";
-import { normalizeAccountStatus, parseCatalogIds, PreviewGroup, ProfileRow, readApiError, resolveCatalogNames } from "../ProfilePages.shared";
+import { normalizeAccountStatus, parseCatalogIds, PreviewGroup, ProfileFilePicker, ProfileRow, readApiError, resolveCatalogNames, translateVerificationStatus } from "../ProfilePages.shared";
 
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
@@ -166,7 +166,7 @@ export function ExpertProfilePage() {
                   <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4" />
-                    <StatusBadge status={status} />
+                    <StatusBadge status={translateVerificationStatus(status)} />
                   </span>
                 </div>
               </div>
@@ -236,7 +236,7 @@ export function ExpertProfilePage() {
               />
               <ProfileRow
                 label="Trạng thái KYC"
-                value={<StatusBadge status={status} />}
+                value={<StatusBadge status={translateVerificationStatus(status)} />}
               />
             </div>
           </Card>
@@ -308,16 +308,18 @@ export function ExpertProfilePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <Field
                   label="Tệp Portfolio"
-                  hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
+                  hint="Tệp Portfolio trong hồ sơ KYC. Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
                 >
-                  <Input
-                    type="file"
-                    accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                    onChange={(event) =>
-                      setPortfolioFile(event.target.files?.[0] || null)
-                    }
+                  <ProfileFilePicker
+                    file={portfolioFile}
+                    onChange={setPortfolioFile}
+                    buttonText="Chọn Portfolio"
+                    emptyText="Chưa chọn tệp Portfolio"
                     required={!form.portfolioUrl}
                   />
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Nộp kèm portfolio để Staff xem năng lực và kinh nghiệm của chuyên gia.
+                  </p>
                   <FirebaseFileLink
                     path={form.portfolioUrl}
                     emptyText="Chưa có tệp Portfolio"
@@ -350,7 +352,7 @@ export function ExpertProfilePage() {
                 ) : (
                   <Button type="submit" loading={loading}>
                     <ShieldCheck className="h-4 w-4" />
-                    Lưu hồ sơ
+                    Nộp hồ sơ KYC
                   </Button>
                 )}
               </div>
@@ -367,7 +369,7 @@ export function ExpertProfilePage() {
                   Hồ sơ hiện tại
                 </p>
                 <div className="mt-1">
-                  <StatusBadge status={status} />
+                  <StatusBadge status={translateVerificationStatus(status)} />
                 </div>
               </div>
             </div>

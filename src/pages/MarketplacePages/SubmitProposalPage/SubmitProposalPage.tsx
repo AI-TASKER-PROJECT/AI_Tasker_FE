@@ -72,6 +72,8 @@ import {
   type MilestoneDraft,
   type SkillAssignment,
 } from "../marketplacePages.utils";
+//cmt1: Hiển thị tóm tắt các milestone của Job để chuyên gia tham chiếu khi lập proposal.
+// Chức năng 1: Hiển thị tóm tắt milestone của Job cho chuyên gia khi lập proposal.
 function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
@@ -111,6 +113,8 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   );
 }
 
+//cmt2: Hiển thị số lượng milestone của Job trong phần tóm tắt proposal.
+// Chức năng 2: Hiển thị số lượng milestone liên quan đến proposal.
 function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
@@ -120,6 +124,8 @@ function MilestoneCount({ count }: { count: number }) {
   );
 }
 
+//cmt3: Hiển thị số lượng skill liên quan đến Job trong phần tóm tắt proposal.
+// Chức năng 3: Hiển thị số lượng skill liên quan đến Job.
 function SkillCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
@@ -131,7 +137,8 @@ function SkillCount({ count }: { count: number }) {
   );
 }
 
-//nộp proposal
+//cmt4: Nộp proposal
+// Chức năng 4: Hiển thị và xử lý toàn bộ form nộp proposal cho chuyên gia.
 export function SubmitProposalPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -163,9 +170,12 @@ export function SubmitProposalPage() {
   });
   const [quota, setQuota] = useState<UserQuota | null>(null);
 
+  // Tải toàn bộ dữ liệu cần để nộp proposal: Job, danh mục, milestone, portfolio và quota của chuyên gia.
   useEffect(() => {
     let ignore = false;
 
+    // Gom nhiều API độc lập để form proposal có đủ ngữ cảnh trước khi chuyên gia nhập đề xuất.
+    // Chức năng 5: Tải dữ liệu Job, catalog, milestone, portfolio và quota trước khi nộp proposal.
     async function loadData() {
       try {
         const [
@@ -180,7 +190,6 @@ export function SubmitProposalPage() {
           portfolioResult,
           quotaItem,
         ] = await Promise.all([
-          //api
           marketplaceApi.getJob(numericJobId),
           catalogApi.listDomains(true),
           catalogApi.listSkills(true),
@@ -224,6 +233,7 @@ export function SubmitProposalPage() {
     };
   }, [numericJobId]);
 
+  // Tự chọn domain/skill đầu tiên của Job làm giá trị mặc định cho proposal nếu người dùng chưa chọn.
   useEffect(() => {
     queueMicrotask(() => {
       setForm((value) => ({
@@ -244,6 +254,7 @@ export function SubmitProposalPage() {
     });
   }, [jobDomainIds, jobSkillIds]);
 
+  // Tính tổng ngân sách chuyên gia đề xuất theo từng milestone khi muốn thay đổi ngân sách Job.
   const proposalMilestoneTotal = useMemo(
     () =>
       milestones.reduce(
@@ -259,8 +270,9 @@ export function SubmitProposalPage() {
     : job?.budget || 0;
   const bidAmountDisplay = bidAmount > 0 ? String(bidAmount) : "";
 
+  // Validate form, upload file nếu có, build payload và gửi proposal lên backend.
+  // Chức năng 6: Validate form, upload file đính kèm và gửi proposal lên backend.
   const submit = async (event: FormEvent) => {
-    //submit proposal
     event.preventDefault();
     if (session?.role !== "EXPERT") {
       setMessage("Chỉ tài khoản Chuyên gia mới có thể nộp báo giá dự thầu.");
@@ -315,7 +327,7 @@ export function SubmitProposalPage() {
     try {
       let proposalFileUrl = form.proposalFileUrl;
       if (proposalFile) {
-        proposalFileUrl = await profileApi.uploadProposalFile(proposalFile); //api upload file đề xuất
+        proposalFileUrl = await profileApi.uploadProposalFile(proposalFile);
       }
       const proposalMilestone =
         requestBudgetChange &&
@@ -326,8 +338,8 @@ export function SubmitProposalPage() {
               proposedBudget: Number(milestoneBudgets[milestone.milestoneId]),
             }))
           : undefined;
+        //hàm submitProposal gửi proposal lên backend, bao gồm jobId, domainId, skillId, bidAmount, technicalSolution, proposalDescription, proposalFileUrl và proposalMilestone nếu có.
       const proposal = await marketplaceApi.submitProposal({
-        //api cập nhật thông tin
         jobId: numericJobId,
         domainId: Number(form.domainId),
         skillId: Number(form.skillId),

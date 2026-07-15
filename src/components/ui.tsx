@@ -158,7 +158,38 @@ export function Badge({
 
 export function StatusBadge({ status }: { status?: string }) {
   const normalized = (status || '').toLowerCase().replaceAll(' ', '');
+  const isPositive =
+    normalized.includes('approved') ||
+    normalized.includes('accepted') ||
+    normalized.includes('active') ||
+    normalized.includes('success') ||
+    normalized.includes('released') ||
+    normalized.includes('completed') ||
+    normalized.includes('đãduyệt') ||
+    normalized.includes('thànhcông') ||
+    normalized.includes('chấpnhận') ||
+    normalized.includes('hoànthành');
+  const isNegative =
+    normalized.includes('rejected') ||
+    normalized.includes('failed') ||
+    normalized.includes('terminated') ||
+    normalized.includes('cancelled') ||
+    normalized.includes('bịtừchối') ||
+    normalized.includes('từchối') ||
+    normalized.includes('thấtbại') ||
+    normalized.includes('đãhủy') ||
+    normalized.includes('đãkhóa');
+  const isPending =
+    normalized.includes('pending') ||
+    normalized.includes('underreview') ||
+    normalized.includes('đangchờ') ||
+    normalized.includes('đangchờduyệt') ||
+    normalized.includes('chờphảnhồi') ||
+    normalized.includes('chờnghiệmthu') ||
+    normalized.includes('đangthựchiện') ||
+    normalized.includes('đangxửlý');
   const tone =
+    isPositive ||
     normalized.includes('approved') ||
     normalized.includes('accepted') ||
     normalized.includes('active') ||
@@ -174,7 +205,8 @@ export function StatusBadge({ status }: { status?: string }) {
     normalized.includes('đangmở') ||
     normalized.includes('open')
       ? 'mint'
-      : normalized.includes('rejected') ||
+      : isNegative ||
+        normalized.includes('rejected') ||
           normalized.includes('failed') ||
           normalized.includes('terminated') ||
           normalized.includes('cancelled') ||
@@ -187,7 +219,8 @@ export function StatusBadge({ status }: { status?: string }) {
           normalized.includes('đãđóng') ||
           normalized.includes('closed')
         ? 'rose'
-        : normalized.includes('pending') ||
+        : isPending ||
+          normalized.includes('pending') ||
             normalized.includes('underreview') ||
             normalized.includes('dangchờ') ||
             normalized.includes('đangchờ') ||

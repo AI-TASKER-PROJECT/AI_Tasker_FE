@@ -123,7 +123,18 @@ function mapApiErrorCode(message: string) {
     DISPUTE_NOT_STAFF_REVIEWING:
       "Tranh chấp chưa ở trạng thái Staff đang xử lý.",
   };
+  messages.MILESTONE_DA_QUA_HAN_NOP_SAN_PHAM =
+    "Cot moc da qua han nop san pham. Ban khong the nop them source hoac final product.";
+  messages.NO_MATCHING_STAFF_FOR_JOB_DOMAIN =
+    "Chua co Staff phu hop voi linh vuc cua job.";
+  messages.NO_AVAILABLE_STAFF_CAPACITY =
+    "Cac Staff phu hop deu dang qua tai.";
+  messages.STAFF_DA_DAT_GIOI_HAN_DISPUTE_DANG_XU_LY =
+    "Staff nay da dat gioi han tranh chap dang xu ly.";
   if (messages[normalized]) return messages[normalized];
+  if (normalized === "PREMIUM_REQUIRED") {
+    return "Tài khoản chưa đăng kí gói Premium hoặc gói Premium đã hết hạn.";
+  }
   if (normalized === "INSUFFICIENT_BALANCE") {
     return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }

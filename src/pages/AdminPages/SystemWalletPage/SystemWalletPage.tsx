@@ -71,7 +71,7 @@ export function SystemWalletPage() {
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetric
-              label="Số dư hiện tại"
+              label="Tổng số dư"
               value={formatCurrency(wallet.currentBalance)}
               icon={<WalletCards className="h-5 w-5" />}
               tone="mint"
@@ -140,8 +140,7 @@ export function SystemWalletPage() {
                   <div className="divide-y divide-slate-100">
                     {visibleHistory.map((t) => {
                       const transactionId = t.transactionId ?? t.id;
-                      const isPositive =
-                        t.direction === "CREDIT" || t.direction === "RELEASE";
+                      const isPositive = walletTransactionDisplayIsPositive(t);
 
                       return (
                         <div
@@ -197,7 +196,7 @@ export function SystemWalletPage() {
                               {formatCurrency(t.amount)}
                             </div>
                             <div className="mt-1 text-xs font-bold text-slate-400">
-                              {walletTransactionDirectionLabel(t.direction)}
+                              {walletTransactionDisplayDirectionLabel(t)}
                             </div>
                           </div>
                         </div>
@@ -309,6 +308,23 @@ function walletTransactionDirectionLabel(direction?: string) {
   return labels[direction ?? ""] ?? "Điều chỉnh số dư";
 }
 
+function isPlatformRevenueTransaction(tx: WalletTransaction) {
+  return tx.transactionType === "MEMBERSHIP_PURCHASE";
+}
+
+function walletTransactionDisplayIsPositive(tx: WalletTransaction) {
+  return (
+    isPlatformRevenueTransaction(tx) ||
+    tx.direction === "CREDIT" ||
+    tx.direction === "RELEASE"
+  );
+}
+
+function walletTransactionDisplayDirectionLabel(tx: WalletTransaction) {
+  if (isPlatformRevenueTransaction(tx)) return "Cộng doanh thu";
+  return walletTransactionDirectionLabel(tx.direction);
+}
+
 function walletTransactionBadgeTone(type?: string): "violet" {
   void type;
   return "violet";
@@ -335,11 +351,13 @@ function walletTransactionPartyName(
   tx: WalletTransaction,
   accounts: AdminAccount[],
 ) {
+  if (isPlatformRevenueTransaction(tx)) return "Hệ thống";
   if (tx.direction === "DEBIT" && tx.counterpartyName) return tx.counterpartyName;
   return walletTransactionActorName(tx, accounts);
 }
 
 function walletTransactionPartyLabel(tx: WalletTransaction) {
+  if (isPlatformRevenueTransaction(tx)) return "Người nhận tiền";
   if (tx.direction === "DEBIT") return "Bên nhận tiền";
   if (tx.direction === "CREDIT" || tx.direction === "RELEASE") return "Người nhận tiền";
   return "Bên liên quan";
@@ -374,7 +392,7 @@ function walletTransactionReadableDescription(
   const recipient = walletTransactionPartyName(tx, accounts);
   const amount = formatCurrency(tx.amount);
   const balance = walletTransactionBalanceLabel(tx.balanceType).toLowerCase();
-  const direction = walletTransactionDirectionLabel(tx.direction).toLowerCase();
+  const direction = walletTransactionDisplayDirectionLabel(tx).toLowerCase();
   const purpose = tx.contractTitle
     ? `cho hợp đồng "${tx.contractTitle}"`
     : tx.jobTitle

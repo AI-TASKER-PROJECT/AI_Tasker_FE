@@ -61,6 +61,7 @@ import { CompactMilestones } from "../marketplacePages.helpers";
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 type WizardStep = 1 | 2 | 3 | 4;
 
+// Chức năng 1: Hiển thị tiến trình các bước tạo Job.
 function StepIndicator({ current }: { current: WizardStep }) {
   const steps: { id: WizardStep; label: string; icon: ReactNode }[] = [
     {
@@ -185,6 +186,7 @@ function SowSectionCard({
 }
 
 // ─── SoW Preview Panel ────────────────────────────────────────────────────────
+// Chức năng 2: Hiển thị bản xem trước SOW do AI hoặc form tạo ra.
 function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
   return (
     <div className="grid gap-3">
@@ -235,6 +237,7 @@ function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+// Chức năng 3: Hiển thị và điều phối toàn bộ luồng tạo hoặc chỉnh sửa Job.
 export function CreateJobPage() {
   const { jobId } = useParams();
   const [form, setForm] = useState({
@@ -307,6 +310,7 @@ export function CreateJobPage() {
   // ── Step state (derives from form progress) ───────────────────────────────
   const wizardStep: WizardStep = savedJob ? 4 : generatedSow ? 3 : 1;
 
+  //cmt1. Tải dữ liệu danh mục cần cho form tạo Job; nếu đang edit thì nạp lại Job, milestone, domain, skill và technology đã lưu.
   useEffect(() => {
     Promise.all([
       catalogApi.listDomains(true),
@@ -381,6 +385,7 @@ export function CreateJobPage() {
   const selectedDomainIdList =
     selectedDomainId !== null ? [selectedDomainId] : [];
 
+  //cmt2. Chuyển milestone do AI trả về sang cấu trúc draft mà form tạo Job đang dùng.
   const mapGeneratedMilestone = (
     milestone: GeneratedSowMilestone,
     index: number,
@@ -403,6 +408,8 @@ export function CreateJobPage() {
   });
 
   // ── Build AI payload — includes technology names ──────────────────────────
+  //cmt3. Tạo payload gửi cho AI sinh SoW từ thông tin Job, domain, skill, technology và các câu trả lời bổ sung.
+  // Chức năng 4: Chuẩn hóa dữ liệu form thành payload gửi AI tạo SOW.
   const buildAiPayload = () => {
     const technologyNames = technologies
       .filter((t) => selectedTechnologyIds.includes(t.technologyId))
@@ -438,6 +445,8 @@ export function CreateJobPage() {
     };
   };
 
+  //cmt4. Gọi AI tạo SoW và milestone, sau đó cập nhật lại form để người dùng kiểm tra trước khi lưu Job.
+  // Chức năng 5: Gửi yêu cầu AI tạo SOW và milestone gợi ý cho Job.
   const generateSow = async () => {
     const budget = Number(form.budgetAmount);
     const duration = Number(form.plannedDurationValue);
@@ -543,6 +552,7 @@ export function CreateJobPage() {
   };
 
   // ── Unlock form to allow re-editing after AI generate ─────────────────────
+  //cmt5 Mở khóa form sau khi AI đã sinh nội dung để người dùng chỉnh lại yêu cầu, SoW hoặc milestone.
   const unlockForm = () => {
     setSowGeneratedLocked(false);
     setIsEditingAiMilestones(false);
@@ -554,12 +564,14 @@ export function CreateJobPage() {
     setAiAdditionalAnswers([]);
   };
 
+  //cmt6 Cho phép chỉnh sửa riêng phần milestone đã được AI sinh ra.
   const startMilestoneEdit = () => {
     setSowGeneratedLocked(false);
     setIsEditingAiMilestones(true);
     setMilestoneEditMessage("");
   };
 
+  //cmt7 Khóa lại milestone sau khi người dùng xác nhận chỉnh sửa xong.
   const confirmMilestoneEdit = () => {
     setSowGeneratedLocked(true);
     setIsEditingAiMilestones(false);
@@ -570,10 +582,12 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt8 Lưu lịch sử milestone để hỗ trợ hoàn tác thao tác thêm, xóa hoặc sắp xếp.
   const saveMilestoneHistory = (currentMilestones: MilestoneDraft[]) => {
     setMilestonesHistory((prev) => [...prev, currentMilestones].slice(-10));
   };
 
+  //cmt9 Hoàn tác thay đổi milestone gần nhất và đồng bộ lại tổng ngân sách/thời lượng của Job.
   const undoMilestoneAction = () => {
     if (milestonesHistory.length > 0) {
       const previousState = milestonesHistory[milestonesHistory.length - 1];
@@ -596,6 +610,7 @@ export function CreateJobPage() {
     }
   };
 
+  //cmt10 Thêm một milestone rỗng vào bản nháp Job.
   const addMilestone = () => {
     saveMilestoneHistory(milestones);
     setMilestones((prev) => [
@@ -611,6 +626,7 @@ export function CreateJobPage() {
     ]);
   };
 
+  //cmt11 Xóa milestone khỏi bản nháp và đánh lại thứ tự cùng tổng ngân sách/thời lượng.
   const removeSpecificMilestone = (indexToRemove: number) => {
     saveMilestoneHistory(milestones);
     const newItems = milestones
@@ -639,6 +655,7 @@ export function CreateJobPage() {
     }
   };
 
+  //cmt12 Di chuyển milestone lên/xuống để thay đổi thứ tự thực hiện trong Job.
   const moveMilestone = (index: number, direction: "up" | "down") => {
     saveMilestoneHistory(milestones);
     const newItems = [...milestones];
@@ -661,6 +678,7 @@ export function CreateJobPage() {
     setMilestones(reordered);
   };
 
+  //cmt13 Chọn hoặc bỏ chọn skill yêu cầu cho Job.
   const toggleSkill = (skillId: number) => {
     setSkillAssignments((items) =>
       items.some((item) => item.skillId === skillId)
@@ -669,6 +687,7 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt14 Chọn hoặc bỏ chọn technology nền tảng cho Job.
   const toggleTechnology = (technologyId: number) => {
     setSelectedTechnologyIds((items) =>
       items.includes(technologyId)
@@ -677,6 +696,7 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt15 Cập nhật thuộc tính của skill đã chọn, ví dụ đánh dấu bắt buộc hay không.
   const updateSkillAssignment = (
     skillId: number,
     patch: Partial<SkillAssignment>,
@@ -688,6 +708,7 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt16 Cập nhật ngân sách tổng của Job trong form và bản Job đã lưu nếu có.
   const updateFormBudgetAmount = (amount: string) => {
     setForm((value) => ({
       ...value,
@@ -696,6 +717,7 @@ export function CreateJobPage() {
     setSavedJob((prev) => (prev ? { ...prev, budget: Number(amount) } : prev));
   };
 
+  //cmt17 Cập nhật một milestone theo patch và đồng bộ tổng thời lượng Job khi thời lượng milestone đổi.
   const updateMilestone = (index: number, patch: Partial<MilestoneDraft>) => {
     setMilestones((items) => {
       const newItems = items.map((item, itemIndex) =>
@@ -718,6 +740,7 @@ export function CreateJobPage() {
     });
   };
 
+  //cmt18 Cập nhật ngân sách milestone và tự tính lại ngân sách tổng của Job.
   const updateMilestoneBudgetAmount = (index: number, amount: string) => {
     setMilestones((items) => {
       const newItems = items.map((item, itemIndex) =>
@@ -736,6 +759,7 @@ export function CreateJobPage() {
     });
   };
 
+  //cmt19 Cập nhật thời lượng milestone và tự tính lại thời lượng tổng của Job.
   const updateMilestoneDurationValue = (index: number, newDuration: string) => {
     setMilestones((items) => {
       const newItems = items.map((item, itemIndex) =>
@@ -756,6 +780,7 @@ export function CreateJobPage() {
     });
   };
 
+  //cmt20 Cập nhật một tiêu chí nghiệm thu của milestone trong bản nháp Job.
   const updateMilestoneCriterion = (
     milestoneIndex: number,
     criterionIndex: number,
@@ -776,6 +801,7 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt21 Thêm tiêu chí nghiệm thu mới cho milestone.
   const addMilestoneCriterion = (milestoneIndex: number) => {
     setMilestones((items) =>
       items.map((item, itemIndex) =>
@@ -789,6 +815,7 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt22 Xóa tiêu chí nghiệm thu khỏi milestone, luôn giữ lại ít nhất một dòng nhập.
   const removeMilestoneCriterion = (
     milestoneIndex: number,
     criterionIndex: number,
@@ -807,6 +834,8 @@ export function CreateJobPage() {
     );
   };
 
+  //cmt23 Chuẩn hóa SoW từ AI hoặc nội dung nhập tay thành payload backend nhận khi lưu Job.
+  // Chức năng 6: Chuẩn hóa dữ liệu SOW để lưu kèm Job.
   const buildSowPayload = () => {
     const stringifyList = (values?: string[]) => JSON.stringify(values || []);
 
@@ -835,6 +864,8 @@ export function CreateJobPage() {
     };
   };
 
+  //cmt24 Chuẩn hóa danh sách milestone từ form thành payload tạo/cập nhật Job.
+  // Chức năng 7: Chuẩn hóa danh sách milestone để gửi backend khi lưu Job.
   const buildMilestonePayload = () =>
     milestones
       .filter((milestone) => milestone.milestoneName.trim())
@@ -853,6 +884,8 @@ export function CreateJobPage() {
           .filter(Boolean),
       }));
 
+  //cmt25 Lưu Job ở trạng thái nháp: validate form, tạo/cập nhật Job, rồi gắn domain và skill cho Job.
+  // Chức năng 8: Validate form và tạo hoặc cập nhật Job nháp.
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -906,6 +939,7 @@ export function CreateJobPage() {
         job = await marketplaceApi.updateDraftJob(savedJob.jobId, payload);
         setCreateMessage("Yêu cầu nháp đã được cập nhật thành công.");
       } else {
+        //hàm createJob tạo Job mới ở trạng thái nháp, chưa hiển thị trên marketplace.
         job = await marketplaceApi.createJob(payload);
         setCreateMessage(
           "Dự án nháp đã được tạo. Bạn có thể xem chi tiết hoặc đăng bài ngay bên dưới.",
@@ -915,6 +949,7 @@ export function CreateJobPage() {
       setCreateMessageTone("success");
 
       try {
+        //hàm replaceJobDomains và replaceJobSkills gắn domain và skill cho Job vừa tạo/cập nhật.
         await catalogApi.replaceJobDomains(job.jobId, selectedDomainIdList);
         await catalogApi.replaceJobSkills(
           job.jobId,
@@ -937,6 +972,9 @@ export function CreateJobPage() {
     }
   };
 
+  //cmt26 Đăng Job đã lưu nháp: kiểm tra quota, cập nhật nội dung mới nhất rồi đổi trạng thái sang OPEN.
+  //bấm Đăng bài sẽ gọi API updateDraftJob để cập nhật nội dung mới nhất, sau đó gọi updateJobStatus để đổi trạng thái sang OPEN.
+  // Chức năng 9: Publish Job nháp sang trạng thái OPEN để chuyên gia có thể nộp proposal.
   const publishSavedJob = async () => {
     if (!savedJob) return;
     setPublishError("");
@@ -969,6 +1007,7 @@ export function CreateJobPage() {
         plannedDurationUnit: "WEEK",
       });
 
+      //hàm Cập nhật trạng thái Job sang OPEN để hiển thị trên marketplace.
       const updated = await marketplaceApi.updateJobStatus(
         savedJob.jobId,
         "OPEN",

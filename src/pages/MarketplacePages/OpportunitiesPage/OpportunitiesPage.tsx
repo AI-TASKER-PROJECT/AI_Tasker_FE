@@ -71,6 +71,7 @@ import {
 
 const JOBS_PER_PAGE = 6;
 
+//cmt1: Bộ lọc nhiều lựa chọn dùng để chuyên gia lọc Job theo domain, skill hoặc technology trước khi nộp proposal.
 function MultiSelect({ label, options, selectedValues, onChange }: { label: string, options: { value: number, label: string }[], selectedValues: number[], onChange: (values: number[]) => void }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,7 @@ function MultiSelect({ label, options, selectedValues, onChange }: { label: stri
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Thêm hoặc bỏ một giá trị lọc trong danh sách Job cơ hội.
   const toggleValue = (value: number) => {
     if (selectedValues.includes(value)) {
       onChange(selectedValues.filter(v => v !== value));
@@ -142,8 +144,10 @@ export function OpportunitiesPage() {
   const [technologies, setTechnologies] = useState<Technology[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
+  //cmt2: Đưa danh sách cơ hội về trang đầu khi chuyên gia thay đổi bộ lọc.
   const resetPagination = () => setCurrentPage(1);
 
+  //cmt3: Tải danh sách Job đang mở và các danh mục để chuyên gia tìm cơ hội phù hợp.
   useEffect(() => {
     Promise.all([
       marketplaceApi.listJobs(),
@@ -165,6 +169,7 @@ export function OpportunitiesPage() {
       });
   }, []);
 
+  //cmt4: Lọc Job theo từ khóa, domain, skill và technology trước khi chuyên gia mở chi tiết để nộp proposal.
   const filteredJobs = useMemo(
     () =>
       jobs.filter((job) => {

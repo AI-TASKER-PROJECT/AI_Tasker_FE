@@ -2,15 +2,18 @@ import { call } from "./apiClient";
 import type { AcceptanceCriteria, CaseAttachment, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
 
 export const contractApi = {
+  // Lấy danh sách hợp đồng
   listContracts() {
     return call<Contract[]>({ method: "GET", url: "/api/v1/contracts" });
   },
+  // Lấy chi tiết hợp đồng dựa trên contractId
   getContract(contractId: number) {
     return call<Contract>({
       method: "GET",
       url: `/api/v1/contracts/${contractId}`,
     });
   },
+  // Tạo hợp đồng từ proposalId, dùng khi doanh nghiệp chấp nhận proposal của chuyên gia.
   createFromProposal(proposalId: number, payload: Partial<Contract>) {
     return call<Contract>({
       method: "POST",
@@ -18,42 +21,49 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Ký hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp chấp nhận ký hợp đồng.
   sign(contractId: number) {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/sign`,
     });
   },
+  // Ký NDA hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp chấp nhận ký NDA hợp đồng.
   signNda(contractId: number) {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/nda-sign`,
     });
   },
+  // Từ chối hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp từ chối ký hợp đồng.
   rejectContract(contractId: number) {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/reject`,
     });
   },
+  // Hủy hợp đồng nháp, dùng khi doanh nghiệp hủy hợp đồng nháp trước khi ký.
   cancelDraft(contractId: number) {
     return call<Contract>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/cancel-draft`,
     });
   },
+  // Thanh toán tiền đặt cọc hợp đồng, dùng khi doanh nghiệp thanh toán tiền đặt cọc cho hợp đồng.
   payDeposit(contractId: number) {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/deposit/pay`,
     });
   },
+  // Thanh toán tiền đặt cọc cho chuyên gia, dùng khi doanh nghiệp thanh toán tiền đặt cọc cho chuyên gia.
   payExpertDeposit(contractId: number) {
     return call<PaymentActionResponse<ContractDeposit>>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/expert-deposit/pay`,
     });
   },
+  // Hoàn tiền tiền đặt cọc hợp đồng, dùng khi doanh nghiệp hoàn tiền cho hợp đồng.
   refundContractDeposits(
     contractId: number,
     payload?: { adminNote?: string; refundAmount?: number; resolvedAmount?: number },
@@ -64,6 +74,7 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Yêu cầu chấm dứt hợp đồng ngay lập tức, dùng khi chuyên gia hoặc doanh nghiệp yêu cầu chấm dứt hợp đồng ngay lập tức.
   immediateTermination(
     contractId: number,
     payload: { reason?: string; confirmedPenalty: boolean },
@@ -74,6 +85,7 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp yêu cầu chấm dứt hợp đồng.
   requestTermination(
     contractId: number,
     payload: Partial<TerminationRequest>,
@@ -84,18 +96,22 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Lấy danh sách yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn xem danh sách yêu cầu chấm dứt hợp đồng.
   listTerminationRequests(contractId: number) {
     return call<TerminationRequest[]>({
       method: "GET",
       url: `/api/v1/contracts/${contractId}/termination-requests`,
     });
   },
+  
   getTerminationRequest(terminationRequestId: number) {
     return call<TerminationRequest>({
       method: "GET",
       url: `/api/v1/termination-requests/${terminationRequestId}`,
     });
   },
+
+  // Tranh chấp yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn tranh chấp yêu cầu chấm dứt hợp đồng.
   disputeTerminationRequest(terminationRequestId: number, reason?: string) {
     return call<TerminationRequest>({
       method: "POST",
@@ -103,12 +119,14 @@ export const contractApi = {
       params: { reason },
     });
   },
+  // Chấp nhận yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp chấp nhận yêu cầu chấm dứt hợp đồng.
   acceptTerminationRequest(terminationRequestId: number) {
     return call<TerminationRequest>({
       method: "POST",
       url: `/api/v1/termination-requests/${terminationRequestId}/accept`,
     });
   },
+  // Giao yêu cầu chấm dứt hợp đồng cho nhân viên xử lý, dùng khi admin giao yêu cầu chấm dứt hợp đồng cho nhân viên xử lý.
   assignTerminationStaff(terminationRequestId: number, staffId: number) {
     return call<TerminationRequest>({
       method: "POST",
@@ -116,6 +134,7 @@ export const contractApi = {
       params: { staffId },
     });
   },
+  // Từ chối yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp từ chối yêu cầu chấm dứt hợp đồng.
   rejectTerminationRequest(terminationRequestId: number, reason?: string) {
     return call<TerminationRequest>({
       method: "POST",
@@ -123,6 +142,7 @@ export const contractApi = {
       params: { reason },
     });
   },
+  // Chấp thuận yêu cầu chấm dứt hợp đồng, dùng khi admin chấp thuận yêu cầu chấm dứt hợp đồng.
   approveTerminationRequest(
     terminationRequestId: number,
     payload?: Partial<TerminationRequest>,
@@ -133,6 +153,7 @@ export const contractApi = {
       data: payload,
     });
   },
+  
   submitTerminationPartialEvidence(
     terminationRequestId: number,
     payload: Partial<TerminationRequest>,
@@ -143,12 +164,14 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Thực hiện chấm dứt hợp đồng, dùng khi admin thực hiện chấm dứt hợp đồng.
   executeTerminationSettlement(terminationRequestId: number) {
     return call<TerminationRequest>({
       method: "POST",
       url: `/api/v1/termination-requests/${terminationRequestId}/execute-settlement`,
     });
   },
+  // Rút lại yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp rút lại yêu cầu chấm dứt hợp đồng.
   withdrawTerminationRequest(terminationRequestId: number, reason?: string) {
     return call<TerminationRequest>({
       method: "POST",
@@ -156,6 +179,7 @@ export const contractApi = {
       params: { reason },
     });
   },
+  // Hoàn tiền tiền đặt cọc cho yêu cầu chấm dứt hợp đồng, dùng khi admin hoàn tiền cho yêu cầu chấm dứt hợp đồng.
   refundTerminationDeposit(
     terminationRequestId: number,
     payload: { adminNote?: string; refundAmount?: number; resolvedAmount?: number },
@@ -166,6 +190,7 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Lấy danh sách file đính kèm của yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn xem danh sách file đính kèm của yêu cầu chấm dứt hợp đồng.
   listCaseAttachments(ownerType: string, ownerId: number) {
     return call<CaseAttachment[]>({
       method: "GET",
@@ -173,6 +198,7 @@ export const contractApi = {
       params: { ownerType, ownerId },
     });
   },
+  // Tạo file đính kèm của yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn tạo file đính kèm của yêu cầu chấm dứt hợp đồng.
   createCaseAttachment(payload: Partial<CaseAttachment>) {
     return call<CaseAttachment>({
       method: "POST",
@@ -186,6 +212,7 @@ export const contractApi = {
       url: "/api/v1/termination-requests/expire-awaiting-expert",
     });
   },
+  // Tạo milestone độc lập khi backend cần lưu các mốc công việc của Job/hợp đồng.
   createMilestone(payload: Partial<Milestone>) {
     return call<Milestone>({
       method: "POST",
@@ -193,18 +220,21 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Lấy danh sách milestone thuộc hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn xem danh sách milestone thuộc hợp đồng.
   listMilestones(contractId: number) {
     return call<Milestone[]>({
       method: "GET",
       url: `/api/v1/contracts/${contractId}/milestones`,
     });
   },
+  // Lấy milestone thuộc Job để xem chi tiết Job, chỉnh sửa Job hoặc đề xuất lại ngân sách trong proposal.
   listJobMilestones(jobId: number) {
     return call<Milestone[]>({
       method: "GET",
       url: `/api/v1/jobs/${jobId}/milestones`, //Lấy danh sách tất cả các mốc tiến dộ
     });
   },
+  // Tạo tiêu chí chấp nhận (Acceptance Criteria) cho milestone, dùng khi chuyên gia hoặc doanh nghiệp muốn tạo tiêu chí chấp nhận cho milestone.
   createCriteria(milestoneId: number, payload: Partial<AcceptanceCriteria>) {
     return call<AcceptanceCriteria>({
       method: "POST",
@@ -212,6 +242,7 @@ export const contractApi = {
       data: payload,
     });
   },
+  // Cập nhật tiêu chí chấp nhận (Acceptance Criteria) cho milestone, dùng khi chuyên gia hoặc doanh nghiệp muốn cập nhật tiêu chí chấp nhận cho milestone.
   updateCriteria(
     milestoneId: number,
     criteriaId: number,
@@ -240,6 +271,16 @@ export const contractApi = {
       method: "POST",
       url: `/api/v1/milestones/${milestoneId}/deliverables`,
       data: payload,
+    });
+  },
+  uploadMilestoneSourceCode(milestoneId: number, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: `/api/v1/milestones/${milestoneId}/source-code-file`,
+      data: formData,
+      timeout: 60000,
     });
   },
   submitProgressReport(

@@ -88,22 +88,22 @@ export function StaffPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {staffs.map((staff) => (
-          <Card key={staff.staffId} className="p-5">
-            <div className="flex items-center gap-3">
+          <Card key={staff.staffId} className="flex h-full flex-col p-5">
+            <div className="flex items-start gap-3">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
                 <Users className="h-5 w-5" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="font-extrabold text-ink">
                   {staff.fullName || "Nhân viên chưa có tên"}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="break-words text-sm text-slate-500">
                   {staff.email || "Chưa có email"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-1 content-start flex-wrap gap-2">
               {getStaffDomainNames(staff).map((item) => (
                 <Badge key={item} tone="brand">
                   {item}

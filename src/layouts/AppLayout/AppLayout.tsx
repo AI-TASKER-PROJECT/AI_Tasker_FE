@@ -1071,7 +1071,11 @@ export function AppShell() {
                             </p>
                             <p className="mt-1 truncate text-sm font-black text-ink">
                               {wallet
-                                ? formatCurrency(wallet.availableBalance)
+                                ? formatCurrency(
+                                    session?.role === "ADMIN"
+                                      ? wallet.totalRevenue
+                                      : wallet.availableBalance,
+                                  )
                                 : "--"}
                             </p>
                           </div>

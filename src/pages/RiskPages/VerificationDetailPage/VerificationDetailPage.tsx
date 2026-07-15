@@ -90,6 +90,7 @@ export function VerificationDetailPage() {
     statusValue: "Approved" | "Rejected",
     reason?: string,
   ) => {
+    // hàm Gọi API để duyệt hoặc từ chối hồ sơ, cập nhật trạng thái và hiển thị thông báo.
     const updated = await profileApi.approve(
       isBusiness ? "BUSINESS" : "EXPERT",
       profileId,

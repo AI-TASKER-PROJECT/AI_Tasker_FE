@@ -4,8 +4,10 @@ import { profileApi } from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Button, Card, Field, Input, Notice, PageHeader, SectionHeading, StatusBadge } from "../../../components/ui";
+import { ProfileFilePicker, translateVerificationStatus } from "../ProfilePages.shared";
 import { accountStatus } from "../VerificationProfilePages.shared";
 
+// Chức năng 1: Hiển thị và xử lý form định danh chuyên gia.
 export function ExpertVerificationProfilePage() {
   const [form, setForm] = useState({
     nationalId: "",
@@ -36,6 +38,7 @@ export function ExpertVerificationProfilePage() {
       .catch(() => undefined);
   }, []);
 
+  // Chức năng 2: Validate dữ liệu, upload portfolio và gửi hồ sơ định danh chuyên gia.
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -135,16 +138,18 @@ export function ExpertVerificationProfilePage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field
                 label="Tệp Portfolio"
-                hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
+                hint="Tệp Portfolio trong hồ sơ KYC. Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
               >
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                  onChange={(e) =>
-                    setPortfolioFile(e.target.files?.[0] || null)
-                  }
+                <ProfileFilePicker
+                  file={portfolioFile}
+                  onChange={setPortfolioFile}
+                  buttonText="Chọn Portfolio"
+                  emptyText="Chưa chọn tệp Portfolio"
                   required={!form.portfolioUrl}
                 />
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  Nộp kèm portfolio để Staff xem năng lực và kinh nghiệm của chuyên gia.
+                </p>
                 <FirebaseFileLink
                   path={form.portfolioUrl}
                   emptyText="Chưa có tệp Portfolio"
@@ -185,7 +190,7 @@ export function ExpertVerificationProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <ShieldCheck className="h-4 w-4" />
-                Lưu hồ sơ
+                Nộp hồ sơ KYC
               </Button>
             </div>
           </form>
@@ -199,7 +204,7 @@ export function ExpertVerificationProfilePage() {
             <div>
               <p className="text-sm font-bold text-slate-500">Hồ sơ hiện tại</p>
               <div className="mt-1">
-                <StatusBadge status={status} />
+                <StatusBadge status={translateVerificationStatus(status)} />
               </div>
             </div>
           </div>

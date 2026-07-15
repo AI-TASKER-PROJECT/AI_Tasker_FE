@@ -3,7 +3,7 @@ import { Award, BrainCircuit, ClipboardCheck, Cpu, FileText, Layers3, Sparkles }
 import { catalogApi, profileApi, type Domain, type Skill, type Technology } from "../../../lib/api";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Badge, Button, Card, Field, Input, Notice, PageHeader, SectionHeading, Textarea } from "../../../components/ui";
-import { parseCatalogIds, PreviewGroup, readApiError, TogglePill } from "../ProfilePages.shared";
+import { parseCatalogIds, PreviewGroup, ProfileFilePicker, readApiError, TogglePill } from "../ProfilePages.shared";
 
 export function ExpertPortfolioPage() {
   const [form, setForm] = useState({
@@ -243,19 +243,21 @@ export function ExpertPortfolioPage() {
                 />
               </Field>
               <Field
-                label="Chứng chỉ"
+                label="Chứng chỉ trong Portfolio AI"
                 hint={
                   form.certificates ||
-                  "Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
+                  "Chứng chỉ trong mục Portfolio AI. Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
                 }
               >
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                  onChange={(event) =>
-                    setCertificateFile(event.target.files?.[0] || null)
-                  }
+                <ProfileFilePicker
+                  file={certificateFile}
+                  onChange={setCertificateFile}
+                  buttonText="Chọn chứng chỉ"
+                  emptyText="Chưa chọn chứng chỉ"
                 />
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  Nộp kèm chứng chỉ để doanh nghiệp có thêm căn cứ đánh giá năng lực chuyên gia.
+                </p>
               </Field>
             </div>
             <Field label="Mô tả bản thân" className="mt-4">
@@ -275,7 +277,7 @@ export function ExpertPortfolioPage() {
             <div className="mt-5 flex justify-end">
               <Button type="submit" loading={loading}>
                 <ClipboardCheck className="h-4 w-4" />
-                Lưu portfolio
+                Nộp Portfolio AI
               </Button>
             </div>
           </Card>

@@ -21,10 +21,12 @@ const ACTIVE_STATUSES = new Set([
   "STAFF_DECIDED",
 ]);
 
+// Chuẩn hóa status để so sánh trạng thái tranh chấp không phụ thuộc chữ hoa/thường.
 function normalizeStatus(value?: string) {
   return (value || "").trim().toUpperCase();
 }
 
+// Đổi mã trạng thái tranh chấp từ backend sang nhãn tiếng Việt để hiển thị.
 function formatDisputeStatus(status?: string) {
   switch (normalizeStatus(status)) {
     case "PENDING_SELF_RESOLVE":
@@ -44,6 +46,7 @@ function formatDisputeStatus(status?: string) {
   }
 }
 
+// Đổi loại khởi tạo tranh chấp sang mô tả dễ hiểu cho Business/Expert/Staff.
 function formatInitiationType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
@@ -61,14 +64,17 @@ function formatInitiationType(type?: string) {
   }
 }
 
+// Lấy tên hồ sơ phù hợp cho danh sách ticket của Staff.
 function displayCaseName(item: DisputeListItem) {
   return item.jobTitle || item.title || "Hồ sơ tranh chấp";
 }
 
+// Tạo tiêu đề tranh chấp cho danh sách của Business/Expert.
 function disputeDisplayTitle(dispute: DisputeListItem) {
   return `Tranh chấp - ${dispute.contractTitle || dispute.title || "Hợp đồng đang tranh chấp"}`;
 }
 
+// Chuyển dữ liệu dispute dạng Admin API về format chung để render danh sách.
 function mapAdminDispute(item: AdminDisputeListItem): DisputeListItem {
   return {
     disputeId: item.disputeId,
@@ -90,6 +96,7 @@ function mapAdminDispute(item: AdminDisputeListItem): DisputeListItem {
   };
 }
 
+// Chuyển dữ liệu ticket Staff API về format chung, giữ thêm thông tin match domain/skill.
 function mapStaffDispute(item: StaffDisputeListItem): DisputeListItem {
   return {
     disputeId: item.disputeId,
@@ -114,10 +121,12 @@ function mapStaffDispute(item: StaffDisputeListItem): DisputeListItem {
   };
 }
 
+// Ghép danh sách nhãn domain/skill thành chuỗi ngắn để hiển thị.
 function joinLabel(values?: string[]) {
   return values?.filter(Boolean).join(", ") || "";
 }
 
+// Kiểm tra một dispute có khớp bộ lọc trạng thái hiện tại hay không.
 function matchesStatusFilter(status: string | undefined, filter: string, staffMode: boolean) {
   const normalized = normalizeStatus(status);
   if (filter === "ALL") return true;
@@ -136,9 +145,11 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
 
+  // Tạo đường dẫn màn chi tiết, Staff dùng route tickets còn user/admin dùng route disputes.
   const detailPath = (disputeId: number) =>
     staffMode ? `/app/tickets/${disputeId}` : `/app/disputes/${disputeId}`;
 
+  // Tạo đường dẫn xem thông tin dự án liên quan đến dispute.
   const projectPath = (disputeId: number) =>
     staffMode
       ? `/app/tickets/${disputeId}/project`
@@ -147,9 +158,11 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   useEffect(() => {
     let mounted = true;
 
+    //Tải danh sách tranh chấp theo vai trò: Admin toàn hệ thống, Staff ticket được giao, user theo hợp đồng của mình.
     const fetchDisputes = async () => {
       setLoading(true);
       try {
+        // Admin tải danh sách tranh chấp toàn hệ thống, có hỗ trợ lọc và phân trang.
         if (isAdmin) {
           const response = await disputeApi.listAdmin({
             page: 0,
@@ -165,6 +178,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         }
 
         if (staffMode) {
+          //hàm Tải danh sách tranh chấp được phân công/phù hợp với Staff hiện tại.
           const response = await disputeApi.listStaff({
             page: 0,
             size: 100,
@@ -216,6 +230,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     };
   }, [staffMode, isAdmin, query, statusFilter]);
 
+  // Lọc danh sách dispute ở frontend theo từ khóa và trạng thái sau khi lấy dữ liệu.
   const disputes = useMemo(
     () =>
       isAdmin
