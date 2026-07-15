@@ -142,6 +142,7 @@ export function ExpertProfilePage() {
       });
       setStatus(profile.kycStatus);
       setRejectionReason(profile.rejectionReason || "");
+      setExpertProfile(profile);
 
       const session = getSession(); //lưu session
       setMessage("Đã lưu thành công hồ sơ");

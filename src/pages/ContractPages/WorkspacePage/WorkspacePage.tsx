@@ -2256,6 +2256,18 @@ export function WorkspacePage() {
                               );
                             })()}
                             <div className="mt-3 flex flex-wrap gap-2">
+                              {(session?.role === "EXPERT" || session?.role === "BUSINESS") &&
+                                item.businessFeedback && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => setProgressFeedbackDetail(item)}
+                                >
+                                  {session.role === "BUSINESS"
+                                    ? "Xem phản hồi đã gửi"
+                                    : "Xem phản hồi của Doanh nghiệp"}
+                                </Button>
+                              )}
                               {session?.role === "BUSINESS" && (
                                 <>
                                   {latestProgressReport?.progressReportId ===
