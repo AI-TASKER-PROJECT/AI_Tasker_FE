@@ -233,6 +233,13 @@ export function notificationHref(
 
   if (targetUrl.startsWith("/app/")) return targetUrl;
 
+  if (targetUrl === "/wallet" || targetUrl === "/wallet/") {
+    return "/app/wallet";
+  }
+
+  const expertJobMatch = targetUrl.match(/^\/expert\/jobs\/(\d+)/);
+  if (expertJobMatch) return `/jobs/${expertJobMatch[1]}`;
+
   const proposalMatch = targetUrl.match(/^\/business\/jobs\/(\d+)\/proposals/);
   if (proposalMatch) return `/app/jobs/${proposalMatch[1]}/manage`;
 

@@ -1668,6 +1668,10 @@ function ExpertRecommendationCard({
             <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
           </div>
 
+          <ProfileRating
+            value={expertProfile?.averageRating ?? expertProfile?.rating}
+          />
+
           <SectionHeading title="Portfolio" />
 
           <div className="grid gap-3">

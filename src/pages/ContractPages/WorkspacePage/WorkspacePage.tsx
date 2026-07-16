@@ -372,33 +372,6 @@ function isActiveMilestoneStatus(status?: string) {
   );
 }
 
-function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
-  const normalized = normalizeStatus(status);
-  const disputeStatus = normalizeStatus(dispute?.status);
-  if (disputeStatus === "ESCALATION_REQUESTED") {
-    return "Gợi ý: Tranh chấp đã được gửi đến hàng đợi staff/admin. Hai bên nên bổ sung bằng chứng và chờ staff tiếp nhận.";
-  }
-  if (disputeStatus === "STAFF_REVIEWING") {
-    return "Gợi ý: Staff đang kiểm tra source/demo. Doanh nghiệp và Chuyên gia theo dõi kết quả trên màn hình tranh chấp.";
-  }
-  if (role === "BUSINESS" && normalized === "PENDING") {
-    return "Gợi ý: Ký quỹ milestone này để Chuyên gia có thể bắt đầu công việc.";
-  }
-  if (role === "EXPERT" && normalized === "DEPOSITED") {
-    return "Gợi ý: Bấm Bắt đầu mốc để mở bước nộp báo cáo giữa kỳ và sản phẩm cuối cùng.";
-  }
-  if (role === "EXPERT" && normalized === "IN_PROGRESS") {
-    return "Gợi ý: Nộp báo cáo giữa kỳ để Doanh nghiệp theo dõi, sau đó nộp sản phẩm cuối cùng khi sản phẩm sẵn sàng.";
-  }
-  if (role === "BUSINESS" && normalized === "UNDER_REVIEW") {
-    return "Gợi ý: Kiểm tra source/demo theo Định nghĩa hoàn thành, nghiệm thu nếu đạt hoặc từ chối kèm phản hồi có cấu trúc.";
-  }
-  if (normalized === "COMPLETED") {
-    return "Gợi ý: Cột mốc đã hoàn tất. Doanh nghiệp có thể mở cột mốc tiếp theo nếu còn.";
-  }
-  return "Gợi ý: Theo dõi trạng thái cột mốc và chỉ thao tác trên cột mốc đang hoạt động.";
-}
-
 function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
@@ -441,28 +414,51 @@ function FlowStep({
   description,
   active,
   done,
+  accent = "sky",
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   active?: boolean;
   done?: boolean;
+  accent?: "sky" | "mint" | "amber";
+  onClick?: () => void;
 }) {
+  const activeStyles = {
+    sky: "border-sky-200 bg-sky-50",
+    mint: "border-emerald-200 bg-emerald-50",
+    amber: "border-amber-200 bg-amber-50",
+  }[accent];
+  const iconStyles = {
+    sky: "text-sky-700",
+    mint: "text-emerald-700",
+    amber: "text-amber-700",
+  }[accent];
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={
-        active
-          ? "rounded-2xl border border-brand-100 bg-brand-50 p-4"
+        `${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-200" : ""} ${active
+          ? `rounded-2xl border p-4 ${activeStyles}`
           : done
-            ? "rounded-2xl border border-mint-100 bg-mint-50 p-4"
-            : "rounded-2xl border border-slate-100 bg-white p-4"
+            ? "rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+            : "rounded-2xl border border-slate-100 bg-white p-4"}`
       }
     >
       <div className="flex items-start gap-3">
         <span
           className={
             active || done
-              ? "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-brand-600"
+              ? `grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white ${done ? "text-emerald-700" : iconStyles}`
               : "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-50 text-slate-400"
           }
         >
@@ -569,6 +565,9 @@ export function WorkspacePage() {
   });
   const [expandedMilestones, setExpandedMilestones] = useState<
     Record<number, boolean>
+  >({});
+  const [submissionTabs, setSubmissionTabs] = useState<
+    Record<number, "REPORTS" | "FINAL">
   >({});
   const [initiateDisputeOtherReason, setInitiateDisputeOtherReason] = useState("");
   const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
@@ -752,6 +751,18 @@ export function WorkspacePage() {
       { done: 0, review: 0, disputed: 0, pending: 0, ready: 0, working: 0, overdue: 0 },
     );
   }, [milestones]);
+
+  const scrollToMilestoneGroup = (predicate: (milestone: Milestone) => boolean) => {
+    const target = milestones.find(predicate);
+    if (!target) return;
+    const sourceMilestoneId = getSourceMilestoneId(target);
+    const element = document.getElementById(
+      sourceMilestoneId
+        ? `milestone-deposit-${sourceMilestoneId}`
+        : `milestone-deposit-${getContractMilestoneId(target)}`,
+    );
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   // Tải lại workspace sau mỗi thao tác để đồng bộ trạng thái dispute/milestone mới nhất.
   const refreshAfterAction = async () => {
@@ -1674,24 +1685,32 @@ export function WorkspacePage() {
           description={`${counts.pending} cột mốc đang chờ Doanh nghiệp ký quỹ.`}
           active={counts.pending > 0}
           done={counts.pending === 0 && milestones.length > 0}
+          accent="sky"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "PENDING")}
         />
         <FlowStep
           icon={<UploadCloud className="h-4 w-4" />}
           title="Expert nộp sản phẩm"
           description={`${counts.ready} mốc chờ bắt đầu, ${counts.working} đang làm, ${counts.overdue} quá hạn.`}
           active={counts.ready > 0 || counts.working > 0 || counts.overdue > 0}
+          accent="sky"
+          onClick={() => scrollToMilestoneGroup((milestone) => ["DEPOSITED", "IN_PROGRESS", "OVERDUE"].includes(normalizeStatus(milestone.status)))}
         />
         <FlowStep
           icon={<CheckCircle2 className="h-4 w-4" />}
           title="Doanh nghiệp nghiệm thu"
           description={`${counts.review} cột mốc đang chờ nghiệm thu.`}
           active={counts.review > 0}
+          accent="mint"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW")}
         />
         <FlowStep
           icon={<Gavel className="h-4 w-4" />}
           title="Tranh chấp"
           description={`${counts.disputed} cột mốc đang ở trạng thái tranh chấp.`}
           active={counts.disputed > 0}
+          accent="amber"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "DISPUTED")}
         />
       </div>
 
@@ -1793,6 +1812,8 @@ export function WorkspacePage() {
             (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
             status === "DEPOSITED";
           const hasSubmittedFinal = milestoneDeliverables.length > 0;
+          const submissionTabKey = sourceMilestoneId ?? milestone.milestoneId;
+          const submissionTab = submissionTabs[submissionTabKey] || "REPORTS";
           const deliverableDeadlineExceeded = isDeliverableDeadlineExceeded(milestone);
           const canDepositNext =
             !contractActionsFrozen &&
@@ -1829,7 +1850,6 @@ export function WorkspacePage() {
           const isExpanded = sourceMilestoneId
             ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
             : true;
-          const hintLine = workspaceHintLine(session?.role, status, currentDispute);
           const needsBusinessReview =
             session?.role === "BUSINESS" &&
             ((latestProgressReport && !isProgressReportAcknowledged(latestProgressReport)) ||
@@ -2225,7 +2245,45 @@ export function WorkspacePage() {
                           {milestoneReports.length + milestoneDeliverables.length} lần nộp
                         </span>
                       </div>
+                      <div className="mt-4 grid grid-cols-1 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          aria-pressed={submissionTab === "REPORTS"}
+                          className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold transition ${
+                            submissionTab === "REPORTS"
+                              ? "border-brand-600 bg-brand-600 text-white shadow-sm"
+                              : "border-brand-100 bg-white text-brand-600 hover:border-brand-200 hover:bg-brand-50"
+                          }`}
+                          onClick={() =>
+                            setSubmissionTabs((current) => ({
+                              ...current,
+                              [submissionTabKey]: "REPORTS",
+                            }))
+                          }
+                        >
+                          Báo cáo tiến độ ({milestoneReports.length})
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={submissionTab === "FINAL"}
+                          className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold transition ${
+                            submissionTab === "FINAL"
+                              ? "border-brand-600 bg-brand-600 text-white shadow-sm"
+                              : "border-brand-100 bg-white text-brand-600 hover:border-brand-200 hover:bg-brand-50"
+                          }`}
+                          onClick={() =>
+                            setSubmissionTabs((current) => ({
+                              ...current,
+                              [submissionTabKey]: "FINAL",
+                            }))
+                          }
+                        >
+                          Sản phẩm cuối cùng ({milestoneDeliverables.length})
+                        </button>
+                      </div>
                       <div className="mt-3 grid gap-2">
+                        {submissionTab === "REPORTS" && (
+                          <>
                         {milestoneReports.map((item, reportIndex) => (
                           <div
                             key={`report-${item.progressReportId}`}
@@ -2381,31 +2439,34 @@ export function WorkspacePage() {
                                         Gửi phản hồi cho Chuyên gia
                                       </Button>
                                     )}
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    disabled={
-                                      latestProgressReport?.progressReportId !==
-                                        item.progressReportId ||
-                                      isProgressReportAcknowledged(item)
-                                    }
-                                    loading={
-                                      actionLoading ===
-                                      `progress-ack:${item.progressReportId}`
-                                    }
-                                    onClick={() => acknowledgeProgressReport(milestone, item)}
-                                  >
-                                    {isProgressReportAcknowledged(item)
-                                      ? "Đã xác nhận đã xem"
-                                      : latestProgressReport?.progressReportId === item.progressReportId
+                                  {!isProgressReportAcknowledged(item) && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={
+                                        latestProgressReport?.progressReportId !==
+                                        item.progressReportId
+                                      }
+                                      loading={
+                                        actionLoading ===
+                                        `progress-ack:${item.progressReportId}`
+                                      }
+                                      onClick={() => acknowledgeProgressReport(milestone, item)}
+                                    >
+                                      {latestProgressReport?.progressReportId === item.progressReportId
                                         ? "Xác nhận đã xem báo cáo"
                                         : "Chỉ xác nhận lần nộp mới nhất"}
-                                  </Button>
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
                           </div>
                         ))}
+                          </>
+                        )}
+                        {submissionTab === "FINAL" && (
+                          <>
                         {milestoneDeliverables.map((item, deliverableIndex) => (
                           <div
                             key={item.deliverableId}
@@ -2569,19 +2630,21 @@ export function WorkspacePage() {
                               )}
                           </div>
                         ))}
-                        {milestoneReports.length === 0 &&
-                          milestoneDeliverables.length === 0 && (
+                          </>
+                        )}
+                        {submissionTab === "REPORTS" && milestoneReports.length === 0 && (
+                          <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
+                            Chưa có báo cáo tiến độ cho cột mốc này.
+                          </p>
+                        )}
+                        {submissionTab === "FINAL" && milestoneDeliverables.length === 0 && (
                             <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
-                              Chưa có báo cáo tiến độ hoặc sản phẩm cuối cùng cho cột mốc
-                              này.
+                              Chưa có sản phẩm cuối cùng cho cột mốc này.
                             </p>
                           )}
                       </div>
                     </div>
                   </div>
-                  <Notice tone="info" title="Hint Line" className="mt-4">
-                    {hintLine}
-                  </Notice>
                 </>
               ) : (
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
@@ -2814,6 +2877,26 @@ export function WorkspacePage() {
               )}
             </div>
           </Field>
+          {deliverableForm.type === "FINAL" && (
+            <Field label="Demo URL (không bắt buộc)">
+              <Input
+                value={deliverableForm.demoLink}
+                placeholder="Nhập liên kết demo..."
+                onChange={(event) =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: event.target.value,
+                  }))
+                }
+                onBlur={() =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: normalizeExternalUrl(value.demoLink),
+                  }))
+                }
+              />
+            </Field>
+          )}
           {deliverableForm.type === "PROCESS" && (
             <Field label="Demo link">
               <Input

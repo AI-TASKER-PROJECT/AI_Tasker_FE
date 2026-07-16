@@ -469,17 +469,17 @@ function BarChart({
   }
   return (
     <div className="overflow-x-auto pb-2">
-      <div className="flex min-h-[220px] min-w-[520px] items-end gap-3">
+      <div className="flex min-h-[220px] min-w-[520px] items-end gap-4 px-2">
         {points.map((point) => {
           const value = amount ? (point.amount ?? 0) : point.count;
           return (
             <div
               key={`${point.period}-${point.periodStart}`}
-              className="flex flex-1 flex-col items-center gap-2"
+              className="flex w-10 shrink-0 flex-col items-center gap-2"
             >
               <div className="flex h-40 w-full items-end rounded-2xl bg-slate-50 px-2 pt-3">
                 <div
-                  className="w-full rounded-t-xl bg-gradient-to-t from-brand-600 to-mint-400"
+                  className="w-full rounded-t-xl bg-gradient-to-t from-sky-600 to-cyan-400"
                   title={amount ? formatCompactCurrency(value) : String(value)}
                   style={{
                     height: `${Math.max(6, Math.min(100, (value / max) * 100))}%`,
@@ -493,6 +493,138 @@ function BarChart({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function RiskTrendChart({
+  disputePoints,
+  contractPoints,
+  from,
+  to,
+  groupBy,
+}: {
+  disputePoints: DashboardTimeSeriesPoint[];
+  contractPoints: DashboardTimeSeriesPoint[];
+  from: string;
+  to: string;
+  groupBy: "day" | "week" | "month";
+}) {
+  if (
+    disputePoints.length === 0 &&
+    contractPoints.length === 0 &&
+    !(groupBy === "day" && from && to)
+  ) {
+    return (
+      <p className="py-10 text-center text-sm font-semibold text-slate-400">
+        Chưa có dữ liệu trong khoảng thời gian này.
+      </p>
+    );
+  }
+
+  const allPoints = [...contractPoints, ...disputePoints];
+  const pointByStart = new Map<string, { period: string; periodStart?: string; disputes: number; contracts: number }>();
+  allPoints.forEach((point) => {
+    const key = point.periodStart || point.period;
+    const current = pointByStart.get(key) || {
+      period: point.period,
+      periodStart: point.periodStart,
+      disputes: 0,
+      contracts: 0,
+    };
+    if (disputePoints.includes(point)) current.disputes = point.count;
+    if (contractPoints.includes(point)) current.contracts = point.count;
+    pointByStart.set(key, current);
+  });
+
+  if (groupBy === "day" && from && to) {
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    for (const date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const key = localDateKey(date);
+      if (!pointByStart.has(key)) {
+        pointByStart.set(key, { period: key, periodStart: key, disputes: 0, contracts: 0 });
+      }
+    }
+  }
+
+  const points = Array.from(pointByStart.values())
+    .sort((a, b) => String(a.periodStart || a.period).localeCompare(String(b.periodStart || b.period)))
+    .map((point) => ({ ...point, count: point.disputes }));
+  const width = 900;
+  const height = 260;
+  const left = 42;
+  const right = 20;
+  const top = 20;
+  const bottom = 42;
+  const chartWidth = width - left - right;
+  const chartHeight = height - top - bottom;
+  const maxDisputes = Math.max(1, ...points.map((point) => point.disputes));
+  const plotted = points.map((point, index) => ({
+    point,
+    x: points.length === 1 ? left + chartWidth / 2 : left + (index / (points.length - 1)) * chartWidth,
+    y: top + chartHeight - (point.disputes / maxDisputes) * chartHeight,
+    rate: point.contracts > 0 ? (point.disputes / point.contracts) * 100 : null,
+  }));
+  const path = plotted.map(({ x, y }, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`).join(" ");
+  const ratePoints = plotted.filter((item) => item.rate !== null);
+  const ratePath = ratePoints
+    .map(({ x, rate }, index) => `${index === 0 ? "M" : "L"} ${x} ${top + chartHeight - Math.min(100, rate || 0) / 100 * chartHeight}`)
+    .join(" ");
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const labels = plotted.filter((_, index) => index === 0 || index === plotted.length - 1 || index % labelStep === 0);
+  const totalDisputes = points.reduce((sum, point) => sum + point.disputes, 0);
+  const totalContracts = points.reduce((sum, point) => sum + point.contracts, 0);
+  const overallRate = totalContracts > 0 ? (totalDisputes / totalContracts) * 100 : null;
+
+  return (
+    <div className="mt-6 overflow-x-auto">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <div className="inline-flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2 text-sm font-bold text-slate-600">
+          <i className="h-2.5 w-2.5 rounded-full bg-brand-600" />
+          Tổng tranh chấp <strong className="text-ink">{totalDisputes}</strong>
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-bold text-slate-600">
+          <i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Tỷ lệ trung bình <strong className="text-ink">{overallRate === null ? "N/A" : `${overallRate.toFixed(1)}%`}</strong>
+        </div>
+      </div>
+      <div className="mb-3 flex flex-wrap justify-end gap-4 text-xs font-bold text-slate-600">
+        <span className="inline-flex items-center gap-2"><i className="h-3 w-3 rounded-full bg-brand-600" /> Số tranh chấp</span>
+        <span className="inline-flex items-center gap-2"><i className="h-3 w-3 rounded-full bg-emerald-500" /> Tỷ lệ tranh chấp / hợp đồng</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-64 min-w-[720px] w-full" role="img" aria-label="Số lượng và tỷ lệ tranh chấp theo thời gian">
+        {[0, 1, 2, 3, 4].map((row) => {
+          const value = Math.round((maxDisputes / 4) * (4 - row));
+          const y = top + row * (chartHeight / 4);
+          return (
+            <g key={row}>
+              <line x1={left} x2={width - right} y1={y} y2={y} stroke="#e7edf5" strokeDasharray="4 6" />
+              <text x={left - 10} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize="12" fontWeight="700">{value}</text>
+            </g>
+          );
+        })}
+        <text x={left - 10} y={top - 4} textAnchor="end" fill="#c026d3" fontSize="11" fontWeight="700">Số lượng</text>
+        <text x={width - right + 10} y={top - 4} fill="#059669" fontSize="11" fontWeight="700">Tỷ lệ %</text>
+        <path d={`${path} L ${plotted[plotted.length - 1].x} ${top + chartHeight} L ${plotted[0].x} ${top + chartHeight} Z`} fill="#c026d3" opacity=".08" />
+        <path d={path} fill="none" stroke="#c026d3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+        <path d={ratePath} fill="none" stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+        {plotted.map(({ point, rate }) => (
+          <g key={`${point.period}-${point.periodStart || ""}`}>
+            <title>{`${point.period}: ${point.disputes} tranh chấp, ${rate === null ? "N/A" : `${rate.toFixed(1)}%`} tỷ lệ tranh chấp trên ${point.contracts} hợp đồng`}</title>
+          </g>
+        ))}
+        {labels.map(({ point, x }) => (
+          <text key={`label-${point.period}-${point.periodStart || ""}`} x={x} y={height - 10} textAnchor="middle" fill="#64748b" fontSize="12" fontWeight="700">{displayPeriod(point)}</text>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -585,7 +717,7 @@ export function AnalyticsPage() {
   const [error, setError] = useState("");
   const [from, setFrom] = useState(() => todayMinus(90));
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("month");
+  const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("day");
 
   const params = useMemo(() => ({ from, to, groupBy }), [from, to, groupBy]);
 
@@ -873,7 +1005,13 @@ export function AnalyticsPage() {
                   description="Số tranh chấp mới theo thời gian."
                 />
                 <div className="mt-6">
-                  <BarChart points={data.disputes.createdTrend} />
+                  <RiskTrendChart
+                    disputePoints={data.disputes.createdTrend}
+                    contractPoints={data.contracts.createdTrend}
+                    from={from}
+                    to={to}
+                    groupBy={groupBy}
+                  />
                 </div>
               </Card>
             </div>

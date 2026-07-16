@@ -1,5 +1,6 @@
 ﻿import {
   ArrowLeft,
+  ArrowUp,
   BadgeCheck,
   BarChart3,
   Bell,
@@ -363,6 +364,14 @@ export function AppShell() {
   const [topupPayment, setTopupPayment] =
     useState<CreatePayOSPaymentResponse | null>(null);
   const [topupQrDataUrl, setTopupQrDataUrl] = useState("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 420);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
@@ -1359,6 +1368,17 @@ export function AppShell() {
           )}
         </form>
       </Modal>
+      {showScrollTop && (
+        <button
+          type="button"
+          aria-label="Cuộn lên đầu trang"
+          title="Cuộn lên đầu trang"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-24 right-5 z-50 grid h-11 w-11 place-items-center rounded-2xl border border-brand-100 bg-white text-brand-600 shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-50 focus:outline-none focus:ring-4 focus:ring-brand-100"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
       <ChatBox />
     </div>
   );

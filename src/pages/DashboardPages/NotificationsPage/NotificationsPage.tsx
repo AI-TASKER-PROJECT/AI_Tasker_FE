@@ -236,7 +236,7 @@ export function NotificationsPage() {
                       <h3 className="font-display text-lg font-extrabold text-ink">
                         {item.title}
                       </h3>
-                      {!item.isRead && <Badge tone="coral">Moi</Badge>}
+                      {!item.isRead && <Badge tone="coral">Mới</Badge>}
                     </div>
                     <p
                       className={cn(
