@@ -585,6 +585,32 @@ export function WorkspacePage() {
   >({});
 
   const id = Number(contractId);
+  const shouldFocusMilestoneDeposit = new URLSearchParams(location.search).get(
+    "focus",
+  ) === "milestone-deposit";
+  const focusMilestoneId = useMemo(() => {
+    if (!shouldFocusMilestoneDeposit || session?.role !== "BUSINESS") {
+      return undefined;
+    }
+
+    const firstDepositableMilestone = milestones
+      .slice()
+      .sort((a, b) => Number(a.orderIndex) - Number(b.orderIndex))
+      .find(
+        (milestone) =>
+          normalizeStatus(milestone.status) === "PENDING" &&
+          milestones
+            .filter(
+              (item) =>
+                Number(item.orderIndex) < Number(milestone.orderIndex),
+            )
+            .every((item) => normalizeStatus(item.status) === "COMPLETED"),
+      );
+
+    return firstDepositableMilestone
+      ? getSourceMilestoneId(firstDepositableMilestone)
+      : undefined;
+  }, [milestones, session?.role, shouldFocusMilestoneDeposit]);
   const businessDisplayName = cleanPartyName(
     contract?.businessName,
     "đối tác",
@@ -638,6 +664,30 @@ export function WorkspacePage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, []);
+
+  useEffect(() => {
+    if (!shouldFocusMilestoneDeposit) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWorkspaceNotice({
+      tone: "info",
+      title: "Bước tiếp theo: ký quỹ cột mốc",
+      message:
+        "Doanh nghiệp cần ký quỹ từng cột mốc để Chuyên gia có thể bắt đầu thực hiện công việc.",
+    });
+  }, [shouldFocusMilestoneDeposit]);
+
+  useEffect(() => {
+    if (!focusMilestoneId) return;
+
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`milestone-deposit-${focusMilestoneId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [focusMilestoneId]);
 
   useEffect(() => {
     if (!resolvedDisputeNotice) return;
@@ -746,10 +796,26 @@ export function WorkspacePage() {
     try {
       await action(sourceMilestoneId);
       await refreshAfterAction();
-      setMilestoneNotice(sourceMilestoneId, {
-        tone: "success",
-        title: successTitle,
-      });
+      const successMessage =
+        actionKey === "deposit"
+          ? `Đã ký quỹ thành công ${formatCurrency(
+              getMilestoneBudget(milestone),
+            )} cho Cột mốc ${milestone.orderIndex}. Chuyên gia có thể bắt đầu thực hiện công việc.`
+          : undefined;
+      if (actionKey === "deposit") {
+        setWorkspaceNotice({
+          tone: "success",
+          title: "Ký quỹ cột mốc thành công",
+          message: successMessage,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setMilestoneNotice(sourceMilestoneId, {
+          tone: "success",
+          title: successTitle,
+          message: successMessage,
+        });
+      }
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
@@ -1701,7 +1767,15 @@ export function WorkspacePage() {
             latestDeliverable,
             milestoneStatus: milestone.status,
           });
-          const visibleRoleNotice = roleNotice?.tone === "info" ? null : roleNotice;
+          // A fresh action notice is the single source of truth for the milestone.
+          // Do not render the derived role notice beside it.
+          const visibleRoleNotice =
+            visibleMilestoneNotice || roleNotice?.tone === "info"
+              ? null
+              : roleNotice;
+          const hasMilestoneSummaryNotice = Boolean(
+            visibleMilestoneNotice || visibleRoleNotice,
+          );
           const isLoading = (action: string) =>
             actionLoading === `${action}:${sourceMilestoneId}`;
           const canDeposit =
@@ -1740,6 +1814,7 @@ export function WorkspacePage() {
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
             PROGRESS_REPORT_STATUSES.has(status) &&
+            !hasSubmittedFinal &&
             !milestone.progressReportRequestPending;
           const canReview =
             !contractActionsFrozen &&
@@ -1768,12 +1843,21 @@ export function WorkspacePage() {
 
           return (
             <Card
+              id={
+                sourceMilestoneId
+                  ? `milestone-deposit-${sourceMilestoneId}`
+                  : undefined
+              }
               key={
                 sourceMilestoneId ||
                 getContractMilestoneId(milestone) ||
                 milestone.orderIndex
               }
-              className="p-5"
+              className={`p-5 transition-shadow ${
+                focusMilestoneId === sourceMilestoneId
+                  ? "ring-2 ring-brand/50 shadow-lg"
+                  : ""
+              }`}
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -2249,7 +2333,13 @@ export function WorkspacePage() {
                                 businessDisplayName,
                                 expertDisplayName,
                               );
-                              return notice.tone === "info" ? null : (
+                              const isLatestReport =
+                                latestProgressReport?.progressReportId ===
+                                item.progressReportId;
+                              return notice.tone === "info" ||
+                                (isLatestReport && hasMilestoneSummaryNotice)
+                                ? null
+                                : (
                                 <Notice tone={notice.tone} title={notice.title} className="mt-3">
                                   {notice.message}
                                 </Notice>
@@ -2413,7 +2503,13 @@ export function WorkspacePage() {
                                 milestone.status,
                                 latestDeliverable?.deliverableId === item.deliverableId,
                               );
-                              return notice.tone === "info" ? null : (
+                              const isLatestDeliverable =
+                                latestDeliverable?.deliverableId ===
+                                item.deliverableId;
+                              return notice.tone === "info" ||
+                                (isLatestDeliverable && hasMilestoneSummaryNotice)
+                                ? null
+                                : (
                                 <Notice tone={notice.tone} title={notice.title} className="mt-3">
                                   {notice.message}
                                 </Notice>
@@ -2577,6 +2673,7 @@ export function WorkspacePage() {
                     setDeliverableForm((value) => ({
                       ...value,
                       type: "FINAL",
+                      demoLink: "",
                     }))
                   }
                 >
@@ -2586,19 +2683,29 @@ export function WorkspacePage() {
             </div>
           </Field>
           {deliverableForm.type === "PROCESS" && (
-            <Field label="Phần trăm hoàn thành">
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={deliverableForm.percentComplete}
-                onChange={(event) =>
-                  setDeliverableForm((value) => ({
-                    ...value,
-                    percentComplete: event.target.value,
-                  }))
-                }
-              />
+            <Field label={`Phần trăm hoàn thành: ${deliverableForm.percentComplete}%`}>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={deliverableForm.percentComplete}
+                  aria-label="Phần trăm hoàn thành"
+                  className="h-2 w-full cursor-pointer accent-brand-600"
+                  onChange={(event) =>
+                    setDeliverableForm((value) => ({
+                      ...value,
+                      percentComplete: event.target.value,
+                    }))
+                  }
+                />
+                <div className="mt-2 flex justify-between text-xs font-bold text-slate-400">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
             </Field>
           )}
           <Field label="Source code URL">
@@ -2707,23 +2814,25 @@ export function WorkspacePage() {
               )}
             </div>
           </Field>
-          <Field label="Demo link">
-            <Input
-              value={deliverableForm.demoLink}
-              onChange={(event) =>
-                setDeliverableForm((value) => ({
-                  ...value,
-                  demoLink: event.target.value,
-                }))
-              }
-              onBlur={() =>
-                setDeliverableForm((value) => ({
-                  ...value,
-                  demoLink: normalizeExternalUrl(value.demoLink),
-                }))
-              }
-            />
-          </Field>
+          {deliverableForm.type === "PROCESS" && (
+            <Field label="Demo link">
+              <Input
+                value={deliverableForm.demoLink}
+                onChange={(event) =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: event.target.value,
+                  }))
+                }
+                onBlur={() =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: normalizeExternalUrl(value.demoLink),
+                  }))
+                }
+              />
+            </Field>
+          )}
           <Field
             label={
               deliverableForm.type === "FINAL"

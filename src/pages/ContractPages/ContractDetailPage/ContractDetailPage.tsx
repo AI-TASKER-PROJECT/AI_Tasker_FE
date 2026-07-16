@@ -550,6 +550,7 @@ export function ContractDetailPage() {
   const canPayDeposit =
     (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
     contractStatus === "PENDING" &&
+    readyToActivate &&
     !depositPaidLocally;
   const canExpertRejectContract =
     session?.role === "EXPERT" &&
@@ -652,7 +653,26 @@ export function ContractDetailPage() {
       </div>
       {contractNotice && (
         <Notice tone={contractNotice.tone} title={contractNotice.title}>
-          {contractNotice.message}
+          <div className="space-y-3">
+            <p>{contractNotice.message}</p>
+            {contractNotice.tone === "success" &&
+              depositPaidLocally &&
+              session?.role === "BUSINESS" && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold leading-6 text-slate-700">
+                    Để Chuyên gia bắt đầu làm việc, bạn cần ký quỹ Cột mốc 1.
+                    Tiền sẽ được giữ trong Escrow và chỉ giải ngân sau khi bạn
+                    nghiệm thu.
+                  </p>
+                  <LinkButton
+                    to={`/app/contracts/${contract.contractId}/workspace?focus=milestone-deposit`}
+                    size="sm"
+                  >
+                    Đi tới Workspace và ký quỹ mốc
+                  </LinkButton>
+                </div>
+              )}
+          </div>
         </Notice>
       )}
       {canPayDeposit && (
