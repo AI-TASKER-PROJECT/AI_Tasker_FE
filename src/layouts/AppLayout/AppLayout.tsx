@@ -851,7 +851,12 @@ export function AppShell() {
           sidebarCollapsed ? "lg:pl-24" : "lg:pl-64",
         )}
       >
-        <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/85 backdrop-blur-xl">
+        <header
+          className={cn(
+            "fixed left-0 right-0 top-0 z-30 border-b border-slate-100 bg-white/85 backdrop-blur-xl transition-[left] duration-300",
+            sidebarCollapsed ? "lg:left-24" : "lg:left-64",
+          )}
+        >
           <div className="flex h-20 items-center gap-3 px-4 md:px-6">
             <button
               type="button"
@@ -1130,7 +1135,7 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="min-w-0 overflow-x-hidden px-4 py-6 md:px-6 md:py-8">
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 pt-[6.5rem] md:px-6 md:py-8 md:pt-28">
             <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {showBackButton && (
               <Button

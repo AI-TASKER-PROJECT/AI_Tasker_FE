@@ -202,7 +202,7 @@ export function SystemWalletPage() {
                         </div>
                       );
                     })}
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                    <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-3 shadow-soft backdrop-blur-xl">
                       <span className="text-xs font-bold text-slate-400">
                         Hiển thị {(historyPage - 1) * historyPageSize + 1}–{Math.min(historyPage * historyPageSize, history.length)} trong {history.length} giao dịch
                       </span>

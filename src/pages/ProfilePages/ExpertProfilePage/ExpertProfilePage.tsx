@@ -1,13 +1,55 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, BrainCircuit, BriefcaseBusiness, Cpu, Edit3, FileText, IdCard, Layers3, ShieldCheck, Star } from "lucide-react";
-import { catalogApi, contractApi, profileApi, type Domain, type Skill, type Technology } from "../../../lib/api";
+import {
+  Award,
+  BrainCircuit,
+  BriefcaseBusiness,
+  Cpu,
+  Edit3,
+  FileText,
+  IdCard,
+  Layers3,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
+import {
+  catalogApi,
+  contractApi,
+  profileApi,
+  type Domain,
+  type Skill,
+  type Technology,
+} from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
-import { formatCurrency, formatDate, maskSensitiveValue } from "../../../lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  maskSensitiveValue,
+} from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
-import { Avatar, Button, Card, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
+import {
+  Avatar,
+  Button,
+  Card,
+  Field,
+  Input,
+  Modal,
+  Notice,
+  SectionHeading,
+  StatusBadge,
+  Tabs,
+} from "../../../components/ui";
 import type { Contract, ExpertProfile, Portfolio } from "../../../types";
-import { normalizeAccountStatus, parseCatalogIds, PreviewGroup, ProfileFilePicker, ProfileRow, readApiError, resolveCatalogNames, translateVerificationStatus } from "../ProfilePages.shared";
+import {
+  normalizeAccountStatus,
+  parseCatalogIds,
+  PreviewGroup,
+  ProfileFilePicker,
+  ProfileRow,
+  readApiError,
+  resolveCatalogNames,
+  translateVerificationStatus,
+} from "../ProfilePages.shared";
 
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
@@ -21,7 +63,9 @@ export function ExpertProfilePage() {
   const [status, setStatus] = useState("Chưa gửi");
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
-  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(null);
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
+    null,
+  );
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [completedContracts, setCompletedContracts] = useState<Contract[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -65,8 +109,11 @@ export function ExpertProfilePage() {
           setCompletedContracts(
             contractItems.filter((contract) => {
               const isOwnContract =
-                !profile.expertId || Number(contract.expertId) === Number(profile.expertId);
-              const normalizedStatus = (contract.status || "").trim().toUpperCase();
+                !profile.expertId ||
+                Number(contract.expertId) === Number(profile.expertId);
+              const normalizedStatus = (contract.status || "")
+                .trim()
+                .toUpperCase();
               return (
                 isOwnContract &&
                 ["COMPLETED", "CLOSED", "RELEASED"].includes(normalizedStatus)
@@ -207,7 +254,11 @@ export function ExpertProfilePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" type="button" className="hidden min-w-40">
+              <Button
+                variant="secondary"
+                type="button"
+                className="hidden min-w-40"
+              >
                 Theo dõi chuyên gia
               </Button>
               {canEdit && (
@@ -223,7 +274,11 @@ export function ExpertProfilePage() {
               tabs={[
                 { id: "overview", label: "Trang chủ" },
                 { id: "portfolio", label: "Portfolio" },
-                { id: "projects", label: "Dự án", count: completedContracts.length },
+                {
+                  id: "projects",
+                  label: "Dự án",
+                  count: completedContracts.length,
+                },
                 ...(canEdit ? [{ id: "edit", label: "Chỉnh sửa" }] : []),
               ]}
               active={activeTab}
@@ -272,7 +327,9 @@ export function ExpertProfilePage() {
               />
               <ProfileRow
                 label="Trạng thái KYC"
-                value={<StatusBadge status={translateVerificationStatus(status)} />}
+                value={
+                  <StatusBadge status={translateVerificationStatus(status)} />
+                }
               />
             </div>
           </Card>
@@ -310,7 +367,7 @@ export function ExpertProfilePage() {
             <Card className="rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-none">
               <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink">
                 <FileText className="h-4 w-4 text-brand-600" />
-                Tệp đính kèm
+                Tệp portfolio
               </div>
               <FirebaseFileLink
                 path={portfolio?.certificates || form.portfolioUrl}
@@ -325,9 +382,7 @@ export function ExpertProfilePage() {
 
       {activeTab === "projects" && (
         <Card className="p-6">
-          <SectionHeading
-            title="Dự án đã hoàn thành"
-          />
+          <SectionHeading title="Dự án đã hoàn thành" />
           {completedContracts.length ? (
             <div className="mt-5 grid gap-4">
               {completedContracts.map((contract) => (
@@ -343,7 +398,9 @@ export function ExpertProfilePage() {
                       </h3>
                       <p className="mt-1 line-clamp-2 text-sm text-slate-500">
                         {`${formatCurrency(contract.totalBudget)} · ${contract.timelineDays || 0} ngày · Cập nhật ${
-                          contract.updatedAt ? formatDate(contract.updatedAt) : "Chưa có dữ liệu"
+                          contract.updatedAt
+                            ? formatDate(contract.updatedAt)
+                            : "Chưa có dữ liệu"
                         }`}
                       </p>
                     </div>
@@ -394,7 +451,8 @@ export function ExpertProfilePage() {
                     required={!form.portfolioUrl}
                   />
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                    Nộp kèm portfolio để Staff xem năng lực và kinh nghiệm của chuyên gia.
+                    Nộp kèm portfolio để Staff xem năng lực và kinh nghiệm của
+                    chuyên gia.
                   </p>
                   <FirebaseFileLink
                     path={form.portfolioUrl}
