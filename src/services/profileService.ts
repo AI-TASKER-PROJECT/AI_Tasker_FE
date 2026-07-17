@@ -55,8 +55,7 @@ export const profileApi = {
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      // Backend hiện chỉ expose endpoint upload file expert dưới nhánh portfolio.
-      url: "/api/v1/profiles/portfolio/certificate-file", //cập nhật hồ sơ năng lực
+      url: "/api/v1/profiles/expert/portfolio-file", //cập nhật hồ sơ năng lực
       data: formData,
     });
   },
