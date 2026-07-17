@@ -2,6 +2,7 @@
   CheckCircle2,
   FileText,
   LockKeyhole,
+  RefreshCw,
   ShieldCheck,
   Star,
   WalletCards,
@@ -119,6 +120,7 @@ export function ContractDetailPage() {
     null,
   );
   const [ndaSubmitting, setNdaSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     contractApi
@@ -618,6 +620,50 @@ export function ContractDetailPage() {
     }
   };
 
+  const refreshContractDetail = async () => {
+    if (!contractId) return;
+    setRefreshing(true);
+    try {
+      const updatedContract = await contractApi.getContract(Number(contractId));
+      setContract(updatedContract);
+      const [
+        jobMilestoneItems,
+        contractMilestoneItems,
+        disputeItems,
+        businessResult,
+        expertResult,
+      ] = await Promise.all([
+        contractApi.listJobMilestones(updatedContract.jobId).catch(() => []),
+        contractApi
+          .listMilestones(updatedContract.contractId)
+          .catch(() => []),
+        disputeApi
+          .listByContract(updatedContract.contractId)
+          .catch(() => []),
+        profileApi.getBusinessById(updatedContract.businessId).catch(() => null),
+        profileApi.getExpertById(updatedContract.expertId).catch(() => null),
+      ]);
+      setJobMilestones(jobMilestoneItems);
+      setContractMilestones(contractMilestoneItems);
+      setDisputes(disputeItems);
+      setParticipants({
+        business: businessResult,
+        expert: expertResult,
+      });
+      if (session?.role === "BUSINESS" || session?.role === "EXPERT") {
+        setPaymentWallet(await walletApi.current().catch(() => null));
+      }
+    } catch {
+      setContractNotice({
+        tone: "danger",
+        title: "Không thể làm mới dữ liệu hợp đồng.",
+        message: "Vui lòng thử lại sau ít phút.",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
@@ -630,6 +676,14 @@ export function ContractDetailPage() {
               <Button variant="secondary" onClick={openNdaPreview}>
                 <FileText className="h-4 w-4" />
                 Xem NDA
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={refreshContractDetail}
+                loading={refreshing}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Làm mới
               </Button>
               <LinkButton
                 to={`/app/contracts/${contract.contractId}/workspace`}

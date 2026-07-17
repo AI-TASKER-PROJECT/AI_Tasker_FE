@@ -888,6 +888,7 @@ export interface WalletTransaction {
   referenceType?: string;
   referenceId?: number;
   operationKey?: string;
+  operationLeg?: string;
   rawDescription?: string;
   title?: string;
   description?: string;

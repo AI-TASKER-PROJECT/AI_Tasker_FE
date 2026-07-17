@@ -273,7 +273,7 @@ export function BusinessProfilePage() {
                   tone="info"
                   title="Nộp lại hồ sơ KYB"
                 >
-                  Sau khi cập nhật và gửi lại, hồ sơ sẽ chuyển sang trạng thái chờ duyệt.
+                  Hồ sơ đã duyệt sẽ được cập nhật thông tin mà không chuyển lại về trạng thái chờ duyệt.
                 </Notice>
               )}
               <Field label="Mã số thuế">
@@ -345,7 +345,7 @@ export function BusinessProfilePage() {
                 ) : isApproved && isEditing ? (
                   <Button type="submit" loading={loading}>
                     <Save className="h-4 w-4" />
-                    Nộp lại hồ sơ KYB
+                    Cập nhật thông tin
                   </Button>
                 ) : (
                   <Button type="submit" loading={loading}>
@@ -392,7 +392,7 @@ export function BusinessProfilePage() {
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         title="Xác nhận chỉnh sửa"
-        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        description="Xác nhận cập nhật thông tin hồ sơ đã được duyệt?"
         footer={
           <>
             <Button

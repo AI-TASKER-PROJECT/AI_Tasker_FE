@@ -8,6 +8,7 @@ import {
   Gavel,
   Handshake,
   Link2,
+  RefreshCw,
   Send,
   ShieldCheck,
   XCircle,
@@ -66,9 +67,9 @@ function formatStatus(status?: string) {
     case "ESCALATION_REQUESTED":
       return "Đã yêu cầu Staff";
     case "STAFF_REVIEWING":
-      return "Staff đang xem xét";
+      return "Nhân viên đang xem xét";
     case "STAFF_DECIDED":
-      return "Staff đã quyết định";
+      return "Nhân viên đã quyết định";
     case "RESOLVED":
       return "Đã giải quyết";
     case "CANCELLED":
@@ -162,16 +163,16 @@ function statusInfo(status?: string): {
     case "STAFF_REVIEWING":
       return {
         tone: "info",
-        title: "Staff đang xem xét hồ sơ",
+        title: "Nhân viên đang xem xét hồ sơ",
         message:
-          "Staff đối chiếu bài nộp, tiêu chí nghiệm thu và bằng chứng để ra quyết định tỷ lệ xử lý tiền ký quỹ.",
+          "Nhân viên đối chiếu bài nộp, tiêu chí nghiệm thu và bằng chứng để ra quyết định tỷ lệ xử lý tiền ký quỹ.",
       };
     case "STAFF_DECIDED":
       return {
         tone: "warning",
-        title: "Staff đã ra quyết định",
+        title: "Nhân viên đã ra quyết định",
         message:
-          "Hệ thống đang hoàn tất quyết toán theo tỷ lệ Staff đã quyết định.",
+          "Hệ thống đang hoàn tất quyết toán theo tỷ lệ nhân viên đã quyết định.",
       };
     case "RESOLVED":
       return {
@@ -339,6 +340,7 @@ export function DisputeDetailPage({
     message?: string;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [decisionForm, setDecisionForm] = useState({
     staffReport: "",
     note: "",
@@ -430,6 +432,66 @@ export function DisputeDetailPage({
       }
     })();
   }, [disputeId]);
+
+  const refreshDisputeDetail = async () => {
+    const id = Number(disputeId);
+    if (!Number.isFinite(id) || id <= 0) return;
+
+    setRefreshing(true);
+    try {
+      const [disputeData, evidenceData] = await Promise.all([
+        disputeApi.get(id),
+        disputeApi.listEvidence(id).catch(() => []),
+      ]);
+      setDispute(disputeData);
+      setEvidenceItems(evidenceData);
+      setDecisionForm({
+        staffReport: disputeData.staffReport || "",
+        note: disputeData.staffDecisionNote || "",
+        expertPercent:
+          typeof disputeData.staffDecisionPercentage === "number"
+            ? String(disputeData.staffDecisionPercentage)
+            : "50",
+      });
+      setInterventionForm({
+        reason: disputeReasonContent(disputeData),
+        evidenceFile: disputeData.escalationEvidenceFile || "",
+        note: "",
+      });
+
+      const [contractData, milestoneData] = await Promise.all([
+        contractApi.getContract(disputeData.contractId).catch(() => null),
+        contractApi.listMilestones(disputeData.contractId).catch(() => []),
+      ]);
+      setContract(contractData);
+      setMilestones(milestoneData);
+
+      if (disputeData.milestoneId) {
+        const [criteriaData, deliverableData, reportData] = await Promise.all([
+          contractApi.listCriteria(disputeData.milestoneId).catch(() => []),
+          contractApi.listDeliverables(disputeData.milestoneId).catch(() => []),
+          contractApi
+            .listProgressReports(disputeData.contractId, disputeData.milestoneId)
+            .catch(() => []),
+        ]);
+        setCriteria(criteriaData);
+        setDeliverables(deliverableData);
+        setProgressReports(reportData);
+      } else {
+        setCriteria([]);
+        setDeliverables([]);
+        setProgressReports([]);
+      }
+    } catch {
+      setNotice({
+        tone: "danger",
+        title: "Không thể làm mới dữ liệu tranh chấp.",
+        message: "Vui lòng thử lại sau ít phút.",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Sắp xếp báo cáo tiến độ mới nhất lên trước để Staff dễ kiểm tra.
   const sortedProgressReports = useMemo(
@@ -643,13 +705,13 @@ export function DisputeDetailPage({
     );
     addItem(
       "escalation-requested",
-      "Yêu cầu Staff can thiệp",
+      "Yêu cầu nhân viên can thiệp",
       dispute.escalationRequestedAt,
       "bg-pink-500 ring-pink-50",
     );
     addItem(
       "staff-review-started",
-      "Staff đang xem xét",
+      "Nhân viên đang xem xét",
       dispute.staffReviewStartedAt,
       "bg-violet-500 ring-violet-50",
     );
@@ -854,7 +916,7 @@ export function DisputeDetailPage({
     <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <SectionHeading
-          title="Quyết định của Staff"
+          title="Quyết định của nhân viên"
           description="Kết luận kỹ thuật, ghi chú quyết định và kết quả tiền ký quỹ sau xử lý."
         />
         <Button
@@ -956,6 +1018,15 @@ export function DisputeDetailPage({
                 Xem thông tin dự án
               </LinkButton>
 
+              <Button
+                variant="secondary"
+                onClick={refreshDisputeDetail}
+                loading={refreshing}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Làm mới
+              </Button>
+
               {canContinueProject && (
                 <Button variant="secondary" onClick={continueProject}>
                   <CheckCircle2 className="h-4 w-4" />
@@ -1011,7 +1082,8 @@ export function DisputeDetailPage({
               Nhân viên phụ trách
             </p>
             <p className="mt-2 text-sm font-extrabold leading-6 text-slate-800">
-              {dispute.staffName || "Hệ thống chưa phân công Staff"}
+              {dispute.staffName ||
+                "Vui lòng yêu cầu can thiệp để phân công nhân viên có chuyên môn phù hợp"}
             </p>
           </div>
         </div>
@@ -1485,290 +1557,289 @@ export function DisputeDetailPage({
           </Card>
 
           {!isParticipant && (
-          <>
-          <Card className="border border-slate-100 p-6">
-            <SectionHeading
-              title="Tiêu chí nghiệm thu"
-              description="Danh sách tiêu chí được dùng làm căn cứ đánh giá mức độ hoàn thành cột mốc."
-            />
+            <>
+              <Card className="border border-slate-100 p-6">
+                <SectionHeading
+                  title="Tiêu chí nghiệm thu"
+                  description="Danh sách tiêu chí được dùng làm căn cứ đánh giá mức độ hoàn thành cột mốc."
+                />
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {criteria.map((item, index) => (
-                <div
-                  key={item.criteriaId}
-                  className="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4"
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-mint-50 text-mint-600">
-                    <ClipboardCheck className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                      Tiêu chí {index + 1}
-                    </p>
-                    <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              {criteria.length === 0 && (
-                <div className="md:col-span-2">
-                  <EmptyState
-                    title="Chưa tải được tiêu chí"
-                    description="Backend chưa trả về tiêu chí nghiệm thu cho cột mốc này."
-                  />
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card className="border border-slate-100 p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <SectionHeading
-                title="Bài nộp và sản phẩm bàn giao"
-                description="Các phiên bản được sắp xếp từ mới nhất đến cũ hơn để thuận tiện đối chiếu."
-              />
-              <Button
-                variant="secondary"
-                onClick={() => setSubmissionExpanded((value) => !value)}
-              >
-                {submissionExpanded ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-                {submissionExpanded ? "Thu gọn" : "Mở chi tiết"}
-              </Button>
-            </div>
-
-            {submissionExpanded && (
-              <div className="mt-5 space-y-5">
-                {sortedProgressReports.length > 0 && (
-                  <section>
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="font-display text-base font-black text-ink">
-                        Báo cáo tiến độ
-                      </h3>
-                      <Badge tone="brand">
-                        {sortedProgressReports.length} báo cáo
-                      </Badge>
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  {criteria.map((item, index) => (
+                    <div
+                      key={item.criteriaId}
+                      className="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4"
+                    >
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-mint-50 text-mint-600">
+                        <ClipboardCheck className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                          Tiêu chí {index + 1}
+                        </p>
+                        <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+                          {item.description}
+                        </p>
+                      </div>
                     </div>
+                  ))}
 
-                    <div className="grid gap-4">
-                      {sortedProgressReports.map((item, index) => (
-                        <article
-                          key={`report-${item.progressReportId}`}
-                          className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-ink">
-                                Báo cáo tiến độ{" "}
-                                {sortedProgressReports.length - index}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-slate-400">
-                                {item.createdAt
-                                  ? formatDateTime(item.createdAt)
-                                  : "Chưa có thời gian nộp"}
-                              </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {item.checkpointType && (
-                                <Badge tone="slate">
-                                  {item.checkpointType}
-                                </Badge>
-                              )}
-                              {typeof item.percentComplete === "number" && (
-                                <Badge tone="mint">
-                                  Hoàn thành {item.percentComplete}%
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            {item.sourceCodeUrl && (
-                              <a
-                                href={item.sourceCodeUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                              >
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                  Mã nguồn
-                                </p>
-                                <p className="mt-1 truncate font-bold text-pink-600">
-                                  {item.sourceCodeUrl}
-                                </p>
-                              </a>
-                            )}
-
-                            {item.demoLink && (
-                              <a
-                                href={item.demoLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                              >
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                  Bản chạy thử
-                                </p>
-                                <p className="mt-1 truncate font-bold text-pink-600">
-                                  {item.demoLink}
-                                </p>
-                              </a>
-                            )}
-
-                            {item.attachmentUrl && (
-                              <a
-                                href={item.attachmentUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                              >
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                  Tệp đính kèm
-                                </p>
-                                <p className="mt-1 truncate font-bold text-pink-600">
-                                  {item.attachmentUrl}
-                                </p>
-                              </a>
-                            )}
-                          </div>
-
-                          {(item.submissionNotes || item.content) && (
-                            <div className="mt-3 rounded-xl bg-slate-50 p-4">
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Nội dung nộp
-                              </p>
-                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                                {item.submissionNotes || item.content}
-                              </p>
-                            </div>
-                          )}
-
-                          {item.businessFeedback && (
-                            <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
-                                Phản hồi của Doanh nghiệp
-                              </p>
-                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-amber-900">
-                                {item.businessFeedback}
-                              </p>
-                            </div>
-                          )}
-                        </article>
-                      ))}
+                  {criteria.length === 0 && (
+                    <div className="md:col-span-2">
+                      <EmptyState
+                        title="Chưa tải được tiêu chí"
+                        description="Backend chưa trả về tiêu chí nghiệm thu cho cột mốc này."
+                      />
                     </div>
-                  </section>
-                )}
-
-                {sortedDeliverables.length > 0 && (
-                  <section>
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="font-display text-base font-black text-ink">
-                        Sản phẩm bàn giao
-                      </h3>
-                      <Badge tone="violet">
-                        {sortedDeliverables.length} phiên bản
-                      </Badge>
-                    </div>
-
-                    <div className="grid gap-4">
-                      {sortedDeliverables.map((item, index) => (
-                        <article
-                          key={`deliverable-${item.deliverableId}`}
-                          className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-ink">
-                                Sản phẩm bàn giao{" "}
-                                {sortedDeliverables.length - index}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-slate-400">
-                                {item.createdAt
-                                  ? formatDateTime(item.createdAt)
-                                  : "Chưa có thời gian nộp"}
-                              </p>
-                            </div>
-                            <Badge tone="violet">Sản phẩm bàn giao</Badge>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            {item.sourceCodeUrl && (
-                              <a
-                                href={item.sourceCodeUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                              >
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                  Mã nguồn
-                                </p>
-                                <p className="mt-1 truncate font-bold text-pink-600">
-                                  {item.sourceCodeUrl}
-                                </p>
-                              </a>
-                            )}
-
-                            {item.demoLink && (
-                              <a
-                                href={item.demoLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
-                              >
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                  Bản chạy thử
-                                </p>
-                                <p className="mt-1 truncate font-bold text-pink-600">
-                                  {item.demoLink}
-                                </p>
-                              </a>
-                            )}
-                          </div>
-
-                          {item.submissionNotes && (
-                            <div className="mt-3 rounded-xl bg-slate-50 p-4">
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                                Nội dung bàn giao
-                              </p>
-                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
-                                {item.submissionNotes}
-                              </p>
-                            </div>
-                          )}
-
-                          {item.rejectionFeedback && (
-                            <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
-                              <p className="text-xs font-black uppercase tracking-[0.12em] text-rose-700">
-                                Lý do bị từ chối
-                              </p>
-                              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-rose-900">
-                                {item.rejectionFeedback}
-                              </p>
-                            </div>
-                          )}
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {sortedProgressReports.length === 0 &&
-                  sortedDeliverables.length === 0 && (
-                    <EmptyState
-                      title="Chưa có bài nộp"
-                      description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến cột mốc này."
-                    />
                   )}
-              </div>
-            )}
-          </Card>
+                </div>
+              </Card>
 
-          </>
+              <Card className="border border-slate-100 p-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <SectionHeading
+                    title="Bài nộp và sản phẩm bàn giao"
+                    description="Các phiên bản được sắp xếp từ mới nhất đến cũ hơn để thuận tiện đối chiếu."
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => setSubmissionExpanded((value) => !value)}
+                  >
+                    {submissionExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                    {submissionExpanded ? "Thu gọn" : "Mở chi tiết"}
+                  </Button>
+                </div>
+
+                {submissionExpanded && (
+                  <div className="mt-5 space-y-5">
+                    {sortedProgressReports.length > 0 && (
+                      <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h3 className="font-display text-base font-black text-ink">
+                            Báo cáo tiến độ
+                          </h3>
+                          <Badge tone="brand">
+                            {sortedProgressReports.length} báo cáo
+                          </Badge>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {sortedProgressReports.map((item, index) => (
+                            <article
+                              key={`report-${item.progressReportId}`}
+                              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-extrabold text-ink">
+                                    Báo cáo tiến độ{" "}
+                                    {sortedProgressReports.length - index}
+                                  </p>
+                                  <p className="mt-1 text-xs font-bold text-slate-400">
+                                    {item.createdAt
+                                      ? formatDateTime(item.createdAt)
+                                      : "Chưa có thời gian nộp"}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {item.checkpointType && (
+                                    <Badge tone="slate">
+                                      {item.checkpointType}
+                                    </Badge>
+                                  )}
+                                  {typeof item.percentComplete === "number" && (
+                                    <Badge tone="mint">
+                                      Hoàn thành {item.percentComplete}%
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                {item.sourceCodeUrl && (
+                                  <a
+                                    href={item.sourceCodeUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                                  >
+                                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Mã nguồn
+                                    </p>
+                                    <p className="mt-1 truncate font-bold text-pink-600">
+                                      {item.sourceCodeUrl}
+                                    </p>
+                                  </a>
+                                )}
+
+                                {item.demoLink && (
+                                  <a
+                                    href={item.demoLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                                  >
+                                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Bản chạy thử
+                                    </p>
+                                    <p className="mt-1 truncate font-bold text-pink-600">
+                                      {item.demoLink}
+                                    </p>
+                                  </a>
+                                )}
+
+                                {item.attachmentUrl && (
+                                  <a
+                                    href={item.attachmentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                                  >
+                                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Tệp đính kèm
+                                    </p>
+                                    <p className="mt-1 truncate font-bold text-pink-600">
+                                      {item.attachmentUrl}
+                                    </p>
+                                  </a>
+                                )}
+                              </div>
+
+                              {(item.submissionNotes || item.content) && (
+                                <div className="mt-3 rounded-xl bg-slate-50 p-4">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                    Nội dung nộp
+                                  </p>
+                                  <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                                    {item.submissionNotes || item.content}
+                                  </p>
+                                </div>
+                              )}
+
+                              {item.businessFeedback && (
+                                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                                    Phản hồi của Doanh nghiệp
+                                  </p>
+                                  <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-amber-900">
+                                    {item.businessFeedback}
+                                  </p>
+                                </div>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {sortedDeliverables.length > 0 && (
+                      <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h3 className="font-display text-base font-black text-ink">
+                            Sản phẩm bàn giao
+                          </h3>
+                          <Badge tone="violet">
+                            {sortedDeliverables.length} phiên bản
+                          </Badge>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {sortedDeliverables.map((item, index) => (
+                            <article
+                              key={`deliverable-${item.deliverableId}`}
+                              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-extrabold text-ink">
+                                    Sản phẩm bàn giao{" "}
+                                    {sortedDeliverables.length - index}
+                                  </p>
+                                  <p className="mt-1 text-xs font-bold text-slate-400">
+                                    {item.createdAt
+                                      ? formatDateTime(item.createdAt)
+                                      : "Chưa có thời gian nộp"}
+                                  </p>
+                                </div>
+                                <Badge tone="violet">Sản phẩm bàn giao</Badge>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                {item.sourceCodeUrl && (
+                                  <a
+                                    href={item.sourceCodeUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                                  >
+                                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Mã nguồn
+                                    </p>
+                                    <p className="mt-1 truncate font-bold text-pink-600">
+                                      {item.sourceCodeUrl}
+                                    </p>
+                                  </a>
+                                )}
+
+                                {item.demoLink && (
+                                  <a
+                                    href={item.demoLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="min-w-0 rounded-xl bg-slate-50 p-4 transition hover:bg-pink-50"
+                                  >
+                                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Bản chạy thử
+                                    </p>
+                                    <p className="mt-1 truncate font-bold text-pink-600">
+                                      {item.demoLink}
+                                    </p>
+                                  </a>
+                                )}
+                              </div>
+
+                              {item.submissionNotes && (
+                                <div className="mt-3 rounded-xl bg-slate-50 p-4">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                                    Nội dung bàn giao
+                                  </p>
+                                  <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
+                                    {item.submissionNotes}
+                                  </p>
+                                </div>
+                              )}
+
+                              {item.rejectionFeedback && (
+                                <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-rose-700">
+                                    Lý do bị từ chối
+                                  </p>
+                                  <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-rose-900">
+                                    {item.rejectionFeedback}
+                                  </p>
+                                </div>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {sortedProgressReports.length === 0 &&
+                      sortedDeliverables.length === 0 && (
+                        <EmptyState
+                          title="Chưa có bài nộp"
+                          description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến cột mốc này."
+                        />
+                      )}
+                  </div>
+                )}
+              </Card>
+            </>
           )}
 
           {canStaffDecide && (
@@ -1879,7 +1950,7 @@ export function DisputeDetailPage({
             <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <SectionHeading
-                  title="Quyết định của Staff"
+                  title="Quyết định của nhân viên"
                   description="Kết luận kỹ thuật, ghi chú quyết định và kết quả tiền ký quỹ sau xử lý."
                 />
                 <Button
@@ -1959,7 +2030,7 @@ export function DisputeDetailPage({
                   </div>
                 </div>
               )}
-          </Card>
+            </Card>
           )}
         </main>
 
@@ -2181,7 +2252,7 @@ export function DisputeDetailPage({
 
           <Card className="hidden border border-slate-100 p-6">
             <SectionHeading
-              title="Quyết định của Staff"
+              title="Quyết định của nhân viên"
               description="Kết luận kỹ thuật và ghi chú được công bố cho các bên."
             />
 

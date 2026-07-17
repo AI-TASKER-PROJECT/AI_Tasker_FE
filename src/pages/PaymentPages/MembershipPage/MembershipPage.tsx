@@ -177,7 +177,7 @@ function CreditPurchaseModal({
   onClose: () => void;
   role: "BUSINESS" | "EXPERT";
   wallet: SystemWallet | null;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }) {
   const [quantity, setQuantity] = useState("1");
   const [loading, setLoading] = useState(false);
@@ -189,7 +189,7 @@ function CreditPurchaseModal({
     msg: string;
   } | null>(null);
 
-  const unitPrice = role === "BUSINESS" ? 100 : 50;
+  const unitPrice = role === "BUSINESS" ? 200 : 100;
   const creditType =
     role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
   const total = (Number(quantity) || 0) * unitPrice;
@@ -220,7 +220,7 @@ function CreditPurchaseModal({
           tone: "success",
           msg: `Mua thành công ${qty} ${creditType}!`,
         });
-        onSuccess();
+        await onSuccess();
         window.dispatchEvent(new Event("aitasker:reload-wallet"));
       } else if (res.needTopup) {
         setNotice({
@@ -229,7 +229,7 @@ function CreditPurchaseModal({
         });
       }
     } catch (err) {
-      setNotice({ tone: "danger", msg: getApiErrorMessage(err) });
+      setNotice({ tone: "danger", msg: paymentErrorMessage(err) });
     } finally {
       setLoading(false);
     }
@@ -357,6 +357,7 @@ export function MembershipPage() {
       setPurchaseResult({ result, pkg });
       if (result.completed) {
         localStorage.setItem("aitasker_active_package", pkg.packageName);
+        await load();
         window.dispatchEvent(new Event("aitasker:reload-wallet"));
       }
     } catch (err) {
@@ -367,7 +368,7 @@ export function MembershipPage() {
           currentBalance: 0,
           requiredAmount: 0,
           missingAmount: 0,
-          message: getApiErrorMessage(err),
+          message: paymentErrorMessage(err),
         },
         pkg,
       });
@@ -454,8 +455,8 @@ export function MembershipPage() {
                 <div>
                   <p className="text-sm text-slate-500">
                     {role === "BUSINESS"
-                      ? "100 VND / 1 credit"
-                      : "50 VND / 1 credit"}
+                      ? "200 VND / 1 credit"
+                      : "100 VND / 1 credit"}
                   </p>
                 </div>
               </div>
@@ -573,4 +574,22 @@ export function MembershipPage() {
       )}
     </div>
   );
+}
+
+function paymentErrorMessage(error: unknown) {
+  const message = getApiErrorMessage(error);
+  const normalized = message.toUpperCase();
+  if (normalized.includes("CHUA CO TAI KHOAN ADMIN DE NHAN DOANH THU")) {
+    return "Chưa cấu hình tài khoản quản trị nhận doanh thu.";
+  }
+  if (normalized.includes("INSUFFICIENT_BALANCE")) {
+    return "Số dư ví không đủ để hoàn tất giao dịch.";
+  }
+  if (normalized.includes("PACKAGE_NOT_FOUND")) {
+    return "Gói thành viên không còn khả dụng. Vui lòng tải lại danh sách gói.";
+  }
+  if (normalized.includes("INVALID_ROLE")) {
+    return "Vai trò hiện tại không phù hợp với gói hoặc lượt mua này.";
+  }
+  return message;
 }

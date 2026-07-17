@@ -231,7 +231,7 @@ export function ExpertProfilePage() {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
                   <span className="inline-flex items-center gap-2">
                     <Award className="h-4 w-4" />
-                    {portfolio?.yearsExperience ?? form.yearsOfExperience} năm
+                    {form.yearsOfExperience ?? portfolio?.yearsExperience} năm
                     kinh nghiệm
                   </span>
                   <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
@@ -319,7 +319,7 @@ export function ExpertProfilePage() {
             <div className="mt-5 space-y-4">
               <ProfileRow
                 label="Số năm kinh nghiệm"
-                value={`${portfolio?.yearsExperience ?? form.yearsOfExperience} năm`}
+                value={`${form.yearsOfExperience ?? portfolio?.yearsExperience} năm`}
               />
               <ProfileRow
                 label="Số CCCD / Hộ chiếu"
@@ -483,6 +483,11 @@ export function ExpertProfilePage() {
                     <Edit3 className="h-4 w-4" />
                     Chỉnh sửa
                   </Button>
+                ) : isApproved && isEditing ? (
+                  <Button type="submit" loading={loading}>
+                    <ShieldCheck className="h-4 w-4" />
+                    Cập nhật thông tin
+                  </Button>
                 ) : (
                   <Button type="submit" loading={loading}>
                     <ShieldCheck className="h-4 w-4" />
@@ -528,7 +533,7 @@ export function ExpertProfilePage() {
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         title="Xác nhận chỉnh sửa"
-        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        description="Xác nhận cập nhật thông tin hồ sơ đã được duyệt?"
         footer={
           <>
             <Button

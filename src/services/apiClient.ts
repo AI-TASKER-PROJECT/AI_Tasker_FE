@@ -122,6 +122,14 @@ function mapApiErrorCode(message: string) {
       "Tranh chấp chưa ở trạng thái chờ Staff tiếp nhận.",
     DISPUTE_NOT_STAFF_REVIEWING:
       "Tranh chấp chưa ở trạng thái Staff đang xử lý.",
+    "HO SO DANG CHO DUYET, VUI LONG DOI KET QUA XET DUYET":
+      "Hồ sơ đang chờ duyệt, vui lòng đợi kết quả.",
+    "CHI DUOC XET DUYET HO SO DANG CHO DUYET":
+      "Chỉ có thể xét duyệt hồ sơ đang chờ duyệt.",
+    "SYSTEM SETTING KHONG DUOC HO TRO":
+      "Cấu hình này không còn được hệ thống hỗ trợ.",
+    "CHUA CO TAI KHOAN ADMIN DE NHAN DOANH THU":
+      "Chưa có tài khoản Admin để nhận doanh thu nền tảng.",
   };
   messages.MILESTONE_DA_QUA_HAN_NOP_SAN_PHAM =
     "Cot moc da qua han nop san pham. Ban khong the nop them source hoac final product.";

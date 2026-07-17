@@ -12,6 +12,17 @@
     }
   }
 
+  @keyframes chart-line-in {
+    0% {
+      opacity: 0;
+      stroke-dashoffset: 900;
+    }
+    100% {
+      opacity: 1;
+      stroke-dashoffset: 0;
+    }
+  }
+
   .ai-grid-layer {
     background-image:
       linear-gradient(rgba(197, 0, 112, 0.1) 1px, transparent 1px),
@@ -22,6 +33,11 @@
 
   .bottom-glow-overlay {
     background: radial-gradient(circle at 50% 100%, rgba(197, 0, 112, 0.12), transparent 45%);
+  }
+
+  .chart-line-in {
+    stroke-dasharray: 900;
+    animation: chart-line-in 700ms ease-out both;
   }
 }
 

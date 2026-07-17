@@ -547,13 +547,18 @@ export function SubmitProposalPage() {
                       "PDF, DOC/DOCX hoặc ảnh minh chứng."
                     }
                   >
-                    <Input
-                      type="file"
-                      accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                      onChange={(event) =>
-                        setProposalFile(event.target.files?.[0] || null)
-                      }
-                    />
+                    <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50 hover:shadow-card">
+                      <UploadCloud className="h-5 w-5" />
+                      <span>Chọn proposal file</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,application/pdf,.doc,.docx"
+                        className="sr-only"
+                        onChange={(event) =>
+                          setProposalFile(event.target.files?.[0] || null)
+                        }
+                      />
+                    </label>
                   </Field>
                 </div>
               </section>

@@ -45,8 +45,8 @@ export function ExpertPortfolioPage() {
         if (portfolio) {
           setForm({
             yearsExperience: String(
-              portfolio.yearsExperience ??
-                expertProfile?.yearsOfExperience ??
+              expertProfile?.yearsOfExperience ??
+                portfolio.yearsExperience ??
                 1,
             ),
             certificates: portfolio.certificates || "",

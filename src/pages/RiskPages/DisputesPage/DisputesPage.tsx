@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Card, EmptyState, LinkButton, Notice, PageHeader, SearchInput } from "../../../components/ui";
+import { Badge, Button, Card, EmptyState, LinkButton, Notice, PageHeader, SearchInput } from "../../../components/ui";
 import { contractApi, disputeApi } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import { formatDateTime } from "../../../lib/utils";
@@ -20,6 +20,8 @@ const ACTIVE_STATUSES = new Set([
   "STAFF_REVIEWING",
   "STAFF_DECIDED",
 ]);
+
+const DISPUTES_PER_PAGE = 4;
 
 // Chuẩn hóa status để so sánh trạng thái tranh chấp không phụ thuộc chữ hoa/thường.
 function normalizeStatus(value?: string) {
@@ -144,6 +146,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const [items, setItems] = useState<DisputeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Tạo đường dẫn màn chi tiết, Staff dùng route tickets còn user/admin dùng route disputes.
   const detailPath = (disputeId: number) =>
@@ -259,6 +262,17 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     [items, query, statusFilter, isAdmin, staffMode],
   );
 
+  const totalPages = Math.max(1, Math.ceil(disputes.length / DISPUTES_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedDisputes = disputes.slice(
+    (safeCurrentPage - 1) * DISPUTES_PER_PAGE,
+    safeCurrentPage * DISPUTES_PER_PAGE,
+  );
+  const disputeStart = disputes.length
+    ? (safeCurrentPage - 1) * DISPUTES_PER_PAGE + 1
+    : 0;
+  const disputeEnd = Math.min(safeCurrentPage * DISPUTES_PER_PAGE, disputes.length);
+
   const statusOptions = staffMode
     ? [
         { value: "ALL", label: "Tất cả" },
@@ -304,7 +318,10 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         <div className="flex-1">
           <SearchInput
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              setQuery(value);
+              setCurrentPage(1);
+            }}
             placeholder={
               staffMode
                 ? "Tìm theo hồ sơ, lĩnh vực, kỹ năng hoặc trạng thái..."
@@ -316,7 +333,10 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         </div>
         <select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setCurrentPage(1);
+          }}
           className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
         >
           {statusOptions.map((option) => (
@@ -356,7 +376,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         />
       ) : (
         <div className="grid gap-4">
-          {disputes.map((dispute) => {
+          {paginatedDisputes.map((dispute) => {
             const status = normalizeStatus(dispute.status);
             const matchedDomains = joinLabel(dispute.matchedStaffDomains);
             const matchedSkills = joinLabel(dispute.matchedStaffSkills);
@@ -449,6 +469,40 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
               </Card>
             );
           })}
+          <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm font-semibold text-slate-500">
+              Hiển thị{" "}
+              <span className="font-black text-ink">
+                {disputeStart}-{disputeEnd}
+              </span>{" "}
+              trên tổng{" "}
+              <span className="font-black text-ink">{disputes.length}</span>{" "}
+              hồ sơ tranh chấp
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+              >
+                Trước
+              </Button>
+              <span className="rounded-2xl bg-slate-50 px-3 py-2 text-sm font-extrabold text-ink">
+                {safeCurrentPage}/{totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))
+                }
+              >
+                Sau
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>

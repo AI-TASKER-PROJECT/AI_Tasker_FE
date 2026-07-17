@@ -95,6 +95,7 @@ export interface ExpertRecommendationResponse {
   matchScore?: number;
   matchedSkills?: string[];
   matchedDomains?: string[];
+  matchedTechnologies?: string[];
   reason?: string;
   businessSelected?: boolean;
 }

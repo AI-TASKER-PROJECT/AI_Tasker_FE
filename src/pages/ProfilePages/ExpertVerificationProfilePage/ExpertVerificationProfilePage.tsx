@@ -124,6 +124,8 @@ export function ExpertVerificationProfilePage() {
     }
   };
 
+  const isApproved = status === "Approved";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -217,7 +219,7 @@ export function ExpertVerificationProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <ShieldCheck className="h-4 w-4" />
-                Nộp hồ sơ KYC
+                {isApproved ? "Cập nhật thông tin" : "Nộp hồ sơ KYC"}
               </Button>
             </div>
           </form>

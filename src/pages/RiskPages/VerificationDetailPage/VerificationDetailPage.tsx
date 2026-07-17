@@ -84,11 +84,13 @@ export function VerificationDetailPage() {
   const rejectionOptions = isBusiness
     ? businessRejectionReasons
     : expertRejectionReasons;
+  const canReview = status === "Pending";
 
   const approve = async (
     statusValue: "Approved" | "Rejected",
     reason?: string,
   ) => {
+    if (!canReview) return;
     // hàm Gọi API để duyệt hoặc từ chối hồ sơ, cập nhật trạng thái và hiển thị thông báo.
     const updated = await profileApi.approve(
       isBusiness ? "BUSINESS" : "EXPERT",
@@ -116,6 +118,7 @@ export function VerificationDetailPage() {
   };
 
   const beginReject = () => {
+    if (!canReview) return;
     setSelectedRejectReasons([]);
     setRejectError("");
     setRejectOpen(true);
@@ -220,15 +223,32 @@ export function VerificationDetailPage() {
             </div>
           </div>
           <div className="mt-5 grid gap-2">
-            <Button variant="success" onClick={() => approve("Approved")}>
+            <Button
+              variant="success"
+              onClick={() => approve("Approved")}
+              disabled={!canReview}
+            >
               <CheckCircle2 className="h-4 w-4" />
               Chấp nhận
             </Button>
-            <Button variant="danger" onClick={beginReject}>
+            <Button
+              variant="danger"
+              onClick={beginReject}
+              disabled={!canReview}
+            >
               <XCircle className="h-4 w-4" />
               Từ chối
             </Button>
           </div>
+          {!canReview && (
+            <Notice
+              tone="info"
+              title="Hồ sơ đã có kết quả xét duyệt"
+              className="mt-4"
+            >
+              Chỉ hồ sơ đang chờ duyệt mới có thể chấp nhận hoặc từ chối.
+            </Notice>
+          )}
           {status === "Rejected" && profile.rejectionReason && (
             <Notice tone="danger" title="Lý do từ chối" className="mt-4">
               <ul className="ml-5 mt-1 list-disc space-y-1">

@@ -20,7 +20,7 @@ import {
   type Technology,
 } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import { formatCurrency, maskSensitiveValue } from "../../../lib/utils";
+import { formatCurrency } from "../../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../../types";
 import {
   Button,
@@ -279,14 +279,7 @@ export function JobDetailPage() {
                 business?.companyName || job.companyName || "Chưa có dữ liệu"
               }
             />
-            <BusinessInfoItem
-              label="Mã số thuế"
-              value={maskSensitiveValue(business?.taxCode)}
-            />
-            <BusinessInfoItem
-              label="Trạng thái KYB"
-              value={business?.kybStatus || "Chưa có dữ liệu"}
-            />
+
             <BusinessInfoItem
               label="Địa chỉ"
               value={business?.address || "Chưa có dữ liệu"}

@@ -137,6 +137,21 @@ export function FinancePage() {
     () => transactions.filter((item) => (item.status || "").toUpperCase() === "SUCCESS"),
     [transactions],
   );
+  const completedContracts = useMemo(
+    () =>
+      contracts.filter((contract) =>
+        ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()),
+      ),
+    [contracts],
+  );
+  const expertCompletedRevenue = useMemo(
+    () => completedContracts.reduce((sum, item) => sum + item.totalBudget, 0),
+    [completedContracts],
+  );
+  const businessContractBudget = useMemo(
+    () => contracts.reduce((sum, item) => sum + item.totalBudget, 0),
+    [contracts],
+  );
 
   return (
     <div className="space-y-6">
@@ -262,11 +277,13 @@ export function FinancePage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-5">
               <p className="text-sm font-bold text-slate-500">
-                {session?.role === "EXPERT" ? "Tổng doanh thu" : "Tổng ngân sách đã cọc"}
+                {session?.role === "EXPERT" ? "Tổng doanh thu" : "Tổng ngân sách cho hợp đồng"}
               </p>
               <p className="mt-2 font-display text-3xl font-black text-ink">
                 {formatCurrency(
-                  contracts.reduce((sum, item) => sum + item.totalBudget, 0),
+                  session?.role === "EXPERT"
+                    ? expertCompletedRevenue
+                    : businessContractBudget,
                 )}
               </p>
             </Card>
@@ -286,11 +303,7 @@ export function FinancePage() {
               <p className="text-sm font-bold text-slate-500">Dự án đã hoàn thành</p>
               <p className="mt-2 font-display text-3xl font-black text-coral-600">
                 {
-                  contracts.filter((c) =>
-                    ["COMPLETED", "RELEASED"].includes(
-                      (c.status || "").toUpperCase(),
-                    ),
-                  ).length
+                  completedContracts.length
                 }
               </p>
             </Card>

@@ -302,7 +302,7 @@ export function BusinessVerificationProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <Save className="h-4 w-4" />
-                Nộp hồ sơ KYB
+                {isApproved ? "Cập nhật thông tin" : "Nộp hồ sơ KYB"}
               </Button>
             </div>
           </form>

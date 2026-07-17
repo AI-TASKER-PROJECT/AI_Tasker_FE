@@ -3,12 +3,15 @@ import {
   BrainCircuit,
   ChevronDown,
   CheckCircle2,
+  Cpu,
   Eye,
   FileCheck2,
   Sparkles,
   Star,
   XCircle,
   Heart,
+  Layers,
+  BadgeCheck,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,6 +27,7 @@ import {
   type ExpertRecommendationResponse,
   type JobSkill,
   type Skill,
+  type Technology,
 } from "../../../services";
 import {
   cn,
@@ -88,6 +92,48 @@ export function translateStatus(status: string) {
     default:
       return status;
   }
+}
+
+function translateRecommendationMessage(message?: string | null) {
+  const normalized = (message || "").trim();
+  if (!normalized) return "";
+  const lower = normalized.toLowerCase();
+
+  if (lower.includes("job") && lower.includes("not found")) {
+    return "Không tìm thấy bài đăng cần đề xuất chuyên gia.";
+  }
+  if (lower.includes("expert") && lower.includes("not found")) {
+    return "Không tìm thấy chuyên gia này.";
+  }
+  if (
+    lower.includes("ai recommendation failed") ||
+    lower.includes("fallback to rule-based ranking") ||
+    lower.includes("rule-based")
+  ) {
+    return "AI chưa khả dụng nên hệ thống đã chuyển sang xếp hạng theo quy tắc.";
+  }
+  if (
+    lower.includes("no expert") ||
+    lower.includes("no suitable") ||
+    lower.includes("not found")
+  ) {
+    return "Không tìm thấy chuyên gia phù hợp trong hệ thống.";
+  }
+  if (lower.includes("already selected") || lower.includes("selected")) {
+    return "Bạn đã gửi lời mời đến chuyên gia này.";
+  }
+  if (lower.includes("not allowed") || lower.includes("forbidden")) {
+    return "Bạn không có quyền thực hiện thao tác này.";
+  }
+  if (lower.includes("network")) {
+    return "Không thể kết nối đến máy chủ. Vui lòng thử lại.";
+  }
+
+  return normalized;
+}
+
+function recommendationErrorMessage(error: unknown, fallback: string) {
+  return translateRecommendationMessage(getApiErrorMessage(error)) || fallback;
 }
 
 const CONTRACT_TERM_SECTIONS = [
@@ -212,7 +258,7 @@ export function ManageJobPage() {
       setRecommendationResult(result);
       if (result.recommendations?.length === 0) {
         setAiMessage(
-          result.message ||
+          translateRecommendationMessage(result.message) ||
             "AI không tìm thấy chuyên gia phù hợp trong hệ thống.",
         );
         setAiMessageTone("warning");
@@ -220,12 +266,18 @@ export function ManageJobPage() {
         setAiMessage(
           result.generatedByAi
             ? "AI đã phân tích thông tin dự án và chọn top chuyên gia phù hợp nhất."
-            : (result.message ?? "Chức năng đang bảo trì (AI không khả dụng)."),
+            : translateRecommendationMessage(result.message) ||
+              "AI chưa khả dụng nên hệ thống đã chuyển sang xếp hạng theo quy tắc.",
         );
         setAiMessageTone(result.generatedByAi ? "success" : "warning");
       }
     } catch (error) {
-      setAiMessage(getApiErrorMessage(error));
+      setAiMessage(
+        recommendationErrorMessage(
+          error,
+          "Không thể tạo đề xuất chuyên gia. Vui lòng thử lại.",
+        ),
+      );
       setAiMessageTone("danger");
     } finally {
       setAiLoading(false);
@@ -292,7 +344,7 @@ export function ManageJobPage() {
     if (!contractModal) return;
     if (jobInProgress) {
       setContractError(
-        "Job đang IN_PROGRESS nên không thể tạo hoặc thay dổi hợp đồng.",
+        "Job đang IN_PROGRESS nên không thể tạo hoặc thay đổi hợp đồng.",
       );
       return;
     }
@@ -302,13 +354,13 @@ export function ManageJobPage() {
     }
     if (milestones.length === 0) {
       setContractError(
-        "Job cần có ít nhất một milestone dể tạo contract draft.",
+        "Job cần có ít nhất một milestone để tạo contract draft.",
       );
       return;
     }
     if (!timelineValid) {
       setContractError(
-        `Timeline hop dong phai lon hon hoac bang tong thoi gian milestone (${totalMilestoneWeeks} tuan). Vui long nhap it nhat ${minimumTimelineWeeks} tuan.`,
+        `Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuan.`,
       );
       return;
     }
@@ -387,8 +439,8 @@ export function ManageJobPage() {
                       }
                     >
                       {recommendationResult.generatedByAi
-                        ? "✦ AI generated"
-                        : "Rule-based"}
+                        ? "AI đã tạo"
+                        : "Xếp hạng theo quy tắc"}
                     </Badge>
                   )}
 
@@ -454,7 +506,7 @@ export function ManageJobPage() {
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
             <SectionHeading
               title="Proposal của chuyên gia"
-              description="Danh sách proposal dược chuyên gia gửi cho dự án này."
+              description="Danh sách proposal được chuyên gia gửi cho dự án này."
             />
             {jobInProgress && (
               <Notice
@@ -573,7 +625,7 @@ export function ManageJobPage() {
               ))}
               {jobSkills.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-400">
-                  Chưa có kỹ năng yêu cầu.
+                  Chưa có kỹ nĒng yêu cầu.
                 </p>
               )}
             </div>
@@ -689,8 +741,8 @@ export function ManageJobPage() {
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
-              title="Ngân sách sẽ dưa vào hợp đồng"
-              // description="Backend lấy milestone gốc của job và ghi dè bằng ngân sách proposal nếu chuyên gia có đề xuất thay dổi."
+              title="Ngân sách sẽ dựa vào hợp đồng"
+              // Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi.
             />
             <div className="mt-4 grid gap-3">
               {milestones
@@ -834,6 +886,7 @@ function ProposalCard({
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -863,10 +916,12 @@ function ProposalCard({
         profileApi.getExpertById(proposal.expertId),
         profileApi.listPortfolios(),
       ]);
-      const [domainsResult, skillsResult] = await Promise.allSettled([
-        catalogApi.listDomains(true),
-        catalogApi.listSkills(true),
-      ]);
+      const [domainsResult, skillsResult, technologiesResult] =
+        await Promise.allSettled([
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listTechnologies(true),
+        ]);
 
       if (ignore) return;
 
@@ -884,6 +939,11 @@ function ProposalCard({
         domainsResult.status === "fulfilled" ? domainsResult.value : [],
       );
       setSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
+      setTechnologies(
+        technologiesResult.status === "fulfilled"
+          ? technologiesResult.value
+          : [],
+      );
       setDetailLoading(false);
 
       if (
@@ -916,8 +976,26 @@ function ProposalCard({
     "skillId",
     "skillName",
   );
-
   const expertPhone = expertProfile?.phone || "Chưa có dữ liệu";
+
+  const portfolioDomainList = resolveCatalogNameList(
+    portfolio?.domainIds,
+    domains,
+    "domainId",
+    "domainName",
+  );
+  const portfolioSkillList = resolveCatalogNameList(
+    portfolio?.skillIds,
+    skills,
+    "skillId",
+    "skillName",
+  );
+  const portfolioTechnologyList = resolveCatalogNameList(
+    portfolio?.technologyIds,
+    technologies,
+    "technologyId",
+    "technologyName",
+  );
 
   const proposalMilestones = parseProposalMilestones(
     proposal.proposalMilestone,
@@ -1038,7 +1116,7 @@ function ProposalCard({
                   canCreateContract
                     ? "Tạo contract draft"
                     : statusLocked
-                      ? "Job đang IN_PROGRESS nên không thể thay dổi"
+                      ? "Job đang IN_PROGRESS nên không thể thay đổi"
                       : "Chỉ tạo contract sau khi proposal dược Accepted"
                 }
               >
@@ -1192,7 +1270,7 @@ function ProposalCard({
 
           <div className="grid gap-3 md:grid-cols-2">
             <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
-            <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
+            <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
           </div>
 
           <ProfileRating
@@ -1201,7 +1279,44 @@ function ProposalCard({
 
           <SectionHeading title="Portfolio" />
 
-          <div className="grid gap-3">
+          <div className="grid gap-6">
+            <PortfolioChipSection
+              icon={<Layers className="h-5 w-5" />}
+              title="Lĩnh vực"
+              items={portfolioDomainList}
+              tone="mint"
+            />
+
+            <PortfolioChipSection
+              icon={<Sparkles className="h-5 w-5" />}
+              title="Kỹ năng nổi bật"
+              items={portfolioSkillList}
+              tone="brand"
+            />
+
+            <PortfolioChipSection
+              icon={<Cpu className="h-5 w-5" />}
+              title="Stack công nghệ"
+              items={portfolioTechnologyList}
+              tone="coral"
+            />
+
+            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+              <h4 className="flex items-center gap-2 font-display text-lg font-black text-ink">
+                <BadgeCheck className="h-5 w-5 text-amber-500" />
+                Chứng chỉ
+              </h4>
+              <div className="mt-4 text-sm font-bold text-slate-400">
+                <FirebaseFileLink
+                  path={portfolio?.certificates}
+                  emptyText="Chưa có chứng chỉ"
+                  buttonText="Xem chứng chỉ"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden">
             <ExpertInfoItem
               label="Lĩnh vực"
               value={domainNames || "Chưa có dữ liệu"}
@@ -1319,9 +1434,9 @@ function parseProposalMilestones(value: unknown) {
 
 function resolveCatalogNames(
   ids: string | undefined,
-  items: Array<Domain | Skill>,
-  idKey: "domainId" | "skillId",
-  nameKey: "domainName" | "skillName",
+  items: Array<Domain | Skill | Technology>,
+  idKey: "domainId" | "skillId" | "technologyId",
+  nameKey: "domainName" | "skillName" | "technologyName",
 ) {
   if (!ids) return "";
   const parsedIds = ids
@@ -1337,6 +1452,62 @@ function resolveCatalogNames(
     return item ? String(item[nameKey as keyof typeof item]) : String(id);
   });
   return names.join(", ");
+}
+
+function resolveCatalogNameList(
+  ids: string | undefined,
+  items: Array<Domain | Skill | Technology>,
+  idKey: "domainId" | "skillId" | "technologyId",
+  nameKey: "domainName" | "skillName" | "technologyName",
+) {
+  const names = resolveCatalogNames(ids, items, idKey, nameKey);
+  return names
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function PortfolioChipSection({
+  icon,
+  title,
+  items,
+  tone,
+  emptyText = "Chưa có dữ liệu",
+}: {
+  icon: ReactNode;
+  title: string;
+  items: string[];
+  tone: "mint" | "brand" | "coral";
+  emptyText?: string;
+}) {
+  const toneClass = {
+    mint: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    brand: "border-pink-100 bg-pink-50 text-pink-700",
+    coral: "border-orange-100 bg-orange-50 text-orange-600",
+  }[tone];
+
+  return (
+    <section className="grid gap-3">
+      <h4 className="flex items-center gap-2 font-display text-lg font-black text-ink">
+        <span className="text-ink">{icon}</span>
+        {title}
+      </h4>
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <span
+              key={item}
+              className={`rounded-full border px-3 py-1.5 text-sm font-extrabold ${toneClass}`}
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm font-bold text-slate-400">{emptyText}</p>
+      )}
+    </section>
+  );
 }
 
 function ExpertInfoItem({
@@ -1383,8 +1554,8 @@ function ExpertInfoBlock({
   );
 }
 
-// ─── Expert Recommendation Card ───────────────────────────────────────────────
-// ─── Expert Recommendation Card ───────────────────────────────────────────────
+// Expert Recommendation Card
+// Expert Recommendation Card
 function ExpertRecommendationCard({
   rec,
   jobId,
@@ -1408,6 +1579,7 @@ function ExpertRecommendationCard({
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -1434,10 +1606,12 @@ function ExpertRecommendationCard({
         profileApi.getExpertById(rec.expertId),
         profileApi.listPortfolios(),
       ]);
-      const [domainsResult, skillsResult] = await Promise.allSettled([
-        catalogApi.listDomains(true),
-        catalogApi.listSkills(true),
-      ]);
+      const [domainsResult, skillsResult, technologiesResult] =
+        await Promise.allSettled([
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listTechnologies(true),
+        ]);
 
       if (ignore) return;
 
@@ -1456,6 +1630,11 @@ function ExpertRecommendationCard({
         domainsResult.status === "fulfilled" ? domainsResult.value : [],
       );
       setSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
+      setTechnologies(
+        technologiesResult.status === "fulfilled"
+          ? technologiesResult.value
+          : [],
+      );
       setDetailLoading(false);
 
       if (
@@ -1481,7 +1660,12 @@ function ExpertRecommendationCard({
       setSuccessMessage("Đã gửi lời mời đến với chuyên gia!");
       onRefresh();
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setError(
+        recommendationErrorMessage(
+          err,
+          "Không thể gửi lời mời đến chuyên gia. Vui lòng thử lại.",
+        ),
+      );
     } finally {
       setSelecting(false);
     }
@@ -1517,6 +1701,24 @@ function ExpertRecommendationCard({
     "skillId",
     "skillName",
   );
+  const portfolioDomainList = resolveCatalogNameList(
+    portfolio?.domainIds,
+    domains,
+    "domainId",
+    "domainName",
+  );
+  const portfolioSkillList = resolveCatalogNameList(
+    portfolio?.skillIds,
+    skills,
+    "skillId",
+    "skillName",
+  );
+  const portfolioTechnologyList = resolveCatalogNameList(
+    portfolio?.technologyIds,
+    technologies,
+    "technologyId",
+    "technologyName",
+  );
 
   const yearsExperience =
     portfolio?.yearsExperience ??
@@ -1547,7 +1749,7 @@ function ExpertRecommendationCard({
 
       {/* Body */}
       <div className="grid gap-4 p-5 pt-4">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {(rec.matchedSkills?.length ?? 0) > 0 && (
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
@@ -1574,6 +1776,21 @@ function ExpertRecommendationCard({
                 {rec.matchedDomains!.map((domain) => (
                   <Badge key={domain} tone="mint">
                     {domain}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {(rec.matchedTechnologies?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                <Cpu className="h-3.5 w-3.5" />
+                Công nghệ khớp
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.matchedTechnologies!.map((technology) => (
+                  <Badge key={technology} tone="violet">
+                    {technology}
                   </Badge>
                 ))}
               </div>
@@ -1665,7 +1882,7 @@ function ExpertRecommendationCard({
 
           <div className="grid gap-3 md:grid-cols-2">
             <ExpertInfoItem label="Tên chuyên gia" value={expertName} />
-            <ExpertInfoItem label="Số diện thoại" value={expertPhone} />
+            <ExpertInfoItem label="Số điện thoại" value={expertPhone} />
           </div>
 
           <ProfileRating
@@ -1674,7 +1891,44 @@ function ExpertRecommendationCard({
 
           <SectionHeading title="Portfolio" />
 
-          <div className="grid gap-3">
+          <div className="grid gap-6">
+            <PortfolioChipSection
+              icon={<Layers className="h-5 w-5" />}
+              title="Lĩnh vực"
+              items={portfolioDomainList}
+              tone="mint"
+            />
+
+            <PortfolioChipSection
+              icon={<Sparkles className="h-5 w-5" />}
+              title="Kỹ năng nổi bật"
+              items={portfolioSkillList}
+              tone="brand"
+            />
+
+            <PortfolioChipSection
+              icon={<Cpu className="h-5 w-5" />}
+              title="Stack công nghệ"
+              items={portfolioTechnologyList}
+              tone="coral"
+            />
+
+            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+              <h4 className="flex items-center gap-2 font-display text-lg font-black text-ink">
+                <BadgeCheck className="h-5 w-5 text-amber-500" />
+                Chứng chỉ
+              </h4>
+              <div className="mt-4 text-sm font-bold text-slate-400">
+                <FirebaseFileLink
+                  path={portfolio?.certificates}
+                  emptyText="Chưa có chứng chỉ"
+                  buttonText="Xem chứng chỉ"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden">
             <ExpertInfoItem
               label="Lĩnh vực"
               value={domainNames || "Chưa có dữ liệu"}
