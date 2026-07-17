@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Contract } from "../../../types";
 import { contractApi } from "../../../lib/api";
 import { formatCompactCurrency, formatDateTime } from "../../../lib/utils";
-import { Badge, Button, Card, EmptyState, LinkButton, PageHeader, Progress, StatusBadge } from "../../../components/ui";
+import { Badge, Button, Card, EmptyState, LinkButton, PageHeader, StatusBadge } from "../../../components/ui";
 import { formatTimelineWeeks, normalizeContractStatus, translateContractStatus } from "../ContractPages.shared";
 
 export function ContractsPage() {
@@ -102,13 +102,7 @@ export function ContractsPage() {
                 </p>
               </div>
             </div>
-            <div className="mt-5">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                <span>Tiến dộ</span>
-                <span>{contract.progress || 0}%</span>
-              </div>
-              <Progress value={contract.progress || 0} className="mt-2" />
-            </div>
+
             <div className="mt-5 flex flex-wrap gap-2">
               <LinkButton
                 to={`/app/contracts/${contract.contractId}`}

@@ -167,9 +167,9 @@ export function MembershipPackagesPage() {
       ) : filteredPackages.length === 0 ? (
         <Card className="p-8 text-center text-sm font-semibold text-slate-500">Chưa có gói phù hợp bộ lọc.</Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-stretch gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {filteredPackages.map((pkg) => (
-            <Card key={pkg.packageCode} className="flex flex-col p-5">
+            <Card key={pkg.packageCode} className="flex h-full min-h-[360px] flex-col p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -189,11 +189,21 @@ export function MembershipPackagesPage() {
                 <div className="rounded-2xl bg-slate-50 p-3">Badge xác minh: {pkg.badgeDurationDays} ngày</div>
                 <div className="rounded-2xl bg-slate-50 p-3">Credit đăng dự án: {pkg.jobPostQuota}</div>
                 <div className="rounded-2xl bg-slate-50 p-3">Credit nộp đề xuất: {pkg.proposalQuota}</div>
-                {pkg.recommendVisibility && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-amber-50 p-3 font-bold text-amber-700">
+                <div
+                  className={`flex min-h-11 items-center gap-2 rounded-2xl p-3 font-bold ${
+                    pkg.recommendVisibility
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-slate-50 text-slate-400"
+                  }`}
+                >
+                  {pkg.recommendVisibility ? (
+                    <>
                     <Sparkles className="h-4 w-4" /> Ưu tiên gợi ý AI
-                  </div>
-                )}
+                    </>
+                  ) : (
+                    <span className="invisible" aria-hidden="true">AI recommendation visibility</span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-auto flex flex-wrap gap-2 pt-5">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Card, EmptyState, LinkButton, Notice, PageHeader, SearchInput } from "../../../components/ui";
+import { Badge, Button, Card, EmptyState, LinkButton, Notice, PageHeader, SearchInput } from "../../../components/ui";
 import { contractApi, disputeApi } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import { formatDateTime } from "../../../lib/utils";
@@ -21,10 +21,14 @@ const ACTIVE_STATUSES = new Set([
   "STAFF_DECIDED",
 ]);
 
+const DISPUTES_PER_PAGE = 4;
+
+// Chuẩn hóa status để so sánh trạng thái tranh chấp không phụ thuộc chữ hoa/thường.
 function normalizeStatus(value?: string) {
   return (value || "").trim().toUpperCase();
 }
 
+// Đổi mã trạng thái tranh chấp từ backend sang nhãn tiếng Việt để hiển thị.
 function formatDisputeStatus(status?: string) {
   switch (normalizeStatus(status)) {
     case "PENDING_SELF_RESOLVE":
@@ -44,6 +48,7 @@ function formatDisputeStatus(status?: string) {
   }
 }
 
+// Đổi loại khởi tạo tranh chấp sang mô tả dễ hiểu cho Business/Expert/Staff.
 function formatInitiationType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
@@ -61,14 +66,17 @@ function formatInitiationType(type?: string) {
   }
 }
 
+// Lấy tên hồ sơ phù hợp cho danh sách ticket của Staff.
 function displayCaseName(item: DisputeListItem) {
   return item.jobTitle || item.title || "Hồ sơ tranh chấp";
 }
 
+// Tạo tiêu đề tranh chấp cho danh sách của Business/Expert.
 function disputeDisplayTitle(dispute: DisputeListItem) {
   return `Tranh chấp - ${dispute.contractTitle || dispute.title || "Hợp đồng đang tranh chấp"}`;
 }
 
+// Chuyển dữ liệu dispute dạng Admin API về format chung để render danh sách.
 function mapAdminDispute(item: AdminDisputeListItem): DisputeListItem {
   return {
     disputeId: item.disputeId,
@@ -90,6 +98,7 @@ function mapAdminDispute(item: AdminDisputeListItem): DisputeListItem {
   };
 }
 
+// Chuyển dữ liệu ticket Staff API về format chung, giữ thêm thông tin match domain/skill.
 function mapStaffDispute(item: StaffDisputeListItem): DisputeListItem {
   return {
     disputeId: item.disputeId,
@@ -114,10 +123,12 @@ function mapStaffDispute(item: StaffDisputeListItem): DisputeListItem {
   };
 }
 
+// Ghép danh sách nhãn domain/skill thành chuỗi ngắn để hiển thị.
 function joinLabel(values?: string[]) {
   return values?.filter(Boolean).join(", ") || "";
 }
 
+// Kiểm tra một dispute có khớp bộ lọc trạng thái hiện tại hay không.
 function matchesStatusFilter(status: string | undefined, filter: string, staffMode: boolean) {
   const normalized = normalizeStatus(status);
   if (filter === "ALL") return true;
@@ -135,10 +146,13 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   const [items, setItems] = useState<DisputeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // Tạo đường dẫn màn chi tiết, Staff dùng route tickets còn user/admin dùng route disputes.
   const detailPath = (disputeId: number) =>
     staffMode ? `/app/tickets/${disputeId}` : `/app/disputes/${disputeId}`;
 
+  // Tạo đường dẫn xem thông tin dự án liên quan đến dispute.
   const projectPath = (disputeId: number) =>
     staffMode
       ? `/app/tickets/${disputeId}/project`
@@ -147,9 +161,11 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
   useEffect(() => {
     let mounted = true;
 
+    //Tải danh sách tranh chấp theo vai trò: Admin toàn hệ thống, Staff ticket được giao, user theo hợp đồng của mình.
     const fetchDisputes = async () => {
       setLoading(true);
       try {
+        // Admin tải danh sách tranh chấp toàn hệ thống, có hỗ trợ lọc và phân trang.
         if (isAdmin) {
           const response = await disputeApi.listAdmin({
             page: 0,
@@ -165,6 +181,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         }
 
         if (staffMode) {
+          //hàm Tải danh sách tranh chấp được phân công/phù hợp với Staff hiện tại.
           const response = await disputeApi.listStaff({
             page: 0,
             size: 100,
@@ -216,6 +233,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
     };
   }, [staffMode, isAdmin, query, statusFilter]);
 
+  // Lọc danh sách dispute ở frontend theo từ khóa và trạng thái sau khi lấy dữ liệu.
   const disputes = useMemo(
     () =>
       isAdmin
@@ -243,6 +261,17 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
           }),
     [items, query, statusFilter, isAdmin, staffMode],
   );
+
+  const totalPages = Math.max(1, Math.ceil(disputes.length / DISPUTES_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedDisputes = disputes.slice(
+    (safeCurrentPage - 1) * DISPUTES_PER_PAGE,
+    safeCurrentPage * DISPUTES_PER_PAGE,
+  );
+  const disputeStart = disputes.length
+    ? (safeCurrentPage - 1) * DISPUTES_PER_PAGE + 1
+    : 0;
+  const disputeEnd = Math.min(safeCurrentPage * DISPUTES_PER_PAGE, disputes.length);
 
   const statusOptions = staffMode
     ? [
@@ -289,7 +318,10 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         <div className="flex-1">
           <SearchInput
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              setQuery(value);
+              setCurrentPage(1);
+            }}
             placeholder={
               staffMode
                 ? "Tìm theo hồ sơ, lĩnh vực, kỹ năng hoặc trạng thái..."
@@ -301,7 +333,10 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         </div>
         <select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setCurrentPage(1);
+          }}
           className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
         >
           {statusOptions.map((option) => (
@@ -341,7 +376,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
         />
       ) : (
         <div className="grid gap-4">
-          {disputes.map((dispute) => {
+          {paginatedDisputes.map((dispute) => {
             const status = normalizeStatus(dispute.status);
             const matchedDomains = joinLabel(dispute.matchedStaffDomains);
             const matchedSkills = joinLabel(dispute.matchedStaffSkills);
@@ -434,6 +469,40 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
               </Card>
             );
           })}
+          <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm font-semibold text-slate-500">
+              Hiển thị{" "}
+              <span className="font-black text-ink">
+                {disputeStart}-{disputeEnd}
+              </span>{" "}
+              trên tổng{" "}
+              <span className="font-black text-ink">{disputes.length}</span>{" "}
+              hồ sơ tranh chấp
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+              >
+                Trước
+              </Button>
+              <span className="rounded-2xl bg-slate-50 px-3 py-2 text-sm font-extrabold text-ink">
+                {safeCurrentPage}/{totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))
+                }
+              >
+                Sau
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>

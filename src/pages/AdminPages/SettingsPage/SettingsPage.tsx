@@ -1,5 +1,5 @@
-import { Plus, Save, Settings2, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Save, Settings2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -10,75 +10,85 @@ import {
   Notice,
   PageHeader,
 } from "../../../components/ui";
-import { adminApi } from "../../../lib/api";
+import { adminApi, getApiErrorMessage } from "../../../lib/api";
 import type { SystemSetting, SystemSettingRequest } from "../../../types";
 
+const supportedSettingKeys = [
+  "default_sla_days",
+  "dispute_staff_max_active_cases",
+  "credit.job_post.price_vnd",
+  "credit.proposal.price_vnd",
+];
+
 const settingLabels: Record<string, { label: string; description: string }> = {
-  platform_fee_percent: {
-    label: "Phí nền tảng",
-    description: "Tỷ lệ phí nền tảng áp dụng cho giao dịch escrow thành công.",
-  },
   default_sla_days: {
-    label: "Số ngày SLA mặc định",
-    description: "Số ngày trước khi hệ thống xử lý milestone quá hạn.",
+    label: "Số ngày tự động nghiệm thu",
+    description:
+      "Số ngày chờ phản hồi trước khi milestone đủ điều kiện tự động nghiệm thu.",
   },
-  auto_assign_staff_enabled: {
-    label: "Tự động phân công staff",
-    description: "Tự động phân công staff khi phát sinh công việc cần xử lý.",
-  },
-  max_open_jobs_per_business: {
-    label: "Số dự án mở tối đa",
-    description: "Số dự án được mở đồng thời trên mỗi doanh nghiệp.",
+  dispute_staff_max_active_cases: {
+    label: "Số tranh chấp tối đa mỗi nhân viên",
+    description:
+      "Giới hạn số hồ sơ tranh chấp đang xử lý đồng thời của mỗi Staff.",
   },
   "credit.job_post.price_vnd": {
-    label: "Giá credit đăng dự án",
-    description: "Số tiền cho mỗi credit đăng dự án, tính bằng VND.",
+    label: "Giá lượt đăng dự án",
+    description: "Số tiền cho mỗi lượt đăng dự án của doanh nghiệp, tính bằng VND.",
   },
   "credit.proposal.price_vnd": {
-    label: "Giá credit nộp đề xuất",
-    description: "Số tiền cho mỗi credit nộp đề xuất, tính bằng VND.",
+    label: "Giá lượt nộp đề xuất",
+    description: "Số tiền cho mỗi lượt nộp đề xuất của chuyên gia, tính bằng VND.",
   },
-};
-
-const blankForm: SystemSettingRequest = {
-  settingKey: "",
-  settingValue: "",
-  valueType: "STRING",
-  description: "",
-  isActive: true,
 };
 
 function settingMeta(setting: SystemSetting) {
-  return settingLabels[setting.settingKey] || {
-    label: setting.settingKey,
-    description: setting.description || "Cấu hình hệ thống.",
-  };
+  return (
+    settingLabels[setting.settingKey] || {
+      label: setting.settingKey,
+      description: setting.description || "Cấu hình hệ thống.",
+    }
+  );
 }
 
-function maskSensitiveSetting(setting: SystemSetting) {
-  const key = setting.settingKey.toLowerCase();
-  if (key.includes("secret") || key.includes("token") || key.includes("password") || key.includes("key")) {
-    return "Đã ẩn";
-  }
-  return setting.settingValue;
+function settingErrorMessage(error: unknown, fallback: string) {
+  return getApiErrorMessage(error) || fallback;
 }
 
 export function SettingsPage() {
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [editing, setEditing] = useState<SystemSetting | null>(null);
-  const [form, setForm] = useState<SystemSettingRequest>(blankForm);
+  const [form, setForm] = useState<SystemSettingRequest>({
+    settingKey: "",
+    settingValue: "",
+    valueType: "STRING",
+    description: "",
+    isActive: true,
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const orderedSettings = useMemo(
+    () =>
+      [...settings].sort(
+        (left, right) =>
+          supportedSettingKeys.indexOf(left.settingKey) -
+          supportedSettingKeys.indexOf(right.settingKey),
+      ),
+    [settings],
+  );
+
   const loadSettings = async () => {
     setLoading(true);
     setError("");
     try {
-      setSettings(await adminApi.listSettings());
+      const items = await adminApi.listSettings();
+      setSettings(
+        items.filter((item) => supportedSettingKeys.includes(item.settingKey)),
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không tải được cấu hình hệ thống.");
+      setError(settingErrorMessage(err, "Không tải được cấu hình hệ thống."));
     } finally {
       setLoading(false);
     }
@@ -88,46 +98,36 @@ export function SettingsPage() {
     void Promise.resolve().then(loadSettings);
   }, []);
 
-  const beginCreate = () => {
-    setEditing(null);
-    setForm(blankForm);
-    setModalOpen(true);
-  };
-
   const beginEdit = (setting: SystemSetting) => {
     setEditing(setting);
     setForm({
       settingKey: setting.settingKey,
       settingValue: setting.settingValue,
       valueType: setting.valueType,
-      description: setting.description || "",
+      description: setting.description || settingMeta(setting).description,
       isActive: setting.isActive,
     });
     setModalOpen(true);
   };
 
   const save = async () => {
+    if (!editing) return;
     setSaving(true);
     setError("");
     try {
-      const payload = {
+      const saved = await adminApi.updateSettingBody(editing.settingKey, {
         ...form,
-        settingKey: form.settingKey?.trim(),
+        settingKey: editing.settingKey,
         settingValue: form.settingValue?.trim(),
         valueType: form.valueType?.trim().toUpperCase(),
         description: form.description?.trim(),
-      };
-      const saved = editing
-        ? await adminApi.updateSettingBody(editing.settingKey, payload)
-        : await adminApi.createSetting(payload);
+      });
       setSettings((items) =>
-        editing
-          ? items.map((item) => (item.settingKey === saved.settingKey ? saved : item))
-          : [...items, saved].sort((left, right) => left.settingKey.localeCompare(right.settingKey)),
+        items.map((item) => (item.settingKey === saved.settingKey ? saved : item)),
       );
       setModalOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không lưu được cấu hình.");
+      setError(settingErrorMessage(err, "Không lưu được cấu hình."));
     } finally {
       setSaving(false);
     }
@@ -137,28 +137,19 @@ export function SettingsPage() {
     setError("");
     try {
       const updated = await adminApi.updateSettingBody(setting.settingKey, {
+        settingKey: setting.settingKey,
         settingValue: setting.settingValue,
         valueType: setting.valueType,
         description: setting.description,
         isActive: !setting.isActive,
       });
       setSettings((items) =>
-        items.map((item) => (item.settingKey === updated.settingKey ? updated : item)),
+        items.map((item) =>
+          item.settingKey === updated.settingKey ? updated : item,
+        ),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không cập nhật được trạng thái.");
-    }
-  };
-
-  const remove = async (setting: SystemSetting) => {
-    setError("");
-    try {
-      const updated = await adminApi.deleteSetting(setting.settingKey);
-      setSettings((items) =>
-        items.map((item) => (item.settingKey === updated.settingKey ? updated : item)),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không xóa được cấu hình.");
+      setError(settingErrorMessage(err, "Không cập nhật được trạng thái."));
     }
   };
 
@@ -167,23 +158,25 @@ export function SettingsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[linear-gradient(135deg,#ffffff_0%,#eef7ff_55%,#f7fbf5_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Cấu hình hệ thống"
-          description="Quản lý SLA, phí nền tảng và các tham số vận hành bằng API thay vì phụ thuộc migration."
-          actions={
-            <Button onClick={beginCreate}>
-              <Plus className="h-4 w-4" /> Tạo cấu hình
-            </Button>
-          }
+          description="Quản lý các tham số vận hành đang được backend hỗ trợ."
+          actions={null}
         />
       </div>
 
       {error && <Notice tone="danger" title="Có lỗi xảy ra">{error}</Notice>}
 
       <div className="grid gap-4">
-        {loading && <Card className="p-8 text-center text-sm font-semibold text-slate-500">Đang tải cấu hình...</Card>}
-        {!loading && settings.length === 0 && (
-          <Card className="p-8 text-center text-sm font-semibold text-slate-500">Chưa có cấu hình nào.</Card>
+        {loading && (
+          <Card className="p-8 text-center text-sm font-semibold text-slate-500">
+            Đang tải cấu hình...
+          </Card>
         )}
-        {settings.map((setting) => (
+        {!loading && orderedSettings.length === 0 && (
+          <Card className="p-8 text-center text-sm font-semibold text-slate-500">
+            Chưa có cấu hình được hỗ trợ.
+          </Card>
+        )}
+        {orderedSettings.map((setting) => (
           <Card key={setting.settingKey} className="p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-start gap-3">
@@ -192,25 +185,28 @@ export function SettingsPage() {
                 </span>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-extrabold text-ink">{settingMeta(setting).label}</p>
+                    <p className="font-extrabold text-ink">
+                      {settingMeta(setting).label}
+                    </p>
                     <Badge tone={setting.isActive ? "mint" : "rose"}>
                       {setting.isActive ? "Đang bật" : "Đang tắt"}
                     </Badge>
                     <Badge tone="slate">{setting.valueType}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">{settingMeta(setting).description}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {settingMeta(setting).description}
+                  </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
                 <span className="rounded-2xl bg-slate-50 px-4 py-2 font-display text-lg font-black text-ink">
-                  {maskSensitiveSetting(setting)}
+                  {setting.settingValue}
                 </span>
-                <Button variant="secondary" onClick={() => beginEdit(setting)}>Sửa</Button>
+                <Button variant="secondary" onClick={() => beginEdit(setting)}>
+                  Sửa
+                </Button>
                 <Button variant="ghost" onClick={() => toggle(setting)}>
                   {setting.isActive ? "Tắt" : "Bật"}
-                </Button>
-                <Button variant="danger" size="icon" title="Xóa mềm" onClick={() => remove(setting)}>
-                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -221,11 +217,13 @@ export function SettingsPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? "Cập nhật cấu hình" : "Tạo cấu hình"}
-        description="Không nhập khóa bí mật, mật khẩu hoặc token vào phần mô tả hay giá trị hiển thị công khai."
+        title="Cập nhật cấu hình"
+        description="Chỉ cập nhật giá trị và trạng thái cho cấu hình được backend hỗ trợ."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Hủy</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              Hủy
+            </Button>
             <Button onClick={save} loading={saving}>
               <Save className="h-4 w-4" /> Lưu
             </Button>
@@ -234,35 +232,32 @@ export function SettingsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Mã cấu hình">
-            <Input
-              value={form.settingKey || ""}
-              disabled={Boolean(editing)}
-              onChange={(event) => setForm((value) => ({ ...value, settingKey: event.target.value }))}
-            />
+            <Input value={form.settingKey || ""} disabled />
           </Field>
           <Field label="Kiểu dữ liệu">
-            <select
-              value={form.valueType || "STRING"}
-              onChange={(event) => setForm((value) => ({ ...value, valueType: event.target.value }))}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-brand-200 focus:ring-4 focus:ring-brand-50"
-            >
-              <option value="STRING">Chuỗi</option>
-              <option value="INT">Số nguyên</option>
-              <option value="DECIMAL">Số thập phân</option>
-              <option value="BOOLEAN">Đúng/Sai</option>
-            </select>
+            <Input value={form.valueType || "STRING"} disabled />
           </Field>
           <Field label="Giá trị" className="md:col-span-2">
             <Input
               value={form.settingValue || ""}
-              onChange={(event) => setForm((value) => ({ ...value, settingValue: event.target.value }))}
+              onChange={(event) =>
+                setForm((value) => ({
+                  ...value,
+                  settingValue: event.target.value,
+                }))
+              }
             />
           </Field>
           <Field label="Mô tả" className="md:col-span-2">
             <textarea
               value={form.description || ""}
               rows={4}
-              onChange={(event) => setForm((value) => ({ ...value, description: event.target.value }))}
+              onChange={(event) =>
+                setForm((value) => ({
+                  ...value,
+                  description: event.target.value,
+                }))
+              }
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-brand-200 focus:ring-4 focus:ring-brand-50"
             />
           </Field>
@@ -270,7 +265,12 @@ export function SettingsPage() {
             <input
               type="checkbox"
               checked={Boolean(form.isActive)}
-              onChange={(event) => setForm((value) => ({ ...value, isActive: event.target.checked }))}
+              onChange={(event) =>
+                setForm((value) => ({
+                  ...value,
+                  isActive: event.target.checked,
+                }))
+              }
               className="h-4 w-4 rounded border-slate-300 text-brand-600"
             />
             Đang bật

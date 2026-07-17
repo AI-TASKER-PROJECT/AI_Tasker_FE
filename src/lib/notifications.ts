@@ -231,7 +231,32 @@ export function notificationHref(
   const appTicketMatch = targetUrl.match(/^\/app\/tickets\/(\d+)/);
   if (appTicketMatch) return disputeHref(Number(appTicketMatch[1]));
 
+  if (
+    targetUrl === "/app/withdrawal-requests" ||
+    targetUrl === "/app/withdrawal-requests/" ||
+    targetUrl === "/app/admin/withdrawal-requests" ||
+    targetUrl === "/app/admin/withdrawal-requests/"
+  ) {
+    return "/app/admin/withdrawals";
+  }
+
   if (targetUrl.startsWith("/app/")) return targetUrl;
+
+  if (targetUrl === "/wallet" || targetUrl === "/wallet/") {
+    return "/app/wallet";
+  }
+
+  if (
+    targetUrl === "/withdrawal-requests" ||
+    targetUrl === "/withdrawal-requests/" ||
+    targetUrl === "/admin/withdrawal-requests" ||
+    targetUrl === "/admin/withdrawal-requests/"
+  ) {
+    return "/app/admin/withdrawals";
+  }
+
+  const expertJobMatch = targetUrl.match(/^\/expert\/jobs\/(\d+)/);
+  if (expertJobMatch) return `/jobs/${expertJobMatch[1]}`;
 
   const proposalMatch = targetUrl.match(/^\/business\/jobs\/(\d+)\/proposals/);
   if (proposalMatch) return `/app/jobs/${proposalMatch[1]}/manage`;

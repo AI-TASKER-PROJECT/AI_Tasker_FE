@@ -58,7 +58,17 @@ function partnerRoleLabel(role?: string) {
   return role === "BUSINESS" ? "Chuyên gia" : "Doanh nghiệp";
 }
 
-function reviewActorLabel(review: Review, role?: string, accountId?: number) {
+function reviewActorLabel(
+  review: Review,
+  contract: Contract | undefined,
+  role?: string,
+  accountId?: number,
+) {
+  const reviewerId = Number(review.reviewerId);
+  if (contract && Number.isFinite(reviewerId)) {
+    if (reviewerId === Number(contract.businessId)) return "Doanh nghiệp";
+    if (reviewerId === Number(contract.expertId)) return "Chuyên gia";
+  }
   const isCurrentAccountReviewer = isReviewByCurrentAccount(review, accountId);
   if (isCurrentAccountReviewer) {
     return role === "BUSINESS" ? "Doanh nghiệp" : "Chuyên gia";
@@ -537,7 +547,7 @@ export function ReviewsPage() {
                     <p className="font-extrabold text-ink">
                       {isReviewByCurrentAccount(review, session?.accountId)
                         ? `Bạn đã đánh giá ${partnerType}`
-                        : `Đánh giá từ ${reviewActorLabel(review, session?.role, session?.accountId)}`}
+                        : `Đánh giá từ ${reviewActorLabel(review, selectedContract, session?.role, session?.accountId)}`}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
                       {review.reviewerName || "Thành viên hợp đồng"}

@@ -122,8 +122,27 @@ function mapApiErrorCode(message: string) {
       "Tranh chấp chưa ở trạng thái chờ Staff tiếp nhận.",
     DISPUTE_NOT_STAFF_REVIEWING:
       "Tranh chấp chưa ở trạng thái Staff đang xử lý.",
+    "HO SO DANG CHO DUYET, VUI LONG DOI KET QUA XET DUYET":
+      "Hồ sơ đang chờ duyệt, vui lòng đợi kết quả.",
+    "CHI DUOC XET DUYET HO SO DANG CHO DUYET":
+      "Chỉ có thể xét duyệt hồ sơ đang chờ duyệt.",
+    "SYSTEM SETTING KHONG DUOC HO TRO":
+      "Cấu hình này không còn được hệ thống hỗ trợ.",
+    "CHUA CO TAI KHOAN ADMIN DE NHAN DOANH THU":
+      "Chưa có tài khoản Admin để nhận doanh thu nền tảng.",
   };
+  messages.MILESTONE_DA_QUA_HAN_NOP_SAN_PHAM =
+    "Cot moc da qua han nop san pham. Ban khong the nop them source hoac final product.";
+  messages.NO_MATCHING_STAFF_FOR_JOB_DOMAIN =
+    "Chua co Staff phu hop voi linh vuc cua job.";
+  messages.NO_AVAILABLE_STAFF_CAPACITY =
+    "Cac Staff phu hop deu dang qua tai.";
+  messages.STAFF_DA_DAT_GIOI_HAN_DISPUTE_DANG_XU_LY =
+    "Staff nay da dat gioi han tranh chap dang xu ly.";
   if (messages[normalized]) return messages[normalized];
+  if (normalized === "PREMIUM_REQUIRED") {
+    return "Tài khoản chưa đăng kí gói Premium hoặc gói Premium đã hết hạn.";
+  }
   if (normalized === "INSUFFICIENT_BALANCE") {
     return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }

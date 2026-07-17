@@ -157,7 +157,7 @@ export function AppRoutes() {
           }
         />
 
-        {/* Jobs (BUSINESS only) */}
+        {/* Tạo bài đăng (BUSINESS only) */}
         <Route element={<RoleProtectedRoute roles={["BUSINESS"]} />}>
           <Route
             path="jobs"
@@ -207,6 +207,7 @@ export function AppRoutes() {
               </PageTransition>
             }
           />
+          // route tạo Business Verification (BUSINESS only)
           <Route
             path="business/kyb"
             element={
@@ -275,6 +276,7 @@ export function AppRoutes() {
               </PageTransition>
             }
           />
+          // route tạo Expert Verification (EXPERT only)
           <Route
             path="expert/kyc"
             element={
@@ -433,7 +435,7 @@ export function AppRoutes() {
           />
         </Route>
 
-        {/* Staff/Admin verifications */}
+        {/* route_verify Staff verifications */}
         <Route element={<RoleProtectedRoute roles={["STAFF", "ADMIN"]} />}>
           <Route
             path="verifications"

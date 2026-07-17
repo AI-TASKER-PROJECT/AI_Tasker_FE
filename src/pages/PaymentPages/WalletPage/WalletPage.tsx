@@ -2,8 +2,9 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Building,
+  ChevronLeft,
+  ChevronRight,
   Clock,
-  Lock,
   RefreshCw,
   Send,
   Shield,
@@ -130,15 +131,25 @@ function txExtra(tx: WalletTransaction) {
 
 function txMilestoneText(tx: WalletTransaction) {
   const extra = txExtra(tx);
-  const value =
-    extra.milestoneNumber ??
-    extra.milestoneOrderIndex;
+  const value = extra.milestoneNumber ?? extra.milestoneOrderIndex;
   return value ? String(value) : "";
 }
 
 function txPartyText(value: string | undefined, fallback: string) {
   return value?.trim() || fallback;
 }
+
+function txContractContextLabel(tx: WalletTransaction) {
+  const title = tx.contractTitle
+    ?.trim()
+    .replace(/^hợp đồng\s+/i, "")
+    .replace(/^"(.+)"$/, "$1")
+    .trim();
+  if (title) return title;
+  return tx.contractId ? "Hợp đồng liên quan" : tx.jobTitle?.trim() || "";
+}
+
+const TRANSACTIONS_PER_PAGE = 6;
 
 function cleanWalletDescription(value?: string) {
   if (!value) return "";
@@ -151,14 +162,17 @@ function cleanWalletDescription(value?: string) {
 }
 
 function txDisplayDescription(tx: WalletTransaction, role?: string) {
-  const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const text =
+    `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
   const type = (tx.transactionType || "").toUpperCase();
   const isExpert = role === "EXPERT";
   const businessName = txPartyText(tx.businessName, "Doanh nghiệp");
   const expertName = txPartyText(tx.expertName, "Chuyên gia");
   const contractTitle = txPartyText(tx.contractTitle, "hợp đồng chưa có tên");
   const milestoneText = txMilestoneText(tx);
-  const milestonePhrase = milestoneText ? `mốc ${milestoneText}` : "mốc tương ứng";
+  const milestonePhrase = milestoneText
+    ? `mốc ${milestoneText}`
+    : "mốc tương ứng";
 
   if (text.includes("deposit milestone escrow")) {
     return isExpert
@@ -318,14 +332,18 @@ function parseDisputeOperationId(tx: WalletTransaction) {
   const operationKey = tx.operationKey || "";
   const match = operationKey.match(/^DISPUTE_SETTLEMENT:(\d+)/i);
   if (match) return Number(match[1]);
-  if (String(tx.referenceType || "").toUpperCase() === "DISPUTE" && tx.referenceId) {
+  if (
+    String(tx.referenceType || "").toUpperCase() === "DISPUTE" &&
+    tx.referenceId
+  ) {
     return Number(tx.referenceId);
   }
   return null;
 }
 
 function needsContractContext(tx: WalletTransaction) {
-  const text = `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
+  const text =
+    `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
   const type = String(tx.transactionType || "").toUpperCase();
   const isMilestoneWalletTx =
     text.includes("deposit milestone escrow") ||
@@ -343,24 +361,36 @@ function needsContractContext(tx: WalletTransaction) {
     type.startsWith("MILESTONE_ESCROW_");
 
   if (!isMilestoneWalletTx) return false;
-  return !tx.businessName || !tx.expertName || !tx.contractTitle || !tx.milestoneNumber;
+  return (
+    !tx.businessName ||
+    !tx.expertName ||
+    !tx.contractTitle ||
+    !tx.milestoneNumber
+  );
 }
 
 async function enrichWalletTransactions(
   transactions: WalletTransaction[],
 ): Promise<WalletTransaction[]> {
-  const contextByIndex = new Map<number, { contractId: number; milestoneId?: number }>();
+  const contextByIndex = new Map<
+    number,
+    { contractId: number; milestoneId?: number }
+  >();
   transactions.forEach((tx, index) => {
     if (!needsContractContext(tx)) return;
     const context =
-      parseMilestoneOperationContext(tx) ||
-      parseContractOperationContext(tx);
+      parseMilestoneOperationContext(tx) || parseContractOperationContext(tx);
     if (context) contextByIndex.set(index, context);
   });
 
   const disputeRequests = transactions
-    .map((tx, index) => ({ index, disputeId: needsContractContext(tx) ? parseDisputeOperationId(tx) : null }))
-    .filter((item): item is { index: number; disputeId: number } => Number.isFinite(item.disputeId));
+    .map((tx, index) => ({
+      index,
+      disputeId: needsContractContext(tx) ? parseDisputeOperationId(tx) : null,
+    }))
+    .filter((item): item is { index: number; disputeId: number } =>
+      Number.isFinite(item.disputeId),
+    );
 
   const disputeByIndex = new Map<number, Dispute | null>();
   await Promise.all(
@@ -370,13 +400,17 @@ async function enrichWalletTransactions(
       if (dispute?.contractId) {
         contextByIndex.set(index, {
           contractId: Number(dispute.contractId),
-          milestoneId: dispute.milestoneId ? Number(dispute.milestoneId) : undefined,
+          milestoneId: dispute.milestoneId
+            ? Number(dispute.milestoneId)
+            : undefined,
         });
       }
     }),
   );
 
-  const contractIds = [...new Set([...contextByIndex.values()].map((item) => item.contractId))];
+  const contractIds = [
+    ...new Set([...contextByIndex.values()].map((item) => item.contractId)),
+  ];
   if (contractIds.length === 0) return transactions;
 
   const contextByContract = new Map<
@@ -403,7 +437,12 @@ async function enrichWalletTransactions(
           ? profileApi.getExpertById(contract.expertId).catch(() => null)
           : Promise.resolve(null),
       ]);
-      contextByContract.set(contractId, { contract, milestones, business, expert });
+      contextByContract.set(contractId, {
+        contract,
+        milestones,
+        business,
+        expert,
+      });
     }),
   );
 
@@ -415,8 +454,12 @@ async function enrichWalletTransactions(
     if (!data) return tx;
 
     const milestone = data.milestones.find((item) => {
-      const jobMilestoneId = (item as Milestone & { jobMilestoneId?: number }).jobMilestoneId;
-      return item.milestoneId === context.milestoneId || jobMilestoneId === context.milestoneId;
+      const jobMilestoneId = (item as Milestone & { jobMilestoneId?: number })
+        .jobMilestoneId;
+      return (
+        item.milestoneId === context.milestoneId ||
+        jobMilestoneId === context.milestoneId
+      );
     });
     const dispute = disputeByIndex.get(index);
 
@@ -582,9 +625,7 @@ function WithdrawalModal({
             type="text"
             placeholder="Nhập số tiền..."
             value={
-              form.amount
-                ? Number(form.amount).toLocaleString("vi-VN")
-                : ""
+              form.amount ? Number(form.amount).toLocaleString("vi-VN") : ""
             }
             onChange={(e) => {
               const rawValue = e.target.value.replace(/\D/g, "");
@@ -643,6 +684,7 @@ export function WalletPage() {
   const [tab, setTab] = useState<"transactions" | "withdrawals">(
     "transactions",
   );
+  const [transactionPage, setTransactionPage] = useState(1);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -656,6 +698,7 @@ export function WalletPage() {
       if (w.status === "fulfilled") setWallet(w.value);
       if (txs.status === "fulfilled") {
         setTransactions(await enrichWalletTransactions(txs.value));
+        setTransactionPage(1);
       }
       if (wdrs.status === "fulfilled") setWithdrawals(wdrs.value);
     } finally {
@@ -676,6 +719,15 @@ export function WalletPage() {
 
   const role = session.role;
   const isExternalRole = role === "BUSINESS" || role === "EXPERT";
+  const transactionTotalPages = Math.max(
+    1,
+    Math.ceil(transactions.length / TRANSACTIONS_PER_PAGE),
+  );
+  const safeTransactionPage = Math.min(transactionPage, transactionTotalPages);
+  const pagedTransactions = transactions.slice(
+    (safeTransactionPage - 1) * TRANSACTIONS_PER_PAGE,
+    safeTransactionPage * TRANSACTIONS_PER_PAGE,
+  );
 
   return (
     <div className="space-y-6">
@@ -689,7 +741,7 @@ export function WalletPage() {
 
       {/* Balance Overview */}
       {wallet && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <MetricCard
             label="Số dư khả dụng"
             value={formatCurrency(wallet.availableBalance)}
@@ -698,12 +750,10 @@ export function WalletPage() {
             tone="brand"
           />
           <MetricCard
-            label={role === "EXPERT" ? "Đang ký quỹ / escrow" : "Quỹ hợp đồng"}
+            label={role === "EXPERT" ? "Đang ký quỹ" : "Quỹ hợp đồng"}
             value={formatCurrency(wallet.escrowBalance)}
             helper={
-              role === "EXPERT"
-                ? "Tiền đã hold, không còn là số dư khả dụng"
-                : "Đang giữ cho hợp đồng"
+              role === "EXPERT" ? "Chờ nghiệm thu" : "Đang giữ cho hợp đồng"
             }
             icon={<Shield className="h-5 w-5" />}
             tone="amber"
@@ -715,13 +765,6 @@ export function WalletPage() {
             icon={<Clock className="h-5 w-5" />}
             tone="coral"
           />
-          <MetricCard
-            label="Tranh chấp"
-            value={formatCurrency(wallet.disputedBalance)}
-            helper="Đang bị khóa do dispute"
-            icon={<Lock className="h-5 w-5" />}
-            tone="coral"
-          />
         </div>
       )}
 
@@ -730,12 +773,15 @@ export function WalletPage() {
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-4 bg-gradient-to-br from-brand-600 via-indigo-600 to-violet-700 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-100">Tổng tài sản ví</p>
+              <p className="text-sm font-semibold text-blue-100">
+                Tổng tài sản ví
+              </p>
               <p className="mt-1 font-display text-4xl font-black tracking-tight">
                 {formatCurrency(wallet.currentBalance)}
               </p>
               <p className="mt-2 text-xs font-semibold text-blue-200">
-                Bao gồm khả dụng, escrow/ký quỹ, chờ rút và tranh chấp · {wallet.currency}
+                Bao gồm khả dụng, escrow/ký quỹ và chờ rút ·{" "}
+                {wallet.currency}
               </p>
             </div>
             <div className="flex gap-3">
@@ -823,6 +869,7 @@ export function WalletPage() {
               />
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto divide-y divide-slate-50">
               {/* Header */}
               <div className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
@@ -832,7 +879,7 @@ export function WalletPage() {
                 <span className="w-24 text-center">Trạng thái</span>
                 <span className="w-28 text-right">Thời gian</span>
               </div>
-              {transactions.map((tx) => {
+              {pagedTransactions.map((tx) => {
                 const isCredit =
                   tx.direction === "CREDIT" || tx.direction === "RELEASE";
                 return (
@@ -859,11 +906,9 @@ export function WalletPage() {
                           {txDisplayDescription(tx, role)}
                         </p>
                       )}
-                      {(tx.contractTitle || tx.contractId || tx.jobTitle) && (
+                      {txContractContextLabel(tx) && (
                         <p className="mt-1.5 text-sm font-semibold text-slate-500">
-                          {tx.contractTitle ||
-                            (tx.contractId ? "Hợp đồng liên quan" : "")}
-                          {tx.jobTitle ? ` · Cột mốc: ${tx.jobTitle}` : ""}
+                          {txContractContextLabel(tx)}
                         </p>
                       )}
                     </div>
@@ -886,6 +931,41 @@ export function WalletPage() {
                 );
               })}
             </div>
+            {transactionTotalPages > 1 && (
+              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-slate-500">
+                  Hiển thị {pagedTransactions.length} / {transactions.length} giao dịch
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setTransactionPage((page) => Math.max(1, page - 1))
+                    }
+                    disabled={safeTransactionPage <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Trước
+                  </Button>
+                  <span className="min-w-24 text-center text-sm font-extrabold text-slate-600">
+                    Trang {safeTransactionPage} / {transactionTotalPages}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setTransactionPage((page) =>
+                        Math.min(transactionTotalPages, page + 1),
+                      )
+                    }
+                    disabled={safeTransactionPage >= transactionTotalPages}
+                  >
+                    Sau
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )
         ) : withdrawals.length === 0 ? (
           <div className="p-6">
@@ -922,7 +1002,9 @@ export function WalletPage() {
                     <Building className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-base font-extrabold leading-snug text-ink">{wr.bankName}</p>
+                    <p className="text-base font-extrabold leading-snug text-ink">
+                      {wr.bankName}
+                    </p>
                     <p className="mt-1 text-sm font-medium text-slate-600">
                       {maskSensitiveValue(wr.bankAccountNumber)}
                     </p>

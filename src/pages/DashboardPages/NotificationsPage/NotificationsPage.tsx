@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { notificationApi } from "../../../services";
 import { useSession } from "../../../context/sessionContext";
+import { contractApi } from "../../../lib/api";
 import { connectNotificationSocket } from "../../../lib/notificationSocket";
-import { cn } from "../../../lib/utils";
+import { cn, formatCurrency } from "../../../lib/utils";
 import {
   formatNotificationTime,
   mergeNotification,
@@ -25,22 +26,93 @@ export function NotificationsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationAmounts, setNotificationAmounts] = useState<
+    Record<number, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const selectedNotificationId = new URLSearchParams(location.search).get(
     "notificationId",
   );
 
+  const enrichDepositAmounts = async (items: NotificationItem[]) => {
+    const candidates = items.filter((item) => {
+      const type = item.type.toUpperCase();
+      return (
+        type === "BUSINESS_CONTRACT_DEPOSIT_HELD" ||
+        type === "EXPERT_CONTRACT_DEPOSIT_HELD" ||
+        type === "MILESTONE_ESCROW_DEPOSITED"
+      );
+    });
+
+    const resolved = await Promise.all(
+      candidates.map(async (item) => {
+        const contractId = Number(
+          item.metadata?.contractId ?? item.metadata?.contract_id,
+        );
+        if (!Number.isFinite(contractId) || contractId <= 0) return null;
+
+        const type = item.type.toUpperCase();
+        try {
+          if (
+            type === "BUSINESS_CONTRACT_DEPOSIT_HELD" ||
+            type === "EXPERT_CONTRACT_DEPOSIT_HELD"
+          ) {
+            const contract = await contractApi.getContract(contractId);
+            const percentage =
+              type === "BUSINESS_CONTRACT_DEPOSIT_HELD" ? 20 : 10;
+            return {
+              notificationId: item.notificationId,
+              amount: (Number(contract.totalBudget) * percentage) / 100,
+            };
+          }
+
+          const milestoneId = Number(
+            item.metadata?.milestoneId ?? item.metadata?.milestone_id,
+          );
+          if (!Number.isFinite(milestoneId) || milestoneId <= 0) return null;
+          const milestones = await contractApi.listMilestones(contractId);
+          const milestone = milestones.find(
+            (candidate) => Number(candidate.milestoneId) === milestoneId,
+          );
+          const amount = milestone?.finalBudget ?? milestone?.fundsAllocated;
+          return typeof amount === "number"
+            ? { notificationId: item.notificationId, amount }
+            : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    setNotificationAmounts((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        resolved
+          .filter(
+            (item): item is { notificationId: number; amount: number } =>
+              item !== null && Number.isFinite(item.amount),
+          )
+          .map((item) => [item.notificationId, item.amount]),
+      ),
+    }));
+  };
+
   const refresh = () => {
     setLoading(true);
     notificationApi
       .list()
-      .then(setNotifications)
+      .then((items) => {
+        setNotifications(items);
+        void enrichDepositAmounts(items);
+      })
       .catch(() => setNotifications([]))
       .finally(() => setLoading(false));
   };
 
+  // The refresh callback intentionally runs only when the notification page mounts.
   useEffect(() => {
     void Promise.resolve().then(refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -50,6 +122,7 @@ export function NotificationsPage() {
       token: session.accessToken,
       onNotification: (notification) => {
         setNotifications((items) => mergeNotification(items, notification));
+        void enrichDepositAmounts([notification]);
       },
     });
 
@@ -94,6 +167,11 @@ export function NotificationsPage() {
   };
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const notificationMessage = (item: NotificationItem) => {
+    const amount = notificationAmounts[item.notificationId];
+    if (!amount) return item.message;
+    return `${item.message}\nSố tiền ký quỹ: ${formatCurrency(amount)}.`;
+  };
 
   return (
     <div className="space-y-6">
@@ -158,7 +236,7 @@ export function NotificationsPage() {
                       <h3 className="font-display text-lg font-extrabold text-ink">
                         {item.title}
                       </h3>
-                      {!item.isRead && <Badge tone="coral">Moi</Badge>}
+                      {!item.isRead && <Badge tone="coral">Mới</Badge>}
                     </div>
                     <p
                       className={cn(
@@ -168,7 +246,7 @@ export function NotificationsPage() {
                           : "line-clamp-2",
                       )}
                     >
-                      {item.message}
+                      {notificationMessage(item)}
                     </p>
 
                     {isSelected && (

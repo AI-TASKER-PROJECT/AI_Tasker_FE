@@ -64,8 +64,9 @@ export function PublicShell() {
     void Promise.resolve().then(loadWallet);
   }, [loadWallet, accountOpen]);
   const publicNav = nav;
-  const showBackButton =
-    location.pathname !== "/" && location.pathname !== "/home";
+  const showBackButton = !["/", "/home", "/business", "/experts"].includes(
+    location.pathname,
+  );
   const logout = () => {
     clearSession();
     setAccountOpen(false);
@@ -74,9 +75,9 @@ export function PublicShell() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#fff8f8] text-ink">
+    <div className="relative min-h-screen bg-[#fff8f8] pt-14 text-ink">
       <div className="pointer-events-none fixed inset-0 z-0 opacity-10 [background-image:radial-gradient(#df0e84_1px,transparent_1px)] [background-size:32px_32px]" />
-      <header className="sticky top-0 z-40 border-b border-[#f0dbe4]/80 bg-[#fff8f8]/95 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-[#f0dbe4]/80 bg-[#fff8f8]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 py-2 md:px-6">
           <Logo />
           <nav className="hidden items-center gap-5 md:flex">
@@ -159,7 +160,11 @@ export function PublicShell() {
                               </p>
                               <p className="mt-1 truncate text-sm font-black text-ink">
                                 {wallet
-                                  ? formatCurrency(wallet.availableBalance)
+                                  ? formatCurrency(
+                                      session?.role === "ADMIN"
+                                        ? wallet.totalRevenue
+                                        : wallet.availableBalance,
+                                    )
                                   : "--"}
                               </p>
                             </div>

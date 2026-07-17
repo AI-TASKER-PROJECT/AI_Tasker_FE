@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, UploadCloud, X } from "lucide-react";
 import { Badge } from "../../components/ui";
 import type { AccountStatus } from "../../types";
 
@@ -140,6 +140,56 @@ export function EmptyProfileBlock({
   );
 }
 
+export function ProfileFilePicker({
+  file,
+  onChange,
+  accept = "image/png,image/jpeg,application/pdf,.doc,.docx",
+  buttonText = "Chọn tệp",
+  emptyText = "Chưa chọn tệp",
+  required,
+}: {
+  file: File | null;
+  onChange: (file: File | null) => void;
+  accept?: string;
+  buttonText?: string;
+  emptyText?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="grid gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-brand-600 shadow-sm hover:text-brand-700">
+          <UploadCloud className="h-4 w-4" />
+          {buttonText}
+          <input
+            type="file"
+            accept={accept}
+            className="hidden"
+            aria-required={required}
+            onChange={(event) => {
+              onChange(event.target.files?.[0] || null);
+              event.target.value = "";
+            }}
+          />
+        </label>
+        {file && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-extrabold text-slate-500 shadow-sm hover:text-rose-600"
+          >
+            <X className="h-4 w-4" />
+            Xóa tệp
+          </button>
+        )}
+      </div>
+      <p className="break-all text-sm font-bold text-slate-600">
+        {file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB` : emptyText}
+      </p>
+    </div>
+  );
+}
+
 export function resolveCatalogNames<T extends object>(
   items: T[],
   ids: number[],
@@ -171,4 +221,16 @@ export function normalizeAccountStatus(status?: string): AccountStatus {
   return status === "Approved" || status === "Rejected" || status === "Lock"
     ? status
     : "Pending";
+}
+
+export function translateVerificationStatus(status?: string) {
+  const normalized = (status || "").trim().toLowerCase();
+  if (normalized === "approved") return "Đã duyệt";
+  if (normalized === "rejected") return "Bị từ chối";
+  if (normalized === "pending") return "Đang chờ duyệt";
+  if (normalized === "lock") return "Đã khóa";
+  if (!normalized || normalized === "chưa gửi" || normalized === "chÆ°a gá»­i") {
+    return "Chưa gửi";
+  }
+  return status || "Chưa gửi";
 }

@@ -1,12 +1,55 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Award, BrainCircuit, Cpu, Edit3, FileText, IdCard, Layers3, ShieldCheck } from "lucide-react";
-import { catalogApi, profileApi, type Domain, type Skill, type Technology } from "../../../lib/api";
+import { Link } from "react-router-dom";
+import {
+  Award,
+  BrainCircuit,
+  BriefcaseBusiness,
+  Cpu,
+  Edit3,
+  FileText,
+  IdCard,
+  Layers3,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
+import {
+  catalogApi,
+  contractApi,
+  profileApi,
+  type Domain,
+  type Skill,
+  type Technology,
+} from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
-import { maskSensitiveValue } from "../../../lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  maskSensitiveValue,
+} from "../../../lib/utils";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
-import { Avatar, Button, Card, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
-import type { Portfolio } from "../../../types";
-import { normalizeAccountStatus, parseCatalogIds, PreviewGroup, ProfileRow, readApiError, resolveCatalogNames } from "../ProfilePages.shared";
+import {
+  Avatar,
+  Button,
+  Card,
+  Field,
+  Input,
+  Modal,
+  Notice,
+  SectionHeading,
+  StatusBadge,
+  Tabs,
+} from "../../../components/ui";
+import type { Contract, ExpertProfile, Portfolio } from "../../../types";
+import {
+  normalizeAccountStatus,
+  parseCatalogIds,
+  PreviewGroup,
+  ProfileFilePicker,
+  ProfileRow,
+  readApiError,
+  resolveCatalogNames,
+  translateVerificationStatus,
+} from "../ProfilePages.shared";
 
 export function ExpertProfilePage() {
   const [form, setForm] = useState({
@@ -20,7 +63,11 @@ export function ExpertProfilePage() {
   const [status, setStatus] = useState("Chưa gửi");
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expertProfile, setExpertProfile] = useState<ExpertProfile | null>(
+    null,
+  );
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [completedContracts, setCompletedContracts] = useState<Contract[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
@@ -36,6 +83,7 @@ export function ExpertProfilePage() {
       catalogApi.listDomains(true),
       catalogApi.listSkills(true),
       catalogApi.listTechnologies(true),
+      contractApi.listContracts().catch(() => []),
     ])
       .then(
         ([
@@ -44,6 +92,7 @@ export function ExpertProfilePage() {
           domainItems,
           skillItems,
           technologyItems,
+          contractItems,
         ]) => {
           setForm({
             nationalId: profile.nationalId || "",
@@ -52,10 +101,25 @@ export function ExpertProfilePage() {
           });
           setStatus(profile.kycStatus || "Chưa gửi");
           setRejectionReason(profile.rejectionReason || "");
+          setExpertProfile(profile);
           setPortfolio(expertPortfolio);
           setDomains(domainItems);
           setSkills(skillItems);
           setTechnologies(technologyItems);
+          setCompletedContracts(
+            contractItems.filter((contract) => {
+              const isOwnContract =
+                !profile.expertId ||
+                Number(contract.expertId) === Number(profile.expertId);
+              const normalizedStatus = (contract.status || "")
+                .trim()
+                .toUpperCase();
+              return (
+                isOwnContract &&
+                ["COMPLETED", "CLOSED", "RELEASED"].includes(normalizedStatus)
+              );
+            }),
+          );
         },
       )
       .catch(() => undefined);
@@ -125,6 +189,7 @@ export function ExpertProfilePage() {
       });
       setStatus(profile.kycStatus);
       setRejectionReason(profile.rejectionReason || "");
+      setExpertProfile(profile);
 
       const session = getSession(); //lưu session
       setMessage("Đã lưu thành công hồ sơ");
@@ -142,6 +207,12 @@ export function ExpertProfilePage() {
   };
 
   const isApproved = status?.toLowerCase() === "approved";
+  const expertDisplayName =
+    expertProfile?.fullName?.trim() ||
+    expertProfile?.title?.trim() ||
+    "Chuyên gia AI";
+  const averageRating = expertProfile?.averageRating ?? expertProfile?.rating;
+  const hasAverageRating = averageRating != null && Number(averageRating) > 0;
 
   return (
     <div className="space-y-6">
@@ -149,30 +220,45 @@ export function ExpertProfilePage() {
         <div className="bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_35%),linear-gradient(135deg,#111827_0%,#0f766e_100%)] p-6 text-white md:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-5 md:flex-row md:items-center">
-              <Avatar name="Chuyên gia" size="xl" />
+              <Avatar name={expertDisplayName} size="xl" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
                   Trang cá nhân chuyên gia
                 </p>
                 <h1 className="mt-2 text-3xl font-black md:text-4xl">
-                  {portfolio?.selfDescription ? "Chuyên gia AI" : "Chuyên gia"}
+                  {expertDisplayName}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/75">
                   <span className="inline-flex items-center gap-2">
                     <Award className="h-4 w-4" />
-                    {portfolio?.yearsExperience ?? form.yearsOfExperience} năm
+                    {form.yearsOfExperience ?? portfolio?.yearsExperience} năm
                     kinh nghiệm
                   </span>
                   <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4" />
-                    <StatusBadge status={status} />
+                    <StatusBadge status={translateVerificationStatus(status)} />
                   </span>
+                  {isApproved && (
+                    <>
+                      <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
+                      <span className="inline-flex items-center gap-1.5 font-bold text-amber-200">
+                        <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
+                        {hasAverageRating
+                          ? `${Number(averageRating).toFixed(1)}/5`
+                          : "Chưa có đánh giá"}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" type="button" className="hidden min-w-40">
+              <Button
+                variant="secondary"
+                type="button"
+                className="hidden min-w-40"
+              >
                 Theo dõi chuyên gia
               </Button>
               {canEdit && (
@@ -188,6 +274,11 @@ export function ExpertProfilePage() {
               tabs={[
                 { id: "overview", label: "Trang chủ" },
                 { id: "portfolio", label: "Portfolio" },
+                {
+                  id: "projects",
+                  label: "Dự án",
+                  count: completedContracts.length,
+                },
                 ...(canEdit ? [{ id: "edit", label: "Chỉnh sửa" }] : []),
               ]}
               active={activeTab}
@@ -228,7 +319,7 @@ export function ExpertProfilePage() {
             <div className="mt-5 space-y-4">
               <ProfileRow
                 label="Số năm kinh nghiệm"
-                value={`${portfolio?.yearsExperience ?? form.yearsOfExperience} năm`}
+                value={`${form.yearsOfExperience ?? portfolio?.yearsExperience} năm`}
               />
               <ProfileRow
                 label="Số CCCD / Hộ chiếu"
@@ -236,7 +327,9 @@ export function ExpertProfilePage() {
               />
               <ProfileRow
                 label="Trạng thái KYC"
-                value={<StatusBadge status={status} />}
+                value={
+                  <StatusBadge status={translateVerificationStatus(status)} />
+                }
               />
             </div>
           </Card>
@@ -274,7 +367,7 @@ export function ExpertProfilePage() {
             <Card className="rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-none">
               <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink">
                 <FileText className="h-4 w-4 text-brand-600" />
-                Tệp đính kèm
+                Tệp portfolio
               </div>
               <FirebaseFileLink
                 path={portfolio?.certificates || form.portfolioUrl}
@@ -284,6 +377,46 @@ export function ExpertProfilePage() {
               />
             </Card>
           </div>
+        </Card>
+      )}
+
+      {activeTab === "projects" && (
+        <Card className="p-6">
+          <SectionHeading title="Dự án đã hoàn thành" />
+          {completedContracts.length ? (
+            <div className="mt-5 grid gap-4">
+              {completedContracts.map((contract) => (
+                <Link
+                  key={contract.contractId}
+                  to={`/app/contracts/${contract.contractId}`}
+                  className="rounded-3xl border border-pink-200 bg-white p-5 transition hover:border-brand-200 hover:bg-slate-50 hover:shadow-soft"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-ink">
+                        {contract.contractTitle || contract.title || "Dự án"}
+                      </h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                        {`${formatCurrency(contract.totalBudget)} · ${contract.timelineDays || 0} ngày · Cập nhật ${
+                          contract.updatedAt
+                            ? formatDate(contract.updatedAt)
+                            : "Chưa có dữ liệu"
+                        }`}
+                      </p>
+                    </div>
+                    <StatusBadge status="Hoàn thành" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+              <BriefcaseBusiness className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 font-bold text-slate-500">
+                Chưa có dự án đã hoàn thành.
+              </p>
+            </div>
+          )}
         </Card>
       )}
 
@@ -308,16 +441,19 @@ export function ExpertProfilePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <Field
                   label="Tệp Portfolio"
-                  hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
+                  hint="Tệp Portfolio trong hồ sơ KYC. Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
                 >
-                  <Input
-                    type="file"
-                    accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                    onChange={(event) =>
-                      setPortfolioFile(event.target.files?.[0] || null)
-                    }
+                  <ProfileFilePicker
+                    file={portfolioFile}
+                    onChange={setPortfolioFile}
+                    buttonText="Chọn Portfolio"
+                    emptyText="Chưa chọn tệp Portfolio"
                     required={!form.portfolioUrl}
                   />
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Nộp kèm portfolio để Staff xem năng lực và kinh nghiệm của
+                    chuyên gia.
+                  </p>
                   <FirebaseFileLink
                     path={form.portfolioUrl}
                     emptyText="Chưa có tệp Portfolio"
@@ -347,10 +483,15 @@ export function ExpertProfilePage() {
                     <Edit3 className="h-4 w-4" />
                     Chỉnh sửa
                   </Button>
+                ) : isApproved && isEditing ? (
+                  <Button type="submit" loading={loading}>
+                    <ShieldCheck className="h-4 w-4" />
+                    Cập nhật thông tin
+                  </Button>
                 ) : (
                   <Button type="submit" loading={loading}>
                     <ShieldCheck className="h-4 w-4" />
-                    Lưu hồ sơ
+                    Nộp hồ sơ KYC
                   </Button>
                 )}
               </div>
@@ -367,7 +508,7 @@ export function ExpertProfilePage() {
                   Hồ sơ hiện tại
                 </p>
                 <div className="mt-1">
-                  <StatusBadge status={status} />
+                  <StatusBadge status={translateVerificationStatus(status)} />
                 </div>
               </div>
             </div>
@@ -392,7 +533,7 @@ export function ExpertProfilePage() {
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         title="Xác nhận chỉnh sửa"
-        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        description="Xác nhận cập nhật thông tin hồ sơ đã được duyệt?"
         footer={
           <>
             <Button

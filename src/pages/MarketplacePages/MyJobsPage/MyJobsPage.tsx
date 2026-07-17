@@ -429,7 +429,7 @@ export function MyJobsPage() {
         })}
       </div>
       {filtered.length > JOBS_PER_PAGE && (
-        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="sticky bottom-4 z-20 flex flex-col gap-3 bg-white/95 p-4 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-slate-500">
             Hiển thị {paginatedJobs.length} trên tổng {filtered.length} dự án
           </p>

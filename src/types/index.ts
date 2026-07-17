@@ -229,6 +229,7 @@ export interface Deliverable {
   deliverableId: number;
   milestoneId: number;
   sourceCodeUrl?: string;
+  sourceCodeFileUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
   submissionRound?: number;
@@ -249,6 +250,7 @@ export interface MilestoneProgressReport {
   percentComplete?: number;
   attachmentUrl?: string;
   sourceCodeUrl?: string;
+  sourceCodeFileUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
   businessFeedback?: string;
@@ -413,6 +415,8 @@ export interface StaffAssignmentCandidate {
   activeDisputeWorkload?: number;
   activeDisputeWorkloadCount?: number;
   conflictEligible?: boolean;
+  matchedDomains?: string[];
+  matchedSkills?: string[];
 }
 
 export interface CaseAttachment {
@@ -884,6 +888,7 @@ export interface WalletTransaction {
   referenceType?: string;
   referenceId?: number;
   operationKey?: string;
+  operationLeg?: string;
   rawDescription?: string;
   title?: string;
   description?: string;

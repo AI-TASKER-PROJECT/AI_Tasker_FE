@@ -48,21 +48,26 @@ export function SystemWalletPage() {
     void Promise.resolve().then(() => load());
   }, [load]);
 
-  const historyPageCount = Math.max(1, Math.ceil(history.length / historyPageSize));
+  const platformHistory = useMemo(() => normalizePlatformHistory(history), [history]);
+  const historyPageCount = Math.max(1, Math.ceil(platformHistory.length / historyPageSize));
   const visibleHistory = useMemo(
-    () => history.slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize),
-    [history, historyPage],
+    () => platformHistory.slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize),
+    [platformHistory, historyPage],
+  );
+  const successfulPlatformTransactionCount = useMemo(
+    () => platformHistory.filter((tx) => walletTransactionIsSuccessful(tx.status)).length,
+    [platformHistory],
   );
 
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Quản lý ví"
-          description="Dữ liệu được cập nhật tự động từ hệ thống mỗi khi có giao dịch hoặc biến động tranh chấp."
+          title="Ví nền tảng"
+          description="Theo dõi doanh thu nền tảng, tiền đang giữ và các giao dịch phát sinh từ gói thành viên, lượt sử dụng, ký quỹ và rút tiền."
           actions={
             <Button onClick={() => load(true)} disabled={loading}>
-              <RefreshCw className="h-4 w-4" /> Đồng bộ
+              <RefreshCw className="h-4 w-4" /> Đồng bộ ví nền tảng
             </Button>
           }
         />
@@ -71,13 +76,13 @@ export function SystemWalletPage() {
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetric
-              label="Số dư hiện tại"
+              label="Tổng số dư"
               value={formatCurrency(wallet.currentBalance)}
               icon={<WalletCards className="h-5 w-5" />}
               tone="mint"
             />
             <AdminMetric
-              label="Số dư ký quỹ"
+              label="Tiền đang giữ cho kí quỹ"
               value={formatCurrency(wallet.escrowBalance)}
               icon={<ShieldAlert className="h-5 w-5" />}
               tone="amber"
@@ -88,7 +93,7 @@ export function SystemWalletPage() {
               icon={<TrendingUp className="h-5 w-5" />}
             />
             <AdminMetric
-              label="Số dư tranh chấp"
+              label="Tiền đang tranh chấp"
               value={formatCurrency(wallet.disputedBalance)}
               icon={<ShieldAlert className="h-5 w-5" />}
               tone="coral"
@@ -98,12 +103,12 @@ export function SystemWalletPage() {
             <Card className="p-6">
               <SectionHeading
                 title="Thông tin tổng quan"
-                description="Các số liệu chung của sổ cái."
+                description="Số liệu ví sau lần đồng bộ gần nhất."
               />
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <WalletFact label="Loại ví" value={walletTypeLabel(wallet.walletType)} />
                 <WalletFact
-                  label="Khả dụng"
+                  label="Doanh thu khả dụng"
                   value={formatCurrency(wallet.availableBalance)}
                   tone="mint"
                 />
@@ -114,7 +119,7 @@ export function SystemWalletPage() {
                 />
                 <WalletFact
                   label="Giao dịch thành công"
-                  value={wallet.successfulDepositCount}
+                  value={successfulPlatformTransactionCount}
                   tone="mint"
                 />
               </div>
@@ -132,7 +137,7 @@ export function SystemWalletPage() {
                   <span className="md:text-right">Số tiền</span>
                 </div>
 
-                {history.length === 0 ? (
+                {platformHistory.length === 0 ? (
                   <div className="px-5 py-10 text-center text-sm font-bold text-slate-400">
                     Chưa có lịch sử giao dịch nền tảng.
                   </div>
@@ -140,8 +145,7 @@ export function SystemWalletPage() {
                   <div className="divide-y divide-slate-100">
                     {visibleHistory.map((t) => {
                       const transactionId = t.transactionId ?? t.id;
-                      const isPositive =
-                        t.direction === "CREDIT" || t.direction === "RELEASE";
+                      const isPositive = walletTransactionDisplayIsPositive(t);
 
                       return (
                         <div
@@ -181,7 +185,7 @@ export function SystemWalletPage() {
                               {walletTransactionPartyName(t, accounts)}
                             </span>
                             <span className="text-xs font-bold text-slate-400">
-                              {walletTransactionBalanceLabel(t.balanceType)}
+                              {walletTransactionDisplayBalanceLabel(t)}
                             </span>
                           </div>
 
@@ -197,15 +201,15 @@ export function SystemWalletPage() {
                               {formatCurrency(t.amount)}
                             </div>
                             <div className="mt-1 text-xs font-bold text-slate-400">
-                              {walletTransactionDirectionLabel(t.direction)}
+                              {walletTransactionDisplayDirectionLabel(t)}
                             </div>
                           </div>
                         </div>
                       );
                     })}
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                    <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-3 shadow-soft backdrop-blur-xl">
                       <span className="text-xs font-bold text-slate-400">
-                        Hiển thị {(historyPage - 1) * historyPageSize + 1}–{Math.min(historyPage * historyPageSize, history.length)} trong {history.length} giao dịch
+                        Hiển thị {(historyPage - 1) * historyPageSize + 1}-{Math.min(historyPage * historyPageSize, platformHistory.length)} trong {platformHistory.length} giao dịch
                       </span>
                       <div className="flex items-center gap-2">
                         <Button
@@ -256,6 +260,30 @@ function walletTransactionTypeLabel(type?: string) {
   return labels[type ?? ""] ?? walletTransactionTypeFallback(type);
 }
 
+function normalizePlatformHistory(transactions: WalletTransaction[]) {
+  const technicalDebitKeys = new Set(
+    transactions
+      .filter((tx) => tx.operationKey && isPlatformEscrowHoldTransaction(tx))
+      .map((tx) => tx.operationKey),
+  );
+  const escrowReleaseKeys = new Set(
+    transactions
+      .filter((tx) => tx.operationKey && isEscrowReleaseRefund(tx))
+      .map((tx) => tx.operationKey),
+  );
+  return transactions.filter((tx) => {
+    if (isInternalPlatformRevenueCredit(tx)) return false;
+    if (isEscrowSettlementDebit(tx)) return false;
+    if (tx.operationKey && technicalDebitKeys.has(tx.operationKey) && isTechnicalEscrowDebit(tx)) {
+      return false;
+    }
+    if (tx.operationKey && escrowReleaseKeys.has(tx.operationKey) && isRefundAvailableCredit(tx)) {
+      return false;
+    }
+    return !isTechnicalEscrowDebit(tx);
+  });
+}
+
 function walletTransactionTypeFallback(type?: string) {
   const labels: Record<string, string> = {
     EXPERT_CONTRACT_DEPOSIT_REFUND: "Hoàn ký quỹ cho chuyên gia",
@@ -270,6 +298,10 @@ function walletTransactionTypeFallback(type?: string) {
     "IMMEDIATE TERMINATION PENALTY": "Phạt chấm dứt hợp đồng ngay",
     MILESTONE_ESCROW_REFUND: "Hoàn ký quỹ theo giai đoạn",
     "MILESTONE ESCROW REFUND": "Hoàn ký quỹ theo giai đoạn",
+    MILESTONE_ESCROW_SETTLEMENT_REFUND: "Hoàn tiền quyết toán ký quỹ giai đoạn",
+    "MILESTONE ESCROW SETTLEMENT REFUND": "Hoàn tiền quyết toán ký quỹ giai đoạn",
+    MILESTONE_ESCROW_SETTLEMENT_PAYOUT: "Chi trả quyết toán ký quỹ giai đoạn",
+    "MILESTONE ESCROW SETTLEMENT PAYOUT": "Chi trả quyết toán ký quỹ giai đoạn",
   };
   const normalizedType = type?.trim().toUpperCase();
   if (normalizedType && labels[normalizedType]) return labels[normalizedType];
@@ -289,6 +321,11 @@ function walletTransactionStatusLabel(status?: string) {
   return labels[status ?? ""] ?? "Đã ghi nhận";
 }
 
+function walletTransactionIsSuccessful(status?: string) {
+  const normalizedStatus = status?.trim().toUpperCase();
+  return normalizedStatus === "POSTED" || normalizedStatus === "SUCCESS";
+}
+
 function walletTransactionBalanceLabel(balanceType?: string) {
   const labels: Record<string, string> = {
     AVAILABLE: "Số dư khả dụng",
@@ -299,6 +336,13 @@ function walletTransactionBalanceLabel(balanceType?: string) {
   return labels[balanceType ?? ""] ?? "Số dư ví";
 }
 
+function walletTransactionDisplayBalanceLabel(tx: WalletTransaction) {
+  if (isDisputeSettlementTransaction(tx)) return "Tiền đang tranh chấp";
+  if (isEscrowSettlementOutflow(tx)) return "Tiền đang giữ cho kí quỹ";
+  if (isSettlementAvailableCredit(tx)) return "Ví người nhận";
+  return walletTransactionBalanceLabel(tx.balanceType);
+}
+
 function walletTransactionDirectionLabel(direction?: string) {
   const labels: Record<string, string> = {
     CREDIT: "Cộng tiền",
@@ -307,6 +351,112 @@ function walletTransactionDirectionLabel(direction?: string) {
     RELEASE: "Giải tỏa",
   };
   return labels[direction ?? ""] ?? "Điều chỉnh số dư";
+}
+
+function isPlatformRevenueTransaction(tx: WalletTransaction) {
+  return tx.transactionType === "MEMBERSHIP_PURCHASE"
+    || tx.transactionType === "CREDIT_PURCHASE";
+}
+
+function isInternalPlatformRevenueCredit(tx: WalletTransaction) {
+  return tx.operationLeg === "PLATFORM_REVENUE_CREDIT";
+}
+
+function normalizedType(tx: WalletTransaction) {
+  return (tx.transactionType || tx.title || "").trim().toUpperCase().replaceAll(" ", "_");
+}
+
+function isEscrowTransactionType(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return type.includes("ESCROW")
+    || type.includes("CONTRACT_SECURITY_DEPOSIT")
+    || type.includes("CONTRACT_DEPOSIT");
+}
+
+function isPlatformEscrowHoldTransaction(tx: WalletTransaction) {
+  return isEscrowTransactionType(tx)
+    && (tx.direction === "HOLD" || tx.operationLeg?.endsWith("_HOLD"));
+}
+
+function isTechnicalEscrowDebit(tx: WalletTransaction) {
+  return isEscrowTransactionType(tx)
+    && tx.direction === "DEBIT"
+    && tx.balanceType === "AVAILABLE";
+}
+
+function isEscrowReleaseRefund(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return isEscrowTransactionType(tx)
+    && tx.direction === "RELEASE"
+    && tx.balanceType === "ESCROW"
+    && (type.includes("REFUND") || type.includes("RELEASE"));
+}
+
+function isRefundAvailableCredit(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return isEscrowTransactionType(tx)
+    && tx.direction === "CREDIT"
+    && tx.balanceType === "AVAILABLE"
+    && type.includes("REFUND");
+}
+
+function isPlatformOutflowTransaction(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  if (isSettlementAvailableCredit(tx)) return false;
+  return type.includes("REFUND")
+    || type.includes("PAYOUT")
+    || tx.transactionType === "WITHDRAW_APPROVED";
+}
+
+function isEscrowSettlementOutflow(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return type.includes("ESCROW")
+    && type.includes("SETTLEMENT")
+    && (type.includes("REFUND") || type.includes("PAYOUT"))
+    && !isPlatformEscrowHoldTransaction(tx)
+    && (isEscrowSettlementDebit(tx) || isSettlementAvailableCredit(tx));
+}
+
+function isEscrowSettlementDebit(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return type.includes("ESCROW")
+    && type.includes("SETTLEMENT")
+    && (tx.direction === "DEBIT" || tx.operationLeg === "ESCROW_DEBIT")
+    && tx.balanceType === "ESCROW";
+}
+
+function isSettlementAvailableCredit(tx: WalletTransaction) {
+  const type = normalizedType(tx);
+  return type.includes("ESCROW")
+    && type.includes("SETTLEMENT")
+    && tx.direction === "CREDIT"
+    && tx.balanceType === "AVAILABLE";
+}
+
+function isDisputeSettlementTransaction(tx: WalletTransaction) {
+  return tx.referenceType === "DISPUTE"
+    || tx.operationKey?.startsWith("DISPUTE_SETTLEMENT:");
+}
+
+function walletTransactionDisplayIsPositive(tx: WalletTransaction) {
+  if (isPlatformEscrowHoldTransaction(tx)) return true;
+  if (isSettlementAvailableCredit(tx)) return false;
+  if (isPlatformOutflowTransaction(tx)) return false;
+  return (
+    isPlatformRevenueTransaction(tx) ||
+    tx.direction === "CREDIT" ||
+    tx.direction === "RELEASE"
+  );
+}
+
+function walletTransactionDisplayDirectionLabel(tx: WalletTransaction) {
+  if (isPlatformRevenueTransaction(tx)) return "Cộng doanh thu";
+  if (isPlatformEscrowHoldTransaction(tx)) return "Tạm giữ";
+  if (isDisputeSettlementTransaction(tx) && isSettlementAvailableCredit(tx)) return "Trừ tiền đang tranh chấp";
+  if (isEscrowSettlementOutflow(tx)) return "Trừ tiền đang giữ";
+  if (isSettlementAvailableCredit(tx)) return "Phân bổ từ tiền đang giữ";
+  if (isPlatformOutflowTransaction(tx)) return "Chi ra";
+  return walletTransactionDirectionLabel(tx.direction);
 }
 
 function walletTransactionBadgeTone(type?: string): "violet" {
@@ -335,17 +485,43 @@ function walletTransactionPartyName(
   tx: WalletTransaction,
   accounts: AdminAccount[],
 ) {
+  if (isPlatformRevenueTransaction(tx)) return "Ví nền tảng";
+  if (isPlatformEscrowHoldTransaction(tx)) return walletTransactionActorName(tx, accounts);
   if (tx.direction === "DEBIT" && tx.counterpartyName) return tx.counterpartyName;
   return walletTransactionActorName(tx, accounts);
 }
 
 function walletTransactionPartyLabel(tx: WalletTransaction) {
+  if (isPlatformRevenueTransaction(tx)) return "Người nhận tiền";
+  if (isPlatformEscrowHoldTransaction(tx)) return "Bên ký quỹ";
+  if (isEscrowSettlementOutflow(tx)) return "Người nhận tiền";
+  if (isSettlementAvailableCredit(tx)) return "Người nhận tiền";
   if (tx.direction === "DEBIT") return "Bên nhận tiền";
   if (tx.direction === "CREDIT" || tx.direction === "RELEASE") return "Người nhận tiền";
   return "Bên liên quan";
 }
 
 function walletTransactionPurposeTitle(tx: WalletTransaction) {
+  if (isPlatformEscrowHoldTransaction(tx)) {
+    if (normalizedType(tx).includes("MILESTONE")) return `Tạm giữ ký quỹ giai đoạn ${tx.milestoneName ?? ""}`.trim();
+    if (normalizedType(tx).includes("EXPERT")) return "Tạm giữ ký quỹ chuyên gia";
+    return `Tạm giữ ký quỹ hợp đồng ${tx.contractTitle ?? ""}`.trim();
+  }
+  if (isEscrowSettlementOutflow(tx)) {
+    return normalizedType(tx).includes("PAYOUT")
+      ? "Rút khỏi tiền đang giữ để quyết toán"
+      : "Trừ tiền đang giữ để hoàn tiền";
+  }
+  if (isSettlementAvailableCredit(tx)) {
+    if (isDisputeSettlementTransaction(tx)) {
+      return normalizedType(tx).includes("PAYOUT")
+        ? "Chi trả tranh chấp cho chuyên gia"
+        : "Hoàn tiền tranh chấp cho doanh nghiệp";
+    }
+    return normalizedType(tx).includes("PAYOUT")
+      ? "Chi trả cho chuyên gia"
+      : "Hoàn lại cho doanh nghiệp";
+  }
   if (tx.transactionType === "EXPERT_CONTRACT_DEPOSIT_REFUND") return "Hoàn ký quỹ cho chuyên gia";
   if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_REFUND") return "Hoàn ký quỹ hợp đồng";
   if (tx.transactionType === "MILESTONE_ESCROW_RELEASE") return "Giải ngân theo giai đoạn";
@@ -354,7 +530,7 @@ function walletTransactionPurposeTitle(tx: WalletTransaction) {
   if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
     return `Mua gói ${tx.packageName ?? "thành viên"}`;
   }
-  if (tx.transactionType === "CREDIT_PURCHASE") return "Mua lượt sử dụng";
+  if (tx.transactionType === "CREDIT_PURCHASE") return "Doanh thu mua lượt sử dụng";
   if (tx.transactionType === "CONTRACT_SECURITY_DEPOSIT_HOLD") {
     return `Ký quỹ hợp đồng ${tx.contractTitle ?? ""}`.trim();
   }
@@ -371,10 +547,41 @@ function walletTransactionReadableDescription(
   tx: WalletTransaction,
   accounts: AdminAccount[],
 ) {
+  if (isPlatformEscrowHoldTransaction(tx)) {
+    const depositor = walletTransactionActorName(tx, accounts);
+    const target = tx.milestoneName
+      ? `cho giai đoạn "${tx.milestoneName}"`
+      : tx.contractTitle
+        ? `cho hợp đồng "${tx.contractTitle}"`
+        : "theo nghiệp vụ ký quỹ";
+    return `${depositor} ký quỹ ${formatCurrency(tx.amount)} ${target}. Khoản này là tiền nền tảng tạm giữ, không phải doanh thu.`;
+  }
+  if (isEscrowSettlementOutflow(tx)) {
+    const action = normalizedType(tx).includes("PAYOUT") ? "chi trả cho chuyên gia" : "hoàn lại cho doanh nghiệp";
+    return `Nền tảng rút ${formatCurrency(tx.amount)} khỏi tiền đang giữ để thực hiện quyết toán: ${action} theo các dòng phân bổ cùng thời điểm.`;
+  }
+  if (isSettlementAvailableCredit(tx)) {
+    const recipient = walletTransactionActorName(tx, accounts);
+    const action = normalizedType(tx).includes("PAYOUT") ? "chi trả" : "hoàn lại";
+    if (isDisputeSettlementTransaction(tx)) {
+      return `Nền tảng trừ ${formatCurrency(tx.amount)} khỏi tiền đang tranh chấp để ${action} cho ${recipient}.`;
+    }
+    return `Nền tảng trừ ${formatCurrency(tx.amount)} khỏi tiền đang giữ để ${action} cho ${recipient}.`;
+  }
+  if (tx.transactionType === "MEMBERSHIP_PURCHASE") {
+    const buyer = walletTransactionActorName(tx, accounts);
+    const packageName = tx.packageName ? ` gói "${tx.packageName}"` : " gói thành viên";
+    return `${buyer} thanh toán ${formatCurrency(tx.amount)} để mua${packageName}.`;
+  }
+  if (tx.transactionType === "CREDIT_PURCHASE") {
+    const buyer = walletTransactionActorName(tx, accounts);
+    return `${buyer} thanh toán ${formatCurrency(tx.amount)} để mua lượt sử dụng.`;
+  }
+
   const recipient = walletTransactionPartyName(tx, accounts);
   const amount = formatCurrency(tx.amount);
-  const balance = walletTransactionBalanceLabel(tx.balanceType).toLowerCase();
-  const direction = walletTransactionDirectionLabel(tx.direction).toLowerCase();
+  const balance = walletTransactionDisplayBalanceLabel(tx).toLowerCase();
+  const direction = walletTransactionDisplayDirectionLabel(tx).toLowerCase();
   const purpose = tx.contractTitle
     ? `cho hợp đồng "${tx.contractTitle}"`
     : tx.jobTitle
@@ -383,7 +590,7 @@ function walletTransactionReadableDescription(
         ? `cho giai đoạn "${tx.milestoneName}"`
         : tx.packageName
           ? `để mua gói "${tx.packageName}"`
-          : "theo nghiệp vụ nền tảng";
+          : "thanh toán";
 
   return `${direction} ${amount} vào ${balance} của ${recipient}, ${purpose}.`;
 }
@@ -397,6 +604,8 @@ function walletTransactionTitleLabel(title: string) {
     "Expert Contract Deposit Hold": "Ký quỹ hợp đồng chuyên gia",
     "Immediate Termination Penalty": "Phạt chấm dứt hợp đồng ngay",
     "Milestone Escrow Refund": "Hoàn ký quỹ theo giai đoạn",
+    "Milestone Escrow Settlement Refund": "Hoàn tiền quyết toán ký quỹ giai đoạn",
+    "Milestone Escrow Settlement Payout": "Chi trả quyết toán ký quỹ giai đoạn",
     "Ví được cộng tiền": "Tiền được cộng vào ví",
     "Ví được giải tỏa tiền": "Tiền được giải tỏa khỏi ví",
     "Ví bị trừ tiền": "Tiền được trừ khỏi ví",

@@ -1,5 +1,6 @@
 ﻿import {
   ArrowLeft,
+  ArrowUp,
   BadgeCheck,
   BarChart3,
   Bell,
@@ -363,6 +364,14 @@ export function AppShell() {
   const [topupPayment, setTopupPayment] =
     useState<CreatePayOSPaymentResponse | null>(null);
   const [topupQrDataUrl, setTopupQrDataUrl] = useState("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 420);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
@@ -377,14 +386,10 @@ export function AppShell() {
     session?.role === "BUSINESS"
       ? "/app/business/kyb"
       : "/app/expert/kyc";
-  const personalProfilePath =
-    session?.role === "BUSINESS"
-      ? "/app/business/profile"
-      : "/app/expert/profile";
   const verificationAllowedPaths = useMemo(() => {
     if (!session) return [];
-    return [verificationPath, personalProfilePath, "/app/notifications"];
-  }, [personalProfilePath, session, verificationPath]);
+    return [verificationPath];
+  }, [session, verificationPath]);
   const navItems = useMemo(() => {
     if (!role) return [];
     if (needsVerification) {
@@ -855,7 +860,12 @@ export function AppShell() {
           sidebarCollapsed ? "lg:pl-24" : "lg:pl-64",
         )}
       >
-        <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/85 backdrop-blur-xl">
+        <header
+          className={cn(
+            "fixed left-0 right-0 top-0 z-30 border-b border-slate-100 bg-white/85 backdrop-blur-xl transition-[left] duration-300",
+            sidebarCollapsed ? "lg:left-24" : "lg:left-64",
+          )}
+        >
           <div className="flex h-20 items-center gap-3 px-4 md:px-6">
             <button
               type="button"
@@ -1071,7 +1081,11 @@ export function AppShell() {
                             </p>
                             <p className="mt-1 truncate text-sm font-black text-ink">
                               {wallet
-                                ? formatCurrency(wallet.availableBalance)
+                                ? formatCurrency(
+                                    session?.role === "ADMIN"
+                                      ? wallet.totalRevenue
+                                      : wallet.availableBalance,
+                                  )
                                 : "--"}
                             </p>
                           </div>
@@ -1130,7 +1144,7 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="min-w-0 overflow-x-hidden px-4 py-6 md:px-6 md:py-8">
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 pt-[6.5rem] md:px-6 md:py-8 md:pt-28">
             <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {showBackButton && (
               <Button
@@ -1354,6 +1368,17 @@ export function AppShell() {
           )}
         </form>
       </Modal>
+      {showScrollTop && (
+        <button
+          type="button"
+          aria-label="Cuộn lên đầu trang"
+          title="Cuộn lên đầu trang"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-24 right-5 z-50 grid h-11 w-11 place-items-center rounded-2xl border border-brand-100 bg-white text-brand-600 shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-50 focus:outline-none focus:ring-4 focus:ring-brand-100"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
       <ChatBox />
     </div>
   );

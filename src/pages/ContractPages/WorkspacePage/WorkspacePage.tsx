@@ -39,6 +39,7 @@ import {
   StatusBadge,
   Textarea,
 } from "../../../components/ui";
+import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import {
   getContractMilestoneId,
   getMilestoneBudget,
@@ -48,7 +49,7 @@ import {
 type NoticeTone = "success" | "danger" | "info" | "warning";
 // Milestone status sets for action availability
 const REVIEWABLE_STATUSES = new Set(["UNDER_REVIEW"]);
-const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
+const SUBMITTABLE_STATUSES = new Set(["IN_PROGRESS"]);
 const PROGRESS_REPORT_STATUSES = new Set(["IN_PROGRESS", "OVERDUE"]);
 const DEPOSITABLE_STATUSES = new Set(["PENDING"]);
 const DISPUTABLE_STATUSES = new Set(["IN_PROGRESS", "OVERDUE", "UNDER_REVIEW", "DISPUTED"]);
@@ -116,6 +117,32 @@ function milestoneDurationLabel(milestone: Milestone) {
   if (unit.includes("DAY")) return `${duration} ngày`;
   if (unit.includes("MONTH")) return `${duration} tháng`;
   return `${duration} tuần`;
+}
+
+function milestoneDeliverableDeadline(milestone?: Milestone | null) {
+  if (!milestone) return null;
+  if (milestone.dueAt) {
+    const dueAt = new Date(milestone.dueAt);
+    return Number.isNaN(dueAt.getTime()) ? null : dueAt;
+  }
+  if (!milestone.inProgressStartedAt) return null;
+  const startedAt = new Date(milestone.inProgressStartedAt);
+  const duration = Number(milestone.duration || milestone.durationValue || 0);
+  if (Number.isNaN(startedAt.getTime()) || !Number.isFinite(duration) || duration <= 0) {
+    return null;
+  }
+  const unit = (milestone.durationUnit || "DAY").toUpperCase();
+  const days = unit.includes("MONTH") ? duration * 30 : unit.includes("WEEK") ? duration * 7 : duration;
+  const dueAt = new Date(startedAt);
+  dueAt.setDate(dueAt.getDate() + days);
+  return dueAt;
+}
+
+function isDeliverableDeadlineExceeded(milestone?: Milestone | null) {
+  if (!milestone) return false;
+  if (normalizeStatus(milestone.status) === "OVERDUE" || milestone.overdue) return true;
+  const dueAt = milestoneDeliverableDeadline(milestone);
+  return Boolean(dueAt && Date.now() > dueAt.getTime());
 }
 
 function isProgressReportAcknowledged(report?: MilestoneProgressReport) {
@@ -345,33 +372,6 @@ function isActiveMilestoneStatus(status?: string) {
   );
 }
 
-function workspaceHintLine(role?: string, status?: string, dispute?: Dispute) {
-  const normalized = normalizeStatus(status);
-  const disputeStatus = normalizeStatus(dispute?.status);
-  if (disputeStatus === "ESCALATION_REQUESTED") {
-    return "Gợi ý: Tranh chấp đã được gửi đến hàng đợi staff/admin. Hai bên nên bổ sung bằng chứng và chờ staff tiếp nhận.";
-  }
-  if (disputeStatus === "STAFF_REVIEWING") {
-    return "Gợi ý: Staff đang kiểm tra source/demo. Doanh nghiệp và Chuyên gia theo dõi kết quả trên màn hình tranh chấp.";
-  }
-  if (role === "BUSINESS" && normalized === "PENDING") {
-    return "Gợi ý: Ký quỹ milestone này để Chuyên gia có thể bắt đầu công việc.";
-  }
-  if (role === "EXPERT" && normalized === "DEPOSITED") {
-    return "Gợi ý: Bấm Bắt đầu mốc để mở bước nộp báo cáo giữa kỳ và sản phẩm cuối cùng.";
-  }
-  if (role === "EXPERT" && normalized === "IN_PROGRESS") {
-    return "Gợi ý: Nộp báo cáo giữa kỳ để Doanh nghiệp theo dõi, sau đó nộp sản phẩm cuối cùng khi sản phẩm sẵn sàng.";
-  }
-  if (role === "BUSINESS" && normalized === "UNDER_REVIEW") {
-    return "Gợi ý: Kiểm tra source/demo theo Định nghĩa hoàn thành, nghiệm thu nếu đạt hoặc từ chối kèm phản hồi có cấu trúc.";
-  }
-  if (normalized === "COMPLETED") {
-    return "Gợi ý: Cột mốc đã hoàn tất. Doanh nghiệp có thể mở cột mốc tiếp theo nếu còn.";
-  }
-  return "Gợi ý: Theo dõi trạng thái cột mốc và chỉ thao tác trên cột mốc đang hoạt động.";
-}
-
 function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
@@ -414,28 +414,51 @@ function FlowStep({
   description,
   active,
   done,
+  accent = "sky",
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   active?: boolean;
   done?: boolean;
+  accent?: "sky" | "mint" | "amber";
+  onClick?: () => void;
 }) {
+  const activeStyles = {
+    sky: "border-sky-200 bg-sky-50",
+    mint: "border-emerald-200 bg-emerald-50",
+    amber: "border-amber-200 bg-amber-50",
+  }[accent];
+  const iconStyles = {
+    sky: "text-sky-700",
+    mint: "text-emerald-700",
+    amber: "text-amber-700",
+  }[accent];
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={
-        active
-          ? "rounded-2xl border border-brand-100 bg-brand-50 p-4"
+        `${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-200" : ""} ${active
+          ? `rounded-2xl border p-4 ${activeStyles}`
           : done
-            ? "rounded-2xl border border-mint-100 bg-mint-50 p-4"
-            : "rounded-2xl border border-slate-100 bg-white p-4"
+            ? "rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+            : "rounded-2xl border border-slate-100 bg-white p-4"}`
       }
     >
       <div className="flex items-start gap-3">
         <span
           className={
             active || done
-              ? "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-brand-600"
+              ? `grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white ${done ? "text-emerald-700" : iconStyles}`
               : "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-50 text-slate-400"
           }
         >
@@ -523,10 +546,14 @@ export function WorkspacePage() {
   const [deliverableForm, setDeliverableForm] = useState({
     type: "PROCESS",
     sourceCodeUrl: "",
+    sourceCodeFileUrl: "",
+    sourceCodeFileName: "",
     demoLink: "",
     submissionNotes: "",
     percentComplete: "50",
   });
+  const [sourceArchiveFile, setSourceArchiveFile] = useState<File | null>(null);
+  const [sourceArchiveError, setSourceArchiveError] = useState("");
   const [feedbackReason, setFeedbackReason] = useState("");
   const [feedbackRequired, setFeedbackRequired] = useState(false);
   const [progressFeedbackForm, setProgressFeedbackForm] = useState({
@@ -538,6 +565,9 @@ export function WorkspacePage() {
   });
   const [expandedMilestones, setExpandedMilestones] = useState<
     Record<number, boolean>
+  >({});
+  const [submissionTabs, setSubmissionTabs] = useState<
+    Record<number, "REPORTS" | "FINAL">
   >({});
   const [initiateDisputeOtherReason, setInitiateDisputeOtherReason] = useState("");
   const [initiateDisputeModalWarning, setInitiateDisputeModalWarning] = useState("");
@@ -554,6 +584,32 @@ export function WorkspacePage() {
   >({});
 
   const id = Number(contractId);
+  const shouldFocusMilestoneDeposit = new URLSearchParams(location.search).get(
+    "focus",
+  ) === "milestone-deposit";
+  const focusMilestoneId = useMemo(() => {
+    if (!shouldFocusMilestoneDeposit || session?.role !== "BUSINESS") {
+      return undefined;
+    }
+
+    const firstDepositableMilestone = milestones
+      .slice()
+      .sort((a, b) => Number(a.orderIndex) - Number(b.orderIndex))
+      .find(
+        (milestone) =>
+          normalizeStatus(milestone.status) === "PENDING" &&
+          milestones
+            .filter(
+              (item) =>
+                Number(item.orderIndex) < Number(milestone.orderIndex),
+            )
+            .every((item) => normalizeStatus(item.status) === "COMPLETED"),
+      );
+
+    return firstDepositableMilestone
+      ? getSourceMilestoneId(firstDepositableMilestone)
+      : undefined;
+  }, [milestones, session?.role, shouldFocusMilestoneDeposit]);
   const businessDisplayName = cleanPartyName(
     contract?.businessName,
     "đối tác",
@@ -565,6 +621,7 @@ export function WorkspacePage() {
     "Chuyên gia",
   );
 
+  //cmt1: Tải toàn bộ dữ liệu workspace: hợp đồng, milestone, tranh chấp và yêu cầu chấm dứt liên quan.
   const loadWorkspace = useCallback(async () => {
     if (!Number.isFinite(id) || id <= 0) return;
     try {
@@ -606,6 +663,30 @@ export function WorkspacePage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, []);
+
+  useEffect(() => {
+    if (!shouldFocusMilestoneDeposit) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWorkspaceNotice({
+      tone: "info",
+      title: "Bước tiếp theo: ký quỹ cột mốc",
+      message:
+        "Doanh nghiệp cần ký quỹ từng cột mốc để Chuyên gia có thể bắt đầu thực hiện công việc.",
+    });
+  }, [shouldFocusMilestoneDeposit]);
+
+  useEffect(() => {
+    if (!focusMilestoneId) return;
+
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`milestone-deposit-${focusMilestoneId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [focusMilestoneId]);
 
   useEffect(() => {
     if (!resolvedDisputeNotice) return;
@@ -671,10 +752,24 @@ export function WorkspacePage() {
     );
   }, [milestones]);
 
+  const scrollToMilestoneGroup = (predicate: (milestone: Milestone) => boolean) => {
+    const target = milestones.find(predicate);
+    if (!target) return;
+    const sourceMilestoneId = getSourceMilestoneId(target);
+    const element = document.getElementById(
+      sourceMilestoneId
+        ? `milestone-deposit-${sourceMilestoneId}`
+        : `milestone-deposit-${getContractMilestoneId(target)}`,
+    );
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // Tải lại workspace sau mỗi thao tác để đồng bộ trạng thái dispute/milestone mới nhất.
   const refreshAfterAction = async () => {
     await loadWorkspace();
   };
 
+  // Hiển thị thông báo theo từng milestone, hoặc thông báo chung nếu không có milestone cụ thể.
   const setMilestoneNotice = (
     milestoneId: number | undefined,
     notice: { tone: NoticeTone; title: string; message?: string },
@@ -712,10 +807,26 @@ export function WorkspacePage() {
     try {
       await action(sourceMilestoneId);
       await refreshAfterAction();
-      setMilestoneNotice(sourceMilestoneId, {
-        tone: "success",
-        title: successTitle,
-      });
+      const successMessage =
+        actionKey === "deposit"
+          ? `Đã ký quỹ thành công ${formatCurrency(
+              getMilestoneBudget(milestone),
+            )} cho Cột mốc ${milestone.orderIndex}. Chuyên gia có thể bắt đầu thực hiện công việc.`
+          : undefined;
+      if (actionKey === "deposit") {
+        setWorkspaceNotice({
+          tone: "success",
+          title: "Ký quỹ cột mốc thành công",
+          message: successMessage,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setMilestoneNotice(sourceMilestoneId, {
+          tone: "success",
+          title: successTitle,
+          message: successMessage,
+        });
+      }
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
@@ -733,6 +844,15 @@ export function WorkspacePage() {
       setWorkspaceNotice({
         tone: "danger",
         title: "Không xác định được milestone gốc để nộp deliverable.",
+      });
+      return;
+    }
+    const deadlineExceeded = isDeliverableDeadlineExceeded(deliverableOpen);
+    if (deliverableForm.type === "FINAL" && deadlineExceeded) {
+      setMilestoneNotice(sourceMilestoneId, {
+        tone: "danger",
+        title: "Cột mốc đã quá hạn nộp sản phẩm.",
+        message: "Bạn không thể nộp final product hoặc upload source mới sau deadline. Hãy theo dõi luồng tranh chấp/xử lý quá hạn.",
       });
       return;
     }
@@ -754,12 +874,19 @@ export function WorkspacePage() {
     setActionLoading(`submit:${sourceMilestoneId}`);
     try {
       const notes = deliverableForm.submissionNotes.trim();
+      let sourceCodeFileUrl = deliverableForm.sourceCodeFileUrl || undefined;
       if (!notes) {
         setMilestoneNotice(sourceMilestoneId, {
           tone: "warning",
           title: "Vui lòng nhập nội dung báo cáo hoặc ghi chú bàn giao.",
         });
         return;
+      }
+      if (sourceArchiveFile) {
+        sourceCodeFileUrl = await contractApi.uploadMilestoneSourceCode(
+          sourceMilestoneId,
+          sourceArchiveFile,
+        );
       }
       if (deliverableForm.type === "PROCESS") {
         const percentComplete = Number(deliverableForm.percentComplete || 0);
@@ -769,13 +896,22 @@ export function WorkspacePage() {
             ? percentComplete
             : undefined,
           sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
+          sourceCodeFileUrl,
           demoLink: normalizeExternalUrl(deliverableForm.demoLink) || undefined,
           submissionNotes: notes,
         });
       } else {
+        if (!normalizeExternalUrl(deliverableForm.sourceCodeUrl) && !sourceCodeFileUrl) {
+          setMilestoneNotice(sourceMilestoneId, {
+            tone: "warning",
+            title: "Vui lòng cung cấp Source code URL hoặc file ZIP source code.",
+          });
+          return;
+        }
         await contractApi.submitDeliverable(sourceMilestoneId, {
           milestoneId: sourceMilestoneId,
           sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
+          sourceCodeFileUrl,
           demoLink: normalizeExternalUrl(deliverableForm.demoLink) || undefined,
           submissionNotes: notes,
         });
@@ -798,10 +934,14 @@ export function WorkspacePage() {
       setDeliverableForm({
         type: "PROCESS",
         sourceCodeUrl: "",
+        sourceCodeFileUrl: "",
+        sourceCodeFileName: "",
         demoLink: "",
         submissionNotes: "",
         percentComplete: "50",
       });
+      setSourceArchiveFile(null);
+      setSourceArchiveError("");
       setDeliverableOpen(null);
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
@@ -944,6 +1084,8 @@ export function WorkspacePage() {
     }
   };
 
+  //cmt2: Tạo hồ sơ tranh chấp ban đầu cho milestone, trước khi gửi Staff can thiệp.
+  //hàm tạo hồ sơ: submitInitiateDispute được gọi khi người dùng nhấn nút "Tạo hồ sơ tranh chấp" trong modal mở hồ sơ tranh chấp.
   const submitInitiateDispute = async () => {
     if (!initiateDisputeOpen || !contract) return;
     const sourceMilestoneId = getSourceMilestoneId(initiateDisputeOpen);
@@ -991,6 +1133,7 @@ export function WorkspacePage() {
     }
   };
 
+  // hàm Gửi yêu cầu Staff can thiệp cho hồ sơ tranh chấp đang ở trạng thái tự xử lý.
   const submitEscalateDispute = async () => {
     if (!escalateDisputeOpen || !contract) return;
     const sourceMilestoneId = getSourceMilestoneId(escalateDisputeOpen);
@@ -1094,6 +1237,7 @@ export function WorkspacePage() {
     }
   };
 
+  // Điều hướng tới màn chi tiết tranh chấp theo đúng vai trò hiện tại.
   const openDisputeProfile = (dispute: Dispute) => {
     if (!dispute.disputeId) return;
     const basePath = session?.role === "STAFF" ? "/app/tickets" : "/app/disputes";
@@ -1329,6 +1473,7 @@ export function WorkspacePage() {
     !hasAbruptTerminationBlockedMilestone;
   const abruptTerminationPenalty = Number(contract.totalBudget || 0) * 0.1;
   const deliverableOpenStatus = normalizeStatus(deliverableOpen?.status);
+  const deliverableOpenDeadlineExceeded = isDeliverableDeadlineExceeded(deliverableOpen);
   const canOpenProgressReport =
     !contractActionsFrozen &&
     deliverableOpen !== null &&
@@ -1336,7 +1481,8 @@ export function WorkspacePage() {
   const canOpenFinalProduct =
     !contractActionsFrozen &&
     deliverableOpen !== null &&
-    SUBMITTABLE_STATUSES.has(deliverableOpenStatus);
+    SUBMITTABLE_STATUSES.has(deliverableOpenStatus) &&
+    !deliverableOpenDeadlineExceeded;
 
   return (
     <div className="space-y-6">
@@ -1539,24 +1685,32 @@ export function WorkspacePage() {
           description={`${counts.pending} cột mốc đang chờ Doanh nghiệp ký quỹ.`}
           active={counts.pending > 0}
           done={counts.pending === 0 && milestones.length > 0}
+          accent="sky"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "PENDING")}
         />
         <FlowStep
           icon={<UploadCloud className="h-4 w-4" />}
           title="Expert nộp sản phẩm"
           description={`${counts.ready} mốc chờ bắt đầu, ${counts.working} đang làm, ${counts.overdue} quá hạn.`}
           active={counts.ready > 0 || counts.working > 0 || counts.overdue > 0}
+          accent="sky"
+          onClick={() => scrollToMilestoneGroup((milestone) => ["DEPOSITED", "IN_PROGRESS", "OVERDUE"].includes(normalizeStatus(milestone.status)))}
         />
         <FlowStep
           icon={<CheckCircle2 className="h-4 w-4" />}
           title="Doanh nghiệp nghiệm thu"
           description={`${counts.review} cột mốc đang chờ nghiệm thu.`}
           active={counts.review > 0}
+          accent="mint"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW")}
         />
         <FlowStep
           icon={<Gavel className="h-4 w-4" />}
           title="Tranh chấp"
           description={`${counts.disputed} cột mốc đang ở trạng thái tranh chấp.`}
           active={counts.disputed > 0}
+          accent="amber"
+          onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "DISPUTED")}
         />
       </div>
 
@@ -1632,7 +1786,15 @@ export function WorkspacePage() {
             latestDeliverable,
             milestoneStatus: milestone.status,
           });
-          const visibleRoleNotice = roleNotice?.tone === "info" ? null : roleNotice;
+          // A fresh action notice is the single source of truth for the milestone.
+          // Do not render the derived role notice beside it.
+          const visibleRoleNotice =
+            visibleMilestoneNotice || roleNotice?.tone === "info"
+              ? null
+              : roleNotice;
+          const hasMilestoneSummaryNotice = Boolean(
+            visibleMilestoneNotice || visibleRoleNotice,
+          );
           const isLoading = (action: string) =>
             actionLoading === `${action}:${sourceMilestoneId}`;
           const canDeposit =
@@ -1650,6 +1812,9 @@ export function WorkspacePage() {
             (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
             status === "DEPOSITED";
           const hasSubmittedFinal = milestoneDeliverables.length > 0;
+          const submissionTabKey = sourceMilestoneId ?? milestone.milestoneId;
+          const submissionTab = submissionTabs[submissionTabKey] || "REPORTS";
+          const deliverableDeadlineExceeded = isDeliverableDeadlineExceeded(milestone);
           const canDepositNext =
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
@@ -1659,7 +1824,8 @@ export function WorkspacePage() {
           const canSubmit =
             !contractActionsFrozen &&
             session?.role === "EXPERT" &&
-            SUBMITTABLE_STATUSES.has(status);
+            SUBMITTABLE_STATUSES.has(status) &&
+            !deliverableDeadlineExceeded;
           const canSubmitProgress =
             !contractActionsFrozen &&
             session?.role === "EXPERT" &&
@@ -1669,6 +1835,7 @@ export function WorkspacePage() {
             !contractActionsFrozen &&
             session?.role === "BUSINESS" &&
             PROGRESS_REPORT_STATUSES.has(status) &&
+            !hasSubmittedFinal &&
             !milestone.progressReportRequestPending;
           const canReview =
             !contractActionsFrozen &&
@@ -1683,7 +1850,6 @@ export function WorkspacePage() {
           const isExpanded = sourceMilestoneId
             ? expandedMilestones[sourceMilestoneId] ?? isActiveMilestoneStatus(status)
             : true;
-          const hintLine = workspaceHintLine(session?.role, status, currentDispute);
           const needsBusinessReview =
             session?.role === "BUSINESS" &&
             ((latestProgressReport && !isProgressReportAcknowledged(latestProgressReport)) ||
@@ -1697,12 +1863,21 @@ export function WorkspacePage() {
 
           return (
             <Card
+              id={
+                sourceMilestoneId
+                  ? `milestone-deposit-${sourceMilestoneId}`
+                  : undefined
+              }
               key={
                 sourceMilestoneId ||
                 getContractMilestoneId(milestone) ||
                 milestone.orderIndex
               }
-              className="p-5"
+              className={`p-5 transition-shadow ${
+                focusMilestoneId === sourceMilestoneId
+                  ? "ring-2 ring-brand/50 shadow-lg"
+                  : ""
+              }`}
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -1812,40 +1987,42 @@ export function WorkspacePage() {
                       Yêu cầu báo cáo tiến độ
                     </Button>
                   )}
+                  {canSubmitProgress && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={isLoading("submit")}
+                      onClick={() => {
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          type: "PROCESS",
+                        }));
+                        setSourceArchiveFile(null);
+                        setSourceArchiveError("");
+                        setDeliverableOpen(milestone);
+                      }}
+                    >
+                      <Send className="h-4 w-4" />
+                      Nộp báo cáo tiến độ
+                    </Button>
+                  )}
                   {canSubmit && (
-                    <>
-                      {canSubmitProgress && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          loading={isLoading("submit")}
-                          onClick={() => {
-                            setDeliverableForm((value) => ({
-                              ...value,
-                              type: "PROCESS",
-                            }));
-                            setDeliverableOpen(milestone);
-                          }}
-                        >
-                          <Send className="h-4 w-4" />
-                          Nộp báo cáo tiến độ
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        loading={isLoading("submit")}
-                        onClick={() => {
-                          setDeliverableForm((value) => ({
-                            ...value,
-                            type: "FINAL",
-                          }));
-                          setDeliverableOpen(milestone);
-                        }}
-                      >
-                        <UploadCloud className="h-4 w-4" />
-                        Nộp sản phẩm cuối cùng
-                      </Button>
-                    </>
+                    <Button
+                      size="sm"
+                      loading={isLoading("submit")}
+                      onClick={() => {
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          type: "FINAL",
+                        }));
+                        setSourceArchiveFile(null);
+                        setSourceArchiveError("");
+                        setDeliverableOpen(milestone);
+                      }}
+                    >
+                      <UploadCloud className="h-4 w-4" />
+                      Nộp sản phẩm cuối cùng
+                    </Button>
                   )}
                   {canDepositNext && (
                     <Button
@@ -1951,6 +2128,14 @@ export function WorkspacePage() {
                           Đi đến nội dung cần xử lý
                         </Button>
                       )}
+                    </div>
+                  )}
+
+                  {session?.role === "EXPERT" && deliverableDeadlineExceeded && (
+                    <div className="mt-4">
+                      <Notice tone="danger" title="Cột mốc đã quá hạn nộp sản phẩm">
+                        Bạn vẫn có thể gửi báo cáo tiến độ nếu cần cập nhật tình hình, nhưng không thể nộp final product hoặc upload source ZIP mới sau deadline.
+                      </Notice>
                     </div>
                   )}
 
@@ -2060,7 +2245,45 @@ export function WorkspacePage() {
                           {milestoneReports.length + milestoneDeliverables.length} lần nộp
                         </span>
                       </div>
+                      <div className="mt-4 grid grid-cols-1 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          aria-pressed={submissionTab === "REPORTS"}
+                          className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold transition ${
+                            submissionTab === "REPORTS"
+                              ? "border-brand-600 bg-brand-600 text-white shadow-sm"
+                              : "border-brand-100 bg-white text-brand-600 hover:border-brand-200 hover:bg-brand-50"
+                          }`}
+                          onClick={() =>
+                            setSubmissionTabs((current) => ({
+                              ...current,
+                              [submissionTabKey]: "REPORTS",
+                            }))
+                          }
+                        >
+                          Báo cáo tiến độ ({milestoneReports.length})
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={submissionTab === "FINAL"}
+                          className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold transition ${
+                            submissionTab === "FINAL"
+                              ? "border-brand-600 bg-brand-600 text-white shadow-sm"
+                              : "border-brand-100 bg-white text-brand-600 hover:border-brand-200 hover:bg-brand-50"
+                          }`}
+                          onClick={() =>
+                            setSubmissionTabs((current) => ({
+                              ...current,
+                              [submissionTabKey]: "FINAL",
+                            }))
+                          }
+                        >
+                          Sản phẩm cuối cùng ({milestoneDeliverables.length})
+                        </button>
+                      </div>
                       <div className="mt-3 grid gap-2">
+                        {submissionTab === "REPORTS" && (
+                          <>
                         {milestoneReports.map((item, reportIndex) => (
                           <div
                             key={`report-${item.progressReportId}`}
@@ -2107,6 +2330,18 @@ export function WorkspacePage() {
                                     >
                                       {item.sourceCodeUrl}
                                     </a>
+                                  </div>
+                                )}
+                                {item.sourceCodeFileUrl && (
+                                  <div className="min-w-[220px] rounded-lg bg-white px-3 py-2">
+                                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                      Source ZIP
+                                    </p>
+                                    <FirebaseFileLink
+                                      path={item.sourceCodeFileUrl}
+                                      buttonText="Xem ZIP"
+                                      showPath={false}
+                                    />
                                   </div>
                                 )}
                                 {item.demoLink && (
@@ -2156,13 +2391,31 @@ export function WorkspacePage() {
                                 businessDisplayName,
                                 expertDisplayName,
                               );
-                              return notice.tone === "info" ? null : (
+                              const isLatestReport =
+                                latestProgressReport?.progressReportId ===
+                                item.progressReportId;
+                              return notice.tone === "info" ||
+                                (isLatestReport && hasMilestoneSummaryNotice)
+                                ? null
+                                : (
                                 <Notice tone={notice.tone} title={notice.title} className="mt-3">
                                   {notice.message}
                                 </Notice>
                               );
                             })()}
                             <div className="mt-3 flex flex-wrap gap-2">
+                              {(session?.role === "EXPERT" || session?.role === "BUSINESS") &&
+                                item.businessFeedback && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => setProgressFeedbackDetail(item)}
+                                >
+                                  {session.role === "BUSINESS"
+                                    ? "Xem phản hồi đã gửi"
+                                    : "Xem phản hồi của Doanh nghiệp"}
+                                </Button>
+                              )}
                               {session?.role === "BUSINESS" && (
                                 <>
                                   {latestProgressReport?.progressReportId ===
@@ -2186,31 +2439,34 @@ export function WorkspacePage() {
                                         Gửi phản hồi cho Chuyên gia
                                       </Button>
                                     )}
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    disabled={
-                                      latestProgressReport?.progressReportId !==
-                                        item.progressReportId ||
-                                      isProgressReportAcknowledged(item)
-                                    }
-                                    loading={
-                                      actionLoading ===
-                                      `progress-ack:${item.progressReportId}`
-                                    }
-                                    onClick={() => acknowledgeProgressReport(milestone, item)}
-                                  >
-                                    {isProgressReportAcknowledged(item)
-                                      ? "Đã xác nhận đã xem"
-                                      : latestProgressReport?.progressReportId === item.progressReportId
+                                  {!isProgressReportAcknowledged(item) && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={
+                                        latestProgressReport?.progressReportId !==
+                                        item.progressReportId
+                                      }
+                                      loading={
+                                        actionLoading ===
+                                        `progress-ack:${item.progressReportId}`
+                                      }
+                                      onClick={() => acknowledgeProgressReport(milestone, item)}
+                                    >
+                                      {latestProgressReport?.progressReportId === item.progressReportId
                                         ? "Xác nhận đã xem báo cáo"
                                         : "Chỉ xác nhận lần nộp mới nhất"}
-                                  </Button>
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
                           </div>
                         ))}
+                          </>
+                        )}
+                        {submissionTab === "FINAL" && (
+                          <>
                         {milestoneDeliverables.map((item, deliverableIndex) => (
                           <div
                             key={item.deliverableId}
@@ -2261,6 +2517,18 @@ export function WorkspacePage() {
                                   </a>
                                 </div>
                               )}
+                              {item.sourceCodeFileUrl && (
+                                <div className="min-w-[220px] rounded-lg bg-slate-50 px-3 py-2">
+                                  <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                                    Source ZIP
+                                  </p>
+                                  <FirebaseFileLink
+                                    path={item.sourceCodeFileUrl}
+                                    buttonText="Xem ZIP"
+                                    showPath={false}
+                                  />
+                                </div>
+                              )}
                               {item.demoLink && (
                                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                                   <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
@@ -2296,7 +2564,13 @@ export function WorkspacePage() {
                                 milestone.status,
                                 latestDeliverable?.deliverableId === item.deliverableId,
                               );
-                              return notice.tone === "info" ? null : (
+                              const isLatestDeliverable =
+                                latestDeliverable?.deliverableId ===
+                                item.deliverableId;
+                              return notice.tone === "info" ||
+                                (isLatestDeliverable && hasMilestoneSummaryNotice)
+                                ? null
+                                : (
                                 <Notice tone={notice.tone} title={notice.title} className="mt-3">
                                   {notice.message}
                                 </Notice>
@@ -2356,19 +2630,21 @@ export function WorkspacePage() {
                               )}
                           </div>
                         ))}
-                        {milestoneReports.length === 0 &&
-                          milestoneDeliverables.length === 0 && (
+                          </>
+                        )}
+                        {submissionTab === "REPORTS" && milestoneReports.length === 0 && (
+                          <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
+                            Chưa có báo cáo tiến độ cho cột mốc này.
+                          </p>
+                        )}
+                        {submissionTab === "FINAL" && milestoneDeliverables.length === 0 && (
                             <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
-                              Chưa có báo cáo tiến độ hoặc sản phẩm cuối cùng cho cột mốc
-                              này.
+                              Chưa có sản phẩm cuối cùng cho cột mốc này.
                             </p>
                           )}
                       </div>
                     </div>
                   </div>
-                  <Notice tone="info" title="Hint Line" className="mt-4">
-                    {hintLine}
-                  </Notice>
                 </>
               ) : (
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
@@ -2382,7 +2658,11 @@ export function WorkspacePage() {
 
       <Modal
         open={Boolean(deliverableOpen)}
-        onClose={() => setDeliverableOpen(null)}
+        onClose={() => {
+          setDeliverableOpen(null);
+          setSourceArchiveFile(null);
+          setSourceArchiveError("");
+        }}
         title={
           deliverableForm.type === "FINAL"
             ? "Nộp sản phẩm cuối cùng"
@@ -2397,7 +2677,11 @@ export function WorkspacePage() {
           <>
             <Button
               variant="secondary"
-              onClick={() => setDeliverableOpen(null)}
+              onClick={() => {
+                setDeliverableOpen(null);
+                setSourceArchiveFile(null);
+                setSourceArchiveError("");
+              }}
             >
               Hủy
             </Button>
@@ -2417,6 +2701,11 @@ export function WorkspacePage() {
         }
       >
         <div className="grid gap-4">
+          {deliverableOpenDeadlineExceeded && (
+            <Notice tone="danger" title="Đã quá hạn nộp source ZIP">
+              Backend sẽ từ chối upload source ZIP hoặc final product sau deadline. Bạn có thể gửi báo cáo tiến độ không kèm file ZIP nếu cần cập nhật tình hình.
+            </Notice>
+          )}
           <Field label="Loại nội dung">
             <div className="flex flex-wrap gap-2">
               {canOpenProgressReport && (
@@ -2447,6 +2736,7 @@ export function WorkspacePage() {
                     setDeliverableForm((value) => ({
                       ...value,
                       type: "FINAL",
+                      demoLink: "",
                     }))
                   }
                 >
@@ -2456,19 +2746,29 @@ export function WorkspacePage() {
             </div>
           </Field>
           {deliverableForm.type === "PROCESS" && (
-            <Field label="Phần trăm hoàn thành">
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={deliverableForm.percentComplete}
-                onChange={(event) =>
-                  setDeliverableForm((value) => ({
-                    ...value,
-                    percentComplete: event.target.value,
-                  }))
-                }
-              />
+            <Field label={`Phần trăm hoàn thành: ${deliverableForm.percentComplete}%`}>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={deliverableForm.percentComplete}
+                  aria-label="Phần trăm hoàn thành"
+                  className="h-2 w-full cursor-pointer accent-brand-600"
+                  onChange={(event) =>
+                    setDeliverableForm((value) => ({
+                      ...value,
+                      percentComplete: event.target.value,
+                    }))
+                  }
+                />
+                <div className="mt-2 flex justify-between text-xs font-bold text-slate-400">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
             </Field>
           )}
           <Field label="Source code URL">
@@ -2488,23 +2788,134 @@ export function WorkspacePage() {
               }
             />
           </Field>
-          <Field label="Demo link">
-            <Input
-              value={deliverableForm.demoLink}
-              onChange={(event) =>
-                setDeliverableForm((value) => ({
-                  ...value,
-                  demoLink: event.target.value,
-                }))
-              }
-              onBlur={() =>
-                setDeliverableForm((value) => ({
-                  ...value,
-                  demoLink: normalizeExternalUrl(value.demoLink),
-                }))
-              }
-            />
+          <Field label="Source code ZIP">
+            <div className="grid gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-extrabold ${
+                    deliverableOpenDeadlineExceeded
+                      ? "cursor-not-allowed bg-slate-200 text-slate-400"
+                      : "bg-white text-brand-600 shadow-sm hover:text-brand-700"
+                  }`}
+                >
+                  <UploadCloud className="h-4 w-4" />
+                  Chọn file ZIP
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    disabled={deliverableOpenDeadlineExceeded}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      event.target.value = "";
+                      setSourceArchiveError("");
+                      if (!file) return;
+                      if (!file.name.toLowerCase().endsWith(".zip")) {
+                        setSourceArchiveFile(null);
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          sourceCodeFileUrl: "",
+                          sourceCodeFileName: "",
+                        }));
+                        setSourceArchiveError("Vui lòng chọn file .zip.");
+                        return;
+                      }
+                      if (file.size > 50 * 1024 * 1024) {
+                        setSourceArchiveFile(null);
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          sourceCodeFileUrl: "",
+                          sourceCodeFileName: "",
+                        }));
+                        setSourceArchiveError("File ZIP không được vượt quá 50MB.");
+                        return;
+                      }
+                      setSourceArchiveFile(file);
+                      setDeliverableForm((value) => ({
+                        ...value,
+                        sourceCodeFileUrl: "",
+                        sourceCodeFileName: file.name,
+                      }));
+                    }}
+                  />
+                </label>
+                {(sourceArchiveFile || deliverableForm.sourceCodeFileName) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setSourceArchiveFile(null);
+                      setDeliverableForm((value) => ({
+                        ...value,
+                        sourceCodeFileUrl: "",
+                        sourceCodeFileName: "",
+                      }));
+                    }}
+                  >
+                    Xóa file
+                  </Button>
+                )}
+              </div>
+              {sourceArchiveFile ? (
+                <p className="text-sm font-bold text-slate-600">
+                  {sourceArchiveFile.name} · {(sourceArchiveFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              ) : deliverableForm.sourceCodeFileUrl ? (
+                <FirebaseFileLink
+                  path={deliverableForm.sourceCodeFileUrl}
+                  buttonText="Xem ZIP"
+                  showPath
+                />
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">
+                  Chỉ hỗ trợ file .zip, tối đa 50MB.
+                </p>
+              )}
+              {sourceArchiveError && (
+                <p className="text-sm font-bold text-rose-600">{sourceArchiveError}</p>
+              )}
+            </div>
           </Field>
+          {deliverableForm.type === "FINAL" && (
+            <Field label="Demo URL (không bắt buộc)">
+              <Input
+                value={deliverableForm.demoLink}
+                placeholder="Nhập liên kết demo..."
+                onChange={(event) =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: event.target.value,
+                  }))
+                }
+                onBlur={() =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: normalizeExternalUrl(value.demoLink),
+                  }))
+                }
+              />
+            </Field>
+          )}
+          {deliverableForm.type === "PROCESS" && (
+            <Field label="Demo link">
+              <Input
+                value={deliverableForm.demoLink}
+                onChange={(event) =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: event.target.value,
+                  }))
+                }
+                onBlur={() =>
+                  setDeliverableForm((value) => ({
+                    ...value,
+                    demoLink: normalizeExternalUrl(value.demoLink),
+                  }))
+                }
+              />
+            </Field>
+          )}
           <Field
             label={
               deliverableForm.type === "FINAL"

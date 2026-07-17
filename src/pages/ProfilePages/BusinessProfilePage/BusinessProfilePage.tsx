@@ -6,7 +6,7 @@ import { getSession, saveSession } from "../../../lib/session";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { Avatar, Badge, Button, Card, EmptyState, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { Job } from "../../../types";
-import { normalizeAccountStatus, ProfileRow, readApiError } from "../ProfilePages.shared";
+import { normalizeAccountStatus, ProfileFilePicker, ProfileRow, readApiError, translateVerificationStatus } from "../ProfilePages.shared";
 
 export function BusinessProfilePage() {
   const [form, setForm] = useState({
@@ -144,7 +144,7 @@ export function BusinessProfilePage() {
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4" />
-                    <StatusBadge status={status} />
+                    <StatusBadge status={translateVerificationStatus(status)} />
                   </span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
                   <span className="inline-flex items-center gap-1.5 font-bold text-amber-600">
@@ -214,7 +214,7 @@ export function BusinessProfilePage() {
               />
               <ProfileRow
                 label="Trạng thái KYB"
-                value={<StatusBadge status={status} />}
+                value={<StatusBadge status={translateVerificationStatus(status)} />}
               />
             </div>
           </Card>
@@ -273,7 +273,7 @@ export function BusinessProfilePage() {
                   tone="info"
                   title="Nộp lại hồ sơ KYB"
                 >
-                  Sau khi cập nhật và gửi lại, hồ sơ sẽ chuyển sang trạng thái chờ duyệt.
+                  Hồ sơ đã duyệt sẽ được cập nhật thông tin mà không chuyển lại về trạng thái chờ duyệt.
                 </Notice>
               )}
               <Field label="Mã số thuế">
@@ -313,15 +313,21 @@ export function BusinessProfilePage() {
               </Field>
               <Field
                 label="Tệp giấy phép kinh doanh"
-                hint="Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
+                hint="Tệp giấy phép kinh doanh trong hồ sơ KYB. Chọn ảnh, PDF hoặc DOC/DOCX để thay file hiện tại."
               >
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf,.doc,.docx"
-                  onChange={(event) =>
-                    setLicenseFile(event.target.files?.[0] || null)
+                <ProfileFilePicker
+                  file={licenseFile}
+                  onChange={setLicenseFile}
+                  buttonText="Chọn giấy phép"
+                  emptyText={
+                    form.businessLicenseUrl
+                      ? "Đã có giấy phép kinh doanh. Chọn tệp mới nếu muốn thay đổi."
+                      : "Chưa chọn giấy phép kinh doanh"
                   }
                 />
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  Nộp kèm giấy phép kinh doanh để Staff đối chiếu thông tin doanh nghiệp.
+                </p>
                 <FirebaseFileLink
                   path={form.businessLicenseUrl}
                   emptyText="Chưa có giấy phép"
@@ -339,12 +345,12 @@ export function BusinessProfilePage() {
                 ) : isApproved && isEditing ? (
                   <Button type="submit" loading={loading}>
                     <Save className="h-4 w-4" />
-                    Nộp lại hồ sơ
+                    Cập nhật thông tin
                   </Button>
                 ) : (
                   <Button type="submit" loading={loading}>
                     <Save className="h-4 w-4" />
-                    Lưu hồ sơ
+                    Nộp hồ sơ KYB
                   </Button>
                 )}
               </div>
@@ -361,7 +367,7 @@ export function BusinessProfilePage() {
                   Hồ sơ hiện tại
                 </p>
                 <div className="mt-1">
-                  <StatusBadge status={status} />
+                  <StatusBadge status={translateVerificationStatus(status)} />
                 </div>
               </div>
             </div>
@@ -386,7 +392,7 @@ export function BusinessProfilePage() {
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         title="Xác nhận chỉnh sửa"
-        description="Tài khoản sẽ trở về trạng thái Pending. Xác nhận chỉnh sửa?"
+        description="Xác nhận cập nhật thông tin hồ sơ đã được duyệt?"
         footer={
           <>
             <Button

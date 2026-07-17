@@ -1,5 +1,11 @@
-import { Save, Settings2, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  Settings2,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { adminApi, catalogApi, type Domain } from "../../../lib/api";
 import {
   Badge,
@@ -15,6 +21,8 @@ import {
   SpecializationSelector,
 } from "../AdminPages.shared";
 import type { Staff } from "../../../types";
+
+const STAFFS_PER_PAGE = 6;
 
 function getStaffDomainIds(staff?: Staff | null) {
   if (!staff) return [];
@@ -38,6 +46,7 @@ export function StaffPage() {
   const [editing, setEditing] = useState<Staff | null>(null);
   const [domainIds, setDomainIds] = useState<number[]>([]);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     adminApi.listStaffs().then(setStaffs);
@@ -51,6 +60,17 @@ export function StaffPage() {
     if (!editing) return;
     queueMicrotask(() => setDomainIds(getStaffDomainIds(editing)));
   }, [editing]);
+
+  const totalPages = Math.max(1, Math.ceil(staffs.length / STAFFS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedStaffs = useMemo(
+    () =>
+      staffs.slice(
+        (effectivePage - 1) * STAFFS_PER_PAGE,
+        effectivePage * STAFFS_PER_PAGE,
+      ),
+    [effectivePage, staffs],
+  );
 
   const beginEditStaff = (staff: Staff) => {
     setEditing(staff);
@@ -87,23 +107,23 @@ export function StaffPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {staffs.map((staff) => (
-          <Card key={staff.staffId} className="p-5">
-            <div className="flex items-center gap-3">
+        {paginatedStaffs.map((staff) => (
+          <Card key={staff.staffId} className="flex h-full flex-col p-5">
+            <div className="flex items-start gap-3">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
                 <Users className="h-5 w-5" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="font-extrabold text-ink">
                   {staff.fullName || "Nhân viên chưa có tên"}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="break-words text-sm text-slate-500">
                   {staff.email || "Chưa có email"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-1 content-start flex-wrap gap-2">
               {getStaffDomainNames(staff).map((item) => (
                 <Badge key={item} tone="brand">
                   {item}
@@ -122,6 +142,55 @@ export function StaffPage() {
           </Card>
         ))}
       </div>
+
+      {staffs.length > STAFFS_PER_PAGE && (
+        <Card className="sticky bottom-4 z-20 flex flex-col gap-3 bg-white/95 p-4 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-500">
+            Hiển thị {paginatedStaffs.length} trên tổng {staffs.length}{" "}
+            nhân viên
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              title="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+              (page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-9 min-w-9 rounded-xl px-3 text-sm font-extrabold transition ${
+                    effectivePage === page
+                      ? "bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.18)]"
+                      : "bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+                  }`}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={effectivePage === totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              title="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Modal
         open={Boolean(editing)}

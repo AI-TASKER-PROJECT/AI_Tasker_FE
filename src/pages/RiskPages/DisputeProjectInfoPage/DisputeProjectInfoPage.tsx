@@ -17,6 +17,7 @@ import {
   StatusBadge,
 } from "../../../components/ui";
 
+// Lấy id milestone gốc của Job để truy vấn tiêu chí nghiệm thu đúng với hồ sơ tranh chấp.
 function getJobMilestoneId(milestone: Milestone) {
   return Number(
     (milestone as Milestone & { jobMilestoneId?: number }).jobMilestoneId ??
@@ -27,6 +28,7 @@ function getJobMilestoneId(milestone: Milestone) {
 export function DisputeProjectInfoPage() {
   const { disputeId } = useParams();
   const session = useSession();
+  // Chuyển disputeId từ route sang số để gọi API chi tiết tranh chấp.
   const parsedDisputeId = useMemo(() => Number(disputeId), [disputeId]);
   const hasValidDisputeId =
     Number.isFinite(parsedDisputeId) && parsedDisputeId > 0;
@@ -37,6 +39,7 @@ export function DisputeProjectInfoPage() {
   const [criteriaByMilestone, setCriteriaByMilestone] = useState<Record<number, AcceptanceCriteria[]>>({});
   const [loading, setLoading] = useState(true);
 
+  // Tải bối cảnh dự án của tranh chấp: dispute, contract, job, milestone và criteria cho Staff tham khảo.
   useEffect(() => {
     let mounted = true;
     if (!hasValidDisputeId) {

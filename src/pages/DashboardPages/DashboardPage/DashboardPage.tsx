@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowRight,
   Bell,
   BriefcaseBusiness,
@@ -417,7 +417,7 @@ export function DashboardPage() {
             ))}
             {notifications.length === 0 && (
               <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-400">
-                Chua co thong bao moi.
+                Chưa có thông báo mới.
               </p>
             )}
           </div>
@@ -463,3 +463,4 @@ export function DashboardPage() {
     </div>
   );
 }
+
