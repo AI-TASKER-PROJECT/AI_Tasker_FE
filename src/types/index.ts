@@ -118,6 +118,7 @@ export interface Contract {
   businessId: number;
   expertId: number;
   contractTitle?: string;
+  contractScope?: string;
   technologyUsed?: string;
   totalBudget: number;
   timelineDays: number;
@@ -140,6 +141,37 @@ export interface Contract {
   expertName?: string;
   progress?: number;
   contractMilestones?: ContractMilestone[];
+}
+
+export interface ContractChangeMilestone {
+  contractMilestoneId?: number;
+  jobMilestoneId?: number;
+  milestoneName?: string;
+  description?: string;
+  finalBudget?: number;
+  orderIndex?: number;
+  duration?: number;
+  durationUnit?: string;
+  criteriaSnapshot?: string;
+  deliverableExpectation?: string;
+}
+
+export interface ContractChangeRequest {
+  requestId: number;
+  contractId: number;
+  requestedByAccountId: number;
+  changeType: string;
+  changeSummary: string;
+  proposedBudget?: number;
+  proposedTimelineDays?: number;
+  proposedScope?: string;
+  proposedMilestones?: ContractChangeMilestone[] | string;
+  status: string;
+  reviewedByAccountId?: number;
+  reviewNote?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ContractDeposit {
@@ -868,6 +900,13 @@ export interface WalletTransaction {
   transactionId?: number;
   systemWalletId?: number;
   accountId?: number;
+  actorAccountId?: number;
+  actorRole?: string;
+  walletType?: string;
+  walletOwnerRole?: string;
+  historyScope?: string;
+  transactionCategory?: string;
+  platformBalanceChanging?: boolean;
   paymentOrderId?: number;
   transactionType:
     | 'TOPUP'
@@ -882,8 +921,14 @@ export interface WalletTransaction {
   direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE' | string;
   balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE' | string;
   amount: number;
+  grossAmount?: number;
+  feeAmount?: number;
+  netAmount?: number;
+  currency?: string;
   balanceBefore: number;
   balanceAfter: number;
+  availableBalanceBefore?: number;
+  availableBalanceAfter?: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
   referenceType?: string;
   referenceId?: number;
@@ -894,6 +939,8 @@ export interface WalletTransaction {
   description?: string;
   actorName?: string;
   counterpartyName?: string;
+  counterpartyAccountId?: number;
+  counterpartyRole?: string;
   businessId?: number;
   businessName?: string;
   expertId?: number;
@@ -914,6 +961,8 @@ export interface WalletTransaction {
   packageId?: number;
   packageName?: string;
   providerOrderCode?: number;
+  providerTransactionNo?: string;
+  providerPaymentLinkId?: string;
   createdAt?: string;
 }
 

@@ -49,6 +49,9 @@ export const marketplaceApi = {
       data: payload,
     });
   },
+  updateProposal(proposalId: number, payload: Partial<Proposal>) {
+    return call<Proposal>({ method: "PUT", url: `/api/v1/proposals/${proposalId}`, data: payload });
+  },
   // Lấy toàn bộ proposal của một Job để doanh nghiệp xem và xét duyệt.
   // Chức năng 8: Lấy toàn bộ proposal của một Job để doanh nghiệp xem và xét duyệt.
   listProposals(jobId: number) {

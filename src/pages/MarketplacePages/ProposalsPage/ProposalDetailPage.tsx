@@ -21,6 +21,8 @@ import {
   StatusBadge,
 } from "../../../components/ui";
 import { resolveDomainName } from "../marketplacePages.utils";
+import { useSession } from "../../../context/sessionContext";
+import { Button, Notice } from "../../../components/ui";
 
 export function ProposalDetailPage() {
   const { proposalId } = useParams();
@@ -35,6 +37,12 @@ export function ProposalDetailPage() {
   const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
   const [jobSkillIds, setJobSkillIds] = useState<number[]>([]);
   const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
+  const session = useSession();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editMessage, setEditMessage] = useState("");
+  const [draft, setDraft] = useState<Partial<Proposal>>({});
+  const [proposalMilestoneText, setProposalMilestoneText] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -55,6 +63,8 @@ export function ProposalDetailPage() {
         }
 
         setProposal(foundProposal);
+        setDraft(foundProposal);
+        setProposalMilestoneText(foundProposal.proposalMilestone ? JSON.stringify(foundProposal.proposalMilestone, null, 2) : "");
 
         const [
           jobData,
@@ -130,7 +140,21 @@ export function ProposalDetailPage() {
   })();
 
   const bidAmountDisplay =
-    proposal.bidAmount > 0 ? proposal.bidAmount.toLocaleString("vi-VN") : "";
+    Number(editing ? draft.bidAmount : proposal.bidAmount || 0) > 0 ? Number(editing ? draft.bidAmount : proposal.bidAmount).toLocaleString("vi-VN") : "";
+  const canEdit = session?.role === "EXPERT" && ["PENDING", "ACCEPTED"].includes(proposal.status.toUpperCase()) && job.status.toUpperCase() === "OPEN";
+  const save = async () => {
+    if (!draft.technicalSolution?.trim() || !draft.proposalDescription?.trim() || !draft.bidAmount) {
+      setEditMessage("Vui lòng điền giải pháp, mô tả và ngân sách.");
+      return;
+    }
+    setSaving(true); setEditMessage("");
+    try {
+      const proposalMilestone = proposalMilestoneText.trim() ? JSON.parse(proposalMilestoneText) : undefined;
+      const updated = await marketplaceApi.updateProposal(proposal.proposalId, { ...draft, proposalMilestone });
+      setProposal(updated); setDraft(updated); setEditing(false);
+    } catch (error) { setEditMessage(error instanceof Error ? error.message : "Không thể cập nhật proposal."); }
+    finally { setSaving(false); }
+  };
 
   const translateStatus = (status: string) => {
     switch (status) {
@@ -152,6 +176,12 @@ export function ProposalDetailPage() {
           Bản đề xuất chi tiết
         </h1>
       </div>
+      {canEdit && (
+        <div className="flex justify-end gap-2">
+          {editing ? <><Button variant="secondary" onClick={() => { setEditing(false); setDraft(proposal); }}>Hủy</Button><Button onClick={save} loading={saving}>Lưu thay đổi</Button></> : <Button onClick={() => setEditing(true)}>Chỉnh sửa đề xuất</Button>}
+        </div>
+      )}
+      {editMessage && <Notice tone="danger" title="Không thể lưu proposal">{editMessage}</Notice>}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader 
@@ -242,15 +272,17 @@ export function ProposalDetailPage() {
           </div>
           <Field label="Giải pháp">
             <Textarea
-              value={proposal.technicalSolution}
-              readOnly
+              value={editing ? draft.technicalSolution || "" : proposal.technicalSolution}
+              readOnly={!editing}
+              onChange={(event) => setDraft((value) => ({ ...value, technicalSolution: event.target.value }))}
               className="min-h-36 bg-slate-50"
             />
           </Field>
           <Field label="Đề xuất">
             <Textarea
-              value={proposal.proposalDescription || ""}
-              readOnly
+              value={editing ? draft.proposalDescription || "" : proposal.proposalDescription || ""}
+              readOnly={!editing}
+              onChange={(event) => setDraft((value) => ({ ...value, proposalDescription: event.target.value }))}
               className="min-h-32 bg-slate-50"
             />
           </Field>
@@ -269,7 +301,7 @@ export function ProposalDetailPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <Field label="Ngân sách">
-              <Input type="text" value={bidAmountDisplay} readOnly />
+              <Input type="text" value={bidAmountDisplay} readOnly={!editing} onChange={(event) => setDraft((value) => ({ ...value, bidAmount: Number(event.target.value.replace(/\D/g, "")) || 0 }))} />
             </Field>
             <Field label="Proposal file">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm h-11 flex items-center">
@@ -281,6 +313,7 @@ export function ProposalDetailPage() {
                 />
               </div>
             </Field>
+            {editing && <Field label="URL tệp đề xuất"><Input value={draft.proposalFileUrl || ""} onChange={(event) => setDraft((value) => ({ ...value, proposalFileUrl: event.target.value }))} placeholder="Đường dẫn tệp đã tải lên" /></Field>}
           </div>
         </section>
 
@@ -293,12 +326,13 @@ export function ProposalDetailPage() {
                 </span>
                 <div>
                   <h3 className="font-display text-lg font-extrabold text-ink">
-                    Proposal milestone
+                    Mốc trong đề xuất
                   </h3>
                 </div>
               </div>
             </div>
             <div className="grid gap-3">
+              {editing && <Field label="Mốc trong đề xuất (JSON)"><Textarea value={proposalMilestoneText} onChange={(event) => setProposalMilestoneText(event.target.value)} placeholder='[{"milestoneId": 1, "proposedBudget": 1000000}]' className="min-h-28 font-mono text-xs" /></Field>}
               {milestones.map((milestone) => {
                 const proposedVal =
                   parsedMilestones.find(

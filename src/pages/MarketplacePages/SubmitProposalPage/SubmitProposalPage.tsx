@@ -78,7 +78,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-        Chưa có milestone.
+        Chưa có mốc công việc.
       </div>
     );
   }
@@ -118,7 +118,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
 function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-      <p className="text-xs font-bold text-slate-400">Milestone</p>
+      <p className="text-xs font-bold text-slate-400">Mốc công việc</p>
       <p className="mt-1 text-sm font-extrabold text-ink">{count} mốc</p>
     </div>
   );
@@ -307,7 +307,7 @@ export function SubmitProposalPage() {
       milestones.length > 0 &&
       proposalMilestoneTotal <= 0
     ) {
-      setMessage("Vui lòng nhập ngân sách cho từng milestone trước khi gửi.");
+      setMessage("Vui lòng nhập ngân sách cho từng mốc trước khi gửi.");
       return;
     }
     if (
@@ -317,7 +317,7 @@ export function SubmitProposalPage() {
       proposalMilestoneTotal !== bidAmount
     ) {
       setMessage(
-        "Tổng ngân sách milestone đề xuất ít nhất phải bằng ngân sách.",
+        "Tổng ngân sách các mốc đề xuất ít nhất phải bằng ngân sách.",
       );
       return;
     }
@@ -387,7 +387,7 @@ export function SubmitProposalPage() {
             <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#eef7ff,#effcf7)] p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <Badge tone="brand">Proposal packet</Badge>
+                  <Badge tone="brand">Hồ sơ đề xuất</Badge>
                   <h2 className="mt-3 font-display text-2xl font-black text-ink">
                     Bản đề xuất
                   </h2>
@@ -549,7 +549,7 @@ export function SubmitProposalPage() {
                   >
                     <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50 hover:shadow-card">
                       <UploadCloud className="h-5 w-5" />
-                      <span>Chọn proposal file</span>
+                    <span>Chọn tệp đề xuất</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,application/pdf,.doc,.docx"
@@ -585,8 +585,8 @@ export function SubmitProposalPage() {
                 )}
                 {requestBudgetChange && (
                   <span className="ml-2 text-brand-600">
-                    · Hãy nhập số tiền đề xuất từng milestone và ngân sách sẽ
-                    cập nhật theo tổng milestone
+                    · Hãy nhập số tiền đề xuất từng mốc và ngân sách sẽ
+                    cập nhật theo tổng các mốc
                   </span>
                 )}
               </div>
@@ -600,10 +600,10 @@ export function SubmitProposalPage() {
                       </span>
                       <div>
                         <h3 className="font-display text-lg font-extrabold text-ink">
-                          Proposal milestone
+                          Mốc trong đề xuất
                         </h3>
                         <p className="text-sm text-slate-500">
-                          Tổng milestone đề xuất phải bằng ngân sách đề xuất nếu
+                          Tổng ngân sách các mốc đề xuất phải bằng ngân sách đề xuất nếu
                           bạn muốn thay đổi.
                         </p>
                       </div>
@@ -767,7 +767,7 @@ export function SubmitProposalPage() {
                   <CheckCircle2 className="h-5 w-5 text-pink-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Milestone</p>
+                  <p className="text-xs font-bold text-slate-400">Mốc công việc</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {milestones.length} mốc
                   </p>

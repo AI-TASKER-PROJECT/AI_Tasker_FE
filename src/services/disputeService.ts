@@ -19,9 +19,8 @@ export const disputeApi = {
     }
     return call<Dispute>({
       method: "POST",
-      url: `/api/v1/milestones/${payload.milestoneId}/disputes`,
+      url: `/api/v1/contracts/${payload.contractId}/milestones/${payload.milestoneId}/disputes`,
       params: {
-        contractId: payload.contractId,
         initiatedBy: payload.initiatedBy,
         initiationType: payload.initiationType || "OTHER",
         reason: payload.evidenceReport,
@@ -33,8 +32,8 @@ export const disputeApi = {
   initiate(contractId: number, milestoneId: number, initiatedBy: string) {
     return call<Dispute>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/disputes`,
-      params: { contractId, initiatedBy },
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/disputes`,
+      params: { initiatedBy },
     });
   },
   // Lấy toàn bộ tranh chấp thuộc một hợp đồng để hiển thị trong workspace và danh sách của user.

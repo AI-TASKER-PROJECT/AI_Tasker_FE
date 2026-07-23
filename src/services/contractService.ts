@@ -1,5 +1,5 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, CaseAttachment, Contract, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
+import type { AcceptanceCriteria, CaseAttachment, Contract, ContractChangeRequest, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
 
 export const contractApi = {
   // Lấy danh sách hợp đồng
@@ -220,6 +220,9 @@ export const contractApi = {
       data: payload,
     });
   },
+  createJobMilestone(jobId: number, payload: Partial<Milestone>) {
+    return call<Milestone>({ method: "POST", url: `/api/v1/jobs/${jobId}/milestones`, data: payload });
+  },
   // Lấy danh sách milestone thuộc hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn xem danh sách milestone thuộc hợp đồng.
   listMilestones(contractId: number) {
     return call<Milestone[]>({
@@ -266,19 +269,19 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/criteria`,
     });
   },
-  submitDeliverable(milestoneId: number, payload: Partial<Deliverable>) {
+  submitDeliverable(contractId: number, milestoneId: number, payload: Partial<Deliverable>) {
     return call<Deliverable>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/deliverables`,
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/deliverables`,
       data: payload,
     });
   },
-  uploadMilestoneSourceCode(milestoneId: number, file: File) {
+  uploadMilestoneSourceCode(contractId: number, milestoneId: number, file: File) {
     const formData = new FormData();
     formData.append("file", file);
     return call<string>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/source-code-file`,
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/source-code-file`,
       data: formData,
       timeout: 60000,
     });
@@ -352,17 +355,17 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/start`,
     });
   },
-  approveMilestone(milestoneId: number) {
+  approveMilestone(contractId: number, milestoneId: number) {
     return call<Milestone>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/approve`,
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/approve`,
     });
   },
-  rejectMilestone(milestoneId: number, reason?: string) {
+  rejectMilestone(contractId: number, milestoneId: number, payload: { reason?: string; failedCriteria?: { criteriaId: number; reason: string }[] }) {
     return call<Milestone>({
       method: "POST",
-      url: `/api/v1/milestones/${milestoneId}/reject`,
-      params: { reason },
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/reject`,
+      data: payload,
     });
   },
   completeMilestone(milestoneId: number) {
@@ -371,12 +374,24 @@ export const contractApi = {
       url: `/api/v1/milestones/${milestoneId}/complete`,
     });
   },
-  updateMilestone(milestoneId: number, payload: Partial<Milestone>) {
+  updateMilestone(jobId: number, milestoneId: number, payload: Partial<Milestone>) {
     return call<Milestone>({
       method: "PATCH",
-      url: `/api/v1/milestones/${milestoneId}`,
+      url: `/api/v1/jobs/${jobId}/milestones/${milestoneId}`,
       data: payload,
     });
+  },
+  createChangeRequest(contractId: number, payload: Partial<ContractChangeRequest>) {
+    return call<ContractChangeRequest>({ method: "POST", url: `/api/v1/contracts/${contractId}/change-requests`, data: payload });
+  },
+  listChangeRequests(contractId: number) {
+    return call<ContractChangeRequest[]>({ method: "GET", url: `/api/v1/contracts/${contractId}/change-requests` });
+  },
+  acceptChangeRequest(contractId: number, requestId: number, reviewNote?: string) {
+    return call<ContractChangeRequest>({ method: "POST", url: `/api/v1/contracts/${contractId}/change-requests/${requestId}/accept`, data: { reviewNote } });
+  },
+  rejectChangeRequest(contractId: number, requestId: number, reviewNote?: string) {
+    return call<ContractChangeRequest>({ method: "POST", url: `/api/v1/contracts/${contractId}/change-requests/${requestId}/reject`, data: { reviewNote } });
   },
   checkOverdueMilestones(contractId: number) {
     return call<Milestone[]>({

@@ -22,7 +22,7 @@ const guestExperience: PublicExperience = {
   heroTitle:
     "Thuê chuyên gia AI, quản lý dự án và escrow trong một nền tảng sáng rõ.",
   heroDescription:
-    "AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận proposal, ký hợp đồng, chia milestone, nghiệm thu và xử lý dòng tiền minh bạch.",
+    "AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận đề xuất, ký hợp đồng, chia mốc, nghiệm thu và xử lý dòng tiền minh bạch.",
   primaryLabel: "Bắt dầu dự án",
   primaryPath: "/register",
   secondaryLabel: "Xem cơ hội",
@@ -35,7 +35,7 @@ const roleExperience: Record<Role, PublicExperience> = {
     heroTitle:
       "Tạo job AI, nhận proposal và theo dõi hợp đồng của doanh nghiệp.",
     heroDescription:
-      "Bạn có thể bắt dầu một dự án mới, quản lý job đang mở, theo dõi milestone, escrow và các tranh chấp từ workspace Business.",
+      "Bạn có thể bắt đầu một dự án mới, quản lý công việc đang mở, theo dõi mốc, ký quỹ và các tranh chấp trong không gian làm việc của Doanh nghiệp.",
     primaryLabel: "Tạo dự án mới",
     primaryPath: "/app/jobs",
     secondaryLabel: "Dự án của tôi",

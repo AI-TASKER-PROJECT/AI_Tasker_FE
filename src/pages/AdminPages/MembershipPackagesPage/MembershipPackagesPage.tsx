@@ -188,7 +188,7 @@ export function MembershipPackagesPage() {
               <div className="mt-5 grid gap-3 text-sm font-semibold text-slate-600">
                 <div className="rounded-2xl bg-slate-50 p-3">Badge xác minh: {pkg.badgeDurationDays} ngày</div>
                 <div className="rounded-2xl bg-slate-50 p-3">Credit đăng dự án: {pkg.jobPostQuota}</div>
-                <div className="rounded-2xl bg-slate-50 p-3">Credit nộp đề xuất: {pkg.proposalQuota}</div>
+                <div className="rounded-2xl bg-slate-50 p-3">Lượt nộp đề xuất: {pkg.proposalQuota}</div>
                 <div
                   className={`flex min-h-11 items-center gap-2 rounded-2xl p-3 font-bold ${
                     pkg.recommendVisibility

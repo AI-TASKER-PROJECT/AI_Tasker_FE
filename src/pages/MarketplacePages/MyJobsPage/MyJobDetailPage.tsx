@@ -73,6 +73,7 @@ export function MyJobDetailPage() {
   }
 
   const isDraft = job.status.trim().toUpperCase() === "DRAFT";
+  const canEdit = ["DRAFT", "OPEN"].includes(job.status.trim().toUpperCase());
 
   const updateStatus = async (jobId: number, status: string) => {
     try {
@@ -113,7 +114,7 @@ export function MyJobDetailPage() {
           description="Chi tiết công việc bạn đã đăng tải."
           actions={
             <div className="flex gap-2">
-              {isDraft && (
+              {canEdit && (
                 <LinkButton
                   to={`/app/jobs/${job.jobId}/edit`}
                   variant="secondary"

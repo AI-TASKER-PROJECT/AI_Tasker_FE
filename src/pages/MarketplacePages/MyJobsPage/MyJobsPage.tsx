@@ -372,7 +372,7 @@ export function MyJobsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Proposal</p>
+                  <p className="text-xs font-bold text-slate-400">Đề xuất</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {job.proposalsCount || 0}
                   </p>

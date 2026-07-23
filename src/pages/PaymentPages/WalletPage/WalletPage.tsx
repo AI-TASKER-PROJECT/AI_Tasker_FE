@@ -911,6 +911,15 @@ export function WalletPage() {
                           {txContractContextLabel(tx)}
                         </p>
                       )}
+                      <p className="mt-1.5 text-xs font-semibold text-slate-500">
+                        {tx.actorRole && `Vai trò: ${tx.actorRole}`}
+                        {tx.counterpartyName && ` · Đối tác: ${tx.counterpartyName}${tx.counterpartyRole ? ` (${tx.counterpartyRole})` : ""}`}
+                        {tx.balanceType && ` · Số dư: ${tx.balanceType}`}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-400">
+                        Trước/Sau: {formatCurrency(tx.availableBalanceBefore ?? tx.balanceBefore)} / {formatCurrency(tx.availableBalanceAfter ?? tx.balanceAfter)}
+                        {tx.referenceType && ` · Tham chiếu: ${tx.referenceType}${tx.referenceId ? ` #${tx.referenceId}` : ""}`}
+                      </p>
                     </div>
                     <span
                       className={cn(

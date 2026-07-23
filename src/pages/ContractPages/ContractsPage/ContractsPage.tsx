@@ -96,7 +96,7 @@ export function ContractsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400">Timeline</p>
+                <p className="text-xs font-bold text-slate-400">Thời gian</p>
                 <p className="mt-1 text-sm font-extrabold text-ink">
                   {formatTimelineWeeks(contract.timelineDays)}
                 </p>

@@ -601,7 +601,7 @@ export function ManageJobPage() {
               </span>
             </div>
             <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-500">Milestone</span>
+              <span className="text-slate-500">Mốc công việc</span>
               <span className="font-extrabold text-ink">
                 {milestones.length} mốc
               </span>
@@ -631,7 +631,7 @@ export function ManageJobPage() {
             </div>
           </div>
           <div className="mt-5">
-            <SectionHeading title="Milestone" />
+            <SectionHeading title="Mốc công việc" />
             <CompactMilestones milestones={milestones} />
           </div>
         </Card>

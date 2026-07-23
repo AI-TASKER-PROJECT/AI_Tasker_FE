@@ -555,6 +555,9 @@ export function WorkspacePage() {
   const [sourceArchiveFile, setSourceArchiveFile] = useState<File | null>(null);
   const [sourceArchiveError, setSourceArchiveError] = useState("");
   const [feedbackReason, setFeedbackReason] = useState("");
+  const [failedCriteriaReasons, setFailedCriteriaReasons] = useState<Record<number, string>>({});
+  const [selectedFailedCriteriaIds, setSelectedFailedCriteriaIds] = useState<number[]>([]);
+  const [failedCriteriaError, setFailedCriteriaError] = useState("");
   const [feedbackRequired, setFeedbackRequired] = useState(false);
   const [progressFeedbackForm, setProgressFeedbackForm] = useState({
     feedback: "",
@@ -838,7 +841,7 @@ export function WorkspacePage() {
   };
 
   const submitDeliverable = async () => {
-    if (!deliverableOpen) return;
+    if (!deliverableOpen || !contract) return;
     const sourceMilestoneId = getSourceMilestoneId(deliverableOpen);
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
@@ -884,6 +887,7 @@ export function WorkspacePage() {
       }
       if (sourceArchiveFile) {
         sourceCodeFileUrl = await contractApi.uploadMilestoneSourceCode(
+          contract.contractId,
           sourceMilestoneId,
           sourceArchiveFile,
         );
@@ -908,7 +912,7 @@ export function WorkspacePage() {
           });
           return;
         }
-        await contractApi.submitDeliverable(sourceMilestoneId, {
+        await contractApi.submitDeliverable(contract.contractId, sourceMilestoneId, {
           milestoneId: sourceMilestoneId,
           sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
           sourceCodeFileUrl,
@@ -971,15 +975,30 @@ export function WorkspacePage() {
       setFeedbackRequired(true);
       return;
     }
+    if (selectedFailedCriteriaIds.length === 0) {
+      setFailedCriteriaError("Vui lòng chọn ít nhất một tiêu chí chưa đạt.");
+      return;
+    }
+    if (selectedFailedCriteriaIds.some((criteriaId) => !failedCriteriaReasons[criteriaId]?.trim())) {
+      setFailedCriteriaError("Vui lòng mô tả chi tiết cho từng tiêu chí đã chọn.");
+      return;
+    }
     const milestone = feedbackOpen;
     await runMilestoneAction(
       milestone,
       "feedback",
-      (sourceMilestoneId) => contractApi.rejectMilestone(sourceMilestoneId, reason),
+      (sourceMilestoneId) => contractApi.rejectMilestone(contract!.contractId, sourceMilestoneId, {
+        reason,
+        failedCriteria: selectedFailedCriteriaIds.map((criteriaId) => ({
+          criteriaId,
+          reason: failedCriteriaReasons[criteriaId]?.trim() || "Tiêu chí chưa đạt yêu cầu nghiệm thu.",
+        })),
+      }),
       "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
     );
     setFeedbackReason("");
     setFeedbackRequired(false);
+    setFailedCriteriaError("");
     setFeedbackOpen(null);
   };
 
@@ -1044,7 +1063,7 @@ export function WorkspacePage() {
     setMilestoneNotices({});
     setActionLoading(`approve:${sourceMilestoneId}`);
     try {
-      await contractApi.approveMilestone(sourceMilestoneId);
+      await contractApi.approveMilestone(contract.contractId, sourceMilestoneId);
       const [updatedContract, updatedMilestones] = await Promise.all([
         contractApi.getContract(contract.contractId),
         contractApi.listMilestones(contract.contractId),
@@ -1633,7 +1652,7 @@ export function WorkspacePage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="amber">{contractStatusLabel(contract.status)}</Badge>
-                <Badge tone="slate">Contract tam khoa thao tac</Badge>
+                <Badge tone="slate">Hợp đồng tạm khóa thao tác</Badge>
               </div>
               <h2 className="mt-3 font-display text-lg font-extrabold text-ink">
                 Tranh chấp đã được xử lý. Doanh nghiệp cần quyết định bước tiếp theo.
@@ -2618,6 +2637,9 @@ export function WorkspacePage() {
                                           onClick={() => {
                                             setFeedbackReason("");
                                             setFeedbackRequired(false);
+                                            setFailedCriteriaReasons({});
+                                            setSelectedFailedCriteriaIds([]);
+                                            setFailedCriteriaError("");
                                             setFeedbackOpen(milestone);
                                           }}
                                         >
@@ -3067,6 +3089,9 @@ export function WorkspacePage() {
         onClose={() => {
           setFeedbackOpen(null);
           setFeedbackRequired(false);
+          setFailedCriteriaReasons({});
+          setSelectedFailedCriteriaIds([]);
+          setFailedCriteriaError("");
         }}
         title="Từ chối sản phẩm cuối cùng"
         description="Phản hồi này sẽ được gửi cho Chuyên gia để chỉnh sửa và nộp lại sản phẩm cuối cùng."
@@ -3077,6 +3102,9 @@ export function WorkspacePage() {
               onClick={() => {
                 setFeedbackOpen(null);
                 setFeedbackRequired(false);
+                setFailedCriteriaReasons({});
+                setSelectedFailedCriteriaIds([]);
+                setFailedCriteriaError("");
               }}
             >
               Hủy
@@ -3113,6 +3141,52 @@ export function WorkspacePage() {
             </p>
           )}
         </Field>
+        {feedbackOpen && getSourceMilestoneId(feedbackOpen) !== undefined && (criteriaByMilestone[getSourceMilestoneId(feedbackOpen)!] || []).length > 0 && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <p className="text-sm font-extrabold text-ink">Tiêu chí chưa đạt <span className="text-rose-600">*</span></p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Bắt buộc chọn ít nhất một tiêu chí chưa đáp ứng và mô tả cụ thể việc cần chỉnh sửa.</p>
+            </div>
+            {(criteriaByMilestone[getSourceMilestoneId(feedbackOpen)!] || []).map((criterion: AcceptanceCriteria) => (
+              <div key={criterion.criteriaId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 accent-brand-600"
+                    checked={selectedFailedCriteriaIds.includes(criterion.criteriaId)}
+                    onChange={(event) => {
+                      setFailedCriteriaError("");
+                      setSelectedFailedCriteriaIds((current) => event.target.checked
+                        ? [...current, criterion.criteriaId]
+                        : current.filter((id) => id !== criterion.criteriaId));
+                    }}
+                  />
+                  <span className="min-w-0">
+                    {criterion.criteriaCode && <span className="mr-2 text-xs font-black uppercase tracking-wide text-brand-600">{criterion.criteriaCode}</span>}
+                    <span className="font-bold text-ink">{criterion.description}</span>
+                    {criterion.category && <span className="mt-1 block text-xs font-semibold text-slate-500">Nhóm: {criterion.category}</span>}
+                  </span>
+                </label>
+                {selectedFailedCriteriaIds.includes(criterion.criteriaId) && (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <Field label="Mô tả chi tiết cần chỉnh sửa">
+                      <Textarea
+                        value={failedCriteriaReasons[criterion.criteriaId] || ""}
+                        onChange={(event) => {
+                          setFailedCriteriaError("");
+                          setFailedCriteriaReasons((current) => ({ ...current, [criterion.criteriaId]: event.target.value }));
+                        }}
+                        placeholder="Mô tả phần chưa đạt, bằng chứng hoặc yêu cầu Expert cần xử lý..."
+                        className="min-h-24"
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            ))}
+            {failedCriteriaError && <p className="text-sm font-bold text-rose-600">{failedCriteriaError}</p>}
+          </div>
+        )}
       </Modal>
 
       <Modal
