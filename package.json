@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "test": "node --experimental-strip-types --test --test-isolation=none tests/*.test.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

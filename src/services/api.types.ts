@@ -73,7 +73,27 @@ export interface GeneratedSowMilestone {
   duration?: number;
   durationUnit?: string;
   budget?: number;
+  recommendedBudget?: number;
   acceptanceCriteria?: string[];
+}
+
+export type BudgetAssessmentStatus = "TOO_LOW" | "LOW" | "SUITABLE" | "HIGH";
+
+export type BudgetAssessmentConfidence = "LOW" | "MEDIUM" | "HIGH";
+
+export interface BudgetAssessment {
+  currency: "VND";
+  businessBudget: number;
+  estimatedMin: number;
+  recommendedBudget: number;
+  estimatedMax: number;
+  status: BudgetAssessmentStatus;
+  gapToMinimum?: number;
+  confidence: BudgetAssessmentConfidence;
+  source: string;
+  requiresBusinessConfirmation: boolean;
+  message: string;
+  factors: string[];
 }
 
 export interface GenerateSowResponse {
@@ -81,6 +101,25 @@ export interface GenerateSowResponse {
   questions?: string[];
   sow?: GeneratedSow;
   milestones?: GeneratedSowMilestone[];
+  budgetAssessment?: BudgetAssessment;
+}
+
+export interface ReallocateSowBudgetRequest {
+  selectedBudget: number;
+  milestones: Array<{
+    milestoneIndex: number;
+    referenceBudget: number;
+  }>;
+}
+
+export interface ReallocatedMilestoneBudget {
+  milestoneIndex: number;
+  fundsAllocated: number;
+}
+
+export interface ReallocateSowBudgetResponse {
+  selectedBudget: number;
+  allocations: ReallocatedMilestoneBudget[];
 }
 
 export interface ChatbotResponse {

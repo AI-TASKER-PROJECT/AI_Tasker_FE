@@ -10,6 +10,8 @@ export type MilestoneDraft = {
   milestoneName: string;
   description?: string;
   fundsAllocated: string;
+  businessBudget?: number;
+  recommendedBudget?: number;
   orderIndex: string;
   durationValue: string;
   acceptanceCriteria: string[];
