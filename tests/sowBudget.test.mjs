@@ -8,6 +8,7 @@ import {
   createInitialBudgetConfirmationState,
   isBelowAiEstimate,
   resolveAuthoritativeBudget,
+  shouldLockBusinessBudgetInput,
   shouldPreserveMilestoneBudgetAllocation,
   shouldShowAiBudgetAssessment,
   validateBudgetIntegrity,
@@ -112,6 +113,30 @@ test("HIGH Business budget hides the AI assessment and keeps Business budget aut
     ),
     200_000_000,
   );
+});
+
+test("HIGH Business budget does not lock the editable Business budget input", () => {
+  const highAssessment = {
+    ...assessment,
+    businessBudget: 200_000_000,
+    status: "HIGH",
+  };
+
+  assert.equal(shouldLockBusinessBudgetInput(highAssessment, false), false);
+  assert.equal(shouldLockBusinessBudgetInput(highAssessment, true), true);
+  assert.equal(shouldLockBusinessBudgetInput(assessment, false), true);
+});
+
+test("editing a hidden HIGH assessment marks the budget as manual", async () => {
+  const source = await pageSourcePromise;
+  const updateBudgetSource = source.slice(
+    source.indexOf("const updateFormBudgetAmount"),
+    source.indexOf("const updateMilestone ="),
+  );
+
+  assert.match(updateBudgetSource, /selection:\s*"MANUAL"/);
+  assert.match(updateBudgetSource, /!shouldShowAiBudgetAssessment\(budgetAssessment\)/);
+  assert.match(source, /disabled=\{businessBudgetInputLocked\}/);
 });
 
 test("manual milestone edits override the original total even when the AI card is hidden", () => {
@@ -322,7 +347,7 @@ test("recommendedBudget is never assigned as the authoritative Job budget", asyn
   assert.match(source, /setBudgetAssessment\(null\);\s*clearBudgetConfirmation\(\)/);
   assert.match(
     source,
-    /budgetAssessment &&\s*shouldShowAiBudgetAssessment\(budgetAssessment\)/,
+    /budgetAssessment && budgetAssessmentVisible/,
   );
 });
 

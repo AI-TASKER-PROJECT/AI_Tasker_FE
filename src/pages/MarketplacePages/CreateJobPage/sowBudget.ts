@@ -190,3 +190,13 @@ export function isBelowAiEstimate(
 export function shouldShowAiBudgetAssessment(assessment: BudgetAssessment) {
   return assessment.status !== "HIGH";
 }
+
+export function shouldLockBusinessBudgetInput(
+  assessment: BudgetAssessment | null,
+  sowGeneratedLocked: boolean,
+) {
+  return (
+    sowGeneratedLocked ||
+    Boolean(assessment && shouldShowAiBudgetAssessment(assessment))
+  );
+}

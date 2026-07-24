@@ -65,6 +65,7 @@ import {
   createInitialBudgetConfirmationState,
   isBelowAiEstimate,
   resolveAuthoritativeBudget,
+  shouldLockBusinessBudgetInput,
   shouldPreserveMilestoneBudgetAllocation,
   shouldShowAiBudgetAssessment,
   validateBudgetIntegrity,
@@ -505,6 +506,13 @@ export function CreateJobPage() {
   >([]);
 
   const [publishError, setPublishError] = useState("");
+  const budgetAssessmentVisible = budgetAssessment
+    ? shouldShowAiBudgetAssessment(budgetAssessment)
+    : false;
+  const businessBudgetInputLocked = shouldLockBusinessBudgetInput(
+    budgetAssessment,
+    sowGeneratedLocked,
+  );
 
   // ── Step state (derives from form progress) ───────────────────────────────
   const wizardStep: WizardStep = savedJob ? 4 : generatedSow ? 3 : 1;
@@ -1142,11 +1150,20 @@ export function CreateJobPage() {
 
   //cmt16 Cập nhật ngân sách tổng của Job trong form và bản Job đã lưu nếu có.
   const updateFormBudgetAmount = (amount: string) => {
+    const numericAmount = Number(amount);
     setForm((value) => ({
       ...value,
       budgetAmount: amount,
     }));
-    setSavedJob((prev) => (prev ? { ...prev, budget: Number(amount) } : prev));
+    setSavedJob((prev) => (prev ? { ...prev, budget: numericAmount } : prev));
+    if (budgetAssessment && !shouldShowAiBudgetAssessment(budgetAssessment)) {
+      setBudgetConfirmation({
+        selection: "MANUAL",
+        customBudget: amount,
+        allocation: null,
+        error: "",
+      });
+    }
   };
 
   //cmt17 Cập nhật một milestone theo patch và đồng bộ tổng thời lượng Job khi thời lượng milestone đổi.
@@ -1726,7 +1743,7 @@ export function CreateJobPage() {
                         event.target.value.replace(/\D/g, ""),
                       )
                     }
-                    disabled={sowGeneratedLocked || Boolean(budgetAssessment)}
+                    disabled={businessBudgetInputLocked}
                     required
                   />
                   {attemptedSubmit && !form.budgetAmount && (
@@ -1909,8 +1926,7 @@ export function CreateJobPage() {
                 </div>
               )}
 
-              {budgetAssessment &&
-                shouldShowAiBudgetAssessment(budgetAssessment) && (
+              {budgetAssessment && budgetAssessmentVisible && (
                 <BudgetAssessmentCard
                   assessment={budgetAssessment}
                   confirmation={budgetConfirmation}
