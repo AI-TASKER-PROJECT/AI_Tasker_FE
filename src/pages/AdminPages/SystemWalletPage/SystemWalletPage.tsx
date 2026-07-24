@@ -233,8 +233,16 @@ function walletTransactionStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
+function walletTransactionDisplayType(tx: WalletTransaction) {
+  return tx.transactionTypeLabel?.trim() || walletTransactionTypeLabel(tx.transactionType);
+}
+
+function walletTransactionDisplayStatus(tx: WalletTransaction) {
+  return tx.statusLabel?.trim() || walletTransactionStatusLabel(tx.status);
+}
+
 function walletTransactionIsSuccessful(status: string) {
-  return status === "SUCCESS";
+  return status === "SUCCESS" || status === "POSTED";
 }
 
 function walletTransactionDisplayIsPositive(tx: WalletTransaction) {
@@ -245,7 +253,17 @@ function normalizePlatformHistory(history: WalletTransaction[]) {
   return history.filter(Boolean);
 }
 
+function categoryDisplayLabel(category: CategoryDef, transactions: WalletTransaction[]) {
+  if (category.id === "all") return "Tất cả giao dịch";
+  return transactions.find((tx) => tx.transactionGroup === category.id)?.transactionGroupLabel?.trim() || category.label;
+}
+
+function subTabDisplayLabel(subTab: SubTabDef, transactions: WalletTransaction[]) {
+  return transactions.find((tx) => tx.transactionSubGroup === subTab.id)?.transactionSubGroupLabel?.trim() || subTab.label;
+}
+
 function walletTransactionPartyLabel(tx: WalletTransaction) {
+  if (tx.counterpartyLabel?.trim()) return tx.counterpartyLabel;
   if (tx.counterpartyRole === "BUSINESS") return "Doanh nghiệp";
   if (tx.counterpartyRole === "EXPERT") return "Chuyên gia";
   if (tx.counterpartyRole === "ADMIN" || tx.counterpartyRole === "STAFF") return "Nội bộ";
@@ -280,10 +298,10 @@ function TransactionRow({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={walletTransactionBadgeTone(tx.transactionType)}>
-            {walletTransactionTypeLabel(tx.transactionType)}
+            {walletTransactionDisplayType(tx)}
           </Badge>
           <Badge tone={walletTransactionStatusTone(tx.status)}>
-            {walletTransactionStatusLabel(tx.status)}
+            {walletTransactionDisplayStatus(tx)}
           </Badge>
           <span className="text-xs font-bold text-slate-400">
             {formatDateTime(tx.createdAt)}
@@ -291,7 +309,7 @@ function TransactionRow({
         </div>
 
         <p className="mt-2 truncate text-base font-extrabold text-ink">
-          {tx.title || walletTransactionTypeLabel(tx.transactionType) || "Giao dịch"}
+          {tx.title || walletTransactionDisplayType(tx) || "Giao dịch"}
         </p>
         <p className="mt-1 truncate text-xs text-slate-400">
           {tx.description || tx.rawDescription || ""}
@@ -478,6 +496,11 @@ export function SystemWalletPage() {
     return categoryFiltered.filter(subTab.match);
   }, [normalizedUserActivity, selectedCategory, activeSubTab]);
 
+  const selectedCategoryTransactions = useMemo(
+    () => (selectedCategory.id === "all" ? normalizedUserActivity : normalizedUserActivity.filter(selectedCategory.match)),
+    [normalizedUserActivity, selectedCategory],
+  );
+
   const ledgerPageCount = Math.max(1, Math.ceil(normalizedLedger.length / PAGE_SIZE));
   const userActivityPageCount = Math.max(1, Math.ceil(filteredUserActivity.length / PAGE_SIZE));
 
@@ -627,7 +650,7 @@ export function SystemWalletPage() {
                   >
                     {TRANSACTION_CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.label}
+                        {categoryDisplayLabel(cat, normalizedUserActivity)}
                       </option>
                     ))}
                   </select>
@@ -650,7 +673,7 @@ export function SystemWalletPage() {
                             : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-ink"
                         }`}
                       >
-                        {sub.label}
+                        {subTabDisplayLabel(sub, selectedCategoryTransactions)}
                       </button>
                     ))}
                   </div>

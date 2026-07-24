@@ -906,6 +906,11 @@ export interface WalletTransaction {
   walletOwnerRole?: string;
   historyScope?: string;
   transactionCategory?: string;
+  transactionCategoryLabel?: string;
+  transactionGroup?: string;
+  transactionGroupLabel?: string;
+  transactionSubGroup?: string;
+  transactionSubGroupLabel?: string;
   platformBalanceChanging?: boolean;
   paymentOrderId?: number;
   transactionType:
@@ -918,8 +923,11 @@ export interface WalletTransaction {
     | 'WITHDRAW_APPROVED'
     | 'WITHDRAW_REJECTED'
     | string;
+  transactionTypeLabel?: string;
   direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE' | string;
+  directionLabel?: string;
   balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE' | string;
+  balanceTypeLabel?: string;
   amount: number;
   grossAmount?: number;
   feeAmount?: number;
@@ -930,6 +938,7 @@ export interface WalletTransaction {
   availableBalanceBefore?: number;
   availableBalanceAfter?: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
+  statusLabel?: string;
   referenceType?: string;
   referenceId?: number;
   operationKey?: string;
@@ -941,6 +950,7 @@ export interface WalletTransaction {
   counterpartyName?: string;
   counterpartyAccountId?: number;
   counterpartyRole?: string;
+  counterpartyLabel?: string;
   businessId?: number;
   businessName?: string;
   expertId?: number;
