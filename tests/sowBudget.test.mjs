@@ -8,6 +8,7 @@ import {
   createInitialBudgetConfirmationState,
   isBelowAiEstimate,
   resolveAuthoritativeBudget,
+  shouldPreserveMilestoneBudgetAllocation,
   shouldShowAiBudgetAssessment,
   validateBudgetIntegrity,
 } from "../src/pages/MarketplacePages/CreateJobPage/sowBudget.ts";
@@ -153,6 +154,56 @@ test("CUSTOM confirmation calls the backend reallocation API", async () => {
   const source = await pageSourcePromise;
   assert.match(source, /await sowApi\.reallocateBudget\(request\)/);
   assert.match(source, /applyReallocationByMilestoneIndex/);
+});
+
+test("confirmed CUSTOM and MANUAL allocations survive milestone content updates", () => {
+  const customState = {
+    selection: "CUSTOM",
+    customBudget: "110000000",
+    allocation: {
+      selectedBudget: 110_000_000,
+      allocations: [
+        { milestoneIndex: 0, fundsAllocated: 31_428_571 },
+        { milestoneIndex: 1, fundsAllocated: 78_571_429 },
+      ],
+    },
+    error: "",
+  };
+
+  assert.equal(shouldPreserveMilestoneBudgetAllocation(customState), true);
+  assert.equal(
+    shouldPreserveMilestoneBudgetAllocation({
+      ...customState,
+      allocation: null,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPreserveMilestoneBudgetAllocation({
+      selection: "MANUAL",
+      customBudget: "65000000",
+      allocation: null,
+      error: "",
+    }),
+    true,
+  );
+});
+
+test("deleting a milestone reallocates the confirmed custom total over remaining milestones", () => {
+  const remainingMilestones = [milestones[1]];
+  assert.deepEqual(
+    buildReallocateBudgetRequest(110_000_000, remainingMilestones),
+    {
+      selectedBudget: 110_000_000,
+      milestones: [{ milestoneIndex: 0, referenceBudget: 100_000_000 }],
+    },
+  );
+
+  const reallocated = applyReallocationByMilestoneIndex(remainingMilestones, {
+    selectedBudget: 110_000_000,
+    allocations: [{ milestoneIndex: 0, fundsAllocated: 110_000_000 }],
+  });
+  assert.equal(reallocated[0].fundsAllocated, "110000000");
 });
 
 test("allocation response is mapped by milestoneIndex, not array order", () => {

@@ -65,6 +65,7 @@ import {
   createInitialBudgetConfirmationState,
   isBelowAiEstimate,
   resolveAuthoritativeBudget,
+  shouldPreserveMilestoneBudgetAllocation,
   shouldShowAiBudgetAssessment,
   validateBudgetIntegrity,
   type SowBudgetConfirmationState,
@@ -632,10 +633,9 @@ export function CreateJobPage() {
 
   const invalidateBudgetConfirmation = () => {
     if (!budgetAssessment) return;
-    if (budgetConfirmation.selection === "MANUAL") {
+    if (shouldPreserveMilestoneBudgetAllocation(budgetConfirmation)) {
       setBudgetConfirmation((current) => ({
         ...current,
-        allocation: null,
         error: "",
       }));
       return;
@@ -914,12 +914,14 @@ export function CreateJobPage() {
   const undoMilestoneAction = () => {
     if (milestonesHistory.length > 0) {
       invalidateBudgetConfirmation();
+      const preserveAllocation =
+        shouldPreserveMilestoneBudgetAllocation(budgetConfirmation);
       const previousState = milestonesHistory[milestonesHistory.length - 1].map(
         (item) => ({
           ...item,
           fundsAllocated:
             budgetAssessment &&
-            budgetConfirmation.selection !== "MANUAL" &&
+            !preserveAllocation &&
             item.businessBudget !== undefined
               ? String(item.businessBudget)
               : item.fundsAllocated,
@@ -938,11 +940,18 @@ export function CreateJobPage() {
       );
       setForm((prev) => ({
         ...prev,
-        budgetAmount: budgetAssessment
+        budgetAmount: budgetAssessment && !preserveAllocation
           ? String(budgetAssessment.businessBudget)
           : String(newTotalBudget),
         plannedDurationValue: String(newTotalDuration),
       }));
+      if (budgetConfirmation.selection === "MANUAL") {
+        setBudgetConfirmation((current) => ({
+          ...current,
+          customBudget: String(newTotalBudget),
+          error: "",
+        }));
+      }
     }
   };
 
@@ -964,39 +973,99 @@ export function CreateJobPage() {
   };
 
   //cmt11 Xóa milestone khỏi bản nháp và đánh lại thứ tự cùng tổng ngân sách/thời lượng.
-  const removeSpecificMilestone = (indexToRemove: number) => {
-    invalidateBudgetConfirmation();
-    saveMilestoneHistory(milestones);
+  const removeSpecificMilestone = async (indexToRemove: number) => {
     const newItems = milestones
       .filter((_, i) => i !== indexToRemove)
       .map((item, i) => ({
         ...item,
-        fundsAllocated:
-          budgetAssessment &&
-          budgetConfirmation.selection !== "MANUAL" &&
-          item.businessBudget !== undefined
-            ? String(item.businessBudget)
-            : item.fundsAllocated,
         orderIndex: String(i + 1),
       }));
-    setMilestones(newItems);
 
     const newTotalDuration = newItems.reduce(
       (acc, m) => acc + Number(m.durationValue || 0),
       0,
     );
-    const newTotalBudget = newItems.reduce(
-      (acc, m) => acc + Number(m.fundsAllocated || 0),
-      0,
-    );
 
-    setForm((prev) => ({
-      ...prev,
-      budgetAmount: budgetAssessment
-        ? String(budgetAssessment.businessBudget)
-        : String(newTotalBudget),
-      plannedDurationValue: String(newTotalDuration),
-    }));
+    if (
+      budgetConfirmation.selection === "CUSTOM" &&
+      budgetConfirmation.allocation
+    ) {
+      const selectedBudget = budgetConfirmation.allocation.selectedBudget;
+      try {
+        setBudgetAllocationLoading(true);
+        const request = buildReallocateBudgetRequest(selectedBudget, newItems);
+        const response = await sowApi.reallocateBudget(request);
+        if (response.selectedBudget !== selectedBudget) {
+          throw new Error(
+            "Ngân sách phân bổ lại không khớp với ngân sách mới đã xác nhận.",
+          );
+        }
+        const reallocatedMilestones = applyReallocationByMilestoneIndex(
+          newItems,
+          response,
+        );
+        saveMilestoneHistory(milestones);
+        setMilestones(reallocatedMilestones);
+        setForm((prev) => ({
+          ...prev,
+          budgetAmount: String(response.selectedBudget),
+          plannedDurationValue: String(newTotalDuration),
+        }));
+        setSavedJob((prev) =>
+          prev
+            ? {
+                ...prev,
+                budget: response.selectedBudget,
+                plannedDurationValue: newTotalDuration,
+              }
+            : prev,
+        );
+        setBudgetConfirmation((current) => ({
+          ...current,
+          selection: "CUSTOM",
+          customBudget: String(response.selectedBudget),
+          allocation: response,
+          error: "",
+        }));
+      } catch (error) {
+        setBudgetConfirmation((current) => ({
+          ...current,
+          error: getApiErrorMessage(error),
+        }));
+        return;
+      } finally {
+        setBudgetAllocationLoading(false);
+      }
+    } else {
+      saveMilestoneHistory(milestones);
+      setMilestones(newItems);
+      const newTotalBudget = newItems.reduce(
+        (acc, m) => acc + Number(m.fundsAllocated || 0),
+        0,
+      );
+      setForm((prev) => ({
+        ...prev,
+        budgetAmount: String(newTotalBudget),
+        plannedDurationValue: String(newTotalDuration),
+      }));
+      setSavedJob((prev) =>
+        prev
+          ? {
+              ...prev,
+              budget: newTotalBudget,
+              plannedDurationValue: newTotalDuration,
+            }
+          : prev,
+      );
+      if (budgetAssessment) {
+        setBudgetConfirmation({
+          selection: "MANUAL",
+          customBudget: String(newTotalBudget),
+          allocation: null,
+          error: "",
+        });
+      }
+    }
 
     if (newItems.length <= 1) {
       setIsDeletingMilestones(false);
@@ -1008,11 +1077,13 @@ export function CreateJobPage() {
   const moveMilestone = (index: number, direction: "up" | "down") => {
     invalidateBudgetConfirmation();
     saveMilestoneHistory(milestones);
+    const preserveAllocation =
+      shouldPreserveMilestoneBudgetAllocation(budgetConfirmation);
     const newItems = milestones.map((item) => ({
       ...item,
       fundsAllocated:
         budgetAssessment &&
-        budgetConfirmation.selection !== "MANUAL" &&
+        !preserveAllocation &&
         item.businessBudget !== undefined
           ? String(item.businessBudget)
           : item.fundsAllocated,
@@ -1999,6 +2070,7 @@ export function CreateJobPage() {
                               <Button
                                 type="button"
                                 variant="ghost"
+                                loading={budgetAllocationLoading}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
                                 onClick={() => removeSpecificMilestone(index)}
                               >

@@ -23,6 +23,15 @@ export function createInitialBudgetConfirmationState(): SowBudgetConfirmationSta
   };
 }
 
+export function shouldPreserveMilestoneBudgetAllocation(
+  state: SowBudgetConfirmationState,
+) {
+  return (
+    state.selection === "MANUAL" ||
+    (state.selection === "CUSTOM" && state.allocation !== null)
+  );
+}
+
 export function buildReallocateBudgetRequest(
   selectedBudget: number,
   milestones: MilestoneDraft[],
