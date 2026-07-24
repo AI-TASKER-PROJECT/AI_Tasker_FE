@@ -64,7 +64,11 @@ export function ProposalDetailPage() {
 
         setProposal(foundProposal);
         setDraft(foundProposal);
-        setProposalMilestoneText(foundProposal.proposalMilestone ? JSON.stringify(foundProposal.proposalMilestone, null, 2) : "");
+        setProposalMilestoneText(
+          foundProposal.proposalMilestone
+            ? JSON.stringify(foundProposal.proposalMilestone, null, 2)
+            : "",
+        );
 
         const [
           jobData,
@@ -140,20 +144,44 @@ export function ProposalDetailPage() {
   })();
 
   const bidAmountDisplay =
-    Number(editing ? draft.bidAmount : proposal.bidAmount || 0) > 0 ? Number(editing ? draft.bidAmount : proposal.bidAmount).toLocaleString("vi-VN") : "";
-  const canEdit = session?.role === "EXPERT" && ["PENDING", "ACCEPTED"].includes(proposal.status.toUpperCase()) && job.status.toUpperCase() === "OPEN";
+    Number(editing ? draft.bidAmount : proposal.bidAmount || 0) > 0
+      ? Number(editing ? draft.bidAmount : proposal.bidAmount).toLocaleString(
+          "vi-VN",
+        )
+      : "";
+  const canEdit =
+    session?.role === "EXPERT" &&
+    ["PENDING", "ACCEPTED"].includes(proposal.status.toUpperCase()) &&
+    job.status.toUpperCase() === "OPEN";
   const save = async () => {
-    if (!draft.technicalSolution?.trim() || !draft.proposalDescription?.trim() || !draft.bidAmount) {
+    if (
+      !draft.technicalSolution?.trim() ||
+      !draft.proposalDescription?.trim() ||
+      !draft.bidAmount
+    ) {
       setEditMessage("Vui lòng điền giải pháp, mô tả và ngân sách.");
       return;
     }
-    setSaving(true); setEditMessage("");
+    setSaving(true);
+    setEditMessage("");
     try {
-      const proposalMilestone = proposalMilestoneText.trim() ? JSON.parse(proposalMilestoneText) : undefined;
-      const updated = await marketplaceApi.updateProposal(proposal.proposalId, { ...draft, proposalMilestone });
-      setProposal(updated); setDraft(updated); setEditing(false);
-    } catch (error) { setEditMessage(error instanceof Error ? error.message : "Không thể cập nhật proposal."); }
-    finally { setSaving(false); }
+      const proposalMilestone = proposalMilestoneText.trim()
+        ? JSON.parse(proposalMilestoneText)
+        : undefined;
+      const updated = await marketplaceApi.updateProposal(proposal.proposalId, {
+        ...draft,
+        proposalMilestone,
+      });
+      setProposal(updated);
+      setDraft(updated);
+      setEditing(false);
+    } catch (error) {
+      setEditMessage(
+        error instanceof Error ? error.message : "Không thể cập nhật proposal.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const translateStatus = (status: string) => {
@@ -178,14 +206,35 @@ export function ProposalDetailPage() {
       </div>
       {canEdit && (
         <div className="flex justify-end gap-2">
-          {editing ? <><Button variant="secondary" onClick={() => { setEditing(false); setDraft(proposal); }}>Hủy</Button><Button onClick={save} loading={saving}>Lưu thay đổi</Button></> : <Button onClick={() => setEditing(true)}>Chỉnh sửa đề xuất</Button>}
+          {editing ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditing(false);
+                  setDraft(proposal);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button onClick={save} loading={saving}>
+                Lưu thay đổi
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setEditing(true)}>Chỉnh sửa đề xuất</Button>
+          )}
         </div>
       )}
-      {editMessage && <Notice tone="danger" title="Không thể lưu proposal">{editMessage}</Notice>}
+      {editMessage && (
+        <Notice tone="danger" title="Không thể lưu proposal">
+          {editMessage}
+        </Notice>
+      )}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader 
-          title={job.title} 
+        <PageHeader
+          title={job.title}
           actions={<StatusBadge status={translateStatus(proposal.status)} />}
         />
       </div>
@@ -272,17 +321,35 @@ export function ProposalDetailPage() {
           </div>
           <Field label="Giải pháp">
             <Textarea
-              value={editing ? draft.technicalSolution || "" : proposal.technicalSolution}
+              value={
+                editing
+                  ? draft.technicalSolution || ""
+                  : proposal.technicalSolution
+              }
               readOnly={!editing}
-              onChange={(event) => setDraft((value) => ({ ...value, technicalSolution: event.target.value }))}
+              onChange={(event) =>
+                setDraft((value) => ({
+                  ...value,
+                  technicalSolution: event.target.value,
+                }))
+              }
               className="min-h-36 bg-slate-50"
             />
           </Field>
           <Field label="Đề xuất">
             <Textarea
-              value={editing ? draft.proposalDescription || "" : proposal.proposalDescription || ""}
+              value={
+                editing
+                  ? draft.proposalDescription || ""
+                  : proposal.proposalDescription || ""
+              }
               readOnly={!editing}
-              onChange={(event) => setDraft((value) => ({ ...value, proposalDescription: event.target.value }))}
+              onChange={(event) =>
+                setDraft((value) => ({
+                  ...value,
+                  proposalDescription: event.target.value,
+                }))
+              }
               className="min-h-32 bg-slate-50"
             />
           </Field>
@@ -301,7 +368,18 @@ export function ProposalDetailPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <Field label="Ngân sách">
-              <Input type="text" value={bidAmountDisplay} readOnly={!editing} onChange={(event) => setDraft((value) => ({ ...value, bidAmount: Number(event.target.value.replace(/\D/g, "")) || 0 }))} />
+              <Input
+                type="text"
+                value={bidAmountDisplay}
+                readOnly={!editing}
+                onChange={(event) =>
+                  setDraft((value) => ({
+                    ...value,
+                    bidAmount:
+                      Number(event.target.value.replace(/\D/g, "")) || 0,
+                  }))
+                }
+              />
             </Field>
             <Field label="Proposal file">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm h-11 flex items-center">
@@ -313,7 +391,20 @@ export function ProposalDetailPage() {
                 />
               </div>
             </Field>
-            {editing && <Field label="URL tệp đề xuất"><Input value={draft.proposalFileUrl || ""} onChange={(event) => setDraft((value) => ({ ...value, proposalFileUrl: event.target.value }))} placeholder="Đường dẫn tệp đã tải lên" /></Field>}
+            {editing && (
+              <Field label="URL tệp đề xuất">
+                <Input
+                  value={draft.proposalFileUrl || ""}
+                  onChange={(event) =>
+                    setDraft((value) => ({
+                      ...value,
+                      proposalFileUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="Đường dẫn tệp đã tải lên"
+                />
+              </Field>
+            )}
           </div>
         </section>
 
@@ -332,7 +423,18 @@ export function ProposalDetailPage() {
               </div>
             </div>
             <div className="grid gap-3">
-              {editing && <Field label="Mốc trong đề xuất (JSON)"><Textarea value={proposalMilestoneText} onChange={(event) => setProposalMilestoneText(event.target.value)} placeholder='[{"milestoneId": 1, "proposedBudget": 1000000}]' className="min-h-28 font-mono text-xs" /></Field>}
+              {editing && (
+                <Field label="Mốc trong đề xuất (JSON)">
+                  <Textarea
+                    value={proposalMilestoneText}
+                    onChange={(event) =>
+                      setProposalMilestoneText(event.target.value)
+                    }
+                    placeholder='[{"milestoneId": 1, "proposedBudget": 1000000}]'
+                    className="min-h-28 font-mono text-xs"
+                  />
+                </Field>
+              )}
               {milestones.map((milestone) => {
                 const proposedVal =
                   parsedMilestones.find(
@@ -350,7 +452,9 @@ export function ProposalDetailPage() {
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         Mốc {milestone.orderIndex} ·{" "}
                         {milestone.durationValue ?? milestone.duration ?? 0}{" "}
-                        {milestone.durationUnit === "WEEK" ? "TUẦN" : (milestone.durationUnit || "TUẦN")}
+                        {milestone.durationUnit === "WEEK"
+                          ? "TUẦN"
+                          : milestone.durationUnit || "TUẦN"}
                       </p>
                     </div>
                     <div className="space-y-1">

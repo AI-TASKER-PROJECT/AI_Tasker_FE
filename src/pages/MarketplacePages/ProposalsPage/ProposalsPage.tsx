@@ -517,7 +517,7 @@ function formatProposalMilestoneOrder(
   milestones: Milestone[],
 ) {
   const milestone = milestones.find((item) => item.milestoneId === milestoneId);
-  return milestone ? `Mốc ${milestone.orderIndex}` : "Milestone";
+  return milestone ? `Mốc ${milestone.orderIndex}` : "Mốc";
 }
 
 function formatProposalMilestoneStatus(

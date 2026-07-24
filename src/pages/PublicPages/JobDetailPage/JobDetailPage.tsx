@@ -166,8 +166,8 @@ export function JobDetailPage() {
           </Card>
           <Card className="mt-6 p-6">
             <SectionHeading
-              title="Milestone dự án"
-              description="Các mốc công việc doanh nghiệp dã khai báo khi tạo job."
+              title="Mốc dự án"
+              description="Các mốc doanh nghiệp dã khai báo khi tạo job."
             />
             <MilestoneList milestones={milestones} />
             {(canSubmitProposal || !session) && (
@@ -216,7 +216,7 @@ export function JobDetailPage() {
               />
               <InfoRow
                 icon={<CheckCircle2 className="h-4 w-4" />}
-                label="Milestone"
+                label="Mốc"
                 value={`${milestones.length} mốc`}
               />
             </div>

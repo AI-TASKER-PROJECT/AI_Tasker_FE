@@ -127,7 +127,7 @@ export function FinancePage() {
         .catch(() => {
           setTransactions([]);
           setMessage(
-            "Backend hiện chỉ expose wallet transaction history; chưa có API transaction legacy theo milestone.",
+            "Backend hiện chỉ expose wallet transaction history; chưa có API transaction legacy theo mốc.",
           );
         });
     }
@@ -204,7 +204,7 @@ export function FinancePage() {
         )}
         {isAdmin && (
           <Notice tone="info" title="Đã tắt transaction legacy">
-            Backend hiện tại không expose API tạo transaction, webhook, hoặc cập nhật status theo milestone. Màn này chỉ đọc lịch sử wallet transaction thật.
+            Backend hiện tại không expose API tạo transaction, webhook, hoặc cập nhật status theo mốc. Màn này chỉ đọc lịch sử wallet transaction thật.
           </Notice>
         )}
         {message && <Notice tone="danger" title={message} className="mt-4" />}

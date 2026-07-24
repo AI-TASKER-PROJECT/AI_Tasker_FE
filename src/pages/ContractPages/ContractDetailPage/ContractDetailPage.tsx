@@ -128,13 +128,42 @@ function milestoneCriteriaLines(
 
 function proposedChangeMilestones(request?: ContractChangeRequest | null) {
   if (!request?.proposedMilestones) return [];
-  if (Array.isArray(request.proposedMilestones)) return request.proposedMilestones;
+  if (Array.isArray(request.proposedMilestones))
+    return request.proposedMilestones;
   try {
     const parsed = JSON.parse(request.proposedMilestones);
     return Array.isArray(parsed) ? (parsed as ContractChangeMilestone[]) : [];
   } catch {
     return [];
   }
+}
+
+function milestoneDurationDays(
+  milestone: Partial<ContractMilestone | Milestone | ContractChangeMilestone>,
+) {
+  const duration = Number(milestone.duration || 0);
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+  const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+  if (unit.includes("DAY")) return duration;
+  if (unit.includes("MONTH")) return duration * 30;
+  return duration * 7;
+}
+
+function sumMilestoneDurationDays(
+  milestones: Array<
+    Partial<ContractMilestone | Milestone | ContractChangeMilestone>
+  >,
+) {
+  return milestones.reduce(
+    (total, milestone) => total + milestoneDurationDays(milestone),
+    0,
+  );
+}
+
+function acceptedChangeTime(request: ContractChangeRequest) {
+  return new Date(
+    request.reviewedAt || request.updatedAt || request.createdAt || 0,
+  ).getTime();
 }
 
 export function ContractDetailPage() {
@@ -186,7 +215,7 @@ export function ContractDetailPage() {
     useState(false);
   const [changeRequestReviewError, setChangeRequestReviewError] = useState("");
   const [changeForm, setChangeForm] = useState({
-    changeType: "CONTRACT",
+    changeType: "MILESTONE",
     changeSummary: "",
     proposedBudget: "",
     proposedTimelineDays: "",
@@ -259,8 +288,8 @@ export function ContractDetailPage() {
   const isChangeRequestCreator = (request?: ContractChangeRequest | null) =>
     Boolean(
       request &&
-        currentAccountId > 0 &&
-        Number(request.requestedByAccountId) === currentAccountId,
+      currentAccountId > 0 &&
+      Number(request.requestedByAccountId) === currentAccountId,
     );
   const changeRequestHeading = (request: ContractChangeRequest) => {
     const requester = isChangeRequestCreator(request)
@@ -275,9 +304,9 @@ export function ContractDetailPage() {
   const canReviewChangeRequest = (request?: ContractChangeRequest | null) =>
     Boolean(
       request &&
-        request.status.toUpperCase() === "PENDING" &&
-        currentAccountId > 0 &&
-        !isChangeRequestCreator(request),
+      request.status.toUpperCase() === "PENDING" &&
+      currentAccountId > 0 &&
+      !isChangeRequestCreator(request),
     );
   const selectedChangeMilestone = contractMilestoneViews.find(
     (item) => item.contractMilestoneId === Number(changeForm.milestoneId),
@@ -285,9 +314,8 @@ export function ContractDetailPage() {
   const selectedChangeCriteria = milestoneCriteriaLines(
     selectedChangeMilestone,
   );
-  const viewingProposedMilestone = proposedChangeMilestones(
-    viewingChangeRequest,
-  )[0];
+  const viewingProposedMilestone =
+    proposedChangeMilestones(viewingChangeRequest)[0];
   const viewingCurrentMilestone = contractMilestoneViews.find(
     (item) =>
       item.contractMilestoneId ===
@@ -300,7 +328,7 @@ export function ContractDetailPage() {
       const selectedMilestone = contractMilestoneViews.find(
         (item) => item.contractMilestoneId === Number(changeForm.milestoneId),
       );
-      if (changeForm.changeType === "MILESTONE" && !selectedMilestone) {
+      if (!selectedMilestone) {
         setContractNotice({
           tone: "danger",
           title: "Chưa chọn mốc",
@@ -337,22 +365,15 @@ export function ContractDetailPage() {
       const created = await contractApi.createChangeRequest(
         contract.contractId,
         {
-          changeType: changeForm.changeType,
+          changeType: "MILESTONE",
           changeSummary: changeForm.changeSummary.trim(),
-          proposedBudget: changeForm.proposedBudget
-            ? Number(changeForm.proposedBudget)
-            : undefined,
-          proposedTimelineDays: changeForm.proposedTimelineDays
-            ? Number(changeForm.proposedTimelineDays) * 7
-            : undefined,
-          proposedScope: changeForm.proposedScope.trim() || undefined,
           proposedMilestones,
         },
       );
       setChangeRequests((items) => [created, ...items]);
       setChangeRequestOpen(false);
       setChangeForm({
-        changeType: "CONTRACT",
+        changeType: "MILESTONE",
         changeSummary: "",
         proposedBudget: "",
         proposedTimelineDays: "",
@@ -377,6 +398,18 @@ export function ContractDetailPage() {
       items.map((item) =>
         item.requestId === updated.requestId ? updated : item,
       ),
+    );
+    const [updatedContract, jobMilestoneItems, contractMilestoneItems] =
+      await Promise.all([
+        contractApi.getContract(contract.contractId),
+        contractApi.listJobMilestones(contract.jobId).catch(() => []),
+        contractApi.listMilestones(contract.contractId).catch(() => []),
+      ]);
+    setContract(updatedContract);
+    setJobMilestones(jobMilestoneItems);
+    setContractMilestones(contractMilestoneItems);
+    setContractMilestoneViews(
+      contractMilestoneItems as unknown as ContractMilestone[],
     );
     setViewingChangeRequest(null);
   };
@@ -672,9 +705,25 @@ export function ContractDetailPage() {
     contract.contractTitle || contract.title || "Hợp đồng chưa có tên";
   const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
-  const securityDepositAmount = calculateSecurityDeposit(contract.totalBudget);
+  const renderedMilestones =
+    contract.contractMilestones && contract.contractMilestones.length > 0
+      ? contract.contractMilestones
+      : contractMilestones;
+  const originalContractBudget = renderedMilestones.length
+    ? renderedMilestones.reduce(
+        (total, milestone) =>
+          total +
+          Number(
+            "originalBudget" in milestone ? milestone.originalBudget || 0 : 0,
+          ),
+        0,
+      ) || Number(contract.totalBudget || 0)
+    : Number(contract.totalBudget || 0);
+  const securityDepositAmount = calculateSecurityDeposit(
+    originalContractBudget,
+  );
   const expertSecurityDepositAmount = calculateExpertSecurityDeposit(
-    contract.totalBudget,
+    originalContractBudget,
   );
   const currentDepositAmount =
     session?.role === "EXPERT"
@@ -716,10 +765,40 @@ export function ContractDetailPage() {
   const underReviewCount = jobMilestones.filter(
     (item) => normalizeContractStatus(item.status) === "UNDER_REVIEW",
   ).length;
-  const renderedMilestones =
-    contract.contractMilestones && contract.contractMilestones.length > 0
-      ? contract.contractMilestones
-      : contractMilestones;
+  const originalTimelineDays = Number(contract.timelineDays || 0);
+  const acceptedChangeRequests = changeRequests
+    .filter((request) => request.status.toUpperCase() === "ACCEPTED")
+    .slice()
+    .sort((a, b) => acceptedChangeTime(a) - acceptedChangeTime(b));
+  const latestAcceptedChange =
+    acceptedChangeRequests[acceptedChangeRequests.length - 1];
+  const acceptedChangeNumber = acceptedChangeRequests.length;
+  const latestAcceptedMilestones =
+    proposedChangeMilestones(latestAcceptedChange);
+  const changedBudget =
+    latestAcceptedChange?.proposedBudget ??
+    (latestAcceptedMilestones.some((milestone) => milestone.finalBudget != null)
+      ? renderedMilestones.reduce(
+          (total, milestone) =>
+            total +
+            Number("finalBudget" in milestone ? milestone.finalBudget || 0 : 0),
+          0,
+        )
+      : undefined);
+  const changedTimelineDays =
+    latestAcceptedChange?.proposedTimelineDays ??
+    (latestAcceptedMilestones.some((milestone) => milestone.duration != null)
+      ? sumMilestoneDurationDays(renderedMilestones)
+      : undefined);
+  const changedTimelineLabel =
+    changedTimelineDays && changedTimelineDays > 0
+      ? formatTimelineWeeks(changedTimelineDays)
+      : undefined;
+  const hasAcceptedChange = acceptedChangeNumber > 0;
+  const displayedContractBudget = changedBudget ?? originalContractBudget;
+  const displayedTimelineDays = changedTimelineDays ?? originalTimelineDays;
+  const displayedTimelineLabel =
+    changedTimelineLabel || formatTimelineWeeks(originalTimelineDays);
   const totalMilestoneDurationLabel =
     formatTotalMilestoneDuration(renderedMilestones);
   const businessDisplayName =
@@ -755,7 +834,7 @@ export function ContractDetailPage() {
   const contractEndDate = contractStartDate
     ? new Date(
         new Date(contractStartDate).getTime() +
-          Number(contract.timelineDays || 0) * 24 * 60 * 60 * 1000,
+          displayedTimelineDays * 24 * 60 * 60 * 1000,
       ).toISOString()
     : undefined;
   const contractTimelineLabel =
@@ -776,7 +855,7 @@ export function ContractDetailPage() {
             ? `Doanh nghiệp ${businessDisplayName} đã hủy hợp đồng nháp.`
             : `Chuyên gia ${expertDisplayName} đã từ chối hợp đồng.`,
           description:
-            "Hợp đồng đã bị hủy trước khi ký hoặc kích hoạt. Các cột mốc không thể tiếp tục thực hiện.",
+            "Hợp đồng đã bị hủy trước khi ký hoặc kích hoạt. Các mốc không thể tiếp tục thực hiện.",
         }
       : getContractNextAction({
           contract,
@@ -907,7 +986,7 @@ export function ContractDetailPage() {
         <PageHeader
           eyebrow="CHI TIẾT HỢP ĐỒNG"
           title={contractTitle}
-          description="Thông tin chi tiết của hợp đồng, bao gồm các bên tham gia, trạng thái ký hợp đồng, NDA, mốc công việc, ngân sách và thời gian thực hiện."
+          description="Thông tin chi tiết của hợp đồng, bao gồm các bên tham gia, trạng thái ký hợp đồng, NDA, mốc, ngân sách và thời gian thực hiện."
           actions={
             <>
               <Button variant="secondary" onClick={openNdaPreview}>
@@ -958,9 +1037,9 @@ export function ContractDetailPage() {
               session?.role === "BUSINESS" && (
                 <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold leading-6 text-slate-700">
-                    Để Chuyên gia bắt đầu làm việc, bạn cần ký quỹ Cột mốc 1.
-                    Tiền sẽ được giữ trong Escrow và chỉ giải ngân sau khi bạn
-                    nghiệm thu.
+                    Để Chuyên gia bắt đầu làm việc, bạn cần ký quỹ Mốc 1. Tiền
+                    sẽ được giữ trong Escrow và chỉ giải ngân sau khi bạn nghiệm
+                    thu.
                   </p>
                   <LinkButton
                     to={`/app/contracts/${contract.contractId}/workspace?focus=milestone-deposit`}
@@ -976,7 +1055,7 @@ export function ContractDetailPage() {
       {changeRequests.length > 0 && (
         <Card className="p-5">
           <SectionHeading
-            title="Yêu cầu thay đổi hợp đồng"
+            title="Yêu cầu thay đổi về cột mốc của hợp đồng"
             description="Các thay đổi chỉ có hiệu lực sau khi bên còn lại chấp nhận."
           />
           <div className="mt-4 space-y-3">
@@ -1090,16 +1169,16 @@ export function ContractDetailPage() {
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <ContractMetric
-              label="Tổng ngân sách"
-              value={formatCurrency(contract.totalBudget)}
+              label={`Tổng ngân sách${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
+              value={formatCurrency(displayedContractBudget)}
             />
             <ContractMetric
-              label={`Ký quỹ ${currentDepositPercentage}%`}
+              label={`Ký quỹ ${currentDepositPercentage}% (theo tổng ngân sách ban đầu)`}
               value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
-              label="Timeline"
-              value={formatTimelineWeeks(contract.timelineDays)}
+              label={`Timeline${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+              value={displayedTimelineLabel}
             />
             <ContractMetric
               label="Ngày tạo hợp đồng"
@@ -1157,7 +1236,7 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl border border-slate-100 bg-white p-5">
             <SectionHeading
               title="Nội dung hợp đồng"
-              description="Hiển thị thông tin chi tiết của hợp đồng, chữ ký/xác thực của hai bên và các mốc công việc."
+              description="Hiển thị thông tin chi tiết của hợp đồng, chữ ký/xác thực của hai bên và các mốc."
             />
             <div className="mt-4 border-b border-slate-100 pb-4 text-center">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
@@ -1169,18 +1248,21 @@ export function ContractDetailPage() {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-4">
               <ContractMetric
-                label="Giá trị hợp đồng"
-                value={formatCurrency(contract.totalBudget)}
+                label={`Giá trị hợp đồng${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
+                value={formatCurrency(displayedContractBudget)}
               />
               <ContractMetric
-                label={`Ký quỹ ${currentDepositPercentage}%`}
+                label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách ban đầu)`}
                 value={formatCurrency(currentDepositAmount)}
               />
               <ContractMetric
-                label="Thời hạn"
-                value={formatTimelineWeeks(contract.timelineDays)}
+                label={`Thời hạn${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+                value={displayedTimelineLabel}
               />
-              <ContractMetric label="Timeline" value={contractTimelineLabel} />
+              <ContractMetric
+                label={`Timeline${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+                value={contractTimelineLabel}
+              />
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SignatureBlock
@@ -1221,7 +1303,7 @@ export function ContractDetailPage() {
               className="mt-4"
             >
               {contractStatus === "ACTIVE"
-                ? "Hợp đồng đã hoạt động, ngân sách cột mốc và trạng thái công việc đã được hệ thống cập nhật."
+                ? "Hợp đồng đã hoạt động, ngân sách mốc và trạng thái công việc đã được hệ thống cập nhật."
                 : readyToActivate
                   ? "Doanh nghiệp và Chuyên gia đã hoàn tất hợp đồng cùng NDA. Doanh nghiệp có thể tiếp tục ký quỹ để kích hoạt luồng làm việc."
                   : "Bên đã ký sẽ được ghi nhận ngay khi backend trả thời điểm ký/xác thực."}
@@ -1262,12 +1344,12 @@ export function ContractDetailPage() {
 
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
-              title="Mốc công việc"
+              title="Mốc"
               description="Các ngân sách chốt được tạo từ dự án và proposal đã được chấp nhận."
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
-                    Tổng thời gian milestone
+                    Tổng thời gian mốc
                   </p>
                   <p className="mt-1 font-display text-lg font-black text-ink">
                     {totalMilestoneDurationLabel}
@@ -1506,7 +1588,9 @@ export function ContractDetailPage() {
             <Button
               onClick={submitChangeRequest}
               loading={changeRequestLoading}
-              disabled={!changeForm.changeSummary.trim()}
+              disabled={
+                !changeForm.milestoneId || !changeForm.changeSummary.trim()
+              }
             >
               Gửi yêu cầu
             </Button>
@@ -1514,255 +1598,157 @@ export function ContractDetailPage() {
         }
       >
         <div className="grid gap-5">
-          <Field label="Bạn muốn thay đổi gì?">
-            <select
-              className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-3 font-semibold text-ink"
-              value={changeForm.changeType}
-              onChange={(event) =>
-                setChangeForm((value) => ({
-                  ...value,
-                  changeType: event.target.value,
-                  milestoneId: "",
-                }))
-              }
-            >
-              <option value="CONTRACT">
-                Thông tin chung của hợp đồng (phạm vi, ngân sách, timeline)
-              </option>
-              <option value="MILESTONE">
-                Một milestone sắp tới chưa bắt đầu
-              </option>
-            </select>
-          </Field>
-          {changeForm.changeType === "CONTRACT" ? (
-            <>
-              <Notice tone="info" title="Thay đổi hợp đồng">
-                Đề xuất phạm vi, tổng ngân sách hoặc tổng thời gian mới. Bên còn
-                lại cần chấp nhận trước khi áp dụng.
-              </Notice>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-extrabold text-ink">
-                  Thông tin hiện tại của hợp đồng
-                </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                      Tổng ngân sách hiện tại
-                    </p>
-                    <p className="mt-1 font-extrabold text-ink">
-                      {formatCurrency(contract?.totalBudget || 0)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                      Thời lượng hiện tại
-                    </p>
-                    <p className="mt-1 font-extrabold text-ink">
-                      {formatTimelineWeeks(contract?.timelineDays)}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Phạm vi hiện tại
+          <>
+            <Notice tone="warning" title="Chỉ các mốc chưa bắt đầu">
+              Các mốc đã hoàn thành, đang thực hiện hoặc đã giải ngân escrow
+              không thể được thay đổi.
+            </Notice>
+            <Field label="Chọn mốc cần thay đổi">
+              <select
+                className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-3 font-semibold text-ink"
+                value={changeForm.milestoneId}
+                onChange={(event) => {
+                  const item = contractMilestoneViews.find(
+                    (milestone) =>
+                      milestone.contractMilestoneId ===
+                      Number(event.target.value),
+                  );
+                  setChangeForm((value) => ({
+                    ...value,
+                    milestoneId: event.target.value,
+                    milestoneName: item?.milestoneName || "",
+                    milestoneDescription: item?.description || "",
+                    milestoneDuration: String(item?.duration || ""),
+                    milestoneBudget: String(item?.finalBudget || ""),
+                  }));
+                }}
+              >
+                <option value="">-- Chọn mốc sắp tới --</option>
+                {contractMilestoneViews
+                  .filter(
+                    (milestone) =>
+                      !["COMPLETED", "IN_PROGRESS", "APPROVED"].includes(
+                        milestone.status.toUpperCase(),
+                      ) && !milestone.escrowReleasedAt,
+                  )
+                  .sort((a, b) => a.orderIndex - b.orderIndex)
+                  .map((milestone) => (
+                    <option
+                      key={milestone.contractMilestoneId}
+                      value={milestone.contractMilestoneId}
+                    >
+                      Mốc {milestone.orderIndex}: {milestone.milestoneName}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            {changeForm.milestoneId && (
+              <div className="grid gap-4 rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-sm font-extrabold text-ink">
+                    Thông tin hiện tại của mốc
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-slate-700">
-                    {contract?.contractScope || "Chưa có thông tin phạm vi."}
-                  </p>
-                </div>
-              </div>
-              <Field label="Phạm vi đề xuất">
-                <Textarea
-                  value={changeForm.proposedScope}
-                  onChange={(event) =>
-                    setChangeForm((value) => ({
-                      ...value,
-                      proposedScope: event.target.value,
-                    }))
-                  }
-                  placeholder="Nêu rõ phần việc cần thêm, bớt hoặc điều chỉnh..."
-                />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Tổng ngân sách mới (VND)">
-                  <Input
-                    type="number"
-                    value={changeForm.proposedBudget}
-                    onChange={(event) =>
-                      setChangeForm((value) => ({
-                        ...value,
-                        proposedBudget: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="Timeline mới (tuần)">
-                  <Input
-                    type="number"
-                    value={changeForm.proposedTimelineDays}
-                    onChange={(event) =>
-                      setChangeForm((value) => ({
-                        ...value,
-                        proposedTimelineDays: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-              </div>
-            </>
-          ) : (
-            <>
-              <Notice tone="warning" title="Chỉ các mốc chưa bắt đầu">
-                Các milestone đã hoàn thành, đang thực hiện hoặc đã giải ngân
-                escrow không thể được thay đổi.
-              </Notice>
-              <Field label="Chọn milestone cần thay đổi">
-                <select
-                  className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-3 font-semibold text-ink"
-                  value={changeForm.milestoneId}
-                  onChange={(event) => {
-                    const item = contractMilestoneViews.find(
-                      (milestone) =>
-                        milestone.contractMilestoneId ===
-                        Number(event.target.value),
-                    );
-                    setChangeForm((value) => ({
-                      ...value,
-                      milestoneId: event.target.value,
-                      milestoneName: item?.milestoneName || "",
-                      milestoneDescription: item?.description || "",
-                      milestoneDuration: String(item?.duration || ""),
-                      milestoneBudget: String(item?.finalBudget || ""),
-                    }));
-                  }}
-                >
-                  <option value="">-- Chọn mốc sắp tới --</option>
-                  {contractMilestoneViews
-                    .filter(
-                      (milestone) =>
-                        !["COMPLETED", "IN_PROGRESS", "APPROVED"].includes(
-                          milestone.status.toUpperCase(),
-                        ) && !milestone.escrowReleasedAt,
-                    )
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map((milestone) => (
-                      <option
-                        key={milestone.contractMilestoneId}
-                        value={milestone.contractMilestoneId}
-                      >
-                        Mốc {milestone.orderIndex}: {milestone.milestoneName}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              {changeForm.milestoneId && (
-                <div className="grid gap-4 rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-sm font-extrabold text-ink">
-                      Thông tin hiện tại của milestone
-                    </p>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                          Ngân sách hiện tại
-                        </p>
-                        <p className="mt-1 font-extrabold text-ink">
-                          {formatCurrency(
-                            selectedChangeMilestone?.finalBudget || 0,
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                          Thời lượng hiện tại
-                        </p>
-                        <p className="mt-1 font-extrabold text-ink">
-                          {selectedChangeMilestone?.duration || 0}{" "}
-                          {selectedChangeMilestone?.durationUnit === "WEEK"
-                            ? "tuần"
-                            : selectedChangeMilestone?.durationUnit || ""}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                        Tiêu chí nghiệm thu hiện tại
+                        Ngân sách hiện tại
                       </p>
-                      {selectedChangeCriteria.length ? (
-                        <ul className="mt-2 space-y-1 text-sm font-medium text-slate-700">
-                          {selectedChangeCriteria.map((criterion, index) => (
-                            <li
-                              key={`${criterion}-${index}`}
-                              className="flex gap-2"
-                            >
-                              <span className="text-brand-600">•</span>
-                              <span>{criterion}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 text-sm font-medium text-slate-500">
-                          Chưa có tiêu chí được khai báo.
-                        </p>
-                      )}
+                      <p className="mt-1 font-extrabold text-ink">
+                        {formatCurrency(
+                          selectedChangeMilestone?.finalBudget || 0,
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        Thời lượng hiện tại
+                      </p>
+                      <p className="mt-1 font-extrabold text-ink">
+                        {selectedChangeMilestone?.duration || 0}{" "}
+                        {selectedChangeMilestone?.durationUnit === "WEEK"
+                          ? "tuần"
+                          : selectedChangeMilestone?.durationUnit || ""}
+                      </p>
                     </div>
                   </div>
-                  <div className="border-t border-brand-100 pt-4">
-                    <p className="mb-3 text-sm font-extrabold text-brand-700">
-                      Thông tin bạn đề xuất thay đổi
+                  <div className="mt-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                      Tiêu chí nghiệm thu hiện tại
                     </p>
-                    <Field label="Mô tả / deliverable mới">
-                      <Textarea
+                    {selectedChangeCriteria.length ? (
+                      <ul className="mt-2 space-y-1 text-sm font-medium text-slate-700">
+                        {selectedChangeCriteria.map((criterion, index) => (
+                          <li
+                            key={`${criterion}-${index}`}
+                            className="flex gap-2"
+                          >
+                            <span className="text-brand-600">•</span>
+                            <span>{criterion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm font-medium text-slate-500">
+                        Chưa có tiêu chí được khai báo.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="border-t border-brand-100 pt-4">
+                  <p className="mb-3 text-sm font-extrabold text-brand-700">
+                    Thông tin bạn đề xuất thay đổi
+                  </p>
+                  <Field label="Mô tả / deliverable mới">
+                    <Textarea
+                      value={
+                        changeForm.milestoneDescription ||
+                        selectedChangeMilestone?.description ||
+                        ""
+                      }
+                      onChange={(event) =>
+                        setChangeForm((value) => ({
+                          ...value,
+                          milestoneDescription: event.target.value,
+                        }))
+                      }
+                    />
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Ngân sách mốc mới (VND)">
+                      <Input
+                        type="number"
                         value={
-                          changeForm.milestoneDescription ||
-                          selectedChangeMilestone?.description ||
-                          ""
+                          changeForm.milestoneBudget ||
+                          String(selectedChangeMilestone?.finalBudget || "")
                         }
                         onChange={(event) =>
                           setChangeForm((value) => ({
                             ...value,
-                            milestoneDescription: event.target.value,
+                            milestoneBudget: event.target.value,
                           }))
                         }
                       />
                     </Field>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="Ngân sách milestone mới (VND)">
-                        <Input
-                          type="number"
-                          value={
-                            changeForm.milestoneBudget ||
-                            String(selectedChangeMilestone?.finalBudget || "")
-                          }
-                          onChange={(event) =>
-                            setChangeForm((value) => ({
-                              ...value,
-                              milestoneBudget: event.target.value,
-                            }))
-                          }
-                        />
-                      </Field>
-                      <Field label="Thời lượng mới (tuần)">
-                        <Input
-                          type="number"
-                          value={
-                            changeForm.milestoneDuration ||
-                            String(selectedChangeMilestone?.duration || "")
-                          }
-                          onChange={(event) =>
-                            setChangeForm((value) => ({
-                              ...value,
-                              milestoneDuration: event.target.value,
-                            }))
-                          }
-                        />
-                      </Field>
-                    </div>
+                    <Field label="Thời lượng mới (tuần)">
+                      <Input
+                        type="number"
+                        value={
+                          changeForm.milestoneDuration ||
+                          String(selectedChangeMilestone?.duration || "")
+                        }
+                        onChange={(event) =>
+                          setChangeForm((value) => ({
+                            ...value,
+                            milestoneDuration: event.target.value,
+                          }))
+                        }
+                      />
+                    </Field>
                   </div>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </>
           <Field label="Tóm tắt lý do thay đổi">
             <Textarea
               value={changeForm.changeSummary}
@@ -1828,28 +1814,173 @@ export function ContractDetailPage() {
             <div className="flex flex-wrap items-center justify-end gap-3">
               <StatusBadge status={viewingChangeRequest.status} />
             </div>
-            <Field label="Bạn muốn thay đổi gì?"><Input disabled value={viewingChangeRequest.changeType === "MILESTONE" ? "Một mốc sắp tới chưa bắt đầu" : "Thông tin hợp đồng"} /></Field>
+            <Field label="Bạn muốn thay đổi gì?">
+              <Input
+                disabled
+                value={
+                  viewingChangeRequest.changeType === "MILESTONE"
+                    ? "Một mốc sắp tới chưa bắt đầu"
+                    : "Thông tin hợp đồng"
+                }
+              />
+            </Field>
             {viewingChangeRequest.changeType === "MILESTONE" ? (
               <>
-                <Field label="Mốc cần thay đổi"><Input disabled value={viewingCurrentMilestone ? `Mốc ${viewingCurrentMilestone.orderIndex}: ${viewingCurrentMilestone.milestoneName}` : viewingProposedMilestone?.milestoneName || "Mốc đã chọn"} /></Field>
+                <Field label="Mốc cần thay đổi">
+                  <Input
+                    disabled
+                    value={
+                      viewingCurrentMilestone
+                        ? `Mốc ${viewingCurrentMilestone.orderIndex}: ${viewingCurrentMilestone.milestoneName}`
+                        : viewingProposedMilestone?.milestoneName ||
+                          "Mốc đã chọn"
+                    }
+                  />
+                </Field>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="font-extrabold text-ink">Thông tin hiện tại của mốc</p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2"><p className="text-sm text-slate-700">Ngân sách hiện tại: <strong>{formatCurrency(viewingCurrentMilestone?.finalBudget || 0)}</strong></p><p className="text-sm text-slate-700">Thời lượng hiện tại: <strong>{viewingCurrentMilestone?.duration || 0} tuần</strong></p></div>
-                  <p className="mt-3 text-sm text-slate-700">Mô tả / deliverable hiện tại</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{viewingCurrentMilestone?.description || "Chưa có mô tả."}</p>
+                  <p className="font-extrabold text-ink">
+                    Thông tin hiện tại của mốc
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <p className="text-sm text-slate-700">
+                      Ngân sách hiện tại:{" "}
+                      <strong>
+                        {formatCurrency(
+                          viewingCurrentMilestone?.finalBudget || 0,
+                        )}
+                      </strong>
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      Thời lượng hiện tại:{" "}
+                      <strong>
+                        {viewingCurrentMilestone?.duration || 0} tuần
+                      </strong>
+                    </p>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-700">
+                    Mô tả / deliverable hiện tại
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                    {viewingCurrentMilestone?.description || "Chưa có mô tả."}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4"><p className="mb-3 font-extrabold text-brand-700">Thông tin mới được đề xuất</p><Field label="Mô tả / deliverable mới"><Textarea disabled value={viewingProposedMilestone?.description || viewingCurrentMilestone?.description || ""} /></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Ngân sách mốc mới (VND)"><Input disabled value={viewingProposedMilestone?.finalBudget ? formatCurrency(viewingProposedMilestone.finalBudget) : "Không thay đổi"} /></Field><Field label="Thời lượng mới"><Input disabled value={viewingProposedMilestone?.duration ? `${viewingProposedMilestone.duration} tuần` : "Không thay đổi"} /></Field></div></div>
+                <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+                  <p className="mb-3 font-extrabold text-brand-700">
+                    Thông tin mới được đề xuất
+                  </p>
+                  <Field label="Mô tả / deliverable mới">
+                    <Textarea
+                      disabled
+                      value={
+                        viewingProposedMilestone?.description ||
+                        viewingCurrentMilestone?.description ||
+                        ""
+                      }
+                    />
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Ngân sách mốc mới (VND)">
+                      <Input
+                        disabled
+                        value={
+                          viewingProposedMilestone?.finalBudget
+                            ? formatCurrency(
+                                viewingProposedMilestone.finalBudget,
+                              )
+                            : "Không thay đổi"
+                        }
+                      />
+                    </Field>
+                    <Field label="Thời lượng mới">
+                      <Input
+                        disabled
+                        value={
+                          viewingProposedMilestone?.duration
+                            ? `${viewingProposedMilestone.duration} tuần`
+                            : "Không thay đổi"
+                        }
+                      />
+                    </Field>
+                  </div>
+                </div>
               </>
             ) : (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="font-extrabold text-ink">Thông tin hiện tại của hợp đồng</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><p className="text-sm text-slate-700">Ngân sách hiện tại: <strong>{formatCurrency(contract?.totalBudget || 0)}</strong></p><p className="text-sm text-slate-700">Thời lượng hiện tại: <strong>{formatTimelineWeeks(contract?.timelineDays)}</strong></p></div><p className="mt-3 text-sm text-slate-700">Phạm vi hiện tại</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{contract?.contractScope || "Chưa có thông tin phạm vi."}</p></div>
-                <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4"><p className="mb-3 font-extrabold text-brand-700">Thông tin mới được đề xuất</p><Field label="Phạm vi mới"><Textarea disabled value={viewingChangeRequest.proposedScope || "Không thay đổi"} /></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Tổng ngân sách mới (VND)"><Input disabled value={viewingChangeRequest.proposedBudget ? formatCurrency(viewingChangeRequest.proposedBudget) : "Không thay đổi"} /></Field><Field label="Thời lượng mới"><Input disabled value={viewingChangeRequest.proposedTimelineDays ? formatTimelineWeeks(viewingChangeRequest.proposedTimelineDays) : "Không thay đổi"} /></Field></div></div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="font-extrabold text-ink">
+                    Thông tin hiện tại của hợp đồng
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <p className="text-sm text-slate-700">
+                      Ngân sách hiện tại:{" "}
+                      <strong>{formatCurrency(originalContractBudget)}</strong>
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      Thời lượng hiện tại:{" "}
+                      <strong>
+                        {formatTimelineWeeks(originalTimelineDays)}
+                      </strong>
+                    </p>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-700">
+                    Phạm vi hiện tại
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                    {contract?.contractScope || "Chưa có thông tin phạm vi."}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+                  <p className="mb-3 font-extrabold text-brand-700">
+                    Thông tin mới được đề xuất
+                  </p>
+                  <Field label="Phạm vi mới">
+                    <Textarea
+                      disabled
+                      value={
+                        viewingChangeRequest.proposedScope || "Không thay đổi"
+                      }
+                    />
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Tổng ngân sách mới (VND)">
+                      <Input
+                        disabled
+                        value={
+                          viewingChangeRequest.proposedBudget
+                            ? formatCurrency(
+                                viewingChangeRequest.proposedBudget,
+                              )
+                            : "Không thay đổi"
+                        }
+                      />
+                    </Field>
+                    <Field label="Thời lượng mới">
+                      <Input
+                        disabled
+                        value={
+                          viewingChangeRequest.proposedTimelineDays
+                            ? formatTimelineWeeks(
+                                viewingChangeRequest.proposedTimelineDays,
+                              )
+                            : "Không thay đổi"
+                        }
+                      />
+                    </Field>
+                  </div>
+                </div>
               </>
             )}
-            <Field label="Tóm tắt lý do thay đổi"><Textarea disabled value={viewingChangeRequest.changeSummary} /></Field>
+            <Field label="Tóm tắt lý do thay đổi">
+              <Textarea disabled value={viewingChangeRequest.changeSummary} />
+            </Field>
             {viewingChangeRequest.reviewNote && (
               <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-slate-700">
-                <p className="font-extrabold text-rose-700">Phản hồi của đối tác</p>
-                <p className="mt-1 whitespace-pre-wrap">{viewingChangeRequest.reviewNote}</p>
+                <p className="font-extrabold text-rose-700">
+                  Phản hồi của đối tác
+                </p>
+                <p className="mt-1 whitespace-pre-wrap">
+                  {viewingChangeRequest.reviewNote}
+                </p>
               </div>
             )}
           </div>
@@ -1948,8 +2079,8 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng contract"
-              value={formatCurrency(contract.totalBudget)}
+              label="Tổng contract ban đầu"
+              value={formatCurrency(originalContractBudget)}
             />
             <ContractMetric
               label={`Ký quỹ ${currentDepositPercentage}%`}

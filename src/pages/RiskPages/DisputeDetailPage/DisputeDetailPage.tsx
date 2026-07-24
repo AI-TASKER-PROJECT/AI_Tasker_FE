@@ -1070,7 +1070,7 @@ export function DisputeDetailPage({
 
           <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-              Cột mốc tranh chấp
+              Mốc tranh chấp
             </p>
             <p className="mt-2 text-sm font-extrabold leading-6 text-slate-800">
               {disputedMilestone?.milestoneName || "Chưa cập nhật"}
@@ -1094,7 +1094,7 @@ export function DisputeDetailPage({
           </Badge>
           {disputedMilestone?.dueAt && (
             <Badge tone="slate">
-              Hạn cột mốc: {formatDateTime(disputedMilestone.dueAt)}
+              Hạn mốc: {formatDateTime(disputedMilestone.dueAt)}
             </Badge>
           )}
           {disputedMilestone && (
@@ -1313,7 +1313,7 @@ export function DisputeDetailPage({
           <Card className="border border-slate-100 p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <SectionHeading
-                title="Cột mốc đang tranh chấp"
+                title="Mốc đang tranh chấp"
                 description="Thông tin gốc dùng để xác định phạm vi, thời hạn, ngân sách và kết quả cần bàn giao."
               />
               {disputedMilestone && (
@@ -1332,7 +1332,7 @@ export function DisputeDetailPage({
                 <div>
                   <p className="font-display text-xl font-black text-ink">
                     {disputedMilestone?.milestoneName ||
-                      "Cột mốc đang tranh chấp"}
+                      "Mốc đang tranh chấp"}
                   </p>
                   {disputedMilestone?.description ? (
                     <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
@@ -1340,7 +1340,7 @@ export function DisputeDetailPage({
                     </p>
                   ) : (
                     <p className="mt-3 text-sm font-medium text-slate-400">
-                      Chưa có mô tả chi tiết cho cột mốc này.
+                      Chưa có mô tả chi tiết cho mốc này.
                     </p>
                   )}
                 </div>
@@ -1561,7 +1561,7 @@ export function DisputeDetailPage({
               <Card className="border border-slate-100 p-6">
                 <SectionHeading
                   title="Tiêu chí nghiệm thu"
-                  description="Danh sách tiêu chí được dùng làm căn cứ đánh giá mức độ hoàn thành cột mốc."
+                  description="Danh sách tiêu chí được dùng làm căn cứ đánh giá mức độ hoàn thành mốc."
                 />
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -1588,7 +1588,7 @@ export function DisputeDetailPage({
                     <div className="md:col-span-2">
                       <EmptyState
                         title="Chưa tải được tiêu chí"
-                        description="Backend chưa trả về tiêu chí nghiệm thu cho cột mốc này."
+                        description="Backend chưa trả về tiêu chí nghiệm thu cho mốc này."
                       />
                     </div>
                   )}
@@ -1833,7 +1833,7 @@ export function DisputeDetailPage({
                       sortedDeliverables.length === 0 && (
                         <EmptyState
                           title="Chưa có bài nộp"
-                          description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến cột mốc này."
+                          description="Chưa tải được báo cáo tiến độ hoặc sản phẩm bàn giao liên quan đến mốc này."
                         />
                       )}
                   </div>

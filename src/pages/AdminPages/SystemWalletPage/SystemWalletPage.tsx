@@ -8,7 +8,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminApi } from "../../../lib/api";
-import { formatCurrency, formatDateTime, walletTypeLabel } from "../../../lib/utils";
+import {
+  formatCurrency,
+  formatDateTime,
+  walletTypeLabel,
+} from "../../../lib/utils";
 import {
   Badge,
   Button,
@@ -18,7 +22,11 @@ import {
   Tabs,
 } from "../../../components/ui";
 import { AdminMetric, WalletFact } from "../AdminPages.shared";
-import type { AdminAccount, SystemWallet, WalletTransaction } from "../../../types";
+import type {
+  AdminAccount,
+  SystemWallet,
+  WalletTransaction,
+} from "../../../types";
 
 // ── Constants ────────────────────────────────────────────────────────────────────
 
@@ -54,20 +62,20 @@ const TRANSACTION_CATEGORIES: CategoryDef[] = [
   },
   {
     id: "topup",
-    label: "Nạp tiền ví",
+    label: "Lịch sử nạp tiền của Chuyên gia/Doanh nghiệp",
     match: (tx) => tx.transactionType === "TOPUP",
     subTabs: [],
   },
   {
     id: "service-revenue",
-    label: "Mua dịch vụ / Doanh thu nền tảng",
+    label: "Mua gói thành viên / Mua lượt đăng bài/lượt nộp đề xuất",
     match: (tx) =>
       tx.transactionType === "MEMBERSHIP_PURCHASE" ||
       tx.transactionType === "CREDIT_PURCHASE",
     subTabs: [
       {
         id: "purchase",
-        label: "Mua dịch vụ",
+        label: "Mua gói thành viên",
         match: (tx) =>
           (tx.transactionType === "MEMBERSHIP_PURCHASE" ||
             tx.transactionType === "CREDIT_PURCHASE") &&
@@ -75,11 +83,8 @@ const TRANSACTION_CATEGORIES: CategoryDef[] = [
       },
       {
         id: "revenue",
-        label: "Doanh thu nền tảng",
-        match: (tx) =>
-          (tx.transactionType === "MEMBERSHIP_PURCHASE" ||
-            tx.transactionType === "CREDIT_PURCHASE") &&
-          tx.operationLeg === "PLATFORM_REVENUE_CREDIT",
+        label: "Mua lượt đăng bài/lượt nộp đề xuất",
+        match: (tx) => tx.transactionType === "CREDIT_PURCHASE",
       },
     ],
   },
@@ -110,7 +115,7 @@ const TRANSACTION_CATEGORIES: CategoryDef[] = [
   },
   {
     id: "milestone-escrow",
-    label: "Ký quỹ giai đoạn",
+    label: "Ký quỹ mốc",
     match: (tx) =>
       tx.transactionType === "MILESTONE_ESCROW_DEPOSIT" ||
       tx.transactionType === "MILESTONE_ESCROW_RELEASE" ||
@@ -118,7 +123,7 @@ const TRANSACTION_CATEGORIES: CategoryDef[] = [
     subTabs: [
       {
         id: "deposit",
-        label: "Ký quỹ giai đoạn",
+        label: "Ký quỹ mốc",
         match: (tx) => tx.transactionType === "MILESTONE_ESCROW_DEPOSIT",
       },
       {
@@ -196,9 +201,9 @@ function walletTransactionTypeLabel(type: string) {
     PLATFORM_REVENUE_CREDIT: "Doanh thu nền tảng",
     EXPERT_CONTRACT_DEPOSIT_HOLD: "Ký quỹ chuyên gia",
     EXPERT_CONTRACT_DEPOSIT_REFUND: "Hoàn ký quỹ chuyên gia",
-    MILESTONE_ESCROW_DEPOSIT: "Ký quỹ giai đoạn",
-    MILESTONE_ESCROW_RELEASE: "Giải ngân giai đoạn",
-    MILESTONE_ESCROW_REFUND: "Hoàn ký quỹ giai đoạn",
+    MILESTONE_ESCROW_DEPOSIT: "Ký quỹ mốc",
+    MILESTONE_ESCROW_RELEASE: "Giải ngân mốc",
+    MILESTONE_ESCROW_REFUND: "Hoàn ký quỹ mốc",
     MILESTONE_ESCROW_SETTLEMENT_PAYOUT: "Quyết toán cho chuyên gia",
     MILESTONE_ESCROW_SETTLEMENT_REFUND: "Quyết toán hoàn tiền",
     IMMEDIATE_TERMINATION_PENALTY: "Phạt chấm dứt",
@@ -208,8 +213,19 @@ function walletTransactionTypeLabel(type: string) {
 }
 
 function walletTransactionBadgeTone(type: string) {
-  const up: string[] = ["TOPUP", "PLATFORM_REVENUE_CREDIT", "DEPOSIT_REFUND", "WITHDRAW_REJECTED", "EXPERT_CONTRACT_DEPOSIT_REFUND"];
-  const down: string[] = ["MEMBERSHIP_PURCHASE", "CREDIT_PURCHASE", "WITHDRAW_APPROVED", "WITHDRAW_HOLD"];
+  const up: string[] = [
+    "TOPUP",
+    "PLATFORM_REVENUE_CREDIT",
+    "DEPOSIT_REFUND",
+    "WITHDRAW_REJECTED",
+    "EXPERT_CONTRACT_DEPOSIT_REFUND",
+  ];
+  const down: string[] = [
+    "MEMBERSHIP_PURCHASE",
+    "CREDIT_PURCHASE",
+    "WITHDRAW_APPROVED",
+    "WITHDRAW_HOLD",
+  ];
   if (up.includes(type)) return "mint" as const;
   if (down.includes(type)) return "amber" as const;
   if (type.includes("HOLD")) return "coral" as const;
@@ -234,7 +250,10 @@ function walletTransactionStatusLabel(status: string) {
 }
 
 function walletTransactionDisplayType(tx: WalletTransaction) {
-  return tx.transactionTypeLabel?.trim() || walletTransactionTypeLabel(tx.transactionType);
+  return (
+    tx.transactionTypeLabel?.trim() ||
+    walletTransactionTypeLabel(tx.transactionType)
+  );
 }
 
 function walletTransactionDisplayStatus(tx: WalletTransaction) {
@@ -253,30 +272,103 @@ function normalizePlatformHistory(history: WalletTransaction[]) {
   return history.filter(Boolean);
 }
 
-function categoryDisplayLabel(category: CategoryDef, transactions: WalletTransaction[]) {
+function categoryDisplayLabel(
+  category: CategoryDef,
+  transactions: WalletTransaction[],
+) {
   if (category.id === "all") return "Tất cả giao dịch";
-  return transactions.find((tx) => tx.transactionGroup === category.id)?.transactionGroupLabel?.trim() || category.label;
+  if (category.id === "service-revenue") return category.label;
+  return (
+    transactions
+      .find((tx) => tx.transactionGroup === category.id)
+      ?.transactionGroupLabel?.trim() || category.label
+  );
 }
 
-function subTabDisplayLabel(subTab: SubTabDef, transactions: WalletTransaction[]) {
-  return transactions.find((tx) => tx.transactionSubGroup === subTab.id)?.transactionSubGroupLabel?.trim() || subTab.label;
+function subTabDisplayLabel(
+  subTab: SubTabDef,
+  transactions: WalletTransaction[],
+) {
+  if (subTab.id === "purchase" || subTab.id === "revenue") {
+    return subTab.label;
+  }
+  return (
+    transactions
+      .find((tx) => tx.transactionSubGroup === subTab.id)
+      ?.transactionSubGroupLabel?.trim() || subTab.label
+  );
 }
 
-function walletTransactionPartyLabel(tx: WalletTransaction) {
+type PartyDisplayMode = "default" | "platform";
+
+function accountDisplayName(account?: AdminAccount) {
+  return account?.fullName?.trim() || account?.email;
+}
+
+function findAccountNameByIds(
+  accounts: AdminAccount[],
+  accountIds: Array<number | undefined>,
+  roles?: string[],
+) {
+  for (const id of accountIds) {
+    if (!id) continue;
+    const account = accounts.find(
+      (a) => a.accountId === id && (!roles || roles.includes(a.role)),
+    );
+    const name = accountDisplayName(account);
+    if (name) return name;
+  }
+  return undefined;
+}
+
+function walletTransactionPartyLabel(
+  tx: WalletTransaction,
+  mode: PartyDisplayMode = "default",
+) {
+  if (mode === "platform") return "Nền tảng";
   if (tx.counterpartyLabel?.trim()) return tx.counterpartyLabel;
   if (tx.counterpartyRole === "BUSINESS") return "Doanh nghiệp";
   if (tx.counterpartyRole === "EXPERT") return "Chuyên gia";
-  if (tx.counterpartyRole === "ADMIN" || tx.counterpartyRole === "STAFF") return "Nội bộ";
-  return tx.counterpartyName?.trim() || tx.businessName?.trim() || tx.expertName?.trim() || "—";
+  if (tx.counterpartyRole === "ADMIN" || tx.counterpartyRole === "STAFF")
+    return "Nội bộ";
+  return (
+    tx.counterpartyName?.trim() ||
+    tx.businessName?.trim() ||
+    tx.expertName?.trim() ||
+    "—"
+  );
 }
 
-function walletTransactionPartyName(tx: WalletTransaction, accounts: AdminAccount[]) {
+function walletTransactionPartyName(
+  tx: WalletTransaction,
+  accounts: AdminAccount[],
+  mode: PartyDisplayMode = "default",
+) {
+  if (mode === "platform") {
+    const platformAccountName = findAccountNameByIds(
+      accounts,
+      [tx.accountId, tx.actorAccountId, tx.counterpartyAccountId],
+      ["ADMIN", "STAFF"],
+    );
+    return (
+      tx.adminName?.trim() ||
+      platformAccountName ||
+      (tx.actorRole === "ADMIN" || tx.actorRole === "STAFF"
+        ? tx.actorName?.trim()
+        : undefined) ||
+      "Nền tảng"
+    );
+  }
+
   if (tx.counterpartyName?.trim()) return tx.counterpartyName;
   if (tx.businessName?.trim()) return tx.businessName;
   if (tx.expertName?.trim()) return tx.expertName;
   if (tx.adminName?.trim()) return tx.adminName;
   const acc = accounts.find((a) => a.accountId === tx.counterpartyAccountId);
-  return acc?.fullName?.trim() ?? acc?.email ?? (tx.counterpartyRole === "BUSINESS" ? "Doanh nghiệp" : "Chuyên gia");
+  return (
+    accountDisplayName(acc) ??
+    (tx.counterpartyRole === "BUSINESS" ? "Doanh nghiệp" : "Chuyên gia")
+  );
 }
 
 // ── Row component ─────────────────────────────────────────────────────────────────
@@ -284,9 +376,11 @@ function walletTransactionPartyName(tx: WalletTransaction, accounts: AdminAccoun
 function TransactionRow({
   tx,
   accounts,
+  partyMode = "default",
 }: {
   tx: WalletTransaction;
   accounts: AdminAccount[];
+  partyMode?: PartyDisplayMode;
 }) {
   const transactionId = tx.transactionId ?? tx.id;
 
@@ -318,10 +412,10 @@ function TransactionRow({
 
       <div className="grid gap-1 text-sm">
         <span className="text-xs font-bold text-slate-400">
-          {walletTransactionPartyLabel(tx)}
+          {walletTransactionPartyLabel(tx, partyMode)}
         </span>
         <span className="truncate font-extrabold text-slate-600">
-          {walletTransactionPartyName(tx, accounts)}
+          {walletTransactionPartyName(tx, accounts, partyMode)}
         </span>
       </div>
 
@@ -403,6 +497,7 @@ function Pagination({
 function TransactionList({
   transactions,
   accounts,
+  partyMode = "default",
   page,
   pageCount,
   onPageChange,
@@ -410,6 +505,7 @@ function TransactionList({
 }: {
   transactions: WalletTransaction[];
   accounts: AdminAccount[];
+  partyMode?: PartyDisplayMode;
   page: number;
   pageCount: number;
   onPageChange: (p: number) => void;
@@ -430,7 +526,12 @@ function TransactionList({
       ) : (
         <div className="divide-y divide-slate-100">
           {transactions.map((t) => (
-            <TransactionRow key={t.transactionId ?? t.id} tx={t} accounts={accounts} />
+            <TransactionRow
+              key={t.transactionId ?? t.id}
+              tx={t}
+              accounts={accounts}
+              partyMode={partyMode}
+            />
           ))}
         </div>
       )}
@@ -478,43 +579,73 @@ export function SystemWalletPage() {
     void Promise.resolve().then(() => load());
   }, [load]);
 
-  const normalizedLedger = useMemo(() => normalizePlatformHistory(ledger), [ledger]);
-  const normalizedUserActivity = useMemo(() => normalizePlatformHistory(userActivity), [userActivity]);
+  const normalizedLedger = useMemo(
+    () => normalizePlatformHistory(ledger),
+    [ledger],
+  );
+  const normalizedUserActivity = useMemo(
+    () => normalizePlatformHistory(userActivity),
+    [userActivity],
+  );
 
   // Category + sub-tab filtering
   const selectedCategory = useMemo(
-    () => TRANSACTION_CATEGORIES.find((c) => c.id === selectedCategoryId) ?? TRANSACTION_CATEGORIES[0],
+    () =>
+      TRANSACTION_CATEGORIES.find((c) => c.id === selectedCategoryId) ??
+      TRANSACTION_CATEGORIES[0],
     [selectedCategoryId],
   );
 
   const filteredUserActivity = useMemo(() => {
     if (selectedCategory.id === "all") return normalizedUserActivity;
-    const categoryFiltered = normalizedUserActivity.filter(selectedCategory.match);
-    if (!activeSubTab || selectedCategory.subTabs.length === 0) return categoryFiltered;
+    const categoryFiltered = normalizedUserActivity.filter(
+      selectedCategory.match,
+    );
+    if (!activeSubTab || selectedCategory.subTabs.length === 0)
+      return categoryFiltered;
     const subTab = selectedCategory.subTabs.find((s) => s.id === activeSubTab);
     if (!subTab) return categoryFiltered;
     return categoryFiltered.filter(subTab.match);
   }, [normalizedUserActivity, selectedCategory, activeSubTab]);
 
   const selectedCategoryTransactions = useMemo(
-    () => (selectedCategory.id === "all" ? normalizedUserActivity : normalizedUserActivity.filter(selectedCategory.match)),
+    () =>
+      selectedCategory.id === "all"
+        ? normalizedUserActivity
+        : normalizedUserActivity.filter(selectedCategory.match),
     [normalizedUserActivity, selectedCategory],
   );
 
-  const ledgerPageCount = Math.max(1, Math.ceil(normalizedLedger.length / PAGE_SIZE));
-  const userActivityPageCount = Math.max(1, Math.ceil(filteredUserActivity.length / PAGE_SIZE));
+  const ledgerPageCount = Math.max(
+    1,
+    Math.ceil(normalizedLedger.length / PAGE_SIZE),
+  );
+  const userActivityPageCount = Math.max(
+    1,
+    Math.ceil(filteredUserActivity.length / PAGE_SIZE),
+  );
 
   const visibleLedger = useMemo(
-    () => normalizedLedger.slice((ledgerPage - 1) * PAGE_SIZE, ledgerPage * PAGE_SIZE),
+    () =>
+      normalizedLedger.slice(
+        (ledgerPage - 1) * PAGE_SIZE,
+        ledgerPage * PAGE_SIZE,
+      ),
     [normalizedLedger, ledgerPage],
   );
   const visibleUserActivity = useMemo(
-    () => filteredUserActivity.slice((userActivityPage - 1) * PAGE_SIZE, userActivityPage * PAGE_SIZE),
+    () =>
+      filteredUserActivity.slice(
+        (userActivityPage - 1) * PAGE_SIZE,
+        userActivityPage * PAGE_SIZE,
+      ),
     [filteredUserActivity, userActivityPage],
   );
 
   const successfulPlatformTransactionCount = useMemo(
-    () => normalizedLedger.filter((tx) => walletTransactionIsSuccessful(tx.status)).length,
+    () =>
+      normalizedLedger.filter((tx) => walletTransactionIsSuccessful(tx.status))
+        .length,
     [normalizedLedger],
   );
 
@@ -566,7 +697,10 @@ export function SystemWalletPage() {
               description="Số liệu ví sau lần đồng bộ gần nhất."
             />
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <WalletFact label="Loại ví" value={walletTypeLabel(wallet.walletType)} />
+              <WalletFact
+                label="Loại ví"
+                value={walletTypeLabel(wallet.walletType)}
+              />
               <WalletFact
                 label="Doanh thu khả dụng"
                 value={formatCurrency(wallet.availableBalance)}
@@ -619,6 +753,7 @@ export function SystemWalletPage() {
                   <TransactionList
                     transactions={visibleLedger}
                     accounts={accounts}
+                    partyMode="platform"
                     page={ledgerPage}
                     pageCount={ledgerPageCount}
                     onPageChange={setLedgerPage}
@@ -642,8 +777,12 @@ export function SystemWalletPage() {
                     value={selectedCategoryId}
                     onChange={(e) => {
                       setSelectedCategoryId(e.target.value);
-                      const cat = TRANSACTION_CATEGORIES.find((c) => c.id === e.target.value);
-                      setActiveSubTab(cat && cat.subTabs.length > 0 ? cat.subTabs[0].id : "");
+                      const cat = TRANSACTION_CATEGORIES.find(
+                        (c) => c.id === e.target.value,
+                      );
+                      setActiveSubTab(
+                        cat && cat.subTabs.length > 0 ? cat.subTabs[0].id : "",
+                      );
                       setUserActivityPage(1);
                     }}
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:w-auto"

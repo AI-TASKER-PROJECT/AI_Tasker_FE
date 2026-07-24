@@ -30,7 +30,7 @@ export function NewDisputePage() {
       !Number.isFinite(milestoneId) ||
       milestoneId <= 0
     ) {
-      setMessage("Vui lòng chọn hợp đồng và mốc nghiệm thu hợp lệ.");
+      setMessage("Vui lòng chọn hợp đồng và mốc hợp lệ.");
       return;
     }
 
@@ -48,7 +48,7 @@ export function NewDisputePage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Tao tranh chap"
-          description="Tao dispute theo contract va milestone dung voi endpoint backend hien co."
+          description="Tạo dispute theo contract và mốc đúng với endpoint backend hiện có."
         />
       </div>
 
@@ -74,7 +74,7 @@ export function NewDisputePage() {
                 required
               />
             </Field>
-            <Field label="Mốc nghiệm thu">
+            <Field label="Mốc">
               <Input
                 type="number"
                 min={1}

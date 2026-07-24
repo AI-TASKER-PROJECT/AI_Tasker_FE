@@ -306,7 +306,7 @@ export function getContractNextAction({
       tone: "danger",
       title: "Hợp đồng đã bị hủy ngang.",
       description:
-        "Hợp đồng đã chấm dứt ngay theo yêu cầu đơn phương. Các milestone và thao tác tiếp theo đã được khóa; khoản bồi thường đã được xử lý theo quy định hệ thống.",
+        "Hợp đồng đã chấm dứt ngay theo yêu cầu đơn phương. Các mốc và thao tác tiếp theo đã được khóa; khoản bồi thường đã được xử lý theo quy định hệ thống.",
     };
   }
   if (contractStatus === "CLOSED") {
@@ -321,14 +321,14 @@ export function getContractNextAction({
     return {
       tone: "success",
       title: "Hệ thống đang hoàn ký quỹ.",
-      description: "Tất cả cột mốc đã hoàn thành. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng.",
+      description: "Tất cả mốc đã hoàn thành. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng.",
     };
   }
   if (contractStatus === "CANCELLED") {
     return {
       tone: "danger",
       title: "Contract không còn tiếp tục thực hiện.",
-      description: `Hai bên không thể tiếp tục thực hiện các milestone.`,
+      description: `Hai bên không thể tiếp tục thực hiện các mốc.`,
     };
   }
   if (contractStatus === "PENDING") {
@@ -387,12 +387,12 @@ export function getContractNextAction({
       tone: underReviewCount > 0 && role === "BUSINESS" ? "warning" : "success",
       title:
         underReviewCount > 0 && role === "BUSINESS"
-          ? "Có milestone đang chờ nghiệm thu."
+          ? "Có mốc đang chờ nghiệm thu."
           : "Hợp đồng đang hoạt động.",
       description:
         underReviewCount > 0
-          ? `${underReviewCount} milestone đã có deliverable và đang Under Review.`
-          : "Chuyên gia có thể tiếp tục thực hiện các mốc nghiệm thu và gửi sản phẩm để doanh nghiệp nghiệm thu.",
+          ? `${underReviewCount} mốc đã có deliverable và đang Under Review.`
+          : "Chuyên gia có thể tiếp tục thực hiện các mốc và gửi sản phẩm để doanh nghiệp nghiệm thu.",
     };
   }
   return {

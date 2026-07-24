@@ -376,7 +376,7 @@ function disputeWorkspaceNotice(dispute?: Dispute) {
   const status = normalizeStatus(dispute?.status);
   const fallback = {
     title: dispute ? "Tranh chấp đang xử lý" : "Tranh chấp",
-    message: "Cột mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
+    message: "Mốc đang có tranh chấp. Vui lòng theo dõi trong màn chi tiết.",
   };
   const messages: Record<string, { title: string; message: string }> = {
     PENDING_SELF_RESOLVE: {
@@ -661,7 +661,7 @@ export function WorkspacePage() {
       setWorkspaceNotice({
         tone: "info",
         title: "Triển khai dự án",
-        message: "Hãy kí quỹ cột mốc để chuyên gia tiến hành làm việc.",
+        message: "Hãy kí quỹ mốc để chuyên gia tiến hành làm việc.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -673,9 +673,9 @@ export function WorkspacePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkspaceNotice({
       tone: "info",
-      title: "Bước tiếp theo: ký quỹ cột mốc",
+      title: "Bước tiếp theo: ký quỹ mốc",
       message:
-        "Doanh nghiệp cần ký quỹ từng cột mốc để Chuyên gia có thể bắt đầu thực hiện công việc.",
+        "Doanh nghiệp cần ký quỹ từng mốc để Chuyên gia có thể bắt đầu thực hiện công việc.",
     });
   }, [shouldFocusMilestoneDeposit]);
 
@@ -797,7 +797,7 @@ export function WorkspacePage() {
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
         tone: "danger",
-        title: "Không xác định được cột mốc cần xử lý.",
+        title: "Không xác định được mốc cần xử lý.",
       });
       return;
     }
@@ -814,12 +814,12 @@ export function WorkspacePage() {
         actionKey === "deposit"
           ? `Đã ký quỹ thành công ${formatCurrency(
               getMilestoneBudget(milestone),
-            )} cho Cột mốc ${milestone.orderIndex}. Chuyên gia có thể bắt đầu thực hiện công việc.`
+            )} cho Mốc ${milestone.orderIndex}. Chuyên gia có thể bắt đầu thực hiện công việc.`
           : undefined;
       if (actionKey === "deposit") {
         setWorkspaceNotice({
           tone: "success",
-          title: "Ký quỹ cột mốc thành công",
+          title: "Ký quỹ mốc thành công",
           message: successMessage,
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -854,7 +854,7 @@ export function WorkspacePage() {
     if (deliverableForm.type === "FINAL" && deadlineExceeded) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
-        title: "Cột mốc đã quá hạn nộp sản phẩm.",
+        title: "Mốc đã quá hạn nộp sản phẩm.",
         message: "Bạn không thể nộp final product hoặc upload source mới sau deadline. Hãy theo dõi luồng tranh chấp/xử lý quá hạn.",
       });
       return;
@@ -866,7 +866,7 @@ export function WorkspacePage() {
     ) {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "warning",
-        title: "Cột mốc đã có sản phẩm cuối cùng.",
+        title: "Mốc đã có sản phẩm cuối cùng.",
         message: "Không thể nộp thêm báo cáo tiến độ. Chỉ có thể nộp lại sản phẩm cuối cùng nếu cần chỉnh sửa.",
       });
       setDeliverableOpen(null);
@@ -955,8 +955,8 @@ export function WorkspacePage() {
             : "Đã nộp progress report cho Business theo dõi.",
         message:
           deliverableForm.type === "FINAL"
-            ? "Cột mốc đang chờ Business kiểm tra và nghiệm thu."
-            : "Báo cáo tiến độ đã được ghi nhận trong lịch sử cột mốc.",
+            ? "Mốc đang chờ Business kiểm tra và nghiệm thu."
+            : "Báo cáo tiến độ đã được ghi nhận trong lịch sử mốc.",
       });
     } catch (error) {
       setMilestoneNotice(sourceMilestoneId, {
@@ -1011,7 +1011,7 @@ export function WorkspacePage() {
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
         tone: "danger",
-        title: "Không xác định được cột mốc cần xác nhận báo cáo.",
+        title: "Không xác định được mốc cần xác nhận báo cáo.",
       });
       return;
     }
@@ -1055,7 +1055,7 @@ export function WorkspacePage() {
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
         tone: "danger",
-        title: "Không xác định được cột mốc cần nghiệm thu.",
+        title: "Không xác định được mốc cần nghiệm thu.",
       });
       return;
     }
@@ -1079,14 +1079,14 @@ export function WorkspacePage() {
         tone: "success",
         title: `Doanh nghiệp ${businessDisplayName} đã nghiệm thu sản phẩm cuối cùng.`,
         message: allMilestonesCompleted
-          ? "Tất cả cột mốc đã hoàn tất. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng."
-          : "Cột mốc đã hoàn tất nghiệm thu.",
+          ? "Tất cả mốc đã hoàn tất. Hệ thống đang đồng bộ hoàn ký quỹ và đóng hợp đồng."
+          : "Mốc đã hoàn tất nghiệm thu.",
       });
 
       if (allMilestonesCompleted) {
         setWorkspaceNotice({
           tone: "success",
-          title: "Tất cả cột mốc đã hoàn tất nghiệm thu.",
+          title: "Tất cả mốc đã hoàn tất nghiệm thu.",
           message: "Đang chuyển về trang hợp đồng để cập nhật trạng thái hoàn ký quỹ.",
         });
         window.dispatchEvent(new Event("aitasker:reload-wallet"));
@@ -1271,7 +1271,7 @@ export function WorkspacePage() {
       await refreshAfterAction();
       setWorkspaceNotice({
         tone: "success",
-        title: "Đã cập nhật trạng thái quá hạn của các cột mốc.",
+        title: "Đã cập nhật trạng thái quá hạn của các mốc.",
       });
     } catch (error) {
       setWorkspaceNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -1327,7 +1327,7 @@ export function WorkspacePage() {
         tone: "success",
         title: "Da dong y huy contract.",
         message:
-          "Hợp đồng đã được hủy. Các cột mốc chưa hoàn thành sẽ được hoàn tiền cho Doanh nghiệp nếu cột mốc đó đang giữ ký quỹ.",
+          "Hợp đồng đã được hủy. Các mốc chưa hoàn thành sẽ được hoàn tiền cho Doanh nghiệp nếu mốc đó đang giữ ký quỹ.",
       });
     } catch (error) {
       setWorkspaceNotice({
@@ -1344,7 +1344,7 @@ export function WorkspacePage() {
     if (
       decision === "cancel" &&
       !window.confirm(
-        "Hủy hợp đồng ngay và hoàn tiền các các cột mốc chưa hoàn thành? Hành động này sẽ khóa hợp đồng.",
+        "Hủy hợp đồng ngay và hoàn tiền các mốc chưa hoàn thành? Hành động này sẽ khóa hợp đồng.",
       )
     ) {
       return;
@@ -1412,8 +1412,8 @@ export function WorkspacePage() {
         tone: "success",
         title:
           updated.length > 0
-            ? `Đã tự động nghiệm thu ${updated.length} cột mốc quá thời gian phản hồi.`
-            : "Chưa có cột mốc nào đủ điều kiện tự động nghiệm thu.",
+            ? `Đã tự động nghiệm thu ${updated.length} mốc quá thời gian phản hồi.`
+            : "Chưa có mốc nào đủ điều kiện tự động nghiệm thu.",
       });
     } catch (error) {
       setWorkspaceNotice({
@@ -1511,7 +1511,7 @@ export function WorkspacePage() {
             contract.title ||
             "Hợp đồng chưa có tên"
             }`}
-          description="Business ký quỹ từng cột mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
+          description="Business ký quỹ từng mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
           actions={
             <div className="flex flex-wrap gap-2">
               {session?.role === "ADMIN" && (
@@ -1540,7 +1540,7 @@ export function WorkspacePage() {
                   disabled={!canUseAbruptTermination}
                   title={
                     hasAbruptTerminationBlockedMilestone
-                      ? "Không thể hủy ngang khi có cột mốc đang nghiệm thu hoặc tranh chấp."
+                      ? "Không thể hủy ngang khi có mốc đang nghiệm thu hoặc tranh chấp."
                       : undefined
                   }
                   onClick={() => setAbruptTerminationOpen(true)}
@@ -1581,8 +1581,8 @@ export function WorkspacePage() {
           className="mt-2"
         >
           {session?.role === "BUSINESS"
-            ? `Còn ${counts.pending} cột mốc chưa được ký quỹ. Hãy ký quỹ từng cột mốc để Chuyên gia có thể bắt đầu thực hiện.`
-            : `Còn ${counts.pending} cột mốc đang chờ Doanh nghiệp ký quỹ. Bạn chỉ có thể bắt đầu nộp sản phẩm sau khi cột mốc được ký quỹ.`}
+            ? `Còn ${counts.pending} mốc chưa được ký quỹ. Hãy ký quỹ từng mốc để Chuyên gia có thể bắt đầu thực hiện.`
+            : `Còn ${counts.pending} mốc đang chờ Doanh nghiệp ký quỹ. Bạn chỉ có thể bắt đầu nộp sản phẩm sau khi mốc được ký quỹ.`}
         </Notice>
       )}
 
@@ -1599,7 +1599,7 @@ export function WorkspacePage() {
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Chuyên gia có 3 ngày để phản hồi. Nếu Chuyên gia không phản hồi,
-                hệ thống sẽ tự động hủy hợp đồng và hoàn tiền các cột mốc chưa
+                hệ thống sẽ tự động hủy hợp đồng và hoàn tiền các mốc chưa
                 hoàn thành cho Doanh nghiệp. Nếu Chuyên gia không đồng ý,
                 Chuyên gia có thể yêu cầu staff hỗ trợ xử lý.
               </p>
@@ -1658,9 +1658,9 @@ export function WorkspacePage() {
                 Tranh chấp đã được xử lý. Doanh nghiệp cần quyết định bước tiếp theo.
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Nếu tiếp tục, contract được mở lại để làm các cột mốc còn lại.
-                Nếu hủy, hệ thống sẽ hủy toàn bộ cột mốc chưa hoàn thành và 
-                hoàn tiền cột mốc nào đang giữ tiền ký quỹ về ví Doanh nghiệp.
+                Nếu tiếp tục, contract được mở lại để làm các mốc còn lại.
+                Nếu hủy, hệ thống sẽ hủy toàn bộ mốc chưa hoàn thành và 
+                hoàn tiền mốc nào đang giữ tiền ký quỹ về ví Doanh nghiệp.
               </p>
             </div>
             {canBusinessDecideAfterDispute && (
@@ -1690,7 +1690,7 @@ export function WorkspacePage() {
       {allDone && (
         <Notice
           tone="success"
-          title="Tất cả cột mốc đã hoàn tất nghiệm thu."
+          title="Tất cả mốc đã hoàn tất nghiệm thu."
         >
           Doanh nghiệp có thể thực hiện chuyển giao sản phẩm/review ở các màn
           hợp đồng và đánh giá liên quan.
@@ -1701,7 +1701,7 @@ export function WorkspacePage() {
         <FlowStep
           icon={<WalletCards className="h-4 w-4" />}
           title="Ký quỹ mốc"
-          description={`${counts.pending} cột mốc đang chờ Doanh nghiệp ký quỹ.`}
+          description={`${counts.pending} mốc đang chờ Doanh nghiệp ký quỹ.`}
           active={counts.pending > 0}
           done={counts.pending === 0 && milestones.length > 0}
           accent="sky"
@@ -1718,7 +1718,7 @@ export function WorkspacePage() {
         <FlowStep
           icon={<CheckCircle2 className="h-4 w-4" />}
           title="Doanh nghiệp nghiệm thu"
-          description={`${counts.review} cột mốc đang chờ nghiệm thu.`}
+          description={`${counts.review} mốc đang chờ nghiệm thu.`}
           active={counts.review > 0}
           accent="mint"
           onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW")}
@@ -1726,7 +1726,7 @@ export function WorkspacePage() {
         <FlowStep
           icon={<Gavel className="h-4 w-4" />}
           title="Tranh chấp"
-          description={`${counts.disputed} cột mốc đang ở trạng thái tranh chấp.`}
+          description={`${counts.disputed} mốc đang ở trạng thái tranh chấp.`}
           active={counts.disputed > 0}
           accent="amber"
           onClick={() => scrollToMilestoneGroup((milestone) => normalizeStatus(milestone.status) === "DISPUTED")}
@@ -1956,12 +1956,12 @@ export function WorkspacePage() {
                               contract.contractId,
                               sourceMilestoneId,
                             ),
-                          "Đã ký quỹ cột mốc.",
+                          "Đã ký quỹ mốc.",
                         )
                       }
                     >
                       <WalletCards className="h-4 w-4" />
-                      Ký quỹ cột mốc này
+                      Ký quỹ mốc này
                     </Button>
                   )}
                   {canStart && (
@@ -1974,12 +1974,12 @@ export function WorkspacePage() {
                           "start",
                           (sourceMilestoneId) =>
                             contractApi.startMilestone(sourceMilestoneId),
-                          "Đã bắt đầu cột mốc. Bạn có thể nộp tiến độ hoặc sản phẩm cuối cùng.",
+                          "Đã bắt đầu mốc. Bạn có thể nộp tiến độ hoặc sản phẩm cuối cùng.",
                         )
                       }
                     >
                       <PlayCircle className="h-4 w-4" />
-                      Bắt đầu cột mốc
+                      Bắt đầu mốc
                     </Button>
                   )}
                   {canRequestProgressReport && (
@@ -2058,12 +2058,12 @@ export function WorkspacePage() {
                               contract.contractId,
                               nextMilestoneId,
                             ),
-                          `Đã mở cột mốc ${nextMilestone?.orderIndex}. Chuyên gia có thể tiếp tục công việc.`,
+                          `Đã mở mốc ${nextMilestone?.orderIndex}. Chuyên gia có thể tiếp tục công việc.`,
                         );
                       }}
                     >
                       <ArrowRight className="h-4 w-4" />
-                      Mở cột mốc tiếp theo
+                      Mở mốc tiếp theo
                     </Button>
                   )}
                   {canDispute && !currentDispute && (
@@ -2152,7 +2152,7 @@ export function WorkspacePage() {
 
                   {session?.role === "EXPERT" && deliverableDeadlineExceeded && (
                     <div className="mt-4">
-                      <Notice tone="danger" title="Cột mốc đã quá hạn nộp sản phẩm">
+                      <Notice tone="danger" title="Mốc đã quá hạn nộp sản phẩm">
                         Bạn vẫn có thể gửi báo cáo tiến độ nếu cần cập nhật tình hình, nhưng không thể nộp final product hoặc upload source ZIP mới sau deadline.
                       </Notice>
                     </div>
@@ -2181,9 +2181,9 @@ export function WorkspacePage() {
                     <div className="mt-4">
                       <Notice
                         tone="warning"
-                        title="Cột mốc chưa sẵn sàng để Chuyên gia nộp sản phẩm."
+                        title="Mốc chưa sẵn sàng để Chuyên gia nộp sản phẩm."
                       >
-                        Doanh nghiệp cần ký quỹ cột mốc này trước, sau đó Chuyên gia mới có
+                        Doanh nghiệp cần ký quỹ mốc này trước, sau đó Chuyên gia mới có
                         thể bắt đầu công việc.
                       </Notice>
                     </div>
@@ -2192,7 +2192,7 @@ export function WorkspacePage() {
                     <div className="mt-4">
                       <Notice
                         tone="warning"
-                        title="Cột mốc đã quá hạn nộp sản phẩm cuối cùng."
+                        title="Mốc đã quá hạn nộp sản phẩm cuối cùng."
                       >
                         Chuyên gia vẫn có thể nộp sản phẩm cuối cùng muộn để Doanh nghiệp kiểm
                         tra, hoặc hai bên có thể gửi yêu cầu hủy nếu không thể tiếp
@@ -2246,7 +2246,7 @@ export function WorkspacePage() {
                         ))}
                         {visibleCriteria.length === 0 && (
                           <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
-                            Chưa có tiêu chí nghiệm thu cho cột mốc này.
+                            Chưa có tiêu chí nghiệm thu cho mốc này.
                           </p>
                         )}
                       </div>
@@ -2656,12 +2656,12 @@ export function WorkspacePage() {
                         )}
                         {submissionTab === "REPORTS" && milestoneReports.length === 0 && (
                           <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
-                            Chưa có báo cáo tiến độ cho cột mốc này.
+                            Chưa có báo cáo tiến độ cho mốc này.
                           </p>
                         )}
                         {submissionTab === "FINAL" && milestoneDeliverables.length === 0 && (
                             <p className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm font-semibold text-slate-400">
-                              Chưa có sản phẩm cuối cùng cho cột mốc này.
+                              Chưa có sản phẩm cuối cùng cho mốc này.
                             </p>
                           )}
                       </div>
@@ -2670,7 +2670,7 @@ export function WorkspacePage() {
                 </>
               ) : (
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                  Cột mốc đang được thu gọn. Mở chi tiết để xem tiêu chí nghiệm thu, báo cáo tiến độ, sản phẩm cuối cùng và các hành động hiện có.
+                  Mốc đang được thu gọn. Mở chi tiết để xem tiêu chí nghiệm thu, báo cáo tiến độ, sản phẩm cuối cùng và các hành động hiện có.
                 </div>
               )}
             </Card>
@@ -3033,8 +3033,8 @@ export function WorkspacePage() {
         title="Xác nhận nghiệm thu sản phẩm cuối cùng"
         description={
           approvingLastMilestone
-            ? "Đây là cột mốc cuối cùng của hợp đồng. Sau khi nghiệm thu, hệ thống sẽ hoàn tất hợp đồng và xử lý hoàn ký quỹ cho hai bên."
-            : "Sau khi xác nhận, cột mốc sẽ được nghiệm thu và hệ thống sẽ giải ngân ngân sách cột mốc theo Flow 4."
+            ? "Đây là mốc cuối cùng của hợp đồng. Sau khi nghiệm thu, hệ thống sẽ hoàn tất hợp đồng và xử lý hoàn ký quỹ cho hai bên."
+            : "Sau khi xác nhận, mốc sẽ được nghiệm thu và hệ thống sẽ giải ngân ngân sách mốc theo Flow 4."
         }
         footer={
           <>
@@ -3067,7 +3067,7 @@ export function WorkspacePage() {
           <div className="grid gap-3">
             <Notice
               tone="warning"
-              title={`Cột mốc ${approveConfirmOpen.orderIndex}: ${approveConfirmOpen.milestoneName}`}
+              title={`Mốc ${approveConfirmOpen.orderIndex}: ${approveConfirmOpen.milestoneName}`}
             >
               Hãy chắc chắn source code, demo và nội dung bàn giao đã đáp ứng tiêu
               chí nghiệm thu. Sau khi nghiệm thu, thao tác này sẽ không còn là bước
@@ -3227,7 +3227,7 @@ export function WorkspacePage() {
         }
       >
         <div className="grid gap-4">
-          <Field label="Tên cột mốc">
+          <Field label="Tên mốc">
             <Input disabled value={initiateDisputeOpen?.milestoneName || ""} />
           </Field>
           <Field label="Trạng thái">
@@ -3338,7 +3338,7 @@ export function WorkspacePage() {
         }
       >
         <div className="grid gap-4">
-          <Field label="Tên cột mốc">
+          <Field label="Tên mốc">
             <Input
               value={escalateDisputeOpen?.milestoneName || ""}
               readOnly

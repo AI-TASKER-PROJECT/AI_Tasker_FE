@@ -174,8 +174,8 @@ export function ExpertDirectoryPage() {
                   bg: "bg-blue-50",
                 },
                 {
-                  title: "Làm việc theo milestone",
-                  desc: "Chia nhỏ dự án thành các cột mốc rõ ràng, dễ dàng nghiệm thu và quản lý rủi ro.",
+                  title: "Làm việc theo mốc",
+                  desc: "Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng nghiệm thu và quản lý rủi ro.",
                   icon: <Target />,
                   color: "text-brand-600",
                   bg: "bg-brand-50",
@@ -236,7 +236,7 @@ export function ExpertDirectoryPage() {
                 {
                   step: 4,
                   title: "Nghiệm thu",
-                  desc: "Theo dõi milestone, nghiệm thu công việc và thanh toán.",
+                  desc: "Theo dõi mốc, nghiệm thu công việc và thanh toán.",
                 },
               ].map((step) => (
                 <div key={step.step} className="relative z-10 text-center">

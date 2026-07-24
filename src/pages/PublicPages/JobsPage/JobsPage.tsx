@@ -39,7 +39,7 @@ export function JobsPage() {
               <p className="mt-6 text-lg leading-8 text-slate-600">
                 AITASKER giúp doanh nghiệp tìm dúng chuyên gia AI, dăng dự án
                 nhanh chóng, nhận dề xuất phù hợp và quản lý toàn bộ quá trình
-                hợp tác qua hợp dồng, milestone, escrow và nghiệm thu minh bạch.
+                hợp tác qua hợp dồng, mốc, escrow và nghiệm thu minh bạch.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <LinkButton
@@ -211,7 +211,7 @@ export function JobsPage() {
                   bg: "bg-teal-50",
                 },
                 {
-                  title: "Quản lý dự án theo milestone",
+                  title: "Quản lý dự án theo mốc",
                   desc: "Chia nhỏ dự án thành các giai doạn rõ ràng dể dễ dàng nghiệm thu và dánh giá tiến dộ.",
                   icon: <Target />,
                   color: "text-emerald-600",
@@ -267,13 +267,13 @@ export function JobsPage() {
                 },
                 {
                   step: 3,
-                  title: "Ký hợp dồng, NDA và thống nhất milestone",
+                  title: "Ký hợp dồng, NDA và thống nhất mốc",
                   desc: "Ký kết văn bản pháp lý diện tử và chốt kế hoạch thực hiện.",
                 },
                 {
                   step: 4,
                   title: "Theo dõi tiến dộ, nghiệm thu và thanh toán",
-                  desc: "Quản lý tiến dộ theo từng cột mốc và thanh toán minh bạch qua escrow.",
+                  desc: "Quản lý tiến dộ theo từng mốc và thanh toán minh bạch qua escrow.",
                 },
               ].map((step) => (
                 <div key={step.step} className="relative z-10 text-center">
@@ -305,7 +305,7 @@ export function JobsPage() {
                 "NDA diện tử",
                 "Hợp dồng diện tử",
                 "Escrow",
-                "Milestone rõ ràng",
+                "Mốc rõ ràng",
                 "Đánh giá sau dự án",
                 "Quản lý tranh chấp",
               ].map((feature) => (

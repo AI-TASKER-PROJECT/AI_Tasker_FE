@@ -244,7 +244,7 @@ export function JobHoverPopover({
             />
             <InfoRow
               icon={<CheckCircle2 className="h-4 w-4" />}
-              label="Milestone"
+              label="Mốc"
               value={`${milestones.length}`}
             />
           </div>
@@ -277,7 +277,7 @@ export function JobHoverPopover({
           {milestones.length > 0 && (
             <div className="mt-4">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Milestones
+                Mốc
               </p>
               <div className="mt-2 grid gap-2">
                 {milestones.map((milestone) => (
@@ -462,7 +462,7 @@ export function JobCard({
         </p>
       </div>}
       {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Mốc nghiệm thu</p>
+        <p className="text-xs font-bold text-slate-400">Mốc</p>
         <p className="mt-1 text-sm font-extrabold text-ink">
           {milestoneCount} mốc
         </p>
@@ -541,8 +541,8 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <EmptyState
-        title="Chưa có milestone"
-        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại dây."
+        title="Chưa có mốc"
+        description="Khi doanh nghiệp khai báo mốc, các mốc sẽ hiển thị tại dây."
       />
     );
   }

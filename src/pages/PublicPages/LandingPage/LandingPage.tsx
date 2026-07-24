@@ -43,7 +43,7 @@ const workflowSteps = [
   },
   {
     title: "Thanh toán",
-    description: "Nghiệm thu từng giai đoạn và giải ngân minh bạch.",
+    description: "Nghiệm thu từng mốc và giải ngân minh bạch.",
   },
 ] as const;
 
@@ -318,7 +318,7 @@ export function LandingPage() {
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
                   Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và đánh
-                  giá từng giai đoạn.
+                  giá từng mốc.
                 </p>
               </Card>
             </ScrollReveal>

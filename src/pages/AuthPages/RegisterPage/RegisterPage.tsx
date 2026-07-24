@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, CheckCircle2, UserRoundCheck } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Eye, UserRoundCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { GoogleAuthButton } from "../../../components/GoogleAuthButton";
@@ -22,17 +22,21 @@ export function RegisterPage() {
   const [phoneError, setPhoneError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [nameError, setNameError] = useState("");
   const [step, setStep] = useState<"FORM" | "OTP" | "GOOGLE_PROFILE">("FORM");
   const [form, setForm] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     fullName: "",
     phone: "",
     role: "BUSINESS" as "BUSINESS" | "EXPERT",
     otp: "",
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"danger" | "success">(
     "danger",
@@ -153,6 +157,14 @@ export function RegisterPage() {
     }
     if (!validatePassword(form.password)) {
       setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (!validatePassword(form.confirmPassword)) {
+      setConfirmPasswordError("Xác nhận mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (form.confirmPassword !== form.password) {
+      setConfirmPasswordError("Xác nhận mật khẩu không khớp.");
       return;
     }
     setLoading(true);
@@ -403,46 +415,95 @@ export function RegisterPage() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Mật khẩu" hint="Tối thiểu 8 ký tự">
-                <Input
-                  type="password"
-                  minLength={8}
-                  value={form.password}
-                  onChange={(event) => {
-                    setForm((value) => ({
-                      ...value,
-                      password: event.target.value,
-                    }));
-                    if (passwordError) setPasswordError("");
-                  }}
-                  onBlur={(event) => {
-                    const val = event.target.value;
-                    if (!val) {
-                      setPasswordError("Mật khẩu không được để trống.");
-                    } else if (!validatePassword(val)) {
-                      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
-                    }
-                  }}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    minLength={8}
+                    value={form.password}
+                    onChange={(event) => {
+                      setForm((value) => ({
+                        ...value,
+                        password: event.target.value,
+                      }));
+                      if (passwordError) setPasswordError("");
+                      if (confirmPasswordError) setConfirmPasswordError("");
+                    }}
+                    onBlur={(event) => {
+                      const val = event.target.value;
+                      if (!val) {
+                        setPasswordError("Mật khẩu không được để trống.");
+                      } else if (!validatePassword(val)) {
+                        setPasswordError("Mật khẩu phải có ít nhất 8 ký tự.");
+                      }
+                    }}
+                    required
+                    className="pr-11 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-50"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </div>
                 {passwordError && (
                   <span className="text-xs text-red-500 mt-1 block">
                     {passwordError}
                   </span>
                 )}
               </Field>
-              <Field label="Vai trò">
-                <Select
-                  value={form.role}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      role: event.target.value as "BUSINESS" | "EXPERT",
-                    }))
-                  }
-                >
-                  <option value="BUSINESS">Doanh nghiệp</option>
-                  <option value="EXPERT">Chuyên gia</option>
-                </Select>
+              <Field label="Xác nhận mật khẩu" hint="Tối thiểu 8 ký tự">
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    minLength={8}
+                    value={form.confirmPassword}
+                    onChange={(event) => {
+                      setForm((value) => ({
+                        ...value,
+                        confirmPassword: event.target.value,
+                      }));
+                      if (confirmPasswordError) setConfirmPasswordError("");
+                    }}
+                    onBlur={(event) => {
+                      const val = event.target.value;
+                      if (!val) {
+                        setConfirmPasswordError(
+                          "Xác nhận mật khẩu không được để trống.",
+                        );
+                      } else if (!validatePassword(val)) {
+                        setConfirmPasswordError(
+                          "Xác nhận mật khẩu phải có ít nhất 8 ký tự.",
+                        );
+                      } else if (val !== form.password) {
+                        setConfirmPasswordError("Xác nhận mật khẩu không khớp.");
+                      }
+                    }}
+                    required
+                    className="pr-11 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden"
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      showConfirmPassword
+                        ? "Ẩn xác nhận mật khẩu"
+                        : "Hiện xác nhận mật khẩu"
+                    }
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setShowConfirmPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-50"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </div>
+                {confirmPasswordError && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {confirmPasswordError}
+                  </span>
+                )}
               </Field>
             </div>
             <Button type="submit" size="lg" loading={loading}>

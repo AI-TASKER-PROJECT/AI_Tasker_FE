@@ -78,7 +78,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-        Chưa có mốc công việc.
+        Chưa có mốc.
       </div>
     );
   }
@@ -118,7 +118,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
 function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-      <p className="text-xs font-bold text-slate-400">Mốc công việc</p>
+      <p className="text-xs font-bold text-slate-400">Mốc</p>
       <p className="mt-1 text-sm font-extrabold text-ink">{count} mốc</p>
     </div>
   );
@@ -263,6 +263,14 @@ export function SubmitProposalPage() {
         0,
       ),
     [milestoneBudgets, milestones],
+  );
+  const originalMilestoneTotal = useMemo(
+    () =>
+      milestones.reduce(
+        (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+        0,
+      ),
+    [milestones],
   );
 
   const bidAmount = requestBudgetChange
@@ -491,7 +499,7 @@ export function SubmitProposalPage() {
                         technicalSolution: event.target.value,
                       }))
                     }
-                    placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
+                    placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc và chỉ số cam kết."
                     className="min-h-36"
                     required
                   />
@@ -608,13 +616,6 @@ export function SubmitProposalPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge
-                      tone={
-                        bidAmount === proposalMilestoneTotal ? "mint" : "amber"
-                      }
-                    >
-                      {formatCurrency(proposalMilestoneTotal)}
-                    </Badge>
                   </div>
                   <div className="grid gap-3">
                     {milestones.map((milestone) => (
@@ -670,6 +671,29 @@ export function SubmitProposalPage() {
                         </div>
                       </div>
                     ))}
+                    <div className="grid gap-4 rounded-2xl border border-slate-100 bg-white p-4 md:grid-cols-[1fr_180px_180px]">
+                      <div className="flex items-center">
+                        <p className="font-extrabold text-ink">
+                          Tổng ngân sách
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">
+                          Tổng ngân sách gốc
+                        </p>
+                        <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-600">
+                          {formatCurrency(originalMilestoneTotal)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+                          Tổng ngân sách đề xuất
+                        </p>
+                        <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
+                          {formatCurrency(proposalMilestoneTotal)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </section>
               )}
@@ -767,7 +791,7 @@ export function SubmitProposalPage() {
                   <CheckCircle2 className="h-5 w-5 text-pink-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Mốc công việc</p>
+                  <p className="text-xs font-bold text-slate-400">Mốc</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {milestones.length} mốc
                   </p>

@@ -140,7 +140,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản công việc",
     content:
-      "Hợp đồng được thực hiện dựa trên phạm vi công việc, milestone, ngân sách và timeline đã thống nhất trong job và proposal được chấp nhận.",
+      "Hợp đồng được thực hiện dựa trên phạm vi công việc, mốc, ngân sách và timeline đã thống nhất trong job và proposal được chấp nhận.",
   },
   {
     title: "Phạm vi trách nhiệm",
@@ -150,7 +150,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản thanh toán",
     content:
-      "Ngân sách được phân bổ theo milestone. Doanh nghiệp thực hiện ký quỹ theo tỷ lệ nền tảng quy định, hệ thống giữ tiền trong escrow và giải ngân theo kết quả nghiệm thu.",
+      "Ngân sách được phân bổ theo mốc. Doanh nghiệp thực hiện ký quỹ theo tỷ lệ nền tảng quy định, hệ thống giữ tiền trong escrow và giải ngân theo kết quả nghiệm thu.",
   },
   {
     title: "Điều khoản bảo mật",
@@ -160,7 +160,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản chấm dứt",
     content:
-      "Hợp đồng có thể bị chấm dứt khi một bên vi phạm cam kết, không phản hồi trong thời hạn hợp lý, hoặc hai bên thống nhất dừng dự án. Phần công việc đã nghiệm thu được xử lý theo trạng thái milestone thực tế.",
+      "Hợp đồng có thể bị chấm dứt khi một bên vi phạm cam kết, không phản hồi trong thời hạn hợp lý, hoặc hai bên thống nhất dừng dự án. Phần công việc đã nghiệm thu được xử lý theo trạng thái mốc thực tế.",
   },
   {
     title: "Điều khoản tranh chấp",
@@ -354,13 +354,13 @@ export function ManageJobPage() {
     }
     if (milestones.length === 0) {
       setContractError(
-        "Job cần có ít nhất một milestone để tạo contract draft.",
+        "Job cần có ít nhất một mốc để tạo contract draft.",
       );
       return;
     }
     if (!timelineValid) {
       setContractError(
-        `Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuan.`,
+        `Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian mốc (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuan.`,
       );
       return;
     }
@@ -390,7 +390,7 @@ export function ManageJobPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={job.title}
-          description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
+          description="Theo dõi job, mốc đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
           actions={
             <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
               Xem bài đăng công khai
@@ -601,7 +601,7 @@ export function ManageJobPage() {
               </span>
             </div>
             <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-500">Mốc công việc</span>
+              <span className="text-slate-500">Mốc</span>
               <span className="font-extrabold text-ink">
                 {milestones.length} mốc
               </span>
@@ -631,7 +631,7 @@ export function ManageJobPage() {
             </div>
           </div>
           <div className="mt-5">
-            <SectionHeading title="Mốc công việc" />
+            <SectionHeading title="Mốc" />
             <CompactMilestones milestones={milestones} />
           </div>
         </Card>
@@ -679,7 +679,7 @@ export function ManageJobPage() {
           {milestones.length === 0 && (
             <Notice
               tone="warning"
-              title="Job chưa có milestone nên backend chưa thể tạo contract draft."
+              title="Job chưa có mốc nên backend chưa thể tạo contract draft."
             />
           )}
           <Field label="Tên hợp đồng">
@@ -707,18 +707,18 @@ export function ManageJobPage() {
             />
             <p className="mt-2 text-xs font-semibold text-slate-500">
               Bạn có thể nhập số tuần tối thiểu {minimumTimelineWeeks} tuần để
-              đảm bảo hợp đồng đủ thời gian cho các mốc nghiệm thu.
+              đảm bảo hợp đồng đủ thời gian cho các mốc.
             </p>
           </Field>
           {!timelineValid && (
             <Notice
               tone="warning"
-              title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc nghiệm thu (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
+              title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
             />
           )}
           <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-5">
             <ContractPreviewMetric
-              label="Tổng thời gian mốc nghiệm thu"
+              label="Tổng thời gian mốc"
               value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
             <ContractPreviewMetric
@@ -1168,10 +1168,10 @@ function ProposalCard({
             <div className="grid gap-4">
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                  Proposal milestone
+                  Mốc đề xuất
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Ngân sách đề xuất của chuyên gia theo từng milestone.
+                  Ngân sách đề xuất của chuyên gia theo từng mốc.
                 </p>
               </div>
 
@@ -1233,7 +1233,7 @@ function ProposalCard({
                 </div>
               ) : (
                 <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-                  Job chưa có milestone để hiển thị.
+                  Job chưa có mốc để hiển thị.
                 </p>
               )}
             </div>

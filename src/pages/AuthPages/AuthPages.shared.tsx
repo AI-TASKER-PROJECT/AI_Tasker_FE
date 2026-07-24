@@ -129,7 +129,7 @@ export function AuthFrame({
               <Logo className="[&_*]:text-white" />
             </div>
             <h1 className="mt-6 font-display text-3xl font-black leading-tight tracking-[-0.02em] lg:text-4xl">
-              Một tài khoản - Một vai trò Một luồng xử lý rõ ràng
+              Kết nối ngay với chuyên gia hoặc doanh nghiệp hàng đầu
             </h1>
           </div>
           <div className="relative z-10 mt-6 lg:mt-8">

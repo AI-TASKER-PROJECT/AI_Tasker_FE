@@ -109,7 +109,7 @@ export function DisputeProjectInfoPage() {
     return (
       <EmptyState
         title="Không mở được thông tin dự án"
-        description="Chưa lấy được dữ liệu hợp đồng và cột mốc tranh chấp."
+        description="Chưa lấy được dữ liệu hợp đồng và mốc tranh chấp."
       />
     );
   }
@@ -130,7 +130,7 @@ export function DisputeProjectInfoPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={contract.contractTitle || dispute.jobTitle || "Thông tin dự án"}
-          description="Trang này chỉ cung cấp đề bài doanh nghiệp, SoW và các cột mốc của dự án để tham khảo."
+          description="Trang này chỉ cung cấp đề bài doanh nghiệp, SoW và các mốc của dự án để tham khảo."
           actions={
             <LinkButton to={backTo} variant="secondary">
               <Gavel className="h-4 w-4" />
@@ -141,7 +141,7 @@ export function DisputeProjectInfoPage() {
       </div>
 
       <Notice tone="info" title="Trang thông tin">
-        Đây là trang chỉ đọc. Dùng màn này để xem đề bài của doanh nghiệp và thông tin cột mốc của dự án.
+        Đây là trang chỉ đọc. Dùng màn này để xem đề bài của doanh nghiệp và thông tin mốc của dự án.
       </Notice>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
@@ -217,13 +217,13 @@ export function DisputeProjectInfoPage() {
 
         <Card className="p-6">
           <SectionHeading
-            title="Cột mốc của dự án"
-            description="Toàn bộ cột mốc và tiêu chí nghiệm thu của dự án."
+            title="Mốc của dự án"
+            description="Toàn bộ mốc và tiêu chí nghiệm thu của dự án."
           />
           {milestones.length === 0 ? (
             <EmptyState
               title="Chua co du lieu cot moc"
-              description="Backend chưa trả danh sách cột mốc của dự án."
+              description="Backend chưa trả danh sách mốc của dự án."
             />
           ) : (
             <div className="mt-5 grid gap-4">
@@ -239,7 +239,7 @@ export function DisputeProjectInfoPage() {
                           <StatusBadge status={milestone.status} />
                         </div>
                         <div className="mt-2 text-base font-bold text-ink">
-                          {milestone.milestoneName || "Cột mốc của dự án"}
+                          {milestone.milestoneName || "Mốc của dự án"}
                         </div>
                       </div>
                       <div className="text-sm text-slate-500">
@@ -249,7 +249,7 @@ export function DisputeProjectInfoPage() {
                     <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-600">
                       <p>
                         {milestone.description ||
-                          "Backend chưa trả mô tả chi tiết cho cột mốc này."}
+                          "Backend chưa trả mô tả chi tiết cho mốc này."}
                       </p>
                       {milestone.deliverableExpectation && (
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
@@ -276,7 +276,7 @@ export function DisputeProjectInfoPage() {
                           Tiêu chí nghiệm thu
                         </div>
                         {criteria.length === 0 ? (
-                          <p className="mt-2">Backend chưa trả tiêu chí nghiệm thu cho cột mốc này.</p>
+                          <p className="mt-2">Backend chưa trả tiêu chí nghiệm thu cho mốc này.</p>
                         ) : (
                           <div className="mt-3 space-y-2">
                             {criteria.map((item, index) => (

@@ -24,7 +24,7 @@ const settingLabels: Record<string, { label: string; description: string }> = {
   default_sla_days: {
     label: "Số ngày tự động nghiệm thu",
     description:
-      "Số ngày chờ phản hồi trước khi milestone đủ điều kiện tự động nghiệm thu.",
+      "Số ngày chờ phản hồi trước khi mốc đủ điều kiện tự động nghiệm thu.",
   },
   dispute_staff_max_active_cases: {
     label: "Số tranh chấp tối đa mỗi nhân viên",
