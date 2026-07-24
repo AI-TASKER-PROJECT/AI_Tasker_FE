@@ -59,6 +59,7 @@ import {
 } from "../marketplacePages.utils";
 import { CompactMilestones } from "../marketplacePages.helpers";
 import {
+  applyManualMilestoneBudgetEdit,
   applyReallocationByMilestoneIndex,
   buildReallocateBudgetRequest,
   createInitialBudgetConfirmationState,
@@ -631,6 +632,14 @@ export function CreateJobPage() {
 
   const invalidateBudgetConfirmation = () => {
     if (!budgetAssessment) return;
+    if (budgetConfirmation.selection === "MANUAL") {
+      setBudgetConfirmation((current) => ({
+        ...current,
+        allocation: null,
+        error: "",
+      }));
+      return;
+    }
     clearBudgetConfirmation();
     restoreBusinessBudgetAllocation(budgetAssessment);
   };
@@ -909,7 +918,9 @@ export function CreateJobPage() {
         (item) => ({
           ...item,
           fundsAllocated:
-            budgetAssessment && item.businessBudget !== undefined
+            budgetAssessment &&
+            budgetConfirmation.selection !== "MANUAL" &&
+            item.businessBudget !== undefined
               ? String(item.businessBudget)
               : item.fundsAllocated,
         }),
@@ -961,7 +972,9 @@ export function CreateJobPage() {
       .map((item, i) => ({
         ...item,
         fundsAllocated:
-          budgetAssessment && item.businessBudget !== undefined
+          budgetAssessment &&
+          budgetConfirmation.selection !== "MANUAL" &&
+          item.businessBudget !== undefined
             ? String(item.businessBudget)
             : item.fundsAllocated,
         orderIndex: String(i + 1),
@@ -998,7 +1011,9 @@ export function CreateJobPage() {
     const newItems = milestones.map((item) => ({
       ...item,
       fundsAllocated:
-        budgetAssessment && item.businessBudget !== undefined
+        budgetAssessment &&
+        budgetConfirmation.selection !== "MANUAL" &&
+        item.businessBudget !== undefined
           ? String(item.businessBudget)
           : item.fundsAllocated,
     }));
@@ -1089,22 +1104,22 @@ export function CreateJobPage() {
 
   //cmt18 Cập nhật ngân sách milestone và tự tính lại ngân sách tổng của Job.
   const updateMilestoneBudgetAmount = (index: number, amount: string) => {
-    invalidateBudgetConfirmation();
     setMilestones((items) => {
-      const newItems = items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, fundsAllocated: amount } : item,
-      );
-      const newTotal = newItems.reduce(
-        (acc, m) => acc + Number(m.fundsAllocated || 0),
-        0,
-      );
+      const { milestones: newItems, totalBudget: newTotal } =
+        applyManualMilestoneBudgetEdit(items, index, amount);
       setForm((prev) => ({
         ...prev,
-        budgetAmount: budgetAssessment
-          ? String(budgetAssessment.businessBudget)
-          : String(newTotal),
+        budgetAmount: String(newTotal),
       }));
       setSavedJob((prev) => (prev ? { ...prev, budget: newTotal } : prev));
+      if (budgetAssessment) {
+        setBudgetConfirmation({
+          selection: "MANUAL",
+          customBudget: String(newTotal),
+          allocation: null,
+          error: "",
+        });
+      }
       return newItems;
     });
   };
@@ -2018,10 +2033,10 @@ export function CreateJobPage() {
                         }
                         placeholder="VND"
                         disabled={
-                          sowGeneratedLocked || Boolean(budgetAssessment)
+                          sowGeneratedLocked
                         }
                         className={
-                          sowGeneratedLocked || budgetAssessment
+                          sowGeneratedLocked
                             ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
                             : ""
                         }

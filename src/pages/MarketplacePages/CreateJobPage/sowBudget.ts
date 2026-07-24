@@ -5,7 +5,7 @@ import type {
 } from "../../../services/api.types";
 import type { MilestoneDraft } from "../marketplacePages.utils";
 
-export type BudgetSelectionMode = "ORIGINAL" | "CUSTOM";
+export type BudgetSelectionMode = "ORIGINAL" | "CUSTOM" | "MANUAL";
 
 export interface SowBudgetConfirmationState {
   selection: BudgetSelectionMode | null;
@@ -95,12 +95,39 @@ export function applyReallocationByMilestoneIndex(
   }));
 }
 
+export function applyManualMilestoneBudgetEdit(
+  milestones: MilestoneDraft[],
+  milestoneIndex: number,
+  amount: string,
+): { milestones: MilestoneDraft[]; totalBudget: number } {
+  if (milestoneIndex < 0 || milestoneIndex >= milestones.length) {
+    throw new Error("Milestone cần chỉnh sửa không tồn tại.");
+  }
+
+  const updatedMilestones = milestones.map((milestone, index) =>
+    index === milestoneIndex
+      ? { ...milestone, fundsAllocated: amount }
+      : milestone,
+  );
+  const totalBudget = updatedMilestones.reduce(
+    (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+    0,
+  );
+
+  return { milestones: updatedMilestones, totalBudget };
+}
+
 export function resolveAuthoritativeBudget(
   assessment: BudgetAssessment | null,
   state: SowBudgetConfirmationState,
   fallbackBudget: number,
 ): number | null {
   if (!assessment) {
+    return Number.isSafeInteger(fallbackBudget) && fallbackBudget > 0
+      ? fallbackBudget
+      : null;
+  }
+  if (state.selection === "MANUAL") {
     return Number.isSafeInteger(fallbackBudget) && fallbackBudget > 0
       ? fallbackBudget
       : null;

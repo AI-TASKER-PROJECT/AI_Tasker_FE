@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  applyManualMilestoneBudgetEdit,
   applyReallocationByMilestoneIndex,
   buildReallocateBudgetRequest,
   createInitialBudgetConfirmationState,
@@ -112,6 +113,28 @@ test("HIGH Business budget hides the AI assessment and keeps Business budget aut
   );
 });
 
+test("manual milestone edits override the original total even when the AI card is hidden", () => {
+  const highAssessment = {
+    ...assessment,
+    businessBudget: 200_000_000,
+    status: "HIGH",
+  };
+
+  assert.equal(
+    resolveAuthoritativeBudget(
+      highAssessment,
+      {
+        selection: "MANUAL",
+        customBudget: "210000000",
+        allocation: null,
+        error: "",
+      },
+      210_000_000,
+    ),
+    210_000_000,
+  );
+});
+
 test("non-HIGH budgets continue to show the AI assessment", () => {
   assert.equal(shouldShowAiBudgetAssessment(assessment), true);
 });
@@ -158,6 +181,49 @@ test("allocation response is mapped by milestoneIndex, not array order", () => {
     ),
     110_000_000,
   );
+});
+
+test("AI-generated milestone budgets can be edited manually and keep the Job total synchronized", () => {
+  const firstEdit = applyManualMilestoneBudgetEdit(
+    milestones,
+    0,
+    "20000000",
+  );
+  const secondEdit = applyManualMilestoneBudgetEdit(
+    firstEdit.milestones,
+    1,
+    "45000000",
+  );
+
+  assert.deepEqual(
+    secondEdit.milestones.map((milestone) => milestone.fundsAllocated),
+    ["20000000", "45000000"],
+  );
+  assert.equal(secondEdit.totalBudget, 65_000_000);
+  assert.equal(
+    resolveAuthoritativeBudget(
+      assessment,
+      {
+        selection: "MANUAL",
+        customBudget: String(secondEdit.totalBudget),
+        allocation: null,
+        error: "",
+      },
+      secondEdit.totalBudget,
+    ),
+    65_000_000,
+  );
+});
+
+test("milestone budget inputs unlock after editing an AI-generated SoW", async () => {
+  const source = await pageSourcePromise;
+  const milestoneBudgetInput = source.slice(
+    source.indexOf("aria-label={`Ngân sách ${index + 1}`}"),
+    source.indexOf("aria-label={`Giai đoạn ${index + 1}`}"),
+  );
+
+  assert.match(milestoneBudgetInput, /disabled=\{\s*sowGeneratedLocked\s*\}/);
+  assert.doesNotMatch(milestoneBudgetInput, /Boolean\(budgetAssessment\)/);
 });
 
 test("milestone total must exactly equal Job budget", () => {
