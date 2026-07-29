@@ -947,10 +947,18 @@ export interface WalletTransaction {
   title?: string;
   description?: string;
   actorName?: string;
+  actorAccount?: string;
   counterpartyName?: string;
+  counterpartyAccount?: string;
   counterpartyAccountId?: number;
   counterpartyRole?: string;
   counterpartyLabel?: string;
+  senderName?: string;
+  senderAccount?: string;
+  senderRoleLabel?: string;
+  receiverName?: string;
+  receiverAccount?: string;
+  receiverRoleLabel?: string;
   businessId?: number;
   businessName?: string;
   expertId?: number;
@@ -958,21 +966,25 @@ export interface WalletTransaction {
   contractId?: number;
   contractTitle?: string;
   milestoneNumber?: number;
+  milestoneId?: number;
   milestoneName?: string;
   jobId?: number;
   jobTitle?: string;
   withdrawalId?: number;
   bankName?: string;
   bankAccountNumber?: string;
+  bankAccountNumberMasked?: string;
   bankAccountHolder?: string;
   adminId?: number;
   adminName?: string;
   adminNote?: string;
   packageId?: number;
   packageName?: string;
+  paymentProvider?: string;
   providerOrderCode?: number;
   providerTransactionNo?: string;
   providerPaymentLinkId?: string;
+  metadata?: string;
   createdAt?: string;
 }
 

@@ -1,6 +1,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   RefreshCw,
   ShieldAlert,
   TrendingUp,
@@ -22,11 +23,8 @@ import {
   Tabs,
 } from "../../../components/ui";
 import { AdminMetric, WalletFact } from "../AdminPages.shared";
-import type {
-  AdminAccount,
-  SystemWallet,
-  WalletTransaction,
-} from "../../../types";
+import { WalletTransactionDetailModal } from "../../../components/WalletTransactionDetailModal";
+import type { SystemWallet, WalletTransaction } from "../../../types";
 
 // ── Constants ────────────────────────────────────────────────────────────────────
 
@@ -265,7 +263,9 @@ function walletTransactionIsSuccessful(status: string) {
 }
 
 function walletTransactionDisplayIsPositive(tx: WalletTransaction) {
-  return tx.amount >= 0;
+  return ["CREDIT", "RELEASE"].includes(
+    String(tx.direction || "").toUpperCase(),
+  );
 }
 
 function normalizePlatformHistory(history: WalletTransaction[]) {
@@ -299,75 +299,27 @@ function subTabDisplayLabel(
   );
 }
 
-type PartyDisplayMode = "default" | "platform";
-
-function accountDisplayName(account?: AdminAccount) {
-  return account?.fullName?.trim() || account?.email;
-}
-
-function findAccountNameByIds(
-  accounts: AdminAccount[],
-  accountIds: Array<number | undefined>,
-  roles?: string[],
-) {
-  for (const id of accountIds) {
-    if (!id) continue;
-    const account = accounts.find(
-      (a) => a.accountId === id && (!roles || roles.includes(a.role)),
-    );
-    const name = accountDisplayName(account);
-    if (name) return name;
-  }
-  return undefined;
-}
-
-function walletTransactionPartyLabel(
-  tx: WalletTransaction,
-  mode: PartyDisplayMode = "default",
-) {
-  if (mode === "platform") return "Nền tảng";
-  if (tx.counterpartyLabel?.trim()) return tx.counterpartyLabel;
-  if (tx.counterpartyRole === "BUSINESS") return "Doanh nghiệp";
-  if (tx.counterpartyRole === "EXPERT") return "Chuyên gia";
-  if (tx.counterpartyRole === "ADMIN" || tx.counterpartyRole === "STAFF")
-    return "Nội bộ";
+function TransactionParty({
+  label,
+  name,
+  account,
+}: {
+  label: string;
+  name?: string;
+  account?: string;
+}) {
   return (
-    tx.counterpartyName?.trim() ||
-    tx.businessName?.trim() ||
-    tx.expertName?.trim() ||
-    "—"
-  );
-}
-
-function walletTransactionPartyName(
-  tx: WalletTransaction,
-  accounts: AdminAccount[],
-  mode: PartyDisplayMode = "default",
-) {
-  if (mode === "platform") {
-    const platformAccountName = findAccountNameByIds(
-      accounts,
-      [tx.accountId, tx.actorAccountId, tx.counterpartyAccountId],
-      ["ADMIN", "STAFF"],
-    );
-    return (
-      tx.adminName?.trim() ||
-      platformAccountName ||
-      (tx.actorRole === "ADMIN" || tx.actorRole === "STAFF"
-        ? tx.actorName?.trim()
-        : undefined) ||
-      "Nền tảng"
-    );
-  }
-
-  if (tx.counterpartyName?.trim()) return tx.counterpartyName;
-  if (tx.businessName?.trim()) return tx.businessName;
-  if (tx.expertName?.trim()) return tx.expertName;
-  if (tx.adminName?.trim()) return tx.adminName;
-  const acc = accounts.find((a) => a.accountId === tx.counterpartyAccountId);
-  return (
-    accountDisplayName(acc) ??
-    (tx.counterpartyRole === "BUSINESS" ? "Doanh nghiệp" : "Chuyên gia")
+    <div className="grid min-w-0 gap-0.5 text-sm">
+      <span className="text-xs font-bold text-slate-400 md:hidden">{label}</span>
+      <span className="truncate font-extrabold text-slate-600">
+        {name || "Chưa có thông tin"}
+      </span>
+      {account && (
+        <span className="truncate text-xs font-semibold text-slate-400">
+          {account}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -375,19 +327,17 @@ function walletTransactionPartyName(
 
 function TransactionRow({
   tx,
-  accounts,
-  partyMode = "default",
+  onSelect,
 }: {
   tx: WalletTransaction;
-  accounts: AdminAccount[];
-  partyMode?: PartyDisplayMode;
+  onSelect: (tx: WalletTransaction) => void;
 }) {
   const transactionId = tx.transactionId ?? tx.id;
 
   return (
     <div
       key={transactionId}
-      className="grid gap-3 px-5 py-4 transition hover:bg-slate-50/70 md:grid-cols-[minmax(0,1fr)_180px_160px] md:items-center"
+      className="grid gap-4 px-5 py-4 transition hover:bg-slate-50/70 md:grid-cols-[minmax(240px,1fr)_180px_180px_140px_40px] md:items-center"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -410,14 +360,17 @@ function TransactionRow({
         </p>
       </div>
 
-      <div className="grid gap-1 text-sm">
-        <span className="text-xs font-bold text-slate-400">
-          {walletTransactionPartyLabel(tx, partyMode)}
-        </span>
-        <span className="truncate font-extrabold text-slate-600">
-          {walletTransactionPartyName(tx, accounts, partyMode)}
-        </span>
-      </div>
+      <TransactionParty
+        label="Người gửi / Tài khoản"
+        name={tx.senderName}
+        account={tx.senderAccount}
+      />
+
+      <TransactionParty
+        label="Người nhận / Tài khoản"
+        name={tx.receiverName}
+        account={tx.receiverAccount}
+      />
 
       <span
         className={`text-right text-base font-black ${
@@ -429,6 +382,14 @@ function TransactionRow({
         {walletTransactionDisplayIsPositive(tx) ? "+" : "–"}
         {formatCurrency(Math.abs(tx.amount))}
       </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onSelect(tx)}
+        title="Xem chi tiết giao dịch"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -496,27 +457,27 @@ function Pagination({
 
 function TransactionList({
   transactions,
-  accounts,
-  partyMode = "default",
   page,
   pageCount,
   onPageChange,
+  onSelect,
   emptyLabel,
 }: {
   transactions: WalletTransaction[];
-  accounts: AdminAccount[];
-  partyMode?: PartyDisplayMode;
   page: number;
   pageCount: number;
   onPageChange: (p: number) => void;
+  onSelect: (tx: WalletTransaction) => void;
   emptyLabel: string;
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100">
-      <div className="hidden gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid md:grid-cols-[1fr_180px_160px] md:items-center">
+      <div className="hidden gap-4 border-b border-slate-100 bg-slate-50 px-5 py-4 text-xs font-extrabold uppercase text-slate-400 md:grid md:grid-cols-[minmax(240px,1fr)_180px_180px_140px_40px] md:items-center">
         <span>Mục đích và dòng tiền</span>
+        <span>Người gửi / tài khoản</span>
         <span>Người nhận / tài khoản</span>
         <span className="md:text-right">Số tiền</span>
+        <span />
       </div>
 
       {transactions.length === 0 ? (
@@ -529,8 +490,7 @@ function TransactionList({
             <TransactionRow
               key={t.transactionId ?? t.id}
               tx={t}
-              accounts={accounts}
-              partyMode={partyMode}
+              onSelect={onSelect}
             />
           ))}
         </div>
@@ -547,7 +507,8 @@ export function SystemWalletPage() {
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
   const [ledger, setLedger] = useState<WalletTransaction[]>([]);
   const [userActivity, setUserActivity] = useState<WalletTransaction[]>([]);
-  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<WalletTransaction | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("ledger");
   const [ledgerPage, setLedgerPage] = useState(1);
@@ -558,16 +519,14 @@ export function SystemWalletPage() {
   const load = useCallback(async (sync = false) => {
     setLoading(true);
     try {
-      const [w, l, ua, accs] = await Promise.all([
+      const [w, l, ua] = await Promise.all([
         sync ? adminApi.syncSystemWallet() : adminApi.getSystemWallet(),
         adminApi.listPlatformWalletLedger(),
         adminApi.listPlatformWalletTransactions(),
-        adminApi.listAccounts(),
       ]);
       setWallet(w);
       setLedger(l);
       setUserActivity(ua);
-      setAccounts(accs);
       setLedgerPage(1);
       setUserActivityPage(1);
     } finally {
@@ -752,11 +711,10 @@ export function SystemWalletPage() {
                 <div className="mt-5">
                   <TransactionList
                     transactions={visibleLedger}
-                    accounts={accounts}
-                    partyMode="platform"
                     page={ledgerPage}
                     pageCount={ledgerPageCount}
                     onPageChange={setLedgerPage}
+                    onSelect={setSelectedTransaction}
                     emptyLabel="Chưa có lịch sử giao dịch trên ví nền tảng."
                   />
                 </div>
@@ -821,10 +779,10 @@ export function SystemWalletPage() {
                 <div className="mt-5">
                   <TransactionList
                     transactions={visibleUserActivity}
-                    accounts={accounts}
                     page={userActivityPage}
                     pageCount={userActivityPageCount}
                     onPageChange={setUserActivityPage}
+                    onSelect={setSelectedTransaction}
                     emptyLabel="Chưa có hoạt động giao dịch nào trong danh mục này."
                   />
                 </div>
@@ -833,6 +791,10 @@ export function SystemWalletPage() {
           </Card>
         </>
       )}
+      <WalletTransactionDetailModal
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </div>
   );
 }

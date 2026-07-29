@@ -73,7 +73,7 @@ export function MyJobDetailPage() {
   }
 
   const isDraft = job.status.trim().toUpperCase() === "DRAFT";
-  const canEdit = ["DRAFT", "OPEN"].includes(job.status.trim().toUpperCase());
+  const canEdit = isDraft;
 
   const updateStatus = async (jobId: number, status: string) => {
     try {

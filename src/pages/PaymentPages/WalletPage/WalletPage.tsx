@@ -7,6 +7,7 @@ import {
   Clock,
   CircleCheck,
   LockKeyhole,
+  Eye,
   RefreshCw,
   Send,
   Shield,
@@ -51,6 +52,7 @@ import {
   StatusBadge,
   Tabs,
 } from "../../../components/ui";
+import { WalletTransactionDetailModal } from "../../../components/WalletTransactionDetailModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -111,6 +113,8 @@ function txIcon(tx: WalletTransaction) {
 }
 
 function txDisplayLabel(tx: WalletTransaction, role?: string) {
+  if (tx.transactionTypeLabel?.trim()) return tx.transactionTypeLabel.trim();
+  if (tx.title?.trim()) return tx.title.trim();
   const type = (tx.transactionType || "").toUpperCase();
   const direction = (tx.direction || "").toUpperCase();
   const balanceType = (tx.balanceType || "").toUpperCase();
@@ -213,6 +217,8 @@ function cleanWalletDescription(value?: string) {
 }
 
 function txDisplayDescription(tx: WalletTransaction, role?: string) {
+  const apiDescription = cleanWalletDescription(tx.description);
+  if (apiDescription) return apiDescription;
   const text =
     `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
   const type = (tx.transactionType || "").toUpperCase();
@@ -747,6 +753,8 @@ export function WalletPage() {
   );
   const [transactionPage, setTransactionPage] = useState(1);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<WalletTransaction | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -933,12 +941,13 @@ export function WalletPage() {
             <>
             <div className="overflow-x-auto divide-y divide-slate-50">
               {/* Header */}
-              <div className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              <div className="grid min-w-[800px] grid-cols-[auto_minmax(300px,1fr)_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <span className="w-9" />
                 <span>Nội dung giao dịch</span>
                 <span className="text-right">Số tiền</span>
                 <span className="w-24 text-center">Trạng thái</span>
                 <span className="w-28 text-right">Thời gian</span>
+                <span className="w-10" />
               </div>
               {pagedTransactions.map((tx) => {
                 const isEscrowDeposit = isMilestoneEscrowDeposit(tx);
@@ -950,8 +959,8 @@ export function WalletPage() {
                   tx.direction === "RELEASE";
                 return (
                   <div
-                    key={tx.id}
-                    className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                    key={tx.transactionId ?? tx.id}
+                    className="grid min-w-[800px] grid-cols-[auto_minmax(300px,1fr)_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                   >
                     <span
                       className={cn(
@@ -990,8 +999,8 @@ export function WalletPage() {
                         {tx.balanceType && ` · Số dư: ${tx.balanceType}`}
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-400">
-                        Trước/Sau: {formatCurrency(tx.availableBalanceBefore ?? tx.balanceBefore)} / {formatCurrency(tx.availableBalanceAfter ?? tx.balanceAfter)}
-                        {tx.referenceType && ` · Tham chiếu: ${tx.referenceType}${tx.referenceId ? ` #${tx.referenceId}` : ""}`}
+                        {tx.balanceTypeLabel && `${tx.balanceTypeLabel} · `}
+                        Số dư trước/sau: {formatCurrency(tx.availableBalanceBefore ?? tx.balanceBefore)} / {formatCurrency(tx.availableBalanceAfter ?? tx.balanceAfter)}
                       </p>
                     </div>
                     <span
@@ -1008,11 +1017,19 @@ export function WalletPage() {
                       {formatCurrency(Math.abs(tx.amount))}
                     </span>
                     <span className="w-24 text-center">
-                      <StatusBadge status={transactionStatusLabel(tx.status)} />
+                      <StatusBadge status={tx.statusLabel || transactionStatusLabel(tx.status)} />
                     </span>
                     <span className="w-28 text-right text-sm font-bold text-slate-600">
                       <SplitDateTime value={tx.createdAt} />
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedTransaction(tx)}
+                      title="Xem chi tiết giao dịch"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 );
               })}
@@ -1120,6 +1137,10 @@ export function WalletPage() {
         onClose={() => setWithdrawOpen(false)}
         onSuccess={load}
         wallet={wallet}
+      />
+      <WalletTransactionDetailModal
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
       />
     </div>
   );

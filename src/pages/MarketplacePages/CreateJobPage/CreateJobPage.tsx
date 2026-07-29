@@ -254,6 +254,7 @@ function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
 // Chức năng 3: Hiển thị và điều phối toàn bộ luồng tạo hoặc chỉnh sửa Job.
 function BudgetAssessmentCard({
   assessment,
+  displayBudget,
   confirmation,
   loading,
   onKeepCurrent,
@@ -262,6 +263,7 @@ function BudgetAssessmentCard({
   onConfirmCustomBudget,
 }: {
   assessment: BudgetAssessment;
+  displayBudget?: number;
   confirmation: SowBudgetConfirmationState;
   loading: boolean;
   onKeepCurrent: () => void;
@@ -296,6 +298,10 @@ function BudgetAssessmentCard({
     },
   }[assessment.status];
   const customBudget = Number(confirmation.customBudget);
+  const currentBudget =
+    displayBudget !== undefined && Number.isFinite(displayBudget)
+      ? displayBudget
+      : assessment.businessBudget;
 
   return (
     <section
@@ -323,7 +329,7 @@ function BudgetAssessmentCard({
             Ngân sách hiện tại
           </p>
           <p className="mt-1 text-sm font-extrabold text-slate-900">
-            {formatCurrency(assessment.businessBudget)}
+            {formatCurrency(currentBudget)}
           </p>
         </div>
         <div className="rounded-xl border border-white/80 bg-white/80 p-3">
@@ -1785,24 +1791,30 @@ export function CreateJobPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Ngân sách dự kiến(VNĐ)">
-                  <Input
-                    placeholder="VND"
-                    type="text"
-                    value={
-                      form.budgetAmount
-                        ? new Intl.NumberFormat("vi-VN").format(
-                            Number(form.budgetAmount),
-                          )
-                        : ""
-                    }
-                    onChange={(event) =>
-                      updateFormBudgetAmount(
-                        event.target.value.replace(/\D/g, ""),
-                      )
-                    }
-                    disabled={businessBudgetInputLocked}
-                    required
-                  />
+                  <div className="relative h-11 self-start">
+                    <Input
+                      placeholder="VND"
+                      type="text"
+                      value={
+                        form.budgetAmount
+                          ? new Intl.NumberFormat("vi-VN").format(
+                              Number(form.budgetAmount),
+                            )
+                          : ""
+                      }
+                      onChange={(event) =>
+                        updateFormBudgetAmount(
+                          event.target.value.replace(/\D/g, ""),
+                        )
+                      }
+                      disabled={businessBudgetInputLocked}
+                      className="pr-10"
+                      required
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                      ₫
+                    </span>
+                  </div>
                   {attemptedSubmit && !form.budgetAmount && (
                     <p className="mt-1 text-xs text-rose-500">
                       Vui lòng nhập ngân sách dự án.
@@ -1986,6 +1998,11 @@ export function CreateJobPage() {
               {budgetAssessment && budgetAssessmentVisible && (
                 <BudgetAssessmentCard
                   assessment={budgetAssessment}
+                  displayBudget={
+                    budgetConfirmation.selection === "MANUAL"
+                      ? Number(form.budgetAmount)
+                      : undefined
+                  }
                   confirmation={budgetConfirmation}
                   loading={budgetAllocationLoading}
                   onKeepCurrent={keepCurrentBusinessBudget}
@@ -2170,32 +2187,36 @@ export function CreateJobPage() {
                         }
                       />
                       {/* Budget — editable only when not locked */}
-                      <Input
-                        aria-label={`Ngân sách ${index + 1}`}
-                        type="text"
-                        value={
-                          milestone.fundsAllocated
-                            ? new Intl.NumberFormat("vi-VN").format(
-                                Number(milestone.fundsAllocated),
-                              )
-                            : ""
-                        }
-                        placeholder="VND"
-                        disabled={
-                          sowGeneratedLocked
-                        }
-                        className={
-                          sowGeneratedLocked
-                            ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
-                            : ""
-                        }
-                        onChange={(event) =>
-                          updateMilestoneBudgetAmount(
-                            index,
-                            event.target.value.replace(/\D/g, ""),
-                          )
-                        }
-                      />
+                      <div className="relative h-11 self-start">
+                        <Input
+                          aria-label={`Ngân sách ${index + 1}`}
+                          type="text"
+                          value={
+                            milestone.fundsAllocated
+                              ? new Intl.NumberFormat("vi-VN").format(
+                                  Number(milestone.fundsAllocated),
+                                )
+                              : ""
+                          }
+                          placeholder="VND"
+                          disabled={sowGeneratedLocked}
+                          className={cn(
+                            "pr-10",
+                            sowGeneratedLocked
+                              ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
+                              : "",
+                          )}
+                          onChange={(event) =>
+                            updateMilestoneBudgetAmount(
+                              index,
+                              event.target.value.replace(/\D/g, ""),
+                            )
+                          }
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                          ₫
+                        </span>
+                      </div>
                       <Input
                         aria-label={`Mốc ${index + 1}`}
                         type="number"
