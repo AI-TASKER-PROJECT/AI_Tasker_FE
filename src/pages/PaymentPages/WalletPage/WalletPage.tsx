@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CircleCheck,
+  LockKeyhole,
   RefreshCw,
   Send,
   Shield,
@@ -73,7 +75,32 @@ function SplitDateTime({ value }: { value?: string }) {
   );
 }
 
-function txIcon(type: WalletTransaction["transactionType"]) {
+function isMilestoneEscrowDeposit(tx: WalletTransaction) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const operationKey = (tx.operationKey || "").toUpperCase();
+  return (
+    type === "MILESTONE_ESCROW_DEPOSIT" ||
+    operationKey.startsWith("MILESTONE_ESCROW_DEPOSIT:")
+  );
+}
+
+function isMilestoneEscrowRelease(tx: WalletTransaction) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const operationKey = (tx.operationKey || "").toUpperCase();
+  return (
+    type === "MILESTONE_ESCROW_RELEASE" ||
+    operationKey.startsWith("MILESTONE_ESCROW_RELEASE:")
+  );
+}
+
+function txIcon(tx: WalletTransaction) {
+  if (isMilestoneEscrowDeposit(tx)) {
+    return <LockKeyhole className="h-5 w-5" />;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return <CircleCheck className="h-5 w-5" />;
+  }
+  const type = tx.transactionType;
   if (
     type === "TOPUP" ||
     type === "DEPOSIT_REFUND" ||
@@ -88,6 +115,20 @@ function txDisplayLabel(tx: WalletTransaction, role?: string) {
   const direction = (tx.direction || "").toUpperCase();
   const balanceType = (tx.balanceType || "").toUpperCase();
   const isExpert = role === "EXPERT";
+  const milestoneText = txMilestoneText(tx);
+  const contractTitle = txContractContextLabel(tx);
+  const milestoneAndContract = `${milestoneText ? ` mốc ${milestoneText}` : ""}${
+    contractTitle ? ` · ${contractTitle}` : ""
+  }`;
+
+  if (isMilestoneEscrowDeposit(tx)) {
+    return `Đã ký quỹ${milestoneAndContract}`;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return isExpert
+      ? `Đã nhận thanh toán${milestoneAndContract}`
+      : `Đã giải ngân${milestoneAndContract}`;
+  }
 
   if (type === "TOPUP") return "Nạp tiền vào ví";
   if (type === "MEMBERSHIP_PURCHASE") return "Thanh toán gói thành viên";
@@ -149,6 +190,16 @@ function txContractContextLabel(tx: WalletTransaction) {
   return tx.contractId ? "Hợp đồng liên quan" : tx.jobTitle?.trim() || "";
 }
 
+function txFlowLabel(tx: WalletTransaction) {
+  if (isMilestoneEscrowDeposit(tx)) {
+    return "Luồng tiền: Số dư khả dụng → Ví ký quỹ";
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return "Luồng tiền: Ví ký quỹ → Ví chuyên gia";
+  }
+  return "";
+}
+
 const TRANSACTIONS_PER_PAGE = 6;
 
 function cleanWalletDescription(value?: string) {
@@ -170,6 +221,16 @@ function txDisplayDescription(tx: WalletTransaction, role?: string) {
   const expertName = txPartyText(tx.expertName, "Chuyên gia");
   const contractTitle = txPartyText(tx.contractTitle, "hợp đồng chưa có tên");
   const milestoneText = txMilestoneText(tx);
+  if (isMilestoneEscrowDeposit(tx)) {
+    return isExpert
+      ? `${businessName} đã ký quỹ ${formatCurrency(Math.abs(tx.amount))} cho mốc ${milestoneText || "tương ứng"}. Khoản tiền được giữ an toàn và sẽ thanh toán sau khi mốc được nghiệm thu.`
+      : `Bạn đã chuyển ${formatCurrency(Math.abs(tx.amount))} từ số dư khả dụng sang ví ký quỹ cho mốc ${milestoneText || "tương ứng"}.`;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return isExpert
+      ? `Bạn đã nhận ${formatCurrency(Math.abs(tx.amount))} từ ví ký quỹ cho mốc ${milestoneText || "tương ứng"} sau khi được nghiệm thu.`
+      : `${formatCurrency(Math.abs(tx.amount))} đã được giải ngân từ ví ký quỹ cho chuyên gia ${expertName} sau khi mốc ${milestoneText || "tương ứng"} được nghiệm thu.`;
+  }
   const milestonePhrase = milestoneText
     ? `mốc ${milestoneText}`
     : "mốc tương ứng";
@@ -880,8 +941,13 @@ export function WalletPage() {
                 <span className="w-28 text-right">Thời gian</span>
               </div>
               {pagedTransactions.map((tx) => {
+                const isEscrowDeposit = isMilestoneEscrowDeposit(tx);
+                const isEscrowRelease = isMilestoneEscrowRelease(tx);
+                const isEscrowMovement = isEscrowDeposit || isEscrowRelease;
                 const isCredit =
-                  tx.direction === "CREDIT" || tx.direction === "RELEASE";
+                  isEscrowRelease ||
+                  tx.direction === "CREDIT" ||
+                  tx.direction === "RELEASE";
                 return (
                   <div
                     key={tx.id}
@@ -890,12 +956,14 @@ export function WalletPage() {
                     <span
                       className={cn(
                         "grid h-11 w-11 place-items-center rounded-2xl",
-                        isCredit
+                        isEscrowDeposit
+                          ? "bg-amber-50 text-amber-600"
+                          : isCredit
                           ? "bg-mint-50 text-mint-600"
                           : "bg-coral-50 text-coral-600",
                       )}
                     >
-                      {txIcon(tx.transactionType)}
+                      {txIcon(tx)}
                     </span>
                     <div className="min-w-0">
                       <p className="text-base font-extrabold leading-snug text-ink">
@@ -911,6 +979,11 @@ export function WalletPage() {
                           {txContractContextLabel(tx)}
                         </p>
                       )}
+                      {txFlowLabel(tx) && (
+                        <p className="mt-1 text-sm font-bold text-slate-600">
+                          {txFlowLabel(tx)}
+                        </p>
+                      )}
                       <p className="mt-1.5 text-xs font-semibold text-slate-500">
                         {tx.actorRole && `Vai trò: ${tx.actorRole}`}
                         {tx.counterpartyName && ` · Đối tác: ${tx.counterpartyName}${tx.counterpartyRole ? ` (${tx.counterpartyRole})` : ""}`}
@@ -924,11 +997,15 @@ export function WalletPage() {
                     <span
                       className={cn(
                         "whitespace-nowrap text-right text-base font-black",
-                        isCredit ? "text-emerald-600" : "text-rose-600",
+                        isEscrowDeposit
+                          ? "text-amber-700"
+                          : isCredit
+                            ? "text-emerald-600"
+                            : "text-rose-600",
                       )}
                     >
-                      {isCredit ? "+" : "-"}
-                      {formatCurrency(tx.amount)}
+                      {!isEscrowMovement && (isCredit ? "+" : "-")}
+                      {formatCurrency(Math.abs(tx.amount))}
                     </span>
                     <span className="w-24 text-center">
                       <StatusBadge status={transactionStatusLabel(tx.status)} />
