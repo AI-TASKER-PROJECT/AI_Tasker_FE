@@ -18,6 +18,8 @@ const supportedSettingKeys = [
   "dispute_staff_max_active_cases",
   "credit.job_post.price_vnd",
   "credit.proposal.price_vnd",
+  "contract.deposit.business_percentage",
+  "contract.deposit.expert_percentage",
 ];
 
 const settingLabels: Record<string, { label: string; description: string }> = {
@@ -38,6 +40,14 @@ const settingLabels: Record<string, { label: string; description: string }> = {
   "credit.proposal.price_vnd": {
     label: "Giá lượt nộp đề xuất",
     description: "Số tiền cho mỗi lượt nộp đề xuất của chuyên gia, tính bằng VND.",
+  },
+  "contract.deposit.business_percentage": {
+    label: "Tỷ lệ ký quỹ của doanh nghiệp",
+    description: "Phần trăm tổng ngân sách chốt doanh nghiệp phải ký quỹ.",
+  },
+  "contract.deposit.expert_percentage": {
+    label: "Tỷ lệ ký quỹ của chuyên gia",
+    description: "Phần trăm tổng ngân sách chốt chuyên gia phải ký quỹ.",
   },
 };
 

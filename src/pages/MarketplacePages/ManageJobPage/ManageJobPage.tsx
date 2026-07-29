@@ -316,6 +316,10 @@ export function ManageJobPage() {
       (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0)
     );
   }, 0);
+  const originalProjectBudget = milestones.reduce(
+    (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+    0,
+  );
 
   const review = async (
     proposalId: number,
@@ -716,13 +720,17 @@ export function ManageJobPage() {
               title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
             />
           )}
-          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-6">
             <ContractPreviewMetric
               label="Tổng thời gian mốc"
               value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
             <ContractPreviewMetric
-              label="Tổng tiền dự án"
+              label="Tổng ngân sách gốc"
+              value={formatCurrency(originalProjectBudget)}
+            />
+            <ContractPreviewMetric
+              label="Tổng ngân sách đề xuất"
               value={formatCurrency(totalProjectBudget)}
             />
 

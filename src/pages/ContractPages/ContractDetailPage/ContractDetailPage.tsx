@@ -21,7 +21,6 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
-  maskSensitiveValue,
 } from "../../../lib/utils";
 import type {
   BusinessProfile,
@@ -29,6 +28,7 @@ import type {
   ContractMilestone,
   ContractChangeMilestone,
   ContractChangeRequest,
+  ContractDepositRateResponse,
   Dispute,
   ExpertProfile,
   Milestone,
@@ -50,8 +50,6 @@ import {
   Textarea,
 } from "../../../components/ui";
 import {
-  calculateExpertSecurityDeposit,
-  calculateSecurityDeposit,
   ContractLifecycle,
   ContractMetric,
   formatTimelineWeeks,
@@ -196,6 +194,10 @@ export function ContractDetailPage() {
   const [cancelDraftLoading, setCancelDraftLoading] = useState(false);
   const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
+  const [depositRates, setDepositRates] = useState<ContractDepositRateResponse>({
+    businessPercentage: 20,
+    expertPercentage: 10,
+  });
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
     null,
   );
@@ -232,6 +234,10 @@ export function ContractDetailPage() {
       .getContract(Number(contractId))
       .then(setContract)
       .catch(() => setContract(null));
+    contractApi
+      .getDepositRates()
+      .then(setDepositRates)
+      .catch(() => undefined);
   }, [contractId]);
 
   useEffect(() => {
@@ -719,17 +725,24 @@ export function ContractDetailPage() {
         0,
       ) || Number(contract.totalBudget || 0)
     : Number(contract.totalBudget || 0);
-  const securityDepositAmount = calculateSecurityDeposit(
-    originalContractBudget,
-  );
-  const expertSecurityDepositAmount = calculateExpertSecurityDeposit(
-    originalContractBudget,
-  );
-  const currentDepositAmount =
+  const proposedContractBudget = renderedMilestones.length
+    ? renderedMilestones.reduce(
+        (total, milestone) =>
+          total +
+          Number(
+            "finalBudget" in milestone
+              ? milestone.finalBudget || 0
+              : milestone.fundsAllocated || 0,
+          ),
+        0,
+      ) || Number(contract.totalBudget || 0)
+    : Number(contract.totalBudget || 0);
+  const currentDepositPercentage =
     session?.role === "EXPERT"
-      ? expertSecurityDepositAmount
-      : securityDepositAmount;
-  const currentDepositPercentage = session?.role === "EXPERT" ? 10 : 20;
+      ? depositRates.expertPercentage
+      : depositRates.businessPercentage;
+  const currentDepositAmount =
+    (proposedContractBudget * currentDepositPercentage) / 100;
   const currentDepositRoleLabel =
     session?.role === "EXPERT" ? "Chuyên gia" : "Doanh nghiệp";
   const ndaSigned = Boolean(
@@ -795,7 +808,7 @@ export function ContractDetailPage() {
       ? formatTimelineWeeks(changedTimelineDays)
       : undefined;
   const hasAcceptedChange = acceptedChangeNumber > 0;
-  const displayedContractBudget = changedBudget ?? originalContractBudget;
+  const displayedContractBudget = changedBudget ?? proposedContractBudget;
   const displayedTimelineDays = changedTimelineDays ?? originalTimelineDays;
   const displayedTimelineLabel =
     changedTimelineLabel || formatTimelineWeeks(originalTimelineDays);
@@ -1169,11 +1182,15 @@ export function ContractDetailPage() {
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <ContractMetric
-              label={`Tổng ngân sách${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
+              label="Tổng ngân sách gốc"
+              value={formatCurrency(originalContractBudget)}
+            />
+            <ContractMetric
+              label={`Tổng ngân sách đề xuất${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
               value={formatCurrency(displayedContractBudget)}
             />
             <ContractMetric
-              label={`Ký quỹ ${currentDepositPercentage}% (theo tổng ngân sách ban đầu)`}
+              label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách đề xuất)`}
               value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
@@ -1204,10 +1221,7 @@ export function ContractDetailPage() {
                 label="Bên A - Doanh nghiệp"
                 value={businessDisplayName}
                 details={[
-                  [
-                    "Mã số thuế",
-                    maskSensitiveValue(participants.business?.taxCode),
-                  ],
+                  ["Mã số thuế", participants.business?.taxCode],
                   ["Địa chỉ", participants.business?.address],
 
                   ["Email", businessEmail],
@@ -1227,7 +1241,6 @@ export function ContractDetailPage() {
                       ? `${participants.expert.yearsOfExperience} năm`
                       : undefined,
                   ],
-                  ["KYC", participants.expert?.kycStatus],
                 ]}
               />
             </div>
@@ -1246,13 +1259,17 @@ export function ContractDetailPage() {
                 {contractTitle}
               </h3>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <ContractMetric
-                label={`Giá trị hợp đồng${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
+                label="Tổng ngân sách gốc"
+                value={formatCurrency(originalContractBudget)}
+              />
+              <ContractMetric
+                label={`Tổng ngân sách đề xuất${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
                 value={formatCurrency(displayedContractBudget)}
               />
               <ContractMetric
-                label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách ban đầu)`}
+                label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách đề xuất)`}
                 value={formatCurrency(currentDepositAmount)}
               />
               <ContractMetric
@@ -2079,8 +2096,8 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng contract ban đầu"
-              value={formatCurrency(originalContractBudget)}
+              label="Tổng ngân sách đề xuất"
+              value={formatCurrency(proposedContractBudget)}
             />
             <ContractMetric
               label={`Ký quỹ ${currentDepositPercentage}%`}

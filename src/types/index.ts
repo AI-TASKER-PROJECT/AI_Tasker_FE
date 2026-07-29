@@ -193,6 +193,11 @@ export interface ContractDeposit {
   updatedAt?: string;
 }
 
+export interface ContractDepositRateResponse {
+  businessPercentage: number;
+  expertPercentage: number;
+}
+
 export interface PaymentActionResponse<T> {
   completed: boolean;
   needTopup: boolean;
@@ -613,6 +618,11 @@ export interface SystemSetting {
   updatedByRoleId?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CreditPriceResponse {
+  jobPostPriceVnd: number;
+  proposalPriceVnd: number;
 }
 
 export interface SystemWallet {

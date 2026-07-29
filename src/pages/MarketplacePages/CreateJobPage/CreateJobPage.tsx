@@ -2118,10 +2118,10 @@ export function CreateJobPage() {
                   />
                 )}
 
-                <div className="mt-4 hidden grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
+                <div className="mt-4 hidden grid-cols-[80px_minmax(180px,1fr)_190px_190px_minmax(260px,1.2fr)] gap-3 px-3 text-xs font-extrabold uppercase tracking-wide text-slate-500 xl:grid">
+                  <span>Mốc</span>
                   <span>Công việc</span>
                   <span>Ngân sách(VNĐ)</span>
-                  <span>Mốc</span>
                   <span>Thời gian</span>
                   <span>Tiêu chí nghiệm thu</span>
                 </div>
@@ -2129,7 +2129,7 @@ export function CreateJobPage() {
                   {milestones.map((milestone, index) => (
                     <div
                       key={index}
-                      className="grid gap-3 rounded-2xl bg-white p-3 xl:grid-cols-[minmax(180px,1fr)_190px_110px_190px_minmax(260px,1.2fr)]"
+                      className="grid gap-3 rounded-2xl bg-white p-3 xl:grid-cols-[80px_minmax(180px,1fr)_190px_190px_minmax(260px,1.2fr)]"
                     >
                       {(isDeletingMilestones || isReorderingMilestones) &&
                         !sowGeneratedLocked && (
@@ -2169,6 +2169,14 @@ export function CreateJobPage() {
                             )}
                           </div>
                         )}
+                      <div className="flex h-11 items-center gap-2 self-start">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-brand-100 bg-brand-50 text-sm font-extrabold text-brand-600">
+                          {milestone.orderIndex}
+                        </span>
+                        <span className="text-xs font-bold text-slate-500 xl:hidden">
+                          Mốc {milestone.orderIndex}
+                        </span>
+                      </div>
                       {/* Milestone name — always editable */}
                       <Input
                         aria-label={`Công việc ${index + 1}`}
@@ -2217,16 +2225,6 @@ export function CreateJobPage() {
                           ₫
                         </span>
                       </div>
-                      <Input
-                        aria-label={`Mốc ${index + 1}`}
-                        type="number"
-                        min={1}
-                        value={milestone.orderIndex}
-                        placeholder="GĐ"
-                        readOnly
-                        disabled
-                        className="bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
-                      />
                       <div
                         className={`flex h-11 self-start rounded-2xl border border-slate-200 px-3 ${
                           sowGeneratedLocked ? "bg-slate-50" : "bg-white"

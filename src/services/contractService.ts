@@ -1,7 +1,13 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, CaseAttachment, Contract, ContractChangeRequest, ContractDeposit, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
+import type { AcceptanceCriteria, CaseAttachment, Contract, ContractChangeRequest, ContractDeposit, ContractDepositRateResponse, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
 
 export const contractApi = {
+  getDepositRates() {
+    return call<ContractDepositRateResponse>({
+      method: "GET",
+      url: "/api/v1/contracts/deposit-rates",
+    });
+  },
   // Lấy danh sách hợp đồng
   listContracts() {
     return call<Contract[]>({ method: "GET", url: "/api/v1/contracts" });

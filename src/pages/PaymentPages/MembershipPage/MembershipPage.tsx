@@ -19,6 +19,7 @@ import {
 import { useSession } from "../../../context/sessionContext";
 import { cn, formatCurrency } from "../../../lib/utils";
 import type {
+  CreditPriceResponse,
   MembershipPackage,
   PaymentActionResponse,
   MembershipPurchase,
@@ -171,12 +172,14 @@ function CreditPurchaseModal({
   onClose,
   role,
   wallet,
+  unitPrice,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   role: "BUSINESS" | "EXPERT";
   wallet: SystemWallet | null;
+  unitPrice: number;
   onSuccess: () => void | Promise<void>;
 }) {
   const [quantity, setQuantity] = useState("1");
@@ -189,7 +192,6 @@ function CreditPurchaseModal({
     msg: string;
   } | null>(null);
 
-  const unitPrice = role === "BUSINESS" ? 200 : 100;
   const creditType =
     role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
   const total = (Number(quantity) || 0) * unitPrice;
@@ -331,16 +333,21 @@ export function MembershipPage() {
     pkg: MembershipPackage;
   } | null>(null);
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditPrices, setCreditPrices] = useState<CreditPriceResponse | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [pkgs, w] = await Promise.allSettled([
+      const [pkgs, w, prices] = await Promise.allSettled([
         membershipApi.listPackages(),
         walletApi.current(),
+        creditApi.prices(),
       ]);
       if (pkgs.status === "fulfilled") setPackages(pkgs.value);
       if (w.status === "fulfilled") setWallet(w.value);
+      if (prices.status === "fulfilled") setCreditPrices(prices.value);
     } finally {
       setLoading(false);
     }
@@ -386,6 +393,10 @@ export function MembershipPage() {
   const role = session.role;
   const isExternalRole = role === "BUSINESS" || role === "EXPERT";
   const creditType = role === "BUSINESS" ? "lượt đăng bài" : "lượt nộp đề xuất";
+  const currentCreditPrice =
+    role === "BUSINESS"
+      ? creditPrices?.jobPostPriceVnd
+      : creditPrices?.proposalPriceVnd;
 
   return (
     <div className="space-y-6">
@@ -454,9 +465,9 @@ export function MembershipPage() {
                 </span>
                 <div>
                   <p className="text-sm text-slate-500">
-                    {role === "BUSINESS"
-                      ? "200 VND / 1 credit"
-                      : "100 VND / 1 credit"}
+                    {currentCreditPrice != null
+                      ? `${formatCurrency(currentCreditPrice)} / 1 credit`
+                      : "Đang tải đơn giá..."}
                   </p>
                 </div>
               </div>
@@ -469,6 +480,7 @@ export function MembershipPage() {
             <div className="flex items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4">
               <Button
                 onClick={() => setCreditModalOpen(true)}
+                disabled={currentCreditPrice == null}
                 className="h-12 w-full rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -563,12 +575,13 @@ export function MembershipPage() {
       )}
 
       {/* Credit purchase modal */}
-      {isExternalRole && (
+      {isExternalRole && currentCreditPrice != null && (
         <CreditPurchaseModal
           open={creditModalOpen}
           onClose={() => setCreditModalOpen(false)}
           role={role as "BUSINESS" | "EXPERT"}
           wallet={wallet}
+          unitPrice={currentCreditPrice}
           onSuccess={load}
         />
       )}
