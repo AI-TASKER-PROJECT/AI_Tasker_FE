@@ -1,24 +1,13 @@
 import { BarChart3, Bot, BriefcaseBusiness, CheckCircle2, Cpu, Eye, FileSignature, PenTool, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
-import { useEffect, useState } from "react";
-import { marketplaceApi } from "../../../lib/api";
 import { getPublicExperience } from "../../../lib/roleExperience";
 import { useSession } from "../../../lib/session";
-import type { Job } from "../../../types";
 import { Badge, Button, Card, LinkButton } from "../../../components/ui";
 import { ScrollReveal } from "../../../components/ui/ScrollReveal";
-import { heroImage, JobCard } from "../PublicPages.shared";
+import { heroImage } from "../PublicPages.shared";
 
 export function JobsPage() {
   const session = useSession();
   const publicExperience = getPublicExperience(session);
-  const [jobs, setJobs] = useState<Job[]>([]);
-
-  useEffect(() => {
-    marketplaceApi
-      .listJobs()
-      .then((data) => setJobs(data || []))
-      .catch(() => setJobs([]));
-  }, []);
 
   return (
     <div className="relative overflow-x-hidden bg-[#f7faff] pb-24 pt-16">
@@ -95,31 +84,6 @@ export function JobsPage() {
                 </p>
               </Card>
             ))}
-          </div>
-        </ScrollReveal>
-
-        {/* New Section: Job Listings */}
-        <ScrollReveal>
-          <div className="mt-32">
-            <div className="mb-12 text-center">
-              <h2 className="font-display text-3xl font-black text-ink">
-                Dự án đang nổi bật
-              </h2>
-              <p className="mt-4 text-lg text-slate-600">
-                Khám phá các dự án AI đang tuyển dụng chuyên gia trên nền tảng.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <JobCard key={job.jobId} job={job} hideStatus={true} />
-                ))
-              ) : (
-                <div className="col-span-full py-10 text-center text-slate-500">
-                  Chưa có dự án nào để hiển thị.
-                </div>
-              )}
-            </div>
           </div>
         </ScrollReveal>
 

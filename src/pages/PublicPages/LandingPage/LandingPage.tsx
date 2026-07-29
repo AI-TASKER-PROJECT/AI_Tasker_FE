@@ -19,7 +19,10 @@ import { useLocation } from "react-router-dom";
 import { Avatar, Badge, Card, LinkButton } from "../../../components/ui";
 import { ScrollReveal } from "../../../components/ui/ScrollReveal";
 import { useSession } from "../../../context/sessionContext";
+import { marketplaceApi } from "../../../lib/api";
 import { getPublicExperience } from "../../../lib/roleExperience";
+import type { Job } from "../../../types";
+import { JobCard } from "../PublicPages.shared";
 
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX";
@@ -155,6 +158,7 @@ export function LandingPage() {
   const session = useSession();
   const experience = getPublicExperience(session);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
 
   useEffect(() => {
     const targetId =
@@ -172,6 +176,19 @@ export function LandingPage() {
     const target = document.getElementById(targetId);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [location.pathname]);
+
+  useEffect(() => {
+    marketplaceApi
+      .listJobs()
+      .then((data) =>
+        setFeaturedJobs(
+          [...(data || [])].sort(
+            (left, right) => Number(right.budget || 0) - Number(left.budget || 0),
+          ),
+        ),
+      )
+      .catch(() => setFeaturedJobs([]));
+  }, []);
 
   const primaryLabel = session ? experience.primaryLabel : "Đăng dự án ngay";
   const secondaryLabel = session ? experience.secondaryLabel : "Tìm kiếm cơ hội";
@@ -263,6 +280,36 @@ export function LandingPage() {
             </div>
           </div>
         </ScrollReveal>
+      </section>
+
+      <section className="bg-[#fff8f8] px-4 py-24 md:px-10">
+        <div className="mx-auto max-w-7xl">
+          <ScrollReveal className="mx-auto max-w-3xl text-center">
+            <h2 className="text-[2.2rem] font-bold text-[#27171d]">
+              Dự án đang nổi bật
+            </h2>
+            <p className="mt-4 text-[18px] leading-8 text-[#594048]">
+              Khám phá các dự án AI đang tuyển dụng chuyên gia trên nền tảng.
+            </p>
+          </ScrollReveal>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredJobs.length > 0 ? (
+              featuredJobs.map((job) => (
+                <JobCard
+                  key={job.jobId}
+                  job={job}
+                  hideStatus={true}
+                  hidePublicStats
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-10 text-center text-slate-500">
+                Chưa có dự án nào để hiển thị.
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="bg-white px-4 py-24 md:px-10">
