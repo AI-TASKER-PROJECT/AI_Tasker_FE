@@ -134,7 +134,7 @@ function PackageCard({
             <li className="flex items-center gap-2.5 text-sm">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-mint-500" />
               <span className="font-semibold text-slate-700">
-                {pkg.proposalQuota} proposal credits
+                {pkg.proposalQuota} lượt nộp bản đề xuất
               </span>
             </li>
           )}
@@ -193,7 +193,7 @@ function CreditPurchaseModal({
   } | null>(null);
 
   const creditType =
-    role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
+    role === "BUSINESS" ? "Job-post credit" : "Lượt nộp bản đề xuất";
   const total = (Number(quantity) || 0) * unitPrice;
 
   const handleClose = () => {
@@ -403,7 +403,7 @@ export function MembershipPage() {
       <PageHeader
         eyebrow="Membership & Credits"
         title="Gói thành viên"
-        description="Nâng cấp tài khoản dể nhận badge xác minh, credits dăng job, nộp proposal và tính năng AI dộc quyền."
+        description="Nâng cấp tài khoản dể nhận badge xác minh, credits dăng job, nộp bản đề xuất và tính năng AI dộc quyền."
       />
 
       {/* Wallet balance hint */}
@@ -474,7 +474,7 @@ export function MembershipPage() {
               <p className="mt-3 text-xs text-slate-400">
                 {role === "BUSINESS"
                   ? "Dùng dể đăng dự án mới. Mỗi 1 lần đăng tiêu tốn 1 credit."
-                  : "Dùng dể nộp proposal. Mỗi 1 lần nộp proposal tiêu tốn 1 credit."}
+                  : "Dùng dể nộp bản đề xuất. Mỗi 1 lần nộp bản đề xuất tiêu tốn 1 credit."}
               </p>
             </div>
             <div className="flex items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4">

@@ -289,7 +289,7 @@ export function SubmitProposalPage() {
     }
     if (quota && (quota.proposalQuotaBalance ?? 0) <= 0) {
       setMessage(
-        "Bạn đã hết lượt gửi Proposal. Vui lòng mua thêm credit hoặc gói thành viên.",
+        "Bạn đã hết lượt gửi bản đề xuất. Vui lòng mua thêm credit hoặc gói thành viên.",
       );
       return;
     }
@@ -360,7 +360,7 @@ export function SubmitProposalPage() {
       });
       setForm((value) => ({ ...value, proposalFileUrl }));
       setSavedProposal(proposal);
-      setMessage("Đã gửi proposal thành công.");
+      setMessage("Đã gửi bản đề xuất thành công.");
     } catch (error) {
       const apiError = error as {
         response?: { data?: { message?: string } };
@@ -369,7 +369,7 @@ export function SubmitProposalPage() {
       setMessage(
         apiError.response?.data?.message ||
           apiError.message ||
-          "Không thể gửi proposal.",
+          "Không thể gửi bản đề xuất.",
       );
     } finally {
       setLoading(false);
@@ -414,7 +414,7 @@ export function SubmitProposalPage() {
                   tone="danger"
                   title="Tài khoản hiện tại không phải Chuyên gia"
                 >
-                  Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
+                  Hãy đăng nhập bằng tài khoản Expert để gửi bản đề xuất cho dự án.
                 </Notice>
               )}
               <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
@@ -531,7 +531,7 @@ export function SubmitProposalPage() {
                       Ngân sách & tài liệu
                     </h3>
                     <p className="text-sm text-slate-500">
-                      Đính kèm proposal_file và chốt ngân sách dự án trước khi
+                      Đính kèm file bản đề xuất và chốt ngân sách dự án trước khi
                       gửi.
                     </p>
                   </div>
@@ -549,7 +549,7 @@ export function SubmitProposalPage() {
                     />
                   </Field>
                   <Field
-                    label="Proposal file"
+                    label="File bản đề xuất"
                     hint={
                       proposalFile?.name ||
                       form.proposalFileUrl ||
@@ -713,7 +713,7 @@ export function SubmitProposalPage() {
                   disabled={session?.role !== "EXPERT" || !!savedProposal}
                 >
                   <Save className="h-4 w-4" />
-                  Gửi proposal
+                  Gửi bản đề xuất
                 </Button>
               </div>
               {message && (
@@ -805,10 +805,10 @@ export function SubmitProposalPage() {
           </Card>
           {savedProposal && (
             <Card className="p-5">
-              <SectionHeading title="Proposal đã gửi" />
+              <SectionHeading title="Bản đề xuất đã gửi" />
               <div className="mt-4">
                 <LinkButton to="/app/proposals" variant="secondary">
-                  Xem proposal của tôi
+                  Xem bản đề xuất của tôi
                 </LinkButton>
               </div>
             </Card>

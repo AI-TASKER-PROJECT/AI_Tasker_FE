@@ -2052,7 +2052,7 @@ export function CreateJobPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <SectionHeading
                     title="Mốc nghiệm thu của dự án"
-                    description="Mốc được đính kèm với dự án, có thể được sử dụng trong hợp đồng sau khi proposal được chấp nhận."
+                    description="Mốc được đính kèm với dự án, có thể được sử dụng trong hợp đồng sau khi bản đề xuất được chấp nhận."
                   />
                   <div className="flex shrink-0 flex-col items-start gap-3 sm:flex-row sm:items-start md:justify-end">
                     {sowGeneratedLocked && (
@@ -2622,7 +2622,7 @@ export function CreateJobPage() {
         open={publishSuccessOpen}
         onClose={() => setPublishSuccessOpen(false)}
         title="Mở public job thành công"
-        description="Job đã hiển thị với chuyên gia và có thể nhận proposal mới."
+        description="Job đã hiển thị với chuyên gia và có thể nhận bản đề xuất mới."
         size="sm"
         footer={
           <>
@@ -2641,7 +2641,7 @@ export function CreateJobPage() {
         }
       >
         <Notice tone="success" title="Chuyên gia đã có thể nhìn thấy job này.">
-          Bạn có thể vào màn quản lý để theo dõi proposal và tạo hợp đồng khi có
+          Bạn có thể vào màn quản lý để theo dõi bản đề xuất và tạo hợp đồng khi có
           chuyên gia phù hợp.
         </Notice>
       </Modal>

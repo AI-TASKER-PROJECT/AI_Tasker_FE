@@ -234,7 +234,7 @@ export function MyJobsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Dự án của doanh nghiệp"
-          description="Tạo dự án mới, đăng tải, xem thông tin dự án và đánh giá proposal được gửi từ chuyên gia"
+          description="Tạo dự án mới, đăng tải, xem thông tin dự án và đánh giá bản đề xuất được gửi từ chuyên gia"
           actions={
             <LinkButton to="/app/jobs/new">
               <Plus className="h-4 w-4" />

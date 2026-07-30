@@ -3,11 +3,12 @@
   Bell,
   BriefcaseBusiness,
   FileCheck2,
+  Gavel,
   IdCard,
-  Layers3,
+  X,
   WalletCards,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   contractApi,
@@ -15,6 +16,8 @@ import {
   marketplaceApi,
   notificationApi,
   profileApi,
+  staffApi,
+  userQuotaApi,
 } from "../../../services";
 import { adminApi } from "../../../lib/api";
 import { roleLabel, useSession } from "../../../context/sessionContext";
@@ -29,17 +32,22 @@ import type {
   Job,
   NotificationItem,
   Proposal,
+  Staff,
   SystemWallet,
+  UserQuota,
 } from "../../../types";
 import {
   Card,
   LinkButton,
   ListLink,
   MetricCard,
+  Notice,
   PageHeader,
   SectionHeading,
   StatusBadge,
 } from "../../../components/ui";
+
+const PROFILE_REVIEW_DOMAIN_CODE = "PROFILE_REVIEW";
 
 export function DashboardPage() {
   const session = useSession();
@@ -55,91 +63,93 @@ export function DashboardPage() {
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [myProposals, setMyProposals] = useState<Proposal[]>([]);
   const [systemWallet, setSystemWallet] = useState<SystemWallet | null>(null);
+  const [staffProfile, setStaffProfile] = useState<Staff | null>(null);
+  const [quota, setQuota] = useState<UserQuota | null>(null);
+  const [approvalBonusNoticeDismissed, setApprovalBonusNoticeDismissed] =
+    useState(false);
+
+  const isStaff = session?.role === "STAFF";
+  const isProfileReviewStaff = useMemo(
+    () =>
+      staffProfile?.domains?.some(
+        (domain) => domain.domainCode === PROFILE_REVIEW_DOMAIN_CODE,
+      ) || false,
+    [staffProfile],
+  );
 
   useEffect(() => {
     marketplaceApi
       .listJobs()
       .then(setJobs)
       .catch(() => setJobs([]));
-    contractApi
-      .listContracts()
-      .then(async (items) => {
-        setContracts(items);
-        const businessIds = Array.from(
-          new Set(items.map((contract) => contract.businessId)),
-        ).filter((value): value is number => Number.isFinite(value));
-        const expertIds = Array.from(
-          new Set(items.map((contract) => contract.expertId)),
-        ).filter((value): value is number => Number.isFinite(value));
-        const shouldLoadBusinesses = session?.role !== "BUSINESS";
-        const shouldLoadExperts = session?.role !== "EXPERT";
-        const [businessEntries, expertEntries] = await Promise.all([
-          shouldLoadBusinesses
-            ? Promise.all(
-                businessIds.map(async (id) => {
-                  try {
-                    const business = await profileApi.getBusinessById(id);
-                    return [
-                      id,
-                      business.companyName || "Doanh nghiệp",
-                    ] as const;
-                  } catch {
-                    return [id, ""] as const;
-                  }
-                }),
-              )
-            : Promise.resolve([] as Array<readonly [number, string]>),
-          shouldLoadExperts
-            ? Promise.all(
-                expertIds.map(async (id) => {
-                  try {
-                    const expert = await profileApi.getExpertById(id);
-                    return [
-                      id,
-                      expert.fullName || expert.title || "Chuyên gia",
-                    ] as const;
-                  } catch {
-                    return [id, ""] as const;
-                  }
-                }),
-              )
-            : Promise.resolve([] as Array<readonly [number, string]>),
-        ]);
-        setBusinessNames(
-          Object.fromEntries(businessEntries.filter(([, name]) => name)),
-        );
-        setExpertNames(
-          Object.fromEntries(expertEntries.filter(([, name]) => name)),
-        );
-      })
-      .catch(() => {
+    if (session?.role !== "STAFF") {
+      contractApi
+        .listContracts()
+        .then(async (items) => {
+          setContracts(items);
+          const businessIds = Array.from(
+            new Set(items.map((contract) => contract.businessId)),
+          ).filter((value): value is number => Number.isFinite(value));
+          const expertIds = Array.from(
+            new Set(items.map((contract) => contract.expertId)),
+          ).filter((value): value is number => Number.isFinite(value));
+          const shouldLoadBusinesses = session?.role !== "BUSINESS";
+          const shouldLoadExperts = session?.role !== "EXPERT";
+          const [businessEntries, expertEntries] = await Promise.all([
+            shouldLoadBusinesses
+              ? Promise.all(
+                  businessIds.map(async (id) => {
+                    try {
+                      const business = await profileApi.getBusinessById(id);
+                      return [
+                        id,
+                        business.companyName || "Doanh nghiệp",
+                      ] as const;
+                    } catch {
+                      return [id, ""] as const;
+                    }
+                  }),
+                )
+              : Promise.resolve([] as Array<readonly [number, string]>),
+            shouldLoadExperts
+              ? Promise.all(
+                  expertIds.map(async (id) => {
+                    try {
+                      const expert = await profileApi.getExpertById(id);
+                      return [
+                        id,
+                        expert.fullName || expert.title || "Chuyên gia",
+                      ] as const;
+                    } catch {
+                      return [id, ""] as const;
+                    }
+                  }),
+                )
+              : Promise.resolve([] as Array<readonly [number, string]>),
+          ]);
+          setBusinessNames(
+            Object.fromEntries(businessEntries.filter(([, name]) => name)),
+          );
+          setExpertNames(
+            Object.fromEntries(expertEntries.filter(([, name]) => name)),
+          );
+        })
+        .catch(() => {
+          setContracts([]);
+          setBusinessNames({});
+          setExpertNames({});
+        });
+    } else {
+      void Promise.resolve().then(() => {
         setContracts([]);
         setBusinessNames({});
         setExpertNames({});
       });
+    }
     notificationApi
       .list()
       .then(setNotifications)
       .catch(() => setNotifications([]));
-
-    if (session?.role === "STAFF") {
-      Promise.all([profileApi.listBusinesses(), profileApi.listExperts()])
-        .then(([businesses, experts]) => {
-          const pendingB = businesses.filter(
-            (b) => b.kybStatus === "Pending",
-          ).length;
-          const pendingE = experts.filter(
-            (e) => e.kycStatus === "Pending",
-          ).length;
-          setPendingVerifications(pendingB + pendingE);
-        })
-        .catch(() => setPendingVerifications(0));
-
-      disputeApi
-        .listStaff({ page: 0, size: 1, status: "STAFF_REVIEWING" })
-        .then((response) => setPendingStaffDisputes(response.totalElements))
-        .catch(() => setPendingStaffDisputes(0));
-    }
 
     if (session?.role === "BUSINESS") {
       marketplaceApi
@@ -155,6 +165,15 @@ export function DashboardPage() {
         .catch(() => setMyProposals([]));
     }
 
+    if (session?.role === "BUSINESS" || session?.role === "EXPERT") {
+      userQuotaApi
+        .getCurrent()
+        .then(setQuota)
+        .catch(() => setQuota(null));
+    } else {
+      void Promise.resolve().then(() => setQuota(null));
+    }
+
     if (session?.role === "ADMIN") {
       adminApi
         .getSystemWallet()
@@ -162,6 +181,61 @@ export function DashboardPage() {
         .catch(() => setSystemWallet(null));
     }
   }, [session?.role]);
+
+  useEffect(() => {
+    if (session?.role !== "STAFF") {
+      void Promise.resolve().then(() => {
+        setStaffProfile(null);
+        setPendingVerifications(0);
+        setPendingStaffDisputes(0);
+      });
+      return;
+    }
+
+    let ignore = false;
+    staffApi
+      .current()
+      .then((profile) => {
+        if (!ignore) setStaffProfile(profile);
+      })
+      .catch(() => {
+        if (!ignore) setStaffProfile(null);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [session?.role]);
+
+  useEffect(() => {
+    if (session?.role !== "STAFF" || !staffProfile) return;
+
+    if (isProfileReviewStaff) {
+      Promise.all([profileApi.listBusinesses(), profileApi.listExperts()])
+        .then(([businesses, experts]) => {
+          const pendingB = businesses.filter(
+            (b) => b.kybStatus === "Pending",
+          ).length;
+          const pendingE = experts.filter(
+            (e) => e.kycStatus === "Pending",
+          ).length;
+          setPendingVerifications(pendingB + pendingE);
+        })
+        .catch(() => setPendingVerifications(0));
+      void Promise.resolve().then(() => setPendingStaffDisputes(0));
+      return;
+    }
+
+    void Promise.resolve().then(() => setPendingVerifications(0));
+    disputeApi
+      .listStaff({ page: 0, size: 1, status: "STAFF_REVIEWING" })
+      .then((response) => setPendingStaffDisputes(response.totalElements))
+      .catch(() => setPendingStaffDisputes(0));
+  }, [isProfileReviewStaff, session?.role, staffProfile]);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => setApprovalBonusNoticeDismissed(false));
+  }, [session?.accountId, session?.email, session?.role]);
 
   if (!session) return null;
 
@@ -172,6 +246,32 @@ export function DashboardPage() {
     ).getTime();
     return rightDate - leftDate;
   });
+
+  const staffActions = isProfileReviewStaff
+    ? [
+        [
+          "Duyệt hồ sơ",
+          "/app/verifications",
+          "Xử lý KYC/KYB đang chờ duyệt",
+        ],
+        [
+          "Quản lý hồ sơ",
+          "/app/verifications",
+          "Theo dõi hồ sơ cần xác minh",
+        ],
+      ]
+    : [
+        [
+          "Xử lý tranh chấp",
+          "/app/tickets",
+          "Tiếp nhận và xử lý tranh chấp được phân công",
+        ],
+        [
+          "Danh sách tranh chấp",
+          "/app/tickets",
+          "Theo dõi các tranh chấp theo chuyên môn",
+        ],
+      ];
 
   const roleActions = {
     BUSINESS: [
@@ -192,7 +292,7 @@ export function DashboardPage() {
       ],
     ],
     EXPERT: [
-      ["Tìm cơ hội", "/app/opportunities", "Nộp proposal cho dự án phù hợp"],
+      ["Tìm cơ hội", "/app/opportunities", "Nộp bản đề xuất cho dự án phù hợp"],
       [
         "Cập nhật portfolio",
         "/app/expert/portfolio",
@@ -204,11 +304,7 @@ export function DashboardPage() {
         "Quản lý các hợp đồng đang thực thi và bàn giao sản phẩm cho doanh nghiệp",
       ],
     ],
-    STAFF: [
-      ["Duyệt hồ sơ", "/app/verifications", "KYC/KYB pending"],
-      ["Duyệt hồ sơ", "/app/verifications", "Xử lý KYC/KYB đang chờ duyệt"],
-      ["Quản lý hồ sơ", "/app/verifications", "Theo dõi hồ sơ cần xác minh"],
-    ],
+    STAFF: staffActions,
     ADMIN: [
       ["Phân tích", "/app/admin/analytics", "Doanh thu và tỷ lệ thành công"],
       ["Quản lý nhân viên", "/app/admin/staff", "Quản lý tài khoản nhân viên"],
@@ -228,6 +324,22 @@ export function DashboardPage() {
         : session.role === "ADMIN"
           ? "Tổng hợp chung của hệ thống"
           : "Tổng hợp chung các thông tin của nhân viên";
+  const approvalQuotaBalance =
+    session.role === "BUSINESS"
+      ? quota?.jobPostQuotaBalance ?? 0
+      : quota?.proposalQuotaBalance ?? 0;
+  const approvalBonusNoticeTitle =
+    approvalQuotaBalance <= 0
+      ? "Bạn đã sử dụng hết số lượt. Vui lòng mua thêm lượt để sử dụng."
+      : session.role === "BUSINESS"
+        ? `Hồ sơ của bạn đã được xác minh. Số lượt đăng bài của bạn là: ${approvalQuotaBalance}`
+        : `Hồ sơ của bạn đã được xác minh. Số lượt nộp đề xuất của bạn là: ${approvalQuotaBalance}`;
+  const approvalBonusNoticeTone =
+    approvalQuotaBalance <= 0 ? "warning" : "success";
+  const showApprovalBonusNotice =
+    (session.role === "BUSINESS" || session.role === "EXPERT") &&
+    session.accountStatus === "Approved" &&
+    !approvalBonusNoticeDismissed;
 
   return (
     <div className="space-y-6">
@@ -245,8 +357,25 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="grid items-stretch gap-5 md:grid-cols-3">
-        {session?.role === "STAFF" ? (
+      {showApprovalBonusNotice && (
+        <Notice tone={approvalBonusNoticeTone} title={approvalBonusNoticeTitle}>
+          <button
+            type="button"
+            onClick={() => setApprovalBonusNoticeDismissed(true)}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-extrabold text-mint-700 shadow-sm transition hover:bg-mint-50"
+          >
+            <X className="h-3.5 w-3.5" />
+            Đã hiểu
+          </button>
+        </Notice>
+      )}
+
+      <div
+        className={`grid items-stretch gap-5 ${
+          isStaff ? "md:grid-cols-1" : "md:grid-cols-3"
+        }`}
+      >
+        {isStaff && isProfileReviewStaff && (
           <div className="h-full [&>*]:h-full">
             <MetricCard
               label="Số hồ sơ cần duyệt"
@@ -255,7 +384,19 @@ export function DashboardPage() {
               icon={<IdCard className="h-5 w-5" />}
             />
           </div>
-        ) : (
+        )}
+        {isStaff && !isProfileReviewStaff && (
+          <div className="h-full [&>*]:h-full">
+            <MetricCard
+              label="Tranh chấp cần xử lý"
+              value={pendingStaffDisputes}
+              helper="Theo chuyên môn được phân công"
+              icon={<Gavel className="h-5 w-5" />}
+              tone="brand"
+            />
+          </div>
+        )}
+        {!isStaff && (
           <div className="h-full [&>*]:h-full">
             <MetricCard
               label={
@@ -281,10 +422,10 @@ export function DashboardPage() {
             />
           </div>
         )}
-        {session?.role === "BUSINESS" ? (
+        {!isStaff && session?.role === "BUSINESS" ? (
           <div className="h-full [&>*]:h-full">
             <MetricCard
-              label="Số proposal đã nhận"
+              label="Số bản đề xuất đã nhận"
               value={myJobs.reduce(
                 (sum, job) => sum + (job.proposalsCount || 0),
                 0,
@@ -294,17 +435,17 @@ export function DashboardPage() {
               tone="mint"
             />
           </div>
-        ) : session?.role === "EXPERT" ? (
+        ) : !isStaff && session?.role === "EXPERT" ? (
           <div className="h-full [&>*]:h-full">
             <MetricCard
-              label="Số proposal đã gửi"
+              label="Số bản đề xuất đã gửi"
               value={myProposals.length}
               helper="Đến doanh nghiệp"
               icon={<FileCheck2 className="h-5 w-5" />}
               tone="mint"
             />
           </div>
-        ) : (
+        ) : !isStaff ? (
           <div className="h-full [&>*]:h-full">
             <MetricCard
               label={
@@ -326,8 +467,8 @@ export function DashboardPage() {
               tone="mint"
             />
           </div>
-        )}
-        {session.role !== "STAFF" && (
+        ) : null}
+        {!isStaff && (
           <div className="h-full [&>*]:h-full">
             <MetricCard
               label={
@@ -359,17 +500,6 @@ export function DashboardPage() {
               }
               icon={<WalletCards className="h-5 w-5" />}
               tone="coral"
-            />
-          </div>
-        )}
-        {session?.role === "STAFF" && (
-          <div className="h-full [&>*]:h-full">
-            <MetricCard
-              label="Tranh chấp"
-              value={pendingStaffDisputes}
-              helper="Cần xử lý"
-              icon={<Layers3 className="h-5 w-5" />}
-              tone="brand"
             />
           </div>
         )}
@@ -424,7 +554,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {session?.role !== "ADMIN" && (
+      {session?.role !== "ADMIN" && session?.role !== "STAFF" && (
         <div className="grid gap-6">
           <Card className="p-6">
             <SectionHeading

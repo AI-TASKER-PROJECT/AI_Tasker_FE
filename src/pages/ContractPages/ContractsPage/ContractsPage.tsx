@@ -216,7 +216,7 @@ export function ContractsPage() {
               ? "Chưa có hợp đồng nháp"
               : "Chưa có hợp đồng"
           }
-          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp accept proposal và bấm tạo contract từ màn hình quản lý job."
+          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp chấp nhận bản đề xuất và bấm tạo contract từ màn hình quản lý job."
         />
       )}
     </div>

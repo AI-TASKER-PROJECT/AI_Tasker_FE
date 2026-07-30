@@ -140,7 +140,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản công việc",
     content:
-      "Hợp đồng được thực hiện dựa trên phạm vi công việc, mốc, ngân sách và timeline đã thống nhất trong job và proposal được chấp nhận.",
+      "Hợp đồng được thực hiện dựa trên phạm vi công việc, mốc, ngân sách và timeline đã thống nhất trong job và bản đề xuất được chấp nhận.",
   },
   {
     title: "Phạm vi trách nhiệm",
@@ -335,8 +335,8 @@ export function ManageJobPage() {
       setReviewMessageTone(status === "Accepted" ? "success" : "danger");
       setReviewMessage(
         status === "Accepted"
-          ? "Đã chấp nhận proposal thành công!"
-          : "Đã từ chối proposal thành công!",
+          ? "Đã chấp nhận bản đề xuất thành công!"
+          : "Đã từ chối bản đề xuất thành công!",
       );
     } catch (error) {
       setReviewMessageTone("danger");
@@ -353,7 +353,7 @@ export function ManageJobPage() {
       return;
     }
     if (contractModal.status !== "Accepted") {
-      setContractError("Chỉ tạo contract draft sau khi proposal đã Accepted.");
+      setContractError("Chỉ tạo contract draft sau khi bản đề xuất đã được chấp nhận.");
       return;
     }
     if (milestones.length === 0) {
@@ -394,7 +394,7 @@ export function ManageJobPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={job.title}
-          description="Theo dõi job, mốc đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
+          description="Theo dõi job, mốc đã khai báo và bản đề xuất chuyên gia gửi cho doanh nghiệp."
           actions={
             <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
               Xem bài đăng công khai
@@ -422,7 +422,7 @@ export function ManageJobPage() {
               onClick={() => setProposalTab("proposal")}
             >
               <FileCheck2 className="h-4 w-4" />
-              Proposal của chuyên gia
+              Bản đề xuất của chuyên gia
             </Button>
           </div>
           {proposalTab === "ai" && (
@@ -509,13 +509,13 @@ export function ManageJobPage() {
           )}
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
             <SectionHeading
-              title="Proposal của chuyên gia"
-              description="Danh sách proposal được chuyên gia gửi cho dự án này."
+              title="Bản đề xuất của chuyên gia"
+              description="Danh sách bản đề xuất được chuyên gia gửi cho dự án này."
             />
             {jobInProgress && (
               <Notice
                 tone="info"
-                title="Dự án đã tạo hợp đồng, các thao tác với proposal và tạo hợp đồng mới sẽ không có hiệu lực."
+                title="Dự án đã tạo hợp đồng, các thao tác với bản đề xuất và tạo hợp đồng mới sẽ không có hiệu lực."
                 className="mt-4"
               />
             )}
@@ -552,8 +552,8 @@ export function ManageJobPage() {
               ))}
               {proposals.length === 0 && (
                 <EmptyState
-                  title="Chưa có proposal"
-                  description="Job này chưa có proposal từ chuyên gia."
+                  title="Chưa có bản đề xuất"
+                  description="Job này chưa có bản đề xuất từ chuyên gia."
                 />
               )}
             </div>
@@ -645,7 +645,7 @@ export function ManageJobPage() {
         open={Boolean(contractModal)}
         onClose={() => setContractModal(null)}
         title="Tạo hợp đồng nháp"
-        description="Tạo draft contract từ proposal đã chọn."
+        description="Tạo draft contract từ bản đề xuất đã chọn."
         size="2xl"
         footer={
           <>
@@ -677,7 +677,7 @@ export function ManageJobPage() {
           {contractModal?.status !== "Accepted" && (
             <Notice
               tone="warning"
-              title="Proposal cần dược Accepted trước khi tạo contract draft."
+              title="Bản đề xuất cần được chấp nhận trước khi tạo contract draft."
             />
           )}
           {milestones.length === 0 && (
@@ -1050,7 +1050,7 @@ function ProposalCard({
           </p>
           <FirebaseFileLink
             path={proposal.proposalFileUrl}
-            emptyText="Chưa có file proposal"
+            emptyText="Chưa có file bản đề xuất"
             buttonText="Xem file"
             showPath={false}
           />
@@ -1125,7 +1125,7 @@ function ProposalCard({
                     ? "Tạo contract draft"
                     : statusLocked
                       ? "Job đang IN_PROGRESS nên không thể thay đổi"
-                      : "Chỉ tạo contract sau khi proposal dược Accepted"
+                      : "Chỉ tạo contract sau khi bản đề xuất được chấp nhận"
                 }
               >
                 <FileCheck2 className="h-4 w-4" />
@@ -1139,7 +1139,7 @@ function ProposalCard({
       <Modal
         open={proposalDetailOpen}
         onClose={() => setProposalDetailOpen(false)}
-        title="Chi tiết proposal"
+        title="Chi tiết bản đề xuất"
         description="Thông tin đầy đủ về đề xuất của chuyên gia."
         size="2xl"
       >
@@ -1169,8 +1169,8 @@ function ProposalCard({
               {proposal.technicalSolution}
             </ProposalInfoBlock>
 
-            <ProposalInfoBlock title="Proposal description">
-              {proposal.proposalDescription || "Chưa có mô tả proposal."}
+            <ProposalInfoBlock title="Mô tả bản đề xuất">
+              {proposal.proposalDescription || "Chưa có mô tả bản đề xuất."}
             </ProposalInfoBlock>
 
             <div className="grid gap-4">
@@ -1253,7 +1253,7 @@ function ProposalCard({
         open={expertOpen}
         onClose={() => setExpertOpen(false)}
         title="Thông tin chuyên gia"
-        description="Profile và portfolio của chuyên gia gửi proposal."
+        description="Profile và portfolio của chuyên gia gửi bản đề xuất."
         size="lg"
       >
         <div className="grid gap-5">
@@ -1865,7 +1865,7 @@ function ExpertRecommendationCard({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Thông tin chuyên gia"
-        description="Profile và portfolio của chuyên gia gửi proposal."
+        description="Profile và portfolio của chuyên gia gửi bản đề xuất."
         size="lg"
       >
         <div className="grid gap-5">

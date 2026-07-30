@@ -313,7 +313,7 @@ export function RegisterPage() {
               active={form.role === "BUSINESS"}
               icon={<Building2 className="h-5 w-5" />}
               title="Doanh nghiệp"
-              desc="Đăng job, quản lý proposal, hợp đồng và escrow."
+              desc="Đăng job, quản lý bản đề xuất, hợp đồng và escrow."
               onClick={() =>
                 setForm((value) => ({ ...value, role: "BUSINESS" }))
               }
@@ -322,7 +322,7 @@ export function RegisterPage() {
               active={form.role === "EXPERT"}
               icon={<UserRoundCheck className="h-5 w-5" />}
               title="Chuyên gia"
-              desc="Tạo portfolio, nộp proposal, bàn giao sản phẩm."
+              desc="Tạo portfolio, nộp bản đề xuất, bàn giao sản phẩm."
               onClick={() => setForm((value) => ({ ...value, role: "EXPERT" }))}
             />
           </div>

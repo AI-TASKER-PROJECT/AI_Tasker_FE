@@ -603,7 +603,7 @@ export function ContractDetailPage() {
         tone: "success",
         title: "Đã từ chối hợp đồng.",
         message:
-          "Hợp đồng đã được hủy trước khi kích hoạt. Dự án sẽ được mở lại để Doanh nghiệp chọn proposal khác.",
+          "Hợp đồng đã được hủy trước khi kích hoạt. Dự án sẽ được mở lại để Doanh nghiệp chọn bản đề xuất khác.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -1362,7 +1362,7 @@ export function ContractDetailPage() {
           <div className="mt-6 rounded-3xl border border-slate-100 p-5">
             <SectionHeading
               title="Mốc"
-              description="Các ngân sách chốt được tạo từ dự án và proposal đã được chấp nhận."
+              description="Các ngân sách chốt được tạo từ dự án và bản đề xuất đã được chấp nhận."
               action={
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
                   <p className="text-xs font-bold text-slate-400">
@@ -1530,7 +1530,7 @@ export function ContractDetailPage() {
         open={rejectConfirmOpen}
         onClose={() => !rejectLoading && setRejectConfirmOpen(false)}
         title="Xác nhận từ chối hợp đồng"
-        description="Thao tác này chỉ áp dụng khi hợp đồng chưa kích hoạt. Sau khi từ chối, hợp đồng sẽ bị hủy và dự án được mở lại để Doanh nghiệp chọn proposal khác."
+        description="Thao tác này chỉ áp dụng khi hợp đồng chưa kích hoạt. Sau khi từ chối, hợp đồng sẽ bị hủy và dự án được mở lại để Doanh nghiệp chọn bản đề xuất khác."
         footer={
           <>
             <Button

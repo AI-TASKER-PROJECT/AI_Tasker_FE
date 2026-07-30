@@ -226,7 +226,7 @@ export function JobsPage() {
                 },
                 {
                   step: 2,
-                  title: "Nhận gợi ý chuyên gia và proposal phù hợp",
+                  title: "Nhận gợi ý chuyên gia và bản đề xuất phù hợp",
                   desc: "Hệ thống dề xuất chuyên gia phù hợp và nhận báo giá chi tiết.",
                 },
                 {

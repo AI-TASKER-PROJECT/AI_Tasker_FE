@@ -180,7 +180,7 @@ export function JobDetailPage() {
                   size="lg"
                   className="px-8"
                 >
-                  Nộp proposal ngay
+                  Nộp bản đề xuất ngay
                 </LinkButton>
               </div>
             )}
@@ -236,12 +236,12 @@ export function JobDetailPage() {
                 to={`/app/jobs/${job.jobId}/proposal`}
                 className="mt-5 w-full"
               >
-                Nộp Proposal ngay
+                Nộp bản đề xuất ngay
               </LinkButton>
             )}
             {!session && (
               <LinkButton to="/login" className="mt-5 w-full">
-                Nộp Proposal ngay
+                Nộp bản đề xuất ngay
               </LinkButton>
             )}
 
@@ -251,7 +251,7 @@ export function JobDetailPage() {
                   Nộp báo giá dự thầu
                 </Button>
                 <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Dự án cần ở trạng thái OPEN dể nhận proposal.
+                  Dự án cần ở trạng thái OPEN dể nhận bản đề xuất.
                 </p>
               </>
             )}

@@ -142,6 +142,26 @@ export function ProposalDetailPage() {
       return [];
     }
   })();
+  const proposedBudgetByMilestoneId = new Map(
+    parsedMilestones.map((item) => [item.milestoneId, item.proposedBudget]),
+  );
+  const totalOriginalBudget = milestones.reduce(
+    (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+    0,
+  );
+  const totalProposedBudget = milestones.reduce((total, milestone) => {
+    const proposedBudget = proposedBudgetByMilestoneId.get(
+      Number(milestone.milestoneId),
+    );
+    return (
+      total +
+      Number(
+        Number.isFinite(proposedBudget)
+          ? proposedBudget
+          : milestone.fundsAllocated || 0,
+      )
+    );
+  }, 0);
 
   const bidAmountDisplay =
     Number(editing ? draft.bidAmount : proposal.bidAmount || 0) > 0
@@ -177,7 +197,7 @@ export function ProposalDetailPage() {
       setEditing(false);
     } catch (error) {
       setEditMessage(
-        error instanceof Error ? error.message : "Không thể cập nhật proposal.",
+        error instanceof Error ? error.message : "Không thể cập nhật bản đề xuất.",
       );
     } finally {
       setSaving(false);
@@ -185,7 +205,7 @@ export function ProposalDetailPage() {
   };
 
   const translateStatus = (status: string) => {
-    switch (status) {
+    switch ((status || "").trim().toUpperCase()) {
       case "ACCEPTED":
         return "Chấp nhận";
       case "PENDING":
@@ -193,7 +213,7 @@ export function ProposalDetailPage() {
       case "REJECTED":
         return "Từ chối";
       default:
-        return status;
+        return status || "Chưa có trạng thái";
     }
   };
 
@@ -204,30 +224,24 @@ export function ProposalDetailPage() {
           Bản đề xuất chi tiết
         </h1>
       </div>
-      {canEdit && (
+      {canEdit && editing && (
         <div className="flex justify-end gap-2">
-          {editing ? (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setEditing(false);
-                  setDraft(proposal);
-                }}
-              >
-                Hủy
-              </Button>
-              <Button onClick={save} loading={saving}>
-                Lưu thay đổi
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => setEditing(true)}>Chỉnh sửa đề xuất</Button>
-          )}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setEditing(false);
+              setDraft(proposal);
+            }}
+          >
+            Hủy
+          </Button>
+          <Button onClick={save} loading={saving}>
+            Lưu thay đổi
+          </Button>
         </div>
       )}
       {editMessage && (
-        <Notice tone="danger" title="Không thể lưu proposal">
+        <Notice tone="danger" title="Không thể lưu bản đề xuất">
           {editMessage}
         </Notice>
       )}
@@ -381,7 +395,7 @@ export function ProposalDetailPage() {
                 }
               />
             </Field>
-            <Field label="Proposal file">
+            <Field label="File bản đề xuất">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm h-11 flex items-center">
                 <FirebaseFileLink
                   path={proposal.proposalFileUrl}
@@ -436,10 +450,12 @@ export function ProposalDetailPage() {
                 </Field>
               )}
               {milestones.map((milestone) => {
-                const proposedVal =
-                  parsedMilestones.find(
-                    (m: any) => m.milestoneId === milestone.milestoneId,
-                  )?.proposedBudget || milestone.fundsAllocated;
+                const proposedBudget = proposedBudgetByMilestoneId.get(
+                  Number(milestone.milestoneId),
+                );
+                const proposedVal = Number.isFinite(proposedBudget)
+                  ? proposedBudget
+                  : milestone.fundsAllocated;
                 return (
                   <div
                     key={milestone.milestoneId}
@@ -465,7 +481,7 @@ export function ProposalDetailPage() {
                         type="text"
                         value={formatCurrency(milestone.fundsAllocated)}
                         readOnly
-                        className="bg-slate-100/50 text-slate-500"
+                        className="bg-white font-bold"
                       />
                     </div>
                     <div className="space-y-1">
@@ -476,12 +492,41 @@ export function ProposalDetailPage() {
                         type="text"
                         value={Number(proposedVal).toLocaleString("vi-VN")}
                         readOnly
-                        className="bg-slate-100/50"
+                        className="bg-white font-bold text-[#c50073]"
                       />
                     </div>
                   </div>
                 );
               })}
+              <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_180px]">
+                <div className="flex items-center">
+                  <p className="font-display text-base font-black uppercase text-ink">
+                    Tổng ngân sách
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    Tổng ngân sách gốc
+                  </p>
+                  <Input
+                    type="text"
+                    value={formatCurrency(totalOriginalBudget)}
+                    readOnly
+                    className="bg-white font-extrabold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    Tổng ngân sách đề xuất
+                  </p>
+                  <Input
+                    type="text"
+                    value={formatCurrency(totalProposedBudget)}
+                    readOnly
+                    className="bg-white font-extrabold text-[#c50073]"
+                  />
+                </div>
+              </div>
             </div>
           </section>
         )}

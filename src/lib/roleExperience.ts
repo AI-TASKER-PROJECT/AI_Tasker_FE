@@ -33,7 +33,7 @@ const roleExperience: Record<Role, PublicExperience> = {
   BUSINESS: {
     badge: "Không gian Business",
     heroTitle:
-      "Tạo job AI, nhận proposal và theo dõi hợp đồng của doanh nghiệp.",
+      "Tạo job AI, nhận bản đề xuất và theo dõi hợp đồng của doanh nghiệp.",
     heroDescription:
       "Bạn có thể bắt đầu một dự án mới, quản lý công việc đang mở, theo dõi mốc, ký quỹ và các tranh chấp trong không gian làm việc của Doanh nghiệp.",
     primaryLabel: "Tạo dự án mới",
@@ -43,12 +43,12 @@ const roleExperience: Record<Role, PublicExperience> = {
   },
   EXPERT: {
     badge: "Không gian Expert",
-    heroTitle: "Tìm cơ hội AI phù hợp và quản lý proposal trong một workspace.",
+    heroTitle: "Tìm cơ hội AI phù hợp và quản lý bản đề xuất trong một workspace.",
     heroDescription:
-      "Bạn có thể xem job đang mở, nộp proposal, cập nhật portfolio AI và theo dõi hợp đồng hoặc dòng tiền sau khi dược chọn.",
+      "Bạn có thể xem job đang mở, nộp bản đề xuất, cập nhật portfolio AI và theo dõi hợp đồng hoặc dòng tiền sau khi dược chọn.",
     primaryLabel: "Tìm cơ hội phù hợp",
     primaryPath: "/app/opportunities",
-    secondaryLabel: "Proposal của tôi",
+    secondaryLabel: "Bản đề xuất của tôi",
     secondaryPath: "/app/proposals",
   },
   STAFF: {

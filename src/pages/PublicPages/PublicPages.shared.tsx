@@ -271,7 +271,7 @@ export function JobHoverPopover({
             />
             <InfoRow
               icon={<Star className="h-4 w-4" />}
-              label="Proposal"
+              label="Bản đề xuất"
               value={`${detail.proposalsCount || 0}`}
             />
             <InfoRow
@@ -490,7 +490,7 @@ export function JobCard({
         {!hidePublicStats && (
           <div>
             <p className="text-xs font-bold text-slate-400">
-              {compact ? "Ngày đăng bài" : "Proposal"}
+              {compact ? "Ngày đăng bài" : "Bản đề xuất"}
             </p>
             <p className="mt-1 text-sm font-extrabold text-ink">
               {compact ? formatDate(job.createdAt) : job.proposalsCount || 0}

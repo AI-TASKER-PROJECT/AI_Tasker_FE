@@ -351,7 +351,7 @@ export function ExpertPortfolioPage() {
                 <p className="mt-1 text-sm leading-6 text-slate-500">
                   Chọn đúng công nghệ đang dùng trong dự án thật và viết mô tả
                   theo kết quả đã bàn giao. Điều này giúp doanh nghiệp đọc hồ sơ
-                  nhanh hơn khi so sánh proposal.
+                  nhanh hơn khi so sánh bản đề xuất.
                 </p>
               </div>
             </div>
@@ -359,7 +359,7 @@ export function ExpertPortfolioPage() {
 
           {saved && (
             <Notice tone="success" title="Đã lưu portfolio">
-              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
+              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá bản đề xuất.
             </Notice>
           )}
         </aside>

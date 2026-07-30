@@ -254,8 +254,8 @@ export function ProposalsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Proposal của tôi"
-          description="Theo dõi proposal đã gửi, trạng thái xét duyệt và nội dung giải pháp đã nộp."
+          title="Bản đề xuất của tôi"
+          description="Theo dõi bản đề xuất đã gửi, trạng thái xét duyệt và nội dung giải pháp đã nộp."
           actions={
             <LinkButton to="/app/opportunities" variant="secondary">
               <RefreshCw className="h-4 w-4" /> Tìm job mới
@@ -300,7 +300,7 @@ export function ProposalsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 px-2">
             <span className="text-sm font-semibold text-slate-500">
-              Tìm kiếm proposal:
+              Tìm kiếm bản đề xuất:
             </span>
             <div className="flex items-center gap-1">
               <Input
@@ -341,7 +341,7 @@ export function ProposalsPage() {
           </div>
         </div>
       </Card>
-      {loading && <Notice tone="info" title="Đang tải proposal..." />}
+      {loading && <Notice tone="info" title="Đang tải bản đề xuất..." />}
       <div className="grid gap-4 lg:grid-cols-3">
         {paginatedProposals.map((proposal) => {
           const job = jobsById[proposal.jobId];
@@ -412,14 +412,14 @@ export function ProposalsPage() {
       </div>
       {!loading && filteredProposals.length === 0 && (
         <EmptyState
-          title="Chưa có proposal"
-          description="Không có proposal phù hợp với trạng thái đang lọc."
+          title="Chưa có bản đề xuất"
+          description="Không có bản đề xuất phù hợp với trạng thái đang lọc."
         />
       )}
       {filteredProposals.length > PROPOSALS_PER_PAGE && (
         <Card className="sticky bottom-4 z-20 flex flex-col gap-3 bg-white/95 p-4 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-slate-500">
-            Hiển thị {paginatedProposals.length} trên tổng {filteredProposals.length} proposal
+            Hiển thị {paginatedProposals.length} trên tổng {filteredProposals.length} bản đề xuất
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button

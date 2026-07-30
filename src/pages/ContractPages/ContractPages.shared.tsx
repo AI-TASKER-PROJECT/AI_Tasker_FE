@@ -50,7 +50,7 @@ export const NDA_TERMS = [
   },
   {
     title: "9. Source code, tài sản trí tuệ và dữ liệu đầu ra",
-    body: "NDA này chỉ điều chỉnh nghĩa vụ bảo mật và không tự động chuyển giao quyền sở hữu trí tuệ. Quyền đối với source code, tài liệu, mô hình, dữ liệu, sản phẩm bàn giao và kết quả công việc được xác định theo nội dung contract, proposal và các thỏa thuận bằng văn bản giữa hai bên.",
+    body: "NDA này chỉ điều chỉnh nghĩa vụ bảo mật và không tự động chuyển giao quyền sở hữu trí tuệ. Quyền đối với source code, tài liệu, mô hình, dữ liệu, sản phẩm bàn giao và kết quả công việc được xác định theo nội dung contract, bản đề xuất và các thỏa thuận bằng văn bản giữa hai bên.",
   },
   {
     title: "10. Công cụ AI và bên thứ ba",

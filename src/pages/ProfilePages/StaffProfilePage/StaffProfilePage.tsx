@@ -1,11 +1,58 @@
-import { ClipboardCheck, Gavel, Mail, ShieldCheck, UserRound } from "lucide-react";
+import {
+  ClipboardCheck,
+  Gavel,
+  Mail,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Notice,
+  SectionHeading,
+} from "../../../components/ui";
 import { useSession } from "../../../context/sessionContext";
-import { Avatar, Badge, Card, Notice, SectionHeading } from "../../../components/ui";
+import { getApiErrorMessage, staffApi } from "../../../services";
+
+const PROFILE_REVIEW_DOMAIN_CODE = "PROFILE_REVIEW";
 
 export function StaffProfilePage() {
   const session = useSession();
+  const [domainCodes, setDomainCodes] = useState<string[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  if (!session) return <Notice tone="danger" title="Không tìm thấy phiên đăng nhập." />;
+  useEffect(() => {
+    if (session?.role !== "STAFF") return;
+
+    let ignore = false;
+    staffApi
+      .current()
+      .then((staff) => {
+        if (ignore) return;
+        setDomainCodes(
+          staff.domains?.map((domain) => domain.domainCode || "") || [],
+        );
+        setNotice(null);
+      })
+      .catch((error) => {
+        if (!ignore) setNotice(getApiErrorMessage(error));
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [session?.role]);
+
+  const isProfileReviewStaff = useMemo(
+    () => domainCodes.includes(PROFILE_REVIEW_DOMAIN_CODE),
+    [domainCodes],
+  );
+
+  if (!session) {
+    return <Notice tone="danger" title="Không tìm thấy phiên đăng nhập." />;
+  }
 
   return (
     <div className="space-y-6">
@@ -15,7 +62,7 @@ export function StaffProfilePage() {
             <Avatar name={session.fullName} size="xl" />
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600">
-                Hồ sơ cá nhân Staff
+                Hồ sơ cá nhân nhân viên
               </p>
               <h1 className="mt-2 text-3xl font-black text-ink md:text-4xl">
                 {session.fullName || "Nhân viên thẩm định"}
@@ -44,15 +91,23 @@ export function StaffProfilePage() {
             <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
               <Mail className="h-5 w-5 text-violet-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Email</p>
-                <p className="mt-1 font-bold text-ink">{session.email || "Chưa cập nhật"}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Email
+                </p>
+                <p className="mt-1 font-bold text-ink">
+                  {session.email || "Chưa cập nhật"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
               <UserRound className="h-5 w-5 text-violet-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Số điện thoại</p>
-                <p className="mt-1 font-bold text-ink">{session.phone || "Chưa cập nhật"}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Số điện thoại
+                </p>
+                <p className="mt-1 font-bold text-ink">
+                  {session.phone || "Chưa cập nhật"}
+                </p>
               </div>
             </div>
           </div>
@@ -61,15 +116,27 @@ export function StaffProfilePage() {
         <Card className="p-6">
           <SectionHeading title="Phạm vi công việc" />
           <div className="mt-5 space-y-3">
-            <div className="flex items-center gap-3 rounded-2xl bg-violet-50 p-4">
-              <Gavel className="h-5 w-5 text-violet-600" />
-              <span className="font-bold text-slate-700">Xử lý tranh chấp</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4">
-              <ClipboardCheck className="h-5 w-5 text-emerald-600" />
-              <span className="font-bold text-slate-700">Duyệt hồ sơ KYC/KYB</span>
-            </div>
+            {isProfileReviewStaff ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4">
+                <ClipboardCheck className="h-5 w-5 text-emerald-600" />
+                <span className="font-bold text-slate-700">
+                  Duyệt hồ sơ KYC/KYB
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-2xl bg-violet-50 p-4">
+                <Gavel className="h-5 w-5 text-violet-600" />
+                <span className="font-bold text-slate-700">
+                  Xử lý tranh chấp
+                </span>
+              </div>
+            )}
           </div>
+          {notice && (
+            <div className="mt-4">
+              <Notice tone="warning" title={notice} />
+            </div>
+          )}
         </Card>
       </div>
 

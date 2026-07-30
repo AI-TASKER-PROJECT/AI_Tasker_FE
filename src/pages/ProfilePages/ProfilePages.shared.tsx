@@ -147,6 +147,7 @@ export function ProfileFilePicker({
   buttonText = "Chọn tệp",
   emptyText = "Chưa chọn tệp",
   required,
+  disabled = false,
 }: {
   file: File | null;
   onChange: (file: File | null) => void;
@@ -154,16 +155,24 @@ export function ProfileFilePicker({
   buttonText?: string;
   emptyText?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-brand-600 shadow-sm hover:text-brand-700">
+        <label
+          className={`inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold shadow-sm ${
+            disabled
+              ? "cursor-not-allowed text-slate-300"
+              : "cursor-pointer text-brand-600 hover:text-brand-700"
+          }`}
+        >
           <UploadCloud className="h-4 w-4" />
           {buttonText}
           <input
             type="file"
             accept={accept}
+            disabled={disabled}
             className="hidden"
             aria-required={required}
             onChange={(event) => {
@@ -176,6 +185,7 @@ export function ProfileFilePicker({
           <button
             type="button"
             onClick={() => onChange(null)}
+            disabled={disabled}
             className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-extrabold text-slate-500 shadow-sm hover:text-rose-600"
           >
             <X className="h-4 w-4" />

@@ -15,6 +15,7 @@ export { notificationApi } from "./notificationService";
 export { paymentApi } from "./paymentService";
 export { profileApi } from "./profileService";
 export { sowApi } from "./sowService";
+export { staffApi } from "./staffService";
 export { userQuotaApi } from "./userQuotaService";
 export { walletApi } from "./walletService";
 export { walletTransactionApi } from "./walletTransactionService";

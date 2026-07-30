@@ -231,7 +231,7 @@ export function ExpertDirectoryPage() {
                 {
                   step: 3,
                   title: "Ký hợp đồng",
-                  desc: "Trao dổi proposal, chốt ngân sách và ký hợp đồng diện tử.",
+                  desc: "Trao dổi bản đề xuất, chốt ngân sách và ký hợp đồng diện tử.",
                 },
                 {
                   step: 4,

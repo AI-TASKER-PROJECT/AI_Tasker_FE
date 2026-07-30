@@ -42,6 +42,15 @@ function isDuplicateTaxCodeError(cause: unknown) {
 }
 
 // Chức năng 2: Hiển thị và xử lý form định danh doanh nghiệp.
+function getSubmitErrorMessage(cause: unknown) {
+  if (isDuplicateTaxCodeError(cause)) {
+    return duplicateTaxCodeMessage;
+  }
+
+  const message = cause instanceof Error ? cause.message : String(cause || "");
+  return message.trim() || taxVerifyFailedMessage;
+}
+
 export function BusinessVerificationProfilePage() {
   const [form, setForm] = useState({
     taxCode: "",
@@ -132,6 +141,12 @@ export function BusinessVerificationProfilePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
+    if (status === "Pending") {
+      setError("");
+      setMessage("Hồ sơ đang chờ duyệt, vui lòng đợi kết quả.");
+      return;
+    }
+
     if (!form.taxCode.trim()) {
       setTaxCodeError("Vui lòng nhập mã số thuế.");
       clearVerifiedInfo();
@@ -178,14 +193,11 @@ export function BusinessVerificationProfilePage() {
           accountStatus: accountStatus(profile.kybStatus),
         });
       }
+      window.dispatchEvent(new Event("aitasker:verification-profile-change"));
       setMessage(submitSuccessMessage);
     } catch (cause) {
       clearVerifiedInfo();
-      setError(
-        isDuplicateTaxCodeError(cause)
-          ? duplicateTaxCodeMessage
-          : taxVerifyFailedMessage,
-      );
+      setError(getSubmitErrorMessage(cause));
     } finally {
       setLoading(false);
     }
@@ -194,6 +206,8 @@ export function BusinessVerificationProfilePage() {
   const verifiedCompanyName = taxPreview?.companyName || form.companyName;
   const verifiedAddress = taxPreview?.address || form.address;
   const isApproved = status === "Approved";
+  const isPending = status === "Pending";
+  const isTaxCodeLocked = isApproved || isPending;
 
   return (
     <div className="space-y-6">
@@ -212,7 +226,7 @@ export function BusinessVerificationProfilePage() {
                 <Input
                   placeholder="Ví dụ: 0101234567"
                   value={form.taxCode}
-                  disabled={isApproved}
+                  disabled={isTaxCodeLocked}
                   inputMode="numeric"
                   onChange={(event) => {
                     const value = event.target.value.replace(/\D/g, "");
@@ -235,7 +249,7 @@ export function BusinessVerificationProfilePage() {
                 variant="secondary"
                 loading={taxPreviewLoading}
                 onClick={previewTaxCode}
-                disabled={isApproved}
+                disabled={isTaxCodeLocked}
               >
                 <FileSearch className="h-4 w-4" />
                 Tra cứu
@@ -281,6 +295,7 @@ export function BusinessVerificationProfilePage() {
                 file={licenseFile}
                 onChange={setLicenseFile}
                 buttonText="Chọn giấy phép"
+                disabled={isPending}
                 emptyText={
                   form.businessLicenseUrl
                     ? "Đã có giấy phép kinh doanh. Chọn tệp mới nếu muốn thay đổi."
@@ -300,9 +315,13 @@ export function BusinessVerificationProfilePage() {
             </Field>
 
             <div className="flex justify-end">
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} disabled={isPending}>
                 <Save className="h-4 w-4" />
-                {isApproved ? "Cập nhật thông tin" : "Nộp hồ sơ KYB"}
+                {isPending
+                  ? "Đang chờ duyệt"
+                  : isApproved
+                    ? "Cập nhật thông tin"
+                    : "Nộp hồ sơ KYB"}
               </Button>
             </div>
           </form>
