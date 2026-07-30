@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Edit3, MapPin, Save, ShieldCheck, Star } from "lucide-react";
+import { Building2, MapPin, Save, ShieldCheck, Star } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
@@ -15,6 +15,12 @@ export function BusinessProfilePage() {
     address: "",
     businessLicenseUrl: "",
   });
+  const [savedForm, setSavedForm] = useState({
+    taxCode: "",
+    companyName: "",
+    address: "",
+    businessLicenseUrl: "",
+  });
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [averageRating, setAverageRating] = useState<number | undefined>();
   const [status, setStatus] = useState("Chưa gửi");
@@ -23,9 +29,8 @@ export function BusinessProfilePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("edit");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const session = getSession();
 
   useEffect(() => {
@@ -33,6 +38,12 @@ export function BusinessProfilePage() {
       .getMyBusiness() //lấy info business
       .then((profile) => {
         setForm({
+          taxCode: profile.taxCode || "",
+          companyName: profile.companyName || "",
+          address: profile.address || "",
+          businessLicenseUrl: profile.businessLicenseUrl || "",
+        });
+        setSavedForm({
           taxCode: profile.taxCode || "",
           companyName: profile.companyName || "",
           address: profile.address || "",
@@ -65,7 +76,6 @@ export function BusinessProfilePage() {
 
   const executeSubmit = async () => {
     setConfirmModalOpen(false);
-    setIsEditing(false);
     setLoading(true);
     setMessage("");
     setError("");
@@ -81,6 +91,12 @@ export function BusinessProfilePage() {
         businessLicenseUrl,
       });
       setForm({
+        taxCode: profile.taxCode || "",
+        companyName: profile.companyName || "",
+        address: profile.address || "",
+        businessLicenseUrl: profile.businessLicenseUrl || "",
+      });
+      setSavedForm({
         taxCode: profile.taxCode || "",
         companyName: profile.companyName || "",
         address: profile.address || "",
@@ -110,8 +126,9 @@ export function BusinessProfilePage() {
   };
 
   const isApproved = status?.toLowerCase() === "approved";
+  const hasAverageRating = averageRating != null && Number(averageRating) > 0;
 
-  const canEdit = false;
+  const canEdit = true;
   const normalizedStatus = status.trim().toLowerCase();
   const isPendingOrIncomplete =
     normalizedStatus === "pending" ||
@@ -132,12 +149,12 @@ export function BusinessProfilePage() {
                   {form.companyName || "Doanh nghiệp chưa cập nhật tên"}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                  <span className="inline-flex items-center gap-2">
+                  <span className={form.taxCode ? "inline-flex items-center gap-2" : "hidden"}>
                     <Building2 className="h-4 w-4" />
                     {form.taxCode || "Chưa cập nhật"}
                   </span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
-                  <span className="inline-flex items-center gap-2">
+                  <span className={form.address ? "inline-flex items-center gap-2" : "hidden"}>
                     <MapPin className="h-4 w-4" />
                     {form.address || "Chưa có dịa chỉ"}
                   </span>
@@ -147,7 +164,7 @@ export function BusinessProfilePage() {
                     <StatusBadge status={translateVerificationStatus(status)} />
                   </span>
                   <span className="hidden h-4 w-px bg-slate-200 sm:inline-block" />
-                  <span className="inline-flex items-center gap-1.5 font-bold text-amber-600">
+                  <span className={hasAverageRating ? "inline-flex items-center gap-1.5 font-bold text-amber-600" : "hidden"}>
                     <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                     {averageRating != null && Number(averageRating) > 0
                       ? `${Number(averageRating).toFixed(1)}/5`
@@ -162,8 +179,8 @@ export function BusinessProfilePage() {
           <div className="mt-6">
             <Tabs
               tabs={[
-                { id: "overview", label: "Tổng quan" },
-                { id: "projects", label: "Dự án", count: jobs.length },
+                ...(jobs.length ? [{ id: "projects", label: "Dự án" }] : []),
+                ...(canEdit ? [{ id: "edit", label: "Cập nhật" }] : []),
               ]}
               active={activeTab}
               onChange={setActiveTab}
@@ -171,55 +188,6 @@ export function BusinessProfilePage() {
           </div>
         </div>
       </Card>
-
-      {activeTab === "overview" && (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <Card className="p-6">
-            <SectionHeading
-              title="Giới thiệu công ty"
-              description="Thông tin hiển thị từ hồ sơ KYB."
-            />
-            <div className="mt-5 space-y-4 text-sm leading-7 text-slate-600">
-              <p>
-                <strong className="text-ink">
-                  {form.companyName || "Doanh nghiệp"}
-                </strong>{" "}
-                đang sử dụng hồ sơ xác minh để đăng tải dự án và làm việc với
-                chuyên gia.
-              </p>
-              {rejectionReason && status === "Rejected" && (
-                <Notice tone="danger" title="Lý do từ chối">
-                  <ul className="list-disc ml-5 mt-1 space-y-1">
-                    {rejectionReason.split(";").map((reason, index) => {
-                      const trimmedReason = reason.trim();
-                      return trimmedReason ? (
-                        <li key={index}>{trimmedReason}</li>
-                      ) : null;
-                    })}
-                  </ul>
-                </Notice>
-              )}
-            </div>
-          </Card>
-          <Card className="p-6">
-            <SectionHeading title="Thông tin chung" />
-            <div className="mt-5 space-y-4">
-              <ProfileRow
-                label="Mã số thuế"
-                value={form.taxCode || "Chưa cập nhật"}
-              />
-              <ProfileRow
-                label="Địa chỉ"
-                value={form.address || "Chưa cập nhật"}
-              />
-              <ProfileRow
-                label="Trạng thái KYB"
-                value={<StatusBadge status={translateVerificationStatus(status)} />}
-              />
-            </div>
-          </Card>
-        </div>
-      )}
 
       {activeTab === "projects" && (
         <Card className="p-6">
@@ -262,41 +230,23 @@ export function BusinessProfilePage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <Card className="p-6">
             <SectionHeading
-              title={isPendingOrIncomplete ? "Thêm hồ sơ KYB" : "Nộp lại hồ sơ KYB"}
-              description="Hoàn thiện thông tin doanh nghiệp và giấy phép kinh doanh để gửi nhân viên xác minh."
+              title={isPendingOrIncomplete ? "Xác thực doanh nghiệp" : "Cập nhật địa chỉ và giấy phép"}
+              description="Chỉ có thể thay đổi địa chỉ và giấy phép kinh doanh."
             />
             <form onSubmit={submit} className="grid gap-4">
               {message && <Notice tone="success" title={message} />}
               {error && <Notice tone="danger" title={error} />}
-              {isApproved && isEditing && (
-                <Notice
-                  tone="info"
-                  title="Nộp lại hồ sơ KYB"
-                >
-                  Hồ sơ đã duyệt sẽ được cập nhật thông tin mà không chuyển lại về trạng thái chờ duyệt.
-                </Notice>
-              )}
               <Field label="Mã số thuế">
                 <Input
                   value={form.taxCode}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      taxCode: event.target.value,
-                    }))
-                  }
+                  readOnly
                   required
                 />
               </Field>
               <Field label="Tên doanh nghiệp">
                 <Input
                   value={form.companyName}
-                  onChange={(event) =>
-                    setForm((value) => ({
-                      ...value,
-                      companyName: event.target.value,
-                    }))
-                  }
+                  readOnly
                   required
                 />
               </Field>
@@ -328,21 +278,9 @@ export function BusinessProfilePage() {
                 <p className="mt-2 text-xs font-semibold text-slate-500">
                   Nộp kèm giấy phép kinh doanh để Staff đối chiếu thông tin doanh nghiệp.
                 </p>
-                <FirebaseFileLink
-                  path={form.businessLicenseUrl}
-                  emptyText="Chưa có giấy phép"
-                  buttonText="Xem giấy phép"
-                  className="mt-3"
-                  showPath={false}
-                />
               </Field>
               <div className="flex justify-end">
-                {isApproved && !isEditing ? (
-                  <Button type="button" onClick={() => setIsEditing(true)}>
-                    <Edit3 className="h-4 w-4" />
-                    Chỉnh sửa
-                  </Button>
-                ) : isApproved && isEditing ? (
+                {isApproved ? (
                   <Button type="submit" loading={loading}>
                     <Save className="h-4 w-4" />
                     Cập nhật thông tin
@@ -350,14 +288,24 @@ export function BusinessProfilePage() {
                 ) : (
                   <Button type="submit" loading={loading}>
                     <Save className="h-4 w-4" />
-                    Nộp hồ sơ KYB
+                    Nộp xác thực doanh nghiệp
                   </Button>
                 )}
               </div>
             </form>
           </Card>
+          <div className="space-y-6">
           <Card className="p-6">
-            <SectionHeading title="Trạng thái KYB" />
+            <SectionHeading title="Thông tin hiện tại" description="Thông tin đã lưu trước khi cập nhật." />
+            <div className="mt-5 space-y-4">
+              <ProfileRow label="Mã số thuế" value={savedForm.taxCode || "Chưa cập nhật"} />
+              <ProfileRow label="Tên doanh nghiệp" value={savedForm.companyName || "Chưa cập nhật"} />
+              <ProfileRow label="Địa chỉ" value={savedForm.address || "Chưa cập nhật"} />
+              <ProfileRow label="Giấy phép kinh doanh" value={<FirebaseFileLink path={savedForm.businessLicenseUrl} emptyText="Chưa có giấy phép" buttonText="Xem giấy phép" showPath={false} />} />
+            </div>
+          </Card>
+          <Card className="p-6">
+            <SectionHeading title="Trạng thái xác thực" />
             <div className="mt-5 flex items-center gap-3 rounded-3xl bg-brand-50 p-4">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm">
                 <Building2 className="h-5 w-5" />
@@ -386,6 +334,7 @@ export function BusinessProfilePage() {
               </div>
             )}
           </Card>
+          </div>
         </div>
       )}
       <Modal

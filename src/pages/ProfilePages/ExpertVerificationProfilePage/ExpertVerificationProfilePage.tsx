@@ -67,7 +67,7 @@ export function ExpertVerificationProfilePage() {
     }
 
     if (!portfolioFile && !form.portfolioUrl) {
-      setPortfolioError("Vui lòng chọn tệp Portfolio trước khi nộp hồ sơ KYC.");
+      setPortfolioError("Vui lòng chọn tài liệu xác thực trước khi nộp hồ sơ.");
       hasError = true;
     } else {
       setPortfolioError("");
@@ -130,7 +130,7 @@ export function ExpertVerificationProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="Hồ sơ xác minh chuyên gia"
-        description="Chuyên gia nộp CCCD/CMND và tệp portfolio để được xét duyệt."
+        description="Nộp CCCD/CMND và tài liệu cần thiết để xác thực hồ sơ chuyên gia."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-6">
@@ -162,15 +162,15 @@ export function ExpertVerificationProfilePage() {
               )}
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Tệp Portfolio">
+              <Field label="Tài liệu xác thực chuyên gia">
                 <ProfileFilePicker
                   file={portfolioFile}
                   onChange={(file) => {
                     setPortfolioFile(file);
                     if (file || form.portfolioUrl) setPortfolioError("");
                   }}
-                  buttonText="Chọn Portfolio"
-                  emptyText="Chưa chọn tệp Portfolio"
+                  buttonText="Chọn tài liệu"
+                  emptyText="Chưa chọn tài liệu xác thực"
                   required={!form.portfolioUrl}
                 />
                 {portfolioError && (
@@ -182,7 +182,7 @@ export function ExpertVerificationProfilePage() {
                 <FirebaseFileLink
                   path={form.portfolioUrl}
                   emptyText="Chọn ảnh, PDF hoặc DOC/DOCX"
-                  buttonText="Xem Portfolio"
+                  buttonText="Xem tài liệu"
                   className="mt-3"
                   showPath={false}
                 />
@@ -219,13 +219,13 @@ export function ExpertVerificationProfilePage() {
             <div className="flex justify-end">
               <Button type="submit" loading={loading}>
                 <ShieldCheck className="h-4 w-4" />
-                {isApproved ? "Cập nhật thông tin" : "Nộp hồ sơ KYC"}
+                {isApproved ? "Cập nhật thông tin" : "Nộp xác thực chuyên gia"}
               </Button>
             </div>
           </form>
         </Card>
         <Card className="p-6">
-          <SectionHeading title="Trạng thái KYC" />
+          <SectionHeading title="Trạng thái xác thực" />
           <div
             className={`mt-5 flex items-center gap-3 rounded-3xl p-4 ${status === "Pending" ? "bg-amber-50" : status === "Approved" ? "bg-green-50" : "bg-mint-50"}`}
           >

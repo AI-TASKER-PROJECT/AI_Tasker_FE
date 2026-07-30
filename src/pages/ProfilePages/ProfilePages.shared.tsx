@@ -206,7 +206,11 @@ export function readApiError(error: unknown, fallback: string) {
     response?: { data?: { message?: string } };
     message?: string;
   };
-  return apiError.response?.data?.message || apiError.message || fallback;
+  const message = apiError.response?.data?.message || apiError.message || fallback;
+  const translatedMessages: Record<string, string> = {
+    "MA SO THUE KHONG HOP LE": "Mã số thuế không hợp lệ.",
+  };
+  return translatedMessages[message.trim().toUpperCase()] || message;
 }
 
 export function parseCatalogIds(ids?: string) {
@@ -225,7 +229,7 @@ export function normalizeAccountStatus(status?: string): AccountStatus {
 
 export function translateVerificationStatus(status?: string) {
   const normalized = (status || "").trim().toLowerCase();
-  if (normalized === "approved") return "Đã duyệt";
+  if (normalized === "approved") return "Đã xác thực";
   if (normalized === "rejected") return "Bị từ chối";
   if (normalized === "pending") return "Đang chờ duyệt";
   if (normalized === "lock") return "Đã khóa";

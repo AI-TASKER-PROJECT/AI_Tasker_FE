@@ -108,7 +108,7 @@ function downloadCsv(data: ReportData, from: string, to: string) {
     ["Tổng đề xuất", String(data.jobsProposals.totalProposals)], ["Đề xuất được chấp nhận", String(data.jobsProposals.acceptedProposals)],
     ["Tổng tranh chấp", String(data.disputes.totalDisputes)], ["Tranh chấp đang mở", String(data.disputes.openDisputes)],
     ["Tổng giao dịch", String(data.revenue.totalCount)], ["Giá trị giao dịch", String(data.revenue.totalAmount)],
-    ["Doanh thu membership", String(data.membership.totalRevenue)],
+    ["Doanh thu nền tảng (gói thành viên)", String(data.membership.totalRevenue)],
   ];
   const csv = rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -117,30 +117,39 @@ function downloadCsv(data: ReportData, from: string, to: string) {
   link.href = url; link.download = `bao-cao-he-thong-${from}-${to}.csv`; link.click(); URL.revokeObjectURL(url);
 }
 
-export function ReportsPage() {
+type ReportsPageProps = {
+  /** Render inside the Analytics page while keeping the standalone route intact. */
+  embedded?: boolean;
+  from?: string;
+  to?: string;
+};
+
+export function ReportsPage({ embedded = false, from: sharedFrom, to: sharedTo }: ReportsPageProps) {
   const [report, setReport] = useState<ReportData | null>(null);
   const [range, setRange] = useState("month");
   const [fromDate, setFromDate] = useState(() => dateDaysAgo(30));
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const reportFrom = embedded && sharedFrom ? sharedFrom : fromDate;
+  const reportTo = embedded && sharedTo ? sharedTo : toDate;
 
   const loadReport = useCallback(async () => {
     setLoading(true); setError("");
     const groupBy = range === "day" || range === "custom" ? "day" : range === "week" ? "week" : "month";
     try {
       const [revenue, contracts, jobsProposals, disputes, membership, finance] = await Promise.all([
-        adminApi.dashboardRevenue({ from: fromDate, to: toDate, groupBy }),
-        adminApi.dashboardContracts({ from: fromDate, to: toDate, groupBy }),
-        adminApi.dashboardJobsProposals({ from: fromDate, to: toDate, groupBy }),
-        adminApi.dashboardDisputes({ from: fromDate, to: toDate, groupBy }),
-        adminApi.dashboardMembership({ from: fromDate, to: toDate, groupBy }),
-        adminApi.dashboardFinanceBreakdown({ from: fromDate, to: toDate }),
+        adminApi.dashboardRevenue({ from: reportFrom, to: reportTo, groupBy }),
+        adminApi.dashboardContracts({ from: reportFrom, to: reportTo, groupBy }),
+        adminApi.dashboardJobsProposals({ from: reportFrom, to: reportTo, groupBy }),
+        adminApi.dashboardDisputes({ from: reportFrom, to: reportTo, groupBy }),
+        adminApi.dashboardMembership({ from: reportFrom, to: reportTo, groupBy }),
+        adminApi.dashboardFinanceBreakdown({ from: reportFrom, to: reportTo }),
       ]);
       setReport({ revenue, contracts, jobsProposals, disputes, membership, finance });
     } catch (err) { setError(err instanceof Error ? err.message : "Không thể tải báo cáo."); }
     finally { setLoading(false); }
-  }, [fromDate, range, toDate]);
+  }, [range, reportFrom, reportTo]);
 
   useEffect(() => { void Promise.resolve().then(loadReport); }, [loadReport]);
 
@@ -148,6 +157,75 @@ export function ReportsPage() {
     completion: percentage(report.contracts.completedContracts, report.contracts.totalContracts),
     dispute: percentage(report.disputes.openDisputes, report.disputes.totalDisputes),
   } : null, [report]);
+
+  if (embedded) {
+    return (
+      <section className="space-y-5" aria-labelledby="report-summary-title">
+        <div className="flex flex-col gap-4 rounded-[2rem] border border-brand-100 bg-[linear-gradient(135deg,#fff_0%,#fdf2f8_58%,#f5f3ff_100%)] p-6 shadow-card md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-600">Báo cáo</p>
+            <h2 id="report-summary-title" className="mt-1 text-2xl font-black text-ink">Số liệu theo thời gian</h2>
+            <p className="mt-1 text-sm font-medium text-slate-500">Chọn thời gian, xem số liệu tổng hợp và tải file CSV.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={loadReport} loading={loading}><RefreshCw className="h-4 w-4" /> Làm mới</Button>
+            <Button onClick={() => report && downloadCsv(report, reportFrom, reportTo)} disabled={!report || loading}><Download className="h-4 w-4" /> Xuất CSV</Button>
+          </div>
+        </div>
+
+        {error && <Notice tone="danger" title="Không thể tải báo cáo">{error}</Notice>}
+        {loading && !report ? <Card className="p-8 text-center text-sm font-semibold text-slate-500">Đang tải báo cáo...</Card> : report ? <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <AdminMetric label="Hợp đồng đã xong" value={report.contracts.completedContracts} icon={<FileText className="h-5 w-5" />} tone="mint" />
+            <AdminMetric label="Hợp đồng đang làm" value={report.contracts.activeContracts} icon={<BriefcaseBusiness className="h-5 w-5" />} />
+            <AdminMetric label="Số lần giao dịch" value={report.revenue.totalCount} icon={<WalletCards className="h-5 w-5" />} tone="amber" />
+            <AdminMetric label="Tổng tiền giao dịch" value={formatCompactCurrency(report.revenue.totalAmount)} icon={<WalletCards className="h-5 w-5" />} tone="brand" />
+          </div>
+          <Card className="p-5">
+            <SectionHeading title="Nội dung sẽ xuất" description={`Dữ liệu từ ${reportFrom} đến ${reportTo}.`} />
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl bg-slate-50 p-4"><dt className="text-xs font-bold text-slate-500">Tổng hợp đồng</dt><dd className="mt-1 text-xl font-black text-ink">{report.contracts.totalContracts}</dd></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><dt className="text-xs font-bold text-slate-500">Hợp đồng đã dừng</dt><dd className="mt-1 text-xl font-black text-ink">{report.contracts.terminatedContracts}</dd></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><dt className="text-xs font-bold text-slate-500">Doanh thu gói thành viên</dt><dd className="mt-1 text-xl font-black text-ink">{formatCompactCurrency(report.membership.totalRevenue)}</dd></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><dt className="text-xs font-bold text-slate-500">Tiền đang giữ</dt><dd className="mt-1 text-xl font-black text-ink">{formatCompactCurrency(report.finance.systemEscrowBalance)}</dd></div>
+            </dl>
+          </Card>
+        </> : null}
+      </section>
+    );
+  }
+
+  if (!embedded) {
+    return (
+      <div className="space-y-6">
+        <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
+          <PageHeader title="Báo cáo" description="Tóm tắt kết quả hợp đồng, tranh chấp và doanh thu theo khoảng thời gian đã chọn." actions={<div className="flex flex-wrap gap-3"><Button variant="secondary" onClick={loadReport} loading={loading}><RefreshCw className="h-4 w-4" /> Làm mới</Button><Button onClick={() => report && downloadCsv(report, fromDate, toDate)} disabled={!report || loading}><Download className="h-4 w-4" /> Xuất CSV</Button></div>} />
+        </div>
+
+        <Card className="grid gap-4 p-4 md:grid-cols-[1fr_1fr_160px_auto] md:items-end">
+          <Field label="Từ ngày"><Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></Field>
+          <Field label="Đến ngày"><Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></Field>
+          <Field label="Nhóm theo"><select value={range} onChange={(event) => setRange(event.target.value)} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-brand-400"><option value="day">Ngày</option><option value="week">Tuần</option><option value="month">Tháng</option></select></Field>
+          <Button variant="secondary" onClick={loadReport} loading={loading}><CheckCircle2 className="h-4 w-4" /> Áp dụng</Button>
+        </Card>
+
+        {error && <Notice tone="danger" title="Không thể tải báo cáo">{error}</Notice>}
+        {loading && !report ? <Card className="p-8 text-center text-sm font-semibold text-slate-500">Đang tải dữ liệu báo cáo...</Card> : report ? <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <AdminMetric label="Tổng hợp đồng" value={report.contracts.totalContracts} icon={<BriefcaseBusiness className="h-5 w-5" />} />
+            <AdminMetric label="Tỷ lệ thành công" value={`${health?.completion || 0}%`} icon={<TrendingUp className="h-5 w-5" />} tone="mint" />
+            <AdminMetric label="Hợp đồng đã hủy" value={report.contracts.terminatedContracts} icon={<AlertTriangle className="h-5 w-5" />} tone="coral" />
+            <AdminMetric label="Doanh thu từ gói" value={formatCompactCurrency(report.membership.totalRevenue)} icon={<WalletCards className="h-5 w-5" />} tone="brand" />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+            <Card className="p-6"><SectionHeading title="Tỷ lệ hợp đồng" description="So sánh kết quả xử lý hợp đồng trong kỳ." /><div className="mt-6 space-y-5"><Funnel label="Thành công" value={report.contracts.completedContracts} max={Math.max(report.contracts.totalContracts, 1)} color="mint" /><Funnel label="Đang thực hiện" value={report.contracts.activeContracts} max={Math.max(report.contracts.totalContracts, 1)} color="amber" /><Funnel label="Đã hủy" value={report.contracts.terminatedContracts} max={Math.max(report.contracts.totalContracts, 1)} color="coral" /></div></Card>
+            <Card className="p-6"><SectionHeading title="Tranh chấp" description="Các vụ việc cần theo dõi trong kỳ." /><div className="mt-6 grid grid-cols-2 gap-4"><div className="rounded-3xl bg-rose-50 p-5"><p className="text-sm font-bold text-slate-600">Đang mở</p><p className="mt-2 text-3xl font-black text-rose-600">{report.disputes.openDisputes}</p></div><div className="rounded-3xl bg-emerald-50 p-5"><p className="text-sm font-bold text-slate-600">Đã xử lý</p><p className="mt-2 text-3xl font-black text-emerald-600">{report.disputes.resolvedDisputes}</p></div></div><div className="mt-6"><div className="mb-2 flex justify-between text-sm"><span className="font-bold text-slate-600">Tỷ lệ tranh chấp đang mở</span><span className="font-black text-ink">{health?.dispute || 0}%</span></div><Progress value={health?.dispute || 0} color="coral" /></div></Card>
+          </div>
+        </> : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
