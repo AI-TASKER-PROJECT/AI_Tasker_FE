@@ -148,7 +148,7 @@ export function DisputeProjectInfoPage() {
         <Card className="p-6">
           <SectionHeading
             title="Đề bài của doanh nghiệp / SoW"
-            description="Nội dung Staff cần đọc để hiểu phạm vi dự án và kỳ vọng từ doanh nghiệp."
+          description="Nội dung nhân viên cần đọc để hiểu phạm vi dự án và kỳ vọng từ doanh nghiệp."
           />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
@@ -185,7 +185,7 @@ export function DisputeProjectInfoPage() {
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Business
+                Doanh nghiệp
               </div>
               <div className="mt-2 text-base font-bold text-ink">
                 {businessDisplayName}
@@ -193,7 +193,7 @@ export function DisputeProjectInfoPage() {
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Expert
+                Chuyên gia
               </div>
               <div className="mt-2 text-base font-bold text-ink">
                 {expertDisplayName}
@@ -224,8 +224,8 @@ export function DisputeProjectInfoPage() {
           />
           {milestones.length === 0 ? (
             <EmptyState
-              title="Chua co du lieu cot moc"
-              description="Backend chưa trả danh sách mốc của dự án."
+              title="Chưa có dữ liệu cột mốc"
+          description="Máy chủ chưa trả danh sách cột mốc của dự án."
             />
           ) : (
             <div className="mt-5 grid gap-4">
@@ -251,12 +251,12 @@ export function DisputeProjectInfoPage() {
                     <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-600">
                       <p>
                         {milestone.description ||
-                          "Backend chưa trả mô tả chi tiết cho mốc này."}
+                          "Máy chủ chưa trả mô tả chi tiết cho cột mốc này."}
                       </p>
                       {milestone.deliverableExpectation && (
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
                           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                            Deliverable expectation
+                            Kỳ vọng sản phẩm bàn giao
                           </div>
                           <p className="mt-2">{milestone.deliverableExpectation}</p>
                         </div>
@@ -278,7 +278,7 @@ export function DisputeProjectInfoPage() {
                           Tiêu chí nghiệm thu
                         </div>
                         {criteria.length === 0 ? (
-                          <p className="mt-2">Backend chưa trả tiêu chí nghiệm thu cho mốc này.</p>
+                    <p className="mt-2">Máy chủ chưa trả tiêu chí nghiệm thu cho cột mốc này.</p>
                         ) : (
                           <div className="mt-3 space-y-2">
                             {criteria.map((item, index) => (

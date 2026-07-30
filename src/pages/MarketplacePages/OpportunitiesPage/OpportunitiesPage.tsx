@@ -253,8 +253,8 @@ export function OpportunitiesPage() {
       </div>
       {filteredJobs.length === 0 && (
         <EmptyState
-          title="Chưa có job mở"
-          description="Dữ liệu được lấy trực tiếp từ backend `/api/v1/jobs`."
+          title="Chưa có dự án đang mở"
+          description="Dữ liệu được lấy trực tiếp từ máy chủ."
         />
       )}
       {filteredJobs.length > JOBS_PER_PAGE && (

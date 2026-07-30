@@ -215,7 +215,7 @@ export function LoginPage() {
       description={
         loginStep === "LOGIN"
           ? "Đăng nhập vào hệ thống để sử dụng tính năng của nền tảng"
-          : "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
+          : "Bổ sung thông tin liên hệ và vai trò để tiếp tục với Google."
       }
     >
       {loginStep === "LOGIN" ? (

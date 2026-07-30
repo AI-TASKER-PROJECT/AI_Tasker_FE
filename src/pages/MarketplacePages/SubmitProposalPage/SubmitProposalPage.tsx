@@ -102,7 +102,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
                 {milestone.milestoneName}
               </p>
               <p className="mt-1 text-xs font-semibold text-slate-400">
-                {milestone.status || "Pending"}
+                {milestone.status ? <StatusBadge status={milestone.status} /> : "Chờ xử lý"}
               </p>
             </div>
             <p className="font-extrabold text-ink md:text-right">
@@ -289,7 +289,7 @@ export function SubmitProposalPage() {
     }
     if (quota && (quota.proposalQuotaBalance ?? 0) <= 0) {
       setMessage(
-        "Bạn đã hết lượt gửi bản đề xuất. Vui lòng mua thêm credit hoặc gói thành viên.",
+        "Bạn đã hết quota gửi bản đề xuất. Vui lòng mua thêm quota hoặc gói thành viên.",
       );
       return;
     }
@@ -307,7 +307,7 @@ export function SubmitProposalPage() {
     }
     if (!form.domainId || !form.skillId) {
       setMessage(
-        "Vui lòng chọn lĩnh vực và kỹ năng phù hợp với portfolio của bạn.",
+        "Vui lòng chọn lĩnh vực và kỹ năng phù hợp với hồ sơ năng lực của bạn.",
       );
       return;
     }
@@ -380,7 +380,7 @@ export function SubmitProposalPage() {
     return (
       <EmptyState
         title="Không tìm thấy dự án"
-        description="Dữ liệu job được tải trực tiếp từ backend."
+        description="Dữ liệu dự án được tải trực tiếp từ máy chủ."
       />
     );
   }
@@ -414,7 +414,7 @@ export function SubmitProposalPage() {
                   tone="danger"
                   title="Tài khoản hiện tại không phải Chuyên gia"
                 >
-                  Hãy đăng nhập bằng tài khoản Expert để gửi bản đề xuất cho dự án.
+                  Hãy đăng nhập bằng tài khoản chuyên gia để gửi bản đề xuất cho dự án.
                 </Notice>
               )}
               <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-4">

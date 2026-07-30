@@ -268,6 +268,7 @@ export interface Deliverable {
   milestoneId: number;
   sourceCodeUrl?: string;
   sourceCodeFileUrl?: string;
+  userGuideFileUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
   submissionRound?: number;
@@ -626,6 +627,44 @@ export interface CreditPriceResponse {
   proposalPriceVnd: number;
 }
 
+export interface ProjectSummaryMilestone {
+  contractMilestoneId: number;
+  milestoneId: number;
+  milestoneName: string;
+  description?: string;
+  budget: number;
+  orderIndex: number;
+  status: string;
+  duration?: number;
+  durationUnit?: string;
+  deliverableExpectation?: string;
+  acceptanceCriteria: string[];
+  finalDeliverable?: Deliverable;
+  completedAt?: string;
+}
+
+export interface ProjectSummary {
+  contractId: number;
+  jobId: number;
+  projectTitle: string;
+  projectDescription?: string;
+  contractScope?: string;
+  structuredSow?: string;
+  sow?: Sow;
+  status: string;
+  totalBudget: number;
+  timelineDays: number;
+  businessId: number;
+  businessName: string;
+  expertId: number;
+  expertName: string;
+  domainId?: number;
+  domainName?: string;
+  startedAt?: string;
+  completedAt?: string;
+  milestones: ProjectSummaryMilestone[];
+}
+
 export interface SystemWallet {
   systemWalletId: number;
   accountId: number;
@@ -890,6 +929,7 @@ export interface DashboardFinanceBreakdownResponse {
 export interface NotificationItem {
   notificationId: number;
   type: string;
+  typeLabel?: string;
   title: string;
   message: string;
   targetUrl?: string;

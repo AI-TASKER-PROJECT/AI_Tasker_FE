@@ -53,7 +53,7 @@ const workflowSteps = [
 const trustHighlights = [
   {
     icon: ShieldCheck,
-    title: "Bảo mật Escrow",
+    title: "Ký quỹ bảo đảm",
     description:
       "Ngân sách dự án được giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc được hoàn thành.",
   },
@@ -81,7 +81,7 @@ const trustCards = [
   {
     icon: Star,
     title: "Đánh giá thực",
-    description: "Hệ thống feedback hai chiều sau mỗi dự án.",
+      description: "Hệ thống phản hồi hai chiều sau mỗi dự án.",
     offset: false,
   },
   {
@@ -119,7 +119,7 @@ const useCases = [
   },
   {
     icon: Workflow,
-    title: "Data Dashboard",
+    title: "Bảng điều khiển dữ liệu",
     description:
       "Phân tích dữ liệu lớn và trực quan hóa xu hướng để hỗ trợ ra quyết định kinh doanh.",
   },
@@ -129,12 +129,12 @@ const faqs = [
   {
     question: "Làm thế nào để chọn được chuyên gia phù hợp nhất?",
     answer:
-      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 5 ứng viên sát nhất với yêu cầu của bạn.",
+      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, hồ sơ năng lực và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, hệ thống ghép nối AI sẽ gợi ý 5 ứng viên sát nhất với yêu cầu của bạn.",
   },
   {
     question: "Tiền của tôi có được an toàn khi thanh toán trước không?",
     answer:
-      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
+      "Có. AITASKER sử dụng hệ thống ký quỹ. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và xác nhận hoàn thành công việc theo từng cột mốc.",
   },
   {
     question: "Dự án của tôi yêu cầu bảo mật cao, AITASKER hỗ trợ như thế nào?",
@@ -349,7 +349,7 @@ export function LandingPage() {
                   Ví điện tử & Thanh toán
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân
+                  Bảo mật tuyệt đối với hệ thống ký quỹ. Tiền chỉ được giải ngân
                   khi bạn hài lòng với kết quả nghiệm thu.
                 </p>
               </Card>
@@ -441,8 +441,8 @@ export function LandingPage() {
               <ul className="mt-8 space-y-4 flex-1">
                 {[
                   "Tuyển dụng nhanh hơn 3 lần với bộ lọc thông minh",
-                  "Đảm bảo an toàn tài chính với thanh toán Escrow",
-                  "Quản lý tập trung mọi dự án trên một dashboard",
+                  "Đảm bảo an toàn tài chính với thanh toán ký quỹ",
+                  "Quản lý tập trung mọi dự án trên một bảng điều khiển",
                 ].map((item) => (
                   <li
                     key={item}
@@ -702,7 +702,7 @@ export function LandingPage() {
                 Vận hành an toàn
               </p>
               <p className="mt-1 text-sm leading-6 text-[#594048]">
-                Quy trình có Escrow, NDA và đánh giá hai chiều rõ ràng.
+                Quy trình có ký quỹ, thỏa thuận bảo mật và đánh giá hai chiều rõ ràng.
               </p>
             </div>
           </div>

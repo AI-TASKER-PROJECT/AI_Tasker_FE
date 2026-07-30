@@ -46,8 +46,8 @@ type NoticeTone = "success" | "danger" | "info" | "warning";
 
 const FLOW_STEPS = [
   { key: "PENDING_SELF_RESOLVE", label: "Tạo hồ sơ" },
-  { key: "ESCALATION_REQUESTED", label: "Gửi Staff" },
-  { key: "STAFF_REVIEWING", label: "Staff xem xét" },
+  { key: "ESCALATION_REQUESTED", label: "Gửi nhân viên" },
+  { key: "STAFF_REVIEWING", label: "Nhân viên xem xét" },
   { key: "STAFF_DECIDED", label: "Ra quyết định" },
   { key: "RESOLVED", label: "Hoàn tất" },
 ];
@@ -65,7 +65,7 @@ function formatStatus(status?: string) {
     case "PENDING_SELF_RESOLVE":
       return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
-      return "Đã yêu cầu Staff";
+      return "Đã yêu cầu nhân viên hỗ trợ";
     case "STAFF_REVIEWING":
       return "Nhân viên đang xem xét";
     case "STAFF_DECIDED":
@@ -83,11 +83,11 @@ function formatStatus(status?: string) {
 function formatInitiationType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
-      return "Business phản đối kết quả bàn giao";
+      return "Doanh nghiệp phản đối kết quả bàn giao";
     case "EXPERT_SCOPE_CONCERN":
-      return "Expert phản ánh yêu cầu ngoài phạm vi";
+      return "Chuyên gia phản ánh yêu cầu ngoài phạm vi";
     case "EXPERT_NO_REVIEW_RESPONSE":
-      return "Business chưa phản hồi nghiệm thu";
+      return "Doanh nghiệp chưa phản hồi nghiệm thu";
     case "EXPERT_BAD_FAITH_REJECTION":
       return "Từ chối không phù hợp tiêu chí";
     case "OTHER":
@@ -130,9 +130,9 @@ function disputeReasonContent(dispute: Dispute) {
 function formatInitiator(value?: string) {
   switch (normalizeStatus(value)) {
     case "BUSINESS":
-      return "Business";
+      return "Doanh nghiệp";
     case "EXPERT":
-      return "Expert";
+      return "Chuyên gia";
     default:
       return "Người tạo tranh chấp";
   }
@@ -151,14 +151,14 @@ function statusInfo(status?: string): {
         tone: "warning",
         title: "Hồ sơ tranh chấp đã được tạo",
         message:
-          "Hồ sơ đã được tạo nhưng chưa gửi đến Staff. Vui lòng gửi yêu cầu Staff can thiệp để nhân viên tiếp nhận xử lý.",
+      "Hồ sơ đã được tạo nhưng chưa gửi đến nhân viên. Vui lòng gửi yêu cầu can thiệp để nhân viên tiếp nhận xử lý.",
       };
     case "ESCALATION_REQUESTED":
       return {
         tone: "warning",
-        title: "Đã gửi yêu cầu Staff can thiệp",
+    title: "Đã gửi yêu cầu nhân viên can thiệp",
         message:
-          "Hệ thống sẽ route hồ sơ đến Staff phù hợp. Staff không cần duyệt hay từ chối yêu cầu can thiệp.",
+      "Hệ thống sẽ phân công hồ sơ cho nhân viên phù hợp. Nhân viên không cần duyệt hay từ chối yêu cầu can thiệp.",
       };
     case "STAFF_REVIEWING":
       return {
@@ -185,7 +185,7 @@ function statusInfo(status?: string): {
       return {
         tone: "danger",
         title: "Tranh chấp đã được rút",
-        message: "Hồ sơ này không còn trong luồng Staff can thiệp.",
+    message: "Hồ sơ này không còn trong luồng nhân viên can thiệp.",
       };
     default:
       return {
@@ -634,8 +634,8 @@ export function DisputeDetailPage({
         addItem(
           "staff-sla-due",
           dispute.staffSlaEscalatedAt
-            ? "Quá hạn xử lý của Staff"
-            : "Hạn xử lý của Staff",
+        ? "Quá hạn xử lý của nhân viên"
+        : "Hạn xử lý của nhân viên",
           dispute.staffSlaDueAt,
           dispute.staffSlaEscalatedAt
             ? "bg-rose-500 ring-rose-50"
@@ -672,19 +672,19 @@ export function DisputeDetailPage({
       );
       addItem(
         "escalation-requested",
-        "Yêu cầu Staff can thiệp",
+      "Yêu cầu nhân viên can thiệp",
         dispute.escalationRequestedAt,
         "bg-pink-500 ring-pink-50",
       );
       addItem(
         "staff-review-started",
-        "Staff bắt đầu xem xét",
+      "Nhân viên bắt đầu xem xét",
         dispute.staffReviewStartedAt,
         "bg-violet-500 ring-violet-50",
       );
       addItem(
         "staff-decided",
-        "Staff ra quyết định",
+      "Nhân viên ra quyết định",
         dispute.staffDecidedAt,
         "bg-mint-500 ring-mint-50",
       );
@@ -717,7 +717,7 @@ export function DisputeDetailPage({
     );
     addItem(
       "staff-decided",
-      "Staff đã ra quyết định",
+      "Nhân viên đã ra quyết định",
       dispute.staffDecidedAt,
       "bg-mint-500 ring-mint-50",
     );
@@ -748,7 +748,7 @@ export function DisputeDetailPage({
     if (!interventionForm.reason.trim()) {
       setNotice({
         tone: "warning",
-        title: "Vui lòng nhập lý do yêu cầu Staff can thiệp.",
+        title: "Vui lòng nhập lý do yêu cầu nhân viên can thiệp.",
       });
       return;
     }
@@ -765,9 +765,9 @@ export function DisputeDetailPage({
       setDispute(saved);
       setNotice({
         tone: "success",
-        title: "Đã gửi yêu cầu Staff can thiệp.",
+        title: "Đã gửi yêu cầu nhân viên can thiệp.",
         message:
-          "Hệ thống sẽ tự động route hồ sơ đến Staff phù hợp theo cấu hình backend.",
+          "Hệ thống sẽ tự động phân công hồ sơ cho nhân viên phù hợp theo cấu hình máy chủ.",
       });
     } catch (error) {
       setNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -837,7 +837,7 @@ export function DisputeDetailPage({
       setNotice({
         tone: "success",
         title: "Đã ra quyết định tranh chấp.",
-        message: "Backend sẽ tự động thực hiện quyết toán theo tỷ lệ đã chọn.",
+        message: "Máy chủ sẽ tự động thực hiện quyết toán theo tỷ lệ đã chọn.",
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -853,7 +853,7 @@ export function DisputeDetailPage({
   const cancelDispute = async () => {
     const reason = window.prompt(
       "Lý do rút tranh chấp:",
-      "Không cần Staff xử lý nữa.",
+      "Không cần nhân viên xử lý nữa.",
     );
     if (reason === null) return;
     setActionLoading("cancel-dispute");
@@ -866,7 +866,7 @@ export function DisputeDetailPage({
       setNotice({
         tone: "success",
         title: "Đã rút tranh chấp.",
-        message: "Hồ sơ không còn được xử lý trong luồng Staff can thiệp.",
+        message: "Hồ sơ không còn được xử lý trong luồng nhân viên can thiệp.",
       });
     } catch (error) {
       setNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -903,7 +903,7 @@ export function DisputeDetailPage({
       setNotice({
         tone: "success",
         title: "Đã thêm bằng chứng vào hồ sơ.",
-        message: "Staff có thể dùng bằng chứng này trong quá trình đánh giá.",
+        message: "Nhân viên có thể dùng bằng chứng này trong quá trình đánh giá.",
       });
     } catch (error) {
       setNotice({ tone: "danger", title: getApiErrorMessage(error) });
@@ -941,7 +941,7 @@ export function DisputeDetailPage({
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
                 {dispute.staffReport ||
-                  "Staff chưa ra quyết định cho hồ sơ này."}
+          "Nhân viên chưa ra quyết định cho hồ sơ này."}
               </p>
             </div>
 
@@ -962,7 +962,7 @@ export function DisputeDetailPage({
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-mint-50 p-3 text-center">
                 <p className="text-xs font-black uppercase text-mint-700">
-                  Expert nhận
+                  Chuyên gia nhận
                 </p>
                 <p className="mt-1 font-display text-xl font-black text-ink">
                   {typeof finalExpertPercent === "number"
@@ -977,7 +977,7 @@ export function DisputeDetailPage({
               </div>
               <div className="rounded-xl bg-rose-50 p-3 text-center">
                 <p className="text-xs font-black uppercase text-rose-700">
-                  Business hoàn
+                  Doanh nghiệp được hoàn
                 </p>
                 <p className="mt-1 font-display text-xl font-black text-ink">
                   {typeof finalBusinessPercent === "number"
@@ -1150,9 +1150,9 @@ export function DisputeDetailPage({
           </div>
           <Notice tone={info.tone} title="Việc cần lưu ý">
             {status === "PENDING_SELF_RESOLVE"
-              ? "Gửi yêu cầu Staff can thiệp để nhân viên phù hợp tiếp nhận và xử lý hồ sơ."
+          ? "Gửi yêu cầu can thiệp để nhân viên phù hợp tiếp nhận và xử lý hồ sơ."
               : status === "STAFF_REVIEWING"
-                ? "Staff đang đối chiếu hồ sơ. Hai bên vẫn có thể bổ sung bằng chứng khi được phép."
+            ? "Nhân viên đang đối chiếu hồ sơ. Hai bên vẫn có thể bổ sung bằng chứng khi được phép."
                 : status === "RESOLVED"
                   ? "Kiểm tra kết quả quyết toán và tiếp tục dự án khi cần."
                   : "Theo dõi các cập nhật mới nhất của hồ sơ tại trang này."}
@@ -1202,10 +1202,10 @@ export function DisputeDetailPage({
             {canRequestIntervention && (
               <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
                 <p className="font-extrabold text-amber-900">
-                  Yêu cầu Staff can thiệp
+                  Yêu cầu nhân viên can thiệp
                 </p>
                 <p className="mt-1 text-sm font-medium leading-6 text-amber-800">
-                  Gửi hồ sơ cho Staff để nhân viên phù hợp tiếp nhận và xử lý
+                  Gửi hồ sơ để nhân viên phù hợp tiếp nhận và xử lý
                   tranh chấp. Hồ sơ sẽ dùng lại lý do tranh chấp đã mở và ghi
                   chú bổ sung nếu có.
                 </p>
@@ -1232,7 +1232,7 @@ export function DisputeDetailPage({
                   </div>
 
                   {interventionForm.evidenceFile && (
-                    <Field label="Bằng chứng đã gửi Staff">
+              <Field label="Bằng chứng đã gửi nhân viên">
                       <Input
                         value={interventionForm.evidenceFile}
                         readOnly
@@ -1250,7 +1250,7 @@ export function DisputeDetailPage({
                           note: event.target.value,
                         }))
                       }
-                      placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn Staff lưu ý nếu cần..."
+                  placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn nhân viên lưu ý nếu cần..."
                     />
                   </Field>
 
@@ -1267,29 +1267,29 @@ export function DisputeDetailPage({
             )}
 
             {status === "PENDING_SELF_RESOLVE" && !canRequestIntervention && (
-              <Notice tone="info" title="Hồ sơ đang chờ gửi Staff">
-                Khi Business hoặc Expert gửi yêu cầu Staff can thiệp, hồ sơ sẽ
+              <Notice tone="info" title="Hồ sơ đang chờ gửi nhân viên">
+                Khi doanh nghiệp hoặc chuyên gia gửi yêu cầu nhân viên can thiệp, hồ sơ sẽ
                 chuyển sang bước tiếp theo.
               </Notice>
             )}
 
             {status === "ESCALATION_REQUESTED" && (
               <Notice tone="warning" title="Đã gửi yêu cầu can thiệp">
-                Hệ thống đang phân công Staff phù hợp. Bạn có thể tiếp tục bổ
+                Hệ thống đang phân công nhân viên phù hợp. Bạn có thể tiếp tục bổ
                 sung bằng chứng khi cần.
               </Notice>
             )}
 
             {status === "STAFF_REVIEWING" && (
-              <Notice tone="warning" title="Staff đang đánh giá hồ sơ">
-                Staff đang đối chiếu tiêu chí, bài nộp và bằng chứng trước khi
+              <Notice tone="warning" title="Nhân viên đang đánh giá hồ sơ">
+                Nhân viên đang đối chiếu tiêu chí, bài nộp và bằng chứng trước khi
                 ra quyết định.
               </Notice>
             )}
 
             {status === "STAFF_DECIDED" && (
               <Notice tone="warning" title="Đang hoàn tất quyết toán">
-                Staff đã ra quyết định. Hệ thống đang xử lý kết quả tài chính.
+                Nhân viên đã ra quyết định. Hệ thống đang xử lý kết quả tài chính.
               </Notice>
             )}
 
@@ -1495,7 +1495,7 @@ export function DisputeDetailPage({
                     </p>
                     <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
                       Cung cấp đường dẫn có quyền truy cập và ghi chú ngắn để
-                      Staff hiểu nội dung cần kiểm tra.
+                      nhân viên hiểu nội dung cần kiểm tra.
                     </p>
                   </div>
                 </div>
@@ -1528,7 +1528,7 @@ export function DisputeDetailPage({
                   </Field>
 
                   <div className="md:col-span-2">
-                    <Field label="Ghi chú cho Staff">
+            <Field label="Ghi chú cho nhân viên">
                       <Textarea
                         value={evidenceForm.note}
                         onChange={(event) =>
@@ -1537,7 +1537,7 @@ export function DisputeDetailPage({
                             note: event.target.value,
                           }))
                         }
-                        placeholder="Tóm tắt nội dung bằng chứng và điểm cần Staff chú ý..."
+                placeholder="Tóm tắt nội dung bằng chứng và điểm cần nhân viên chú ý..."
                       />
                     </Field>
                   </div>
@@ -1588,7 +1588,7 @@ export function DisputeDetailPage({
                     <div className="md:col-span-2">
                       <EmptyState
                         title="Chưa tải được tiêu chí"
-                        description="Backend chưa trả về tiêu chí nghiệm thu cho mốc này."
+                description="Máy chủ chưa trả về tiêu chí nghiệm thu cho cột mốc này."
                       />
                     </div>
                   )}
@@ -1847,9 +1847,9 @@ export function DisputeDetailPage({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <SectionHeading
                   title="Ra quyết định tranh chấp"
-                  description="Đây là hành động chính của Staff. Hãy đối chiếu đầy đủ tiêu chí, bài nộp và bằng chứng trước khi xác nhận."
+                description="Đây là hành động chính của nhân viên. Hãy đối chiếu đầy đủ tiêu chí, bài nộp và bằng chứng trước khi xác nhận."
                 />
-                <Badge tone="brand">Hành động dành cho Staff</Badge>
+              <Badge tone="brand">Hành động dành cho nhân viên</Badge>
               </div>
 
               <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -1890,7 +1890,7 @@ export function DisputeDetailPage({
 
                 <div className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
                   <Field
-                    label="Tỷ lệ tiền ký quỹ trả cho Expert (%)"
+              label="Tỷ lệ tiền ký quỹ trả cho chuyên gia (%)"
                     error={decisionErrors.expertPercent}
                   >
                     <Input
@@ -1913,7 +1913,7 @@ export function DisputeDetailPage({
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-xl bg-mint-50 p-3 text-center">
                       <p className="text-xs font-black uppercase text-mint-700">
-                        Expert
+                        Chuyên gia
                       </p>
                       <p className="mt-1 font-display text-xl font-black text-ink">
                         {Number.isFinite(Number(decisionForm.expertPercent))
@@ -1923,7 +1923,7 @@ export function DisputeDetailPage({
                     </div>
                     <div className="rounded-xl bg-rose-50 p-3 text-center">
                       <p className="text-xs font-black uppercase text-rose-700">
-                        Business
+                        Doanh nghiệp
                       </p>
                       <p className="mt-1 font-display text-xl font-black text-ink">
                         {Number.isFinite(Number(decisionForm.expertPercent))
@@ -1975,7 +1975,7 @@ export function DisputeDetailPage({
                       </p>
                       <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
                         {dispute.staffReport ||
-                          "Staff chưa ra quyết định cho hồ sơ này."}
+          "Nhân viên chưa ra quyết định cho hồ sơ này."}
                       </p>
                     </div>
 
@@ -1997,7 +1997,7 @@ export function DisputeDetailPage({
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="rounded-xl bg-mint-50 p-3 text-center">
                         <p className="text-xs font-black uppercase text-mint-700">
-                          Expert nhận
+                          Chuyên gia nhận
                         </p>
                         <p className="mt-1 font-display text-xl font-black text-ink">
                           {typeof finalExpertPercent === "number"
@@ -2013,7 +2013,7 @@ export function DisputeDetailPage({
                       </div>
                       <div className="rounded-xl bg-rose-50 p-3 text-center">
                         <p className="text-xs font-black uppercase text-rose-700">
-                          Business hoàn
+                          Doanh nghiệp được hoàn
                         </p>
                         <p className="mt-1 font-display text-xl font-black text-ink">
                           {typeof finalBusinessPercent === "number"
@@ -2054,10 +2054,10 @@ export function DisputeDetailPage({
               {canRequestIntervention && (
                 <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
                   <p className="font-extrabold text-amber-900">
-                    Yêu cầu Staff can thiệp
+                    Yêu cầu nhân viên can thiệp
                   </p>
                   <p className="mt-1 text-sm font-medium leading-6 text-amber-800">
-                    Gửi hồ sơ cho Staff để nhân viên phù hợp tiếp nhận và xử lý
+                    Gửi hồ sơ để nhân viên phù hợp tiếp nhận và xử lý
                     tranh chấp. Lý do và bằng chứng là bắt buộc.
                   </p>
 
@@ -2084,7 +2084,7 @@ export function DisputeDetailPage({
                     </div>
 
                     {interventionForm.evidenceFile && (
-                      <Field label="Bằng chứng đã gửi Staff">
+              <Field label="Bằng chứng đã gửi nhân viên">
                         <Input
                           value={interventionForm.evidenceFile}
                           readOnly
@@ -2102,7 +2102,7 @@ export function DisputeDetailPage({
                             note: event.target.value,
                           }))
                         }
-                        placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn Staff lưu ý nếu cần..."
+                  placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn nhân viên lưu ý nếu cần..."
                       />
                     </Field>
 
@@ -2119,29 +2119,29 @@ export function DisputeDetailPage({
               )}
 
               {status === "PENDING_SELF_RESOLVE" && !canRequestIntervention && (
-                <Notice tone="info" title="Hồ sơ đang chờ gửi Staff">
-                  Khi Business hoặc Expert gửi yêu cầu Staff can thiệp, hồ sơ sẽ
+              <Notice tone="info" title="Hồ sơ đang chờ gửi nhân viên">
+                  Khi doanh nghiệp hoặc chuyên gia gửi yêu cầu nhân viên can thiệp, hồ sơ sẽ
                   chuyển sang bước tiếp theo.
                 </Notice>
               )}
 
               {status === "ESCALATION_REQUESTED" && (
                 <Notice tone="warning" title="Đã gửi yêu cầu can thiệp">
-                  Hệ thống đang phân công Staff phù hợp. Bạn có thể tiếp tục bổ
+                  Hệ thống đang phân công nhân viên phù hợp. Bạn có thể tiếp tục bổ
                   sung bằng chứng khi cần.
                 </Notice>
               )}
 
               {status === "STAFF_REVIEWING" && (
-                <Notice tone="warning" title="Staff đang đánh giá hồ sơ">
-                  Staff đang đối chiếu tiêu chí, bài nộp và bằng chứng trước khi
+              <Notice tone="warning" title="Nhân viên đang đánh giá hồ sơ">
+                  Nhân viên đang đối chiếu tiêu chí, bài nộp và bằng chứng trước khi
                   ra quyết định.
                 </Notice>
               )}
 
               {status === "STAFF_DECIDED" && (
                 <Notice tone="warning" title="Đang hoàn tất quyết toán">
-                  Staff đã ra quyết định. Hệ thống đang xử lý kết quả tài chính.
+                  Nhân viên đã ra quyết định. Hệ thống đang xử lý kết quả tài chính.
                 </Notice>
               )}
 
@@ -2159,8 +2159,8 @@ export function DisputeDetailPage({
 
               {isAdmin && (
                 <Notice tone="info" title="Chế độ chỉ đọc">
-                  Backend hiện chưa có endpoint danh sách toàn bộ tranh chấp cho
-                  Admin trong màn này.
+                  Máy chủ hiện chưa cung cấp danh sách toàn bộ tranh chấp cho
+                  quản trị viên trong màn hình này.
                 </Notice>
               )}
             </div>
@@ -2169,14 +2169,14 @@ export function DisputeDetailPage({
           <Card className="hidden border border-slate-100 p-6">
             <SectionHeading
               title="Kết quả tiền ký quỹ"
-              description="Tỷ lệ và số tiền cuối cùng sau quyết định của Staff."
+          description="Tỷ lệ và số tiền cuối cùng sau quyết định của nhân viên."
             />
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <div className="rounded-2xl border border-mint-100 bg-mint-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-extrabold text-mint-800">
-                    Expert nhận
+                    Chuyên gia nhận
                   </p>
                   <CheckCircle2 className="h-4 w-4 text-mint-600" />
                 </div>
@@ -2195,7 +2195,7 @@ export function DisputeDetailPage({
               <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-extrabold text-rose-800">
-                    Business được hoàn
+                    Doanh nghiệp được hoàn
                   </p>
                   <ShieldCheck className="h-4 w-4 text-rose-600" />
                 </div>
@@ -2220,7 +2220,7 @@ export function DisputeDetailPage({
                 isStaff
                   ? "Chỉ hiển thị các mốc cần cho việc theo dõi và ra quyết định."
                   : isAdmin
-                    ? "Các mốc chính để Admin theo dõi tiến độ xử lý."
+            ? "Các mốc chính để quản trị viên theo dõi tiến độ xử lý."
                     : "Các mốc quan trọng để hai bên theo dõi kết quả tranh chấp."
               }
             />
@@ -2262,7 +2262,7 @@ export function DisputeDetailPage({
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">
                 {dispute.staffReport ||
-                  "Staff chưa ra quyết định cho hồ sơ này."}
+          "Nhân viên chưa ra quyết định cho hồ sơ này."}
               </p>
             </div>
 

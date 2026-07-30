@@ -298,7 +298,7 @@ export function MasterDataPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? `Cập nhật ${tabLabels[tab].toLowerCase()}` : `Tạo ${tabLabels[tab].toLowerCase()}`}
-        description={editing ? "Mã định danh không thể thay đổi sau khi tạo." : "Mã sẽ được backend chuẩn hóa thành chữ in hoa và dấu gạch dưới."}
+          description={editing ? "Mã định danh không thể thay đổi sau khi tạo." : "Mã sẽ được máy chủ chuẩn hóa thành chữ in hoa và dấu gạch dưới."}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Hủy</Button>
@@ -338,8 +338,8 @@ export function MasterDataPage() {
             Đang bật
           </label>
           {form.code.trim().toUpperCase() === "PROFILE_REVIEW" && (
-            <Notice tone="warning" title="Domain nội bộ" className="md:col-span-2">
-              Domain này chỉ dùng để phân quyền staff xét duyệt hồ sơ và không nên dùng cho marketplace.
+            <Notice tone="warning" title="Lĩnh vực nội bộ" className="md:col-span-2">
+              Lĩnh vực này chỉ dùng để phân quyền nhân viên xét duyệt hồ sơ và không hiển thị trên sàn dự án.
             </Notice>
           )}
           <Field label="Mô tả" className="md:col-span-2">

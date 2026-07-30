@@ -316,7 +316,7 @@ function txDisplayDescription(tx: WalletTransaction, role?: string) {
     return `${businessName} đã được hoàn lại tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}".`;
   }
   if (text.includes("admin resolved contract security deposit")) {
-    return `Tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}" đã được xử lý theo quyết định của Admin.`;
+    return `Tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}" đã được xử lý theo quyết định của quản trị viên.`;
   }
 
   return (
@@ -610,14 +610,14 @@ function WithdrawalModal({
     ) {
       setNotice({
         tone: "danger",
-        msg: "Vui lòng diền dầy dủ thông tin ngân hàng.",
+        msg: "Vui lòng điền đầy đủ thông tin ngân hàng.",
       });
       return;
     }
     if (wallet && amount > wallet.availableBalance) {
       setNotice({
         tone: "danger",
-        msg: `Số dư khả dụng không dủ. Tối da: ${formatCurrency(wallet.availableBalance)}`,
+        msg: `Số dư khả dụng không đủ. Tối đa: ${formatCurrency(wallet.availableBalance)}`,
       });
       return;
     }
@@ -635,13 +635,13 @@ function WithdrawalModal({
       if (res.completed) {
         setNotice({
           tone: "success",
-          msg: "Yêu cầu rút tiền dã dược gửi. Admin sẽ xử lý và chuyển khoản thủ công.",
+        msg: "Yêu cầu rút tiền đã được gửi. Quản trị viên sẽ xử lý và chuyển khoản thủ công.",
         });
         onSuccess();
       } else if (res.needTopup) {
         setNotice({
           tone: "warning",
-          msg: `Số dư không dủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} dể thực hiện.`,
+          msg: `Số dư không đủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} để thực hiện.`,
         });
       }
     } catch (err) {
@@ -656,7 +656,7 @@ function WithdrawalModal({
       open={open}
       onClose={handleClose}
       title="Yêu cầu rút tiền"
-      description="Số tiền sẽ được Admin kiểm duyệt và thanh toán cho tài khoản ngân hàng của bạn."
+          description="Số tiền sẽ được quản trị viên kiểm duyệt và thanh toán cho tài khoản ngân hàng của bạn."
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>
@@ -849,7 +849,7 @@ export function WalletPage() {
                 {formatCurrency(wallet.currentBalance)}
               </p>
               <p className="mt-2 text-xs font-semibold text-blue-200">
-                Bao gồm khả dụng, escrow/ký quỹ và chờ rút ·{" "}
+                Bao gồm số dư khả dụng, tiền ký quỹ và khoản chờ rút ·{" "}
                 {wallet.currency}
               </p>
             </div>
@@ -926,7 +926,7 @@ export function WalletPage() {
             <div className="p-6">
               <EmptyState
                 title="Chưa có giao dịch nào"
-                description="Các giao dịch nạp tiền, mua gói, dặt cọc hợp đồng và rút tiền sẽ xuất hiện tại dây."
+                description="Các giao dịch nạp tiền, mua gói, đặt cọc hợp đồng và rút tiền sẽ xuất hiện tại đây."
                 action={
                   isExternalRole ? (
                     <Button onClick={openTopup}>
@@ -1074,7 +1074,7 @@ export function WalletPage() {
           <div className="p-6">
             <EmptyState
               title="Chưa có yêu cầu rút tiền"
-              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại dây sau khi bạn tạo."
+              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại đây sau khi bạn tạo."
               action={
                 isExternalRole ? (
                   <Button onClick={() => setWithdrawOpen(true)}>

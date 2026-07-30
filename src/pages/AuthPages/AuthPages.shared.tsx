@@ -135,7 +135,7 @@ export function AuthFrame({
           <div className="relative z-10 mt-6 lg:mt-8">
             <img
               src="/images/ai-job-assistant.png"
-              alt="AI job assistant"
+        alt="Trợ lý tạo dự án AI"
               className="w-full rounded-[1.5rem] shadow-2xl ring-1 ring-white/20"
             />
           </div>

@@ -244,7 +244,7 @@ export function ExpertProfilePage() {
             <Tabs
               tabs={[
                 ...(hasPortfolioContent
-                  ? [{ id: "portfolio", label: "Portfolio" }]
+                  ? [{ id: "portfolio", label: "Hồ sơ năng lực" }]
                   : []),
                 ...(hasAverageRating
                   ? [{ id: "reviews", label: "Đánh giá" }]
@@ -261,7 +261,7 @@ export function ExpertProfilePage() {
       {activeTab === "portfolio" && (
         <Card className="p-6">
           <SectionHeading
-            title="Portfolio"
+            title="Hồ sơ năng lực"
             description="Lĩnh vực, kỹ năng, công nghệ và tệp đính kèm."
           />
           <div className="mt-5 grid gap-6 lg:grid-cols-2">
@@ -289,7 +289,7 @@ export function ExpertProfilePage() {
             <Card className="rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-none">
               <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink">
                 <FileText className="h-4 w-4 text-brand-600" />
-                Tệp portfolio
+                Tệp hồ sơ năng lực
               </div>
               <FirebaseFileLink
                 path={portfolio?.certificates || form.portfolioUrl}
@@ -343,7 +343,7 @@ export function ExpertProfilePage() {
                     required={!form.portfolioUrl}
                   />
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                  Tải tài liệu để Staff xác thực hồ sơ chuyên gia.
+                  Tải tài liệu để nhân viên xác thực hồ sơ chuyên gia.
                   </p>
                   <FirebaseFileLink
                     path={form.portfolioUrl}

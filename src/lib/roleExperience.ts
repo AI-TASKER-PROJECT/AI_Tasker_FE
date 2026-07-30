@@ -18,12 +18,12 @@ const workspacePathByRole: Record<Role, string> = {
 };
 
 const guestExperience: PublicExperience = {
-  badge: "AI Project Marketplace",
+  badge: "Sàn dự án AI",
   heroTitle:
-    "Thuê chuyên gia AI, quản lý dự án và escrow trong một nền tảng sáng rõ.",
+    "Thuê chuyên gia AI, quản lý dự án và tiền ký quỹ trên một nền tảng minh bạch.",
   heroDescription:
-    "AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng AI Job Assistant, nhận đề xuất, ký hợp đồng, chia mốc, nghiệm thu và xử lý dòng tiền minh bạch.",
-  primaryLabel: "Bắt dầu dự án",
+    "AITASKER giúp doanh nghiệp chuẩn hóa bài toán bằng trợ lý AI, nhận đề xuất, ký hợp đồng, chia cột mốc, nghiệm thu và xử lý dòng tiền minh bạch.",
+  primaryLabel: "Bắt đầu dự án",
   primaryPath: "/register",
   secondaryLabel: "Xem cơ hội",
   secondaryPath: "/experts",
@@ -31,41 +31,41 @@ const guestExperience: PublicExperience = {
 
 const roleExperience: Record<Role, PublicExperience> = {
   BUSINESS: {
-    badge: "Không gian Business",
+    badge: "Không gian doanh nghiệp",
     heroTitle:
-      "Tạo job AI, nhận bản đề xuất và theo dõi hợp đồng của doanh nghiệp.",
+      "Tạo dự án AI, nhận bản đề xuất và theo dõi hợp đồng của doanh nghiệp.",
     heroDescription:
-      "Bạn có thể bắt đầu một dự án mới, quản lý công việc đang mở, theo dõi mốc, ký quỹ và các tranh chấp trong không gian làm việc của Doanh nghiệp.",
+      "Bạn có thể bắt đầu dự án mới, quản lý công việc đang mở, theo dõi cột mốc, ký quỹ và tranh chấp trong không gian làm việc của doanh nghiệp.",
     primaryLabel: "Tạo dự án mới",
     primaryPath: "/app/jobs",
     secondaryLabel: "Dự án của tôi",
     secondaryPath: "/app/jobs",
   },
   EXPERT: {
-    badge: "Không gian Expert",
-    heroTitle: "Tìm cơ hội AI phù hợp và quản lý bản đề xuất trong một workspace.",
+    badge: "Không gian chuyên gia",
+    heroTitle: "Tìm cơ hội AI phù hợp và quản lý bản đề xuất trong một không gian làm việc.",
     heroDescription:
-      "Bạn có thể xem job đang mở, nộp bản đề xuất, cập nhật portfolio AI và theo dõi hợp đồng hoặc dòng tiền sau khi dược chọn.",
+      "Bạn có thể xem dự án đang mở, nộp bản đề xuất, cập nhật hồ sơ năng lực AI và theo dõi hợp đồng hoặc dòng tiền sau khi được chọn.",
     primaryLabel: "Tìm cơ hội phù hợp",
     primaryPath: "/app/opportunities",
     secondaryLabel: "Bản đề xuất của tôi",
     secondaryPath: "/app/proposals",
   },
   STAFF: {
-    badge: "Không gian Staff",
-    heroTitle: "Duyệt hồ sơ, theo dõi ticket và hỗ trợ xử lý rủi ro.",
+    badge: "Không gian nhân viên",
+    heroTitle: "Duyệt hồ sơ, theo dõi vụ việc và hỗ trợ xử lý rủi ro.",
     heroDescription:
-      "Bạn có thể kiểm tra hồ sơ KYB/KYC, tiếp nhận dispute, ghi nhận demo testing và chuẩn bị technical report cho từng ticket.",
+      "Bạn có thể kiểm tra hồ sơ xác minh, tiếp nhận tranh chấp, ghi nhận kết quả kiểm thử và chuẩn bị báo cáo kỹ thuật cho từng vụ việc.",
     primaryLabel: "Duyệt hồ sơ",
     primaryPath: "/app/verifications",
     secondaryLabel: "Tranh chấp được giao",
     secondaryPath: "/app/tickets",
   },
   ADMIN: {
-    badge: "Không gian Admin",
+    badge: "Không gian quản trị viên",
     heroTitle: "Điều phối tài khoản, ví hệ thống và số liệu vận hành AITASKER.",
     heroDescription:
-      "Bạn có thể quản lý account theo role, xem analytics, đồng bộ system wallet, cấu hình master data và theo dõi audit log.",
+      "Bạn có thể quản lý tài khoản theo vai trò, xem số liệu phân tích, đồng bộ ví hệ thống, cấu hình dữ liệu danh mục và theo dõi nhật ký kiểm toán.",
     primaryLabel: "Mở quản trị",
     primaryPath: "/app/admin/analytics",
     secondaryLabel: "Quản lý tài khoản",

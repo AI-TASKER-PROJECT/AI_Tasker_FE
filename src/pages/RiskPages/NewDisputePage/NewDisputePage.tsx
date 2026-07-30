@@ -47,13 +47,13 @@ export function NewDisputePage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Tao tranh chap"
-          description="Tạo dispute theo contract và mốc đúng với endpoint backend hiện có."
+          title="Tạo tranh chấp"
+          description="Tạo tranh chấp theo hợp đồng và cột mốc đúng với điểm truy cập máy chủ hiện có."
         />
       </div>
 
-      <Notice tone="info" title="Bang chung gui sau khi tao dispute">
-        Backend hien tai khong nhan evidenceReport hoac proposedAction trong API tao dispute. Sau khi tao dispute, bang chung se duoc them qua case attachments o man chi tiet.
+      <Notice tone="info" title="Bằng chứng được gửi sau khi tạo tranh chấp">
+        Máy chủ hiện chưa nhận báo cáo bằng chứng hoặc phương án đề xuất khi tạo tranh chấp. Sau khi tạo tranh chấp, bằng chứng sẽ được bổ sung tại màn hình chi tiết.
       </Notice>
 
       <Card className="p-6">
@@ -90,7 +90,7 @@ export function NewDisputePage() {
             </Field>
           </div>
           <Button type="submit">
-            <Gavel className="h-4 w-4" /> Tao dispute
+            <Gavel className="h-4 w-4" /> Tạo tranh chấp
           </Button>
         </form>
         {created && (

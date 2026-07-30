@@ -294,7 +294,7 @@ export function DashboardPage() {
     EXPERT: [
       ["Tìm cơ hội", "/app/opportunities", "Nộp bản đề xuất cho dự án phù hợp"],
       [
-        "Cập nhật portfolio",
+        "Cập nhật hồ sơ năng lực",
         "/app/expert/portfolio",
         "Cập nhật hồ sơ chuyên gia để tăng cơ hội nhận dự án",
       ],
@@ -380,7 +380,7 @@ export function DashboardPage() {
             <MetricCard
               label="Số hồ sơ cần duyệt"
               value={pendingVerifications}
-              helper="KYC/KYB Pending"
+              helper="KYC/KYB đang chờ duyệt"
               icon={<IdCard className="h-5 w-5" />}
             />
           </div>

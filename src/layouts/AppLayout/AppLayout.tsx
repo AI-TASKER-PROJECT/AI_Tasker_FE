@@ -255,7 +255,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Portfolio AI",
+      label: "Hồ sơ năng lực AI",
       to: "/app/expert/portfolio",
       icon: <ClipboardCheck className="h-4 w-4" />,
     },
@@ -277,12 +277,12 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Gavel className="h-4 w-4" />,
     },
     {
-      label: "Analytics",
+      label: "Phân tích số liệu",
       to: "/app/admin/analytics",
       icon: <BarChart3 className="h-4 w-4" />,
     },
     {
-      label: "System Settings",
+      label: "Cài đặt hệ thống",
       to: "/app/admin/settings",
       icon: <Settings2 className="h-4 w-4" />,
     },
@@ -635,7 +635,7 @@ export function AppShell() {
         if (paymentOrder.status === "PAID") {
           setTopupNotice({
             tone: "success",
-            title: "Thanh toán thành công. Số dư ví dã dược cập nhật.",
+            title: "Thanh toán thành công. Số dư ví đã được cập nhật.",
           });
           await loadWallet();
           window.dispatchEvent(new Event("aitasker:reload-wallet"));
@@ -652,7 +652,7 @@ export function AppShell() {
         ) {
           setTopupNotice({
             tone: "danger",
-            title: "Thanh toán không thành công, dã hủy hoặc dã hết hạn.",
+            title: "Thanh toán không thành công, đã hủy hoặc đã hết hạn.",
           });
           return true;
         }
@@ -735,7 +735,7 @@ export function AppShell() {
 
       setTopupNotice({
         tone: "info",
-        title: "Đã tạo mã thanh toán. Quét QR hoặc mở link payOS dể nạp tiền.",
+        title: "Đã tạo mã thanh toán. Quét QR hoặc mở liên kết payOS để nạp tiền.",
       });
     } catch (error) {
       setTopupNotice({
@@ -978,7 +978,7 @@ export function AppShell() {
             staffProfileLoading &&
             !sidebarCollapsed && (
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-500">
-                Đang tải phạm vi Staff...
+                Đang tải phạm vi nhân viên...
               </div>
             )}
           {session.role === "STAFF" &&
@@ -986,8 +986,7 @@ export function AppShell() {
             !staffProfileLoading &&
             !sidebarCollapsed && (
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-700">
-                Không tải được phạm vi Staff. Hãy reload backend để dùng API
-                mới.
+                Không tải được phạm vi nhân viên. Hãy tải lại trang sau khi máy chủ sẵn sàng.
               </div>
             )}
           {navItems.map((item) => (
@@ -1106,8 +1105,8 @@ export function AppShell() {
                             )}
                           />
                           {realtimeConnected
-                            ? "Realtime đang bật"
-                            : "Đang kết nối realtime"}
+                            ? "Đã kết nối thời gian thực"
+                            : "Đang kết nối thời gian thực"}
                         </p>
                       </div>
                       {unreadCount > 0 && (
@@ -1488,7 +1487,7 @@ export function AppShell() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand-500">
-                      Quét QR dể nạp ví
+                      Quét QR để nạp ví
                     </p>
                     <p className="mt-1 text-2xl font-black text-ink">
                       {formatCurrency(topupPayment.amount)}

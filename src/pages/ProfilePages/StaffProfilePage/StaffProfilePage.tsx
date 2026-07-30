@@ -85,7 +85,7 @@ export function StaffProfilePage() {
         <Card className="p-6">
           <SectionHeading
             title="Thông tin tài khoản"
-            description="Thông tin Staff hiện được lấy từ phiên đăng nhập."
+            description="Thông tin nhân viên hiện được lấy từ phiên đăng nhập."
           />
           <div className="mt-5 grid gap-3">
             <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
@@ -141,7 +141,7 @@ export function StaffProfilePage() {
       </div>
 
       <Notice tone="info" title="Chế độ chỉ xem">
-        Hồ sơ Staff hiện chưa có API cập nhật thông tin cá nhân từ phía Staff.
+        Hồ sơ nhân viên hiện chưa có dịch vụ cập nhật thông tin cá nhân từ phía nhân viên.
       </Notice>
     </div>
   );

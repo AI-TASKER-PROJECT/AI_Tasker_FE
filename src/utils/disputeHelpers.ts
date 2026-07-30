@@ -6,11 +6,11 @@ export function formatDisputeStatus(status?: string): string {
     case "PENDING_SELF_RESOLVE":
       return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
-      return "Đã yêu cầu Staff";
+      return "Đã yêu cầu nhân viên hỗ trợ";
     case "STAFF_REVIEWING":
-      return "Staff đang xem xét";
+      return "Nhân viên đang xem xét";
     case "STAFF_DECIDED":
-      return "Staff đã quyết định";
+      return "Nhân viên đã quyết định";
     case "RESOLVED":
       return "Đã giải quyết";
     case "CANCELLED":
@@ -28,7 +28,7 @@ export function formatDisputeInitiationType(type?: string): string {
     case "EXPERT_SCOPE_CONCERN":
       return "Yêu cầu ngoài phạm vi";
     case "EXPERT_NO_REVIEW_RESPONSE":
-      return "Business chưa phản hồi nghiệm thu";
+      return "Doanh nghiệp chưa phản hồi nghiệm thu";
     case "EXPERT_BAD_FAITH_REJECTION":
       return "Từ chối không phù hợp tiêu chí";
     case "OTHER":
@@ -44,7 +44,7 @@ export function formatResolutionType(type?: string): string {
     case "MUTUAL_AGREEMENT":
       return "Thỏa thuận tự nguyện";
     case "STAFF_DECISION":
-      return "Quyết định bởi Staff";
+      return "Quyết định bởi nhân viên";
     case "CANCELLED":
       return "Đã rút tranh chấp";
     default:

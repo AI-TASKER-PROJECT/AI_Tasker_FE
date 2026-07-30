@@ -34,7 +34,7 @@ function formatDisputeStatus(status?: string) {
     case "PENDING_SELF_RESOLVE":
       return "Tạo hồ sơ";
     case "ESCALATION_REQUESTED":
-      return "Đã yêu cầu Staff";
+      return "Đã yêu cầu nhân viên hỗ trợ";
     case "STAFF_REVIEWING":
       return "Cần xử lý";
     case "STAFF_DECIDED":
@@ -52,11 +52,11 @@ function formatDisputeStatus(status?: string) {
 function formatInitiationType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
-      return "Business phản đối kết quả bàn giao";
+      return "Doanh nghiệp phản đối kết quả bàn giao";
     case "EXPERT_SCOPE_CONCERN":
-      return "Expert phản ánh yêu cầu ngoài phạm vi";
+      return "Chuyên gia phản ánh yêu cầu ngoài phạm vi";
     case "EXPERT_NO_REVIEW_RESPONSE":
-      return "Business chưa phản hồi nghiệm thu";
+      return "Doanh nghiệp chưa phản hồi nghiệm thu";
     case "EXPERT_BAD_FAITH_REJECTION":
       return "Từ chối không phù hợp tiêu chí";
     case "OTHER":
@@ -308,7 +308,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
             staffMode
               ? "Danh sách hồ sơ được phân công theo chuyên môn, lĩnh vực và kỹ năng của bạn."
               : isAdmin
-                ? "Theo dõi toàn bộ hồ sơ tranh chấp, Staff phụ trách và kết quả quyết toán."
+              ? "Theo dõi toàn bộ hồ sơ tranh chấp, nhân viên phụ trách và kết quả quyết toán."
                 : "Theo dõi các hồ sơ tranh chấp liên quan đến hợp đồng của bạn."
           }
         />
@@ -371,7 +371,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
               ? "Hiện chưa có hồ sơ nào được phân công cho chuyên môn của bạn theo bộ lọc hiện tại."
               : isAdmin
                 ? "Không có hồ sơ tranh chấp nào khớp bộ lọc hiện tại."
-                : "Các tranh chấp mới sẽ xuất hiện ở đây sau khi được mở từ workspace hợp đồng."
+              : "Các tranh chấp mới sẽ xuất hiện ở đây sau khi được mở từ không gian làm việc của hợp đồng."
           }
         />
       ) : (
@@ -400,7 +400,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
                         <Badge tone="violet">Khớp kỹ năng: {matchedSkills}</Badge>
                       )}
                       {!staffMode && dispute.staffName && (
-                        <Badge tone="violet">Staff: {dispute.staffName}</Badge>
+                    <Badge tone="violet">Nhân viên: {dispute.staffName}</Badge>
                       )}
                     </div>
                     <h3 className="mt-3 font-display text-lg font-extrabold text-ink">
@@ -450,7 +450,7 @@ export function DisputesPage({ staffMode = false }: { staffMode?: boolean }) {
                       )}
                       {dispute.staffSlaDueAt && (
                         <Badge tone={dispute.staffSlaEscalatedAt ? "rose" : "slate"}>
-                          SLA Staff {formatDateTime(dispute.staffSlaDueAt)}
+                          SLA nhân viên {formatDateTime(dispute.staffSlaDueAt)}
                         </Badge>
                       )}
                     </div>
