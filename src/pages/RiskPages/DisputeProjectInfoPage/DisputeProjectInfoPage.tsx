@@ -6,6 +6,7 @@ import { useSession } from "../../../lib/session";
 import { marketplaceApi } from "../../../services/marketplaceService";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
 import type { AcceptanceCriteria, Contract, Dispute, Job, Milestone } from "../../../types";
+import { JobSowContent } from "../../../components/JobSowContent";
 import {
   Badge,
   Card,
@@ -120,7 +121,6 @@ export function DisputeProjectInfoPage() {
   const expertDisplayName =
     contract.expertName?.trim() ||
     "Chuyên gia";
-  const sowText = job?.structuredSow?.trim() || job?.rawRequirements?.trim() || "Doanh nghiệp chưa cung cấp đề bài chi tiết.";
   const backTo = session?.role === "ADMIN"
     ? `/app/disputes/${dispute.disputeId}`
     : `/app/tickets/${dispute.disputeId}`;
@@ -204,9 +204,11 @@ export function DisputeProjectInfoPage() {
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               Nội dung đề bài
             </div>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
-              {sowText}
-            </p>
+            <JobSowContent
+              className="mt-3"
+              job={job || {}}
+              emptyMessage="Doanh nghiệp chưa cung cấp đề bài chi tiết."
+            />
           </div>
           {contract.technologyUsed && (
             <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-slate-700">

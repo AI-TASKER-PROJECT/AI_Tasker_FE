@@ -31,6 +31,7 @@ import {
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
+import { getJobSowSummary } from "../../../lib/jobSow";
 import type {
   AcceptanceCriteria,
   ExpertProfile,
@@ -173,7 +174,7 @@ export function OpportunitiesPage() {
   const filteredJobs = useMemo(
     () =>
       jobs.filter((job) => {
-        const textToSearch = `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`.toLowerCase();
+        const textToSearch = `${job.title} ${job.rawRequirements} ${getJobSowSummary(job)}`.toLowerCase();
         const matchQuery = textToSearch.includes(query.toLowerCase());
         
         const matchDomain = domainIds.length > 0 

@@ -405,12 +405,6 @@ export const contractApi = {
       url: `/api/v1/contracts/${contractId}/milestones/check-overdue`,
     });
   },
-  autoApproveReviewSla(contractId: number) {
-    return call<Milestone[]>({
-      method: "POST",
-      url: `/api/v1/contracts/${contractId}/milestones/sla-auto-approve`,
-    });
-  },
   createReview(contractId: number, payload: Partial<Review>) {
     return call<Review>({
       method: "POST",

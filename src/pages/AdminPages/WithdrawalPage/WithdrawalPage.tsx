@@ -23,6 +23,9 @@ import {
   SectionHeading,
   Tabs,
 } from "../../../components/ui";
+import { AdminPagination } from "../AdminPages.shared";
+
+const WITHDRAWALS_PER_PAGE = 8;
 
 function withdrawalStatusLabel(status: string) {
   const map: Record<string, string> = {
@@ -388,6 +391,7 @@ export function AdminWithdrawalPage() {
     null,
   );
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -439,6 +443,12 @@ export function AdminWithdrawalPage() {
       wr.bankAccountHolder.toLowerCase().includes(q);
     return matchTab && matchSearch;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / WITHDRAWALS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedWithdrawals = filtered.slice(
+    (effectivePage - 1) * WITHDRAWALS_PER_PAGE,
+    effectivePage * WITHDRAWALS_PER_PAGE,
+  );
 
   const counts = {
     ALL: withdrawals.length,
@@ -516,7 +526,10 @@ export function AdminWithdrawalPage() {
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
               value={search}
-              onChange={setSearch}
+              onChange={(value) => {
+                setSearch(value);
+                setCurrentPage(1);
+              }}
               placeholder="Tìm theo tên, email, số TK..."
             />
             <Tabs
@@ -527,7 +540,10 @@ export function AdminWithdrawalPage() {
                 { id: "REJECTED", label: "Từ chối", count: counts.REJECTED },
               ]}
               active={tab}
-              onChange={(id) => setTab(id as typeof tab)}
+              onChange={(id) => {
+                setTab(id as typeof tab);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -555,7 +571,7 @@ export function AdminWithdrawalPage() {
             </div>
 
             <div className="divide-y divide-slate-50">
-              {filtered.map((wr) => (
+              {paginatedWithdrawals.map((wr) => (
                 <div
                   key={wr.withdrawalId}
                   className="grid min-w-[980px] grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
@@ -630,6 +646,15 @@ export function AdminWithdrawalPage() {
               ))}
             </div>
           </div>
+        )}
+        {!loading && (
+          <AdminPagination
+            currentPage={effectivePage}
+            pageSize={WITHDRAWALS_PER_PAGE}
+            totalItems={filtered.length}
+            itemLabel="yêu cầu rút tiền"
+            onPageChange={setCurrentPage}
+          />
         )}
       </Card>
 

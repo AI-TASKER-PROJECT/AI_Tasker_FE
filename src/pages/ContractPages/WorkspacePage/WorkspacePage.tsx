@@ -58,6 +58,21 @@ function normalizeStatus(status?: string) {
   return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
 }
 
+function isAutomaticSlaSettlement(settlementSourceType?: string) {
+  return normalizeStatus(settlementSourceType) === "REVIEW_SLA_AUTO_APPROVAL";
+}
+
+function automaticSlaSettlementNotice(role: string | undefined, expertName: string) {
+  return {
+    tone: "success" as const,
+    title: "Hệ thống đã tự động duyệt và giải ngân cột mốc.",
+    message:
+      role === "BUSINESS"
+        ? `Thời hạn nghiệm thu đã kết thúc mà không có phản hồi. Sản phẩm đã được duyệt và toàn bộ tiền ký quỹ của cột mốc đã được giải ngân cho Chuyên gia ${expertName}.`
+        : "Thời hạn nghiệm thu đã kết thúc. Sản phẩm của bạn đã được hệ thống tự động duyệt và toàn bộ tiền ký quỹ của cột mốc đã được giải ngân vào ví.",
+  };
+}
+
 function formatDisputeType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
@@ -117,6 +132,26 @@ function milestoneDurationLabel(milestone: Milestone) {
   if (unit.includes("DAY")) return `${duration} ngày`;
   if (unit.includes("MONTH")) return `${duration} tháng`;
   return `${duration} tuần`;
+}
+
+function reviewSlaCountdownLabel(reviewDueAt: string | undefined, nowMs: number) {
+  if (!reviewDueAt) return "Đang chờ hệ thống ghi nhận hạn nghiệm thu";
+  const dueAtMs = new Date(reviewDueAt).getTime();
+  if (!Number.isFinite(dueAtMs)) return "Chưa xác định được hạn nghiệm thu";
+  const remainingSeconds = Math.max(0, Math.ceil((dueAtMs - nowMs) / 1000));
+  if (remainingSeconds === 0) return "Đã hết hạn, hệ thống đang tự động nghiệm thu";
+
+  const days = Math.floor(remainingSeconds / 86400);
+  const hours = Math.floor((remainingSeconds % 86400) / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+  const parts = [
+    days > 0 ? `${days} ngày` : "",
+    hours > 0 ? `${hours} giờ` : "",
+    minutes > 0 ? `${minutes} phút` : "",
+    days === 0 ? `${seconds} giây` : "",
+  ].filter(Boolean);
+  return `Tự động nghiệm thu sau ${parts.slice(0, 3).join(" ")}`;
 }
 
 function milestoneDeliverableDeadline(milestone?: Milestone | null) {
@@ -212,6 +247,7 @@ function deliverableSubmissionNotice(
   expertName: string,
   milestoneStatus?: string,
   isLatest = false,
+  settlementSourceType?: string,
 ): { tone: NoticeTone; title: string; message?: string } {
   const status = normalizeStatus(deliverable.status);
 
@@ -228,6 +264,9 @@ function deliverableSubmissionNotice(
   }
 
   if (status === "APPROVED" || (isLatest && normalizeStatus(milestoneStatus) === "COMPLETED")) {
+    if (isLatest && isAutomaticSlaSettlement(settlementSourceType)) {
+      return automaticSlaSettlementNotice(role, expertName);
+    }
     return role === "BUSINESS"
       ? {
           tone: "success",
@@ -259,6 +298,7 @@ function milestoneRoleNotice({
   latestProgressReport,
   latestDeliverable,
   milestoneStatus,
+  settlementSourceType,
 }: {
   role?: string;
   businessName: string;
@@ -266,6 +306,7 @@ function milestoneRoleNotice({
   latestProgressReport?: MilestoneProgressReport;
   latestDeliverable?: Deliverable;
   milestoneStatus?: string;
+  settlementSourceType?: string;
 }): { tone: NoticeTone; title: string; message?: string } | null {
   const status = normalizeStatus(milestoneStatus);
   const deliverableRejected =
@@ -286,6 +327,9 @@ function milestoneRoleNotice({
   }
 
   if (status === "COMPLETED") {
+    if (isAutomaticSlaSettlement(settlementSourceType)) {
+      return automaticSlaSettlementNotice(role, expertName);
+    }
     return role === "BUSINESS"
       ? {
           tone: "success",
@@ -357,8 +401,11 @@ function checkpointLabel(checkpointType?: string) {
   return "Báo cáo giữa kỳ";
 }
 
-function latestDeliverableStatusLabel(milestoneStatus?: string) {
+function latestDeliverableStatusLabel(milestoneStatus?: string, settlementSourceType?: string) {
   const normalized = normalizeStatus(milestoneStatus);
+  if (normalized === "COMPLETED" && isAutomaticSlaSettlement(settlementSourceType)) {
+    return "Đã tự động duyệt và giải ngân";
+  }
   if (normalized === "COMPLETED") return "Đã nghiệm thu";
   if (normalized === "UNDER_REVIEW") return "Đã nộp, chờ nghiệm thu";
   if (normalized === "DISPUTED") return "Đang tranh chấp";
@@ -543,6 +590,7 @@ export function WorkspacePage() {
   );
   const [abruptTerminationOpen, setAbruptTerminationOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [reviewClockMs, setReviewClockMs] = useState(() => Date.now());
   const [deliverableForm, setDeliverableForm] = useState({
     type: "PROCESS",
     sourceCodeUrl: "",
@@ -701,6 +749,24 @@ export function WorkspacePage() {
   useEffect(() => {
     queueMicrotask(() => void loadWorkspace());
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    const hasPendingReview = milestones.some(
+      (milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW",
+    );
+    if (!hasPendingReview) return;
+    const timer = window.setInterval(() => setReviewClockMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [milestones]);
+
+  useEffect(() => {
+    const hasPendingReview = milestones.some(
+      (milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW",
+    );
+    if (!hasPendingReview) return;
+    const timer = window.setInterval(() => void loadWorkspace(), 10000);
+    return () => window.clearInterval(timer);
+  }, [loadWorkspace, milestones]);
 
   useEffect(() => {
     milestones.forEach((milestone) => {
@@ -1402,29 +1468,6 @@ export function WorkspacePage() {
     }
   };
 
-  const autoApproveReviewSla = async () => {
-    if (!contract) return;
-    setActionLoading("review-sla");
-    try {
-      const updated = await contractApi.autoApproveReviewSla(contract.contractId);
-      await refreshAfterAction();
-      setWorkspaceNotice({
-        tone: "success",
-        title:
-          updated.length > 0
-            ? `Đã tự động nghiệm thu ${updated.length} mốc quá thời gian phản hồi.`
-            : "Chưa có mốc nào đủ điều kiện tự động nghiệm thu.",
-      });
-    } catch (error) {
-      setWorkspaceNotice({
-        tone: "danger",
-        title: getApiErrorMessage(error),
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   if (!contract) {
     return (
       <EmptyState
@@ -1523,14 +1566,6 @@ export function WorkspacePage() {
                   >
                     <RefreshCw className="h-4 w-4" />
                     Cập nhật quá hạn
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={autoApproveReviewSla}
-                    loading={actionLoading === "review-sla"}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Xử lý nghiệm thu quá hạn
                   </Button>
                 </>
               )}
@@ -1804,6 +1839,7 @@ export function WorkspacePage() {
             latestProgressReport,
             latestDeliverable,
             milestoneStatus: milestone.status,
+            settlementSourceType: milestone.settlementSourceType,
           });
           // A fresh action notice is the single source of truth for the milestone.
           // Do not render the derived role notice beside it.
@@ -1936,6 +1972,11 @@ export function WorkspacePage() {
                     )}
                     {milestone.reviewDueAt && (
                       <span>Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}</span>
+                    )}
+                    {status === "UNDER_REVIEW" && (
+                      <span className="text-brand-700">
+                        {reviewSlaCountdownLabel(milestone.reviewDueAt, reviewClockMs)}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -2506,7 +2547,10 @@ export function WorkspacePage() {
                                   }
                                 >
                                   {latestDeliverable?.deliverableId === item.deliverableId
-                                    ? latestDeliverableStatusLabel(milestone.status)
+                                    ? latestDeliverableStatusLabel(
+                                        milestone.status,
+                                        milestone.settlementSourceType,
+                                      )
                                     : "Bản nộp trước"}
                                 </Badge>
                                 {latestSubmissionMeta?.kind === "DELIVERABLE" &&
@@ -2582,6 +2626,7 @@ export function WorkspacePage() {
                                 expertDisplayName,
                                 milestone.status,
                                 latestDeliverable?.deliverableId === item.deliverableId,
+                                milestone.settlementSourceType,
                               );
                               const isLatestDeliverable =
                                 latestDeliverable?.deliverableId ===

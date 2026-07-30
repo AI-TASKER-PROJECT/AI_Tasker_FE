@@ -29,6 +29,7 @@ import {
   formatDate,
 } from "../../lib/utils";
 import type { Job, Milestone } from "../../types";
+import { getJobSowSummary } from "../../lib/jobSow";
 import { jobDomainLabel } from "./publicPages.utils";
 import {
   Badge,
@@ -255,7 +256,7 @@ export function JobHoverPopover({
             <StatusBadge status={detail.status} />
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {detail.structuredSow || detail.rawRequirements}
+            {getJobSowSummary(detail) || detail.rawRequirements}
           </p>
           <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
             <InfoRow
@@ -471,7 +472,7 @@ export function JobCard({
           compact ? "min-h-[3.75rem]" : "min-h-[4.5rem]",
         )}
       >
-        {job.structuredSow || job.rawRequirements}
+        {getJobSowSummary(job) || job.rawRequirements}
       </p>
       <div
         className={cn(

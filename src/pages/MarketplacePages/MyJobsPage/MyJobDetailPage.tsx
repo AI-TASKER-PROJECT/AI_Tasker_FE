@@ -12,6 +12,7 @@ import {
 } from "../../../services";
 import type { Job, Milestone } from "../../../types";
 import { formatCurrency } from "../../../lib/utils";
+import { JobSowContent } from "../../../components/JobSowContent";
 import {
   Button,
   Card,
@@ -138,15 +139,8 @@ export function MyJobDetailPage() {
               title="Yêu cầu dự án"
               description="Nội dung SOW và mô tả chi tiết."
             />
-            <div className="prose prose-slate mt-4 max-w-none prose-p:leading-relaxed prose-a:text-brand-600">
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: (job.structuredSow || job.rawRequirements).replace(
-                    /\n/g,
-                    "<br/>",
-                  ),
-                }}
-              />
+            <div className="mt-4">
+              <JobSowContent job={job} />
             </div>
           </Card>
 

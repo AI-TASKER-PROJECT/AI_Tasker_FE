@@ -22,6 +22,7 @@ import {
 import { useSession } from "../../../lib/session";
 import { formatCurrency } from "../../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../../types";
+import { JobSowContent } from "../../../components/JobSowContent";
 import {
   Button,
   Card,
@@ -145,9 +146,11 @@ export function JobDetailPage() {
         <div>
           <Card className="p-6">
             <SectionHeading title="Thông tin dự án" />
-            <div className="mt-5 whitespace-pre-wrap rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5 text-sm leading-7 text-slate-700">
-              {job.structuredSow ||
-                "Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."}
+            <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5">
+              <JobSowContent
+                job={job}
+                emptyMessage="Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."
+              />
             </div>
             <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5">
               <ChipRow

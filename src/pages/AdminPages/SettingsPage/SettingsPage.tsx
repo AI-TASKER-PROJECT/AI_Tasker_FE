@@ -14,7 +14,7 @@ import { adminApi, getApiErrorMessage } from "../../../lib/api";
 import type { SystemSetting, SystemSettingRequest } from "../../../types";
 
 const supportedSettingKeys = [
-  "default_sla_days",
+  "milestone_review_sla_duration",
   "dispute_staff_max_active_cases",
   "credit.job_post.price_vnd",
   "credit.proposal.price_vnd",
@@ -23,10 +23,10 @@ const supportedSettingKeys = [
 ];
 
 const settingLabels: Record<string, { label: string; description: string }> = {
-  default_sla_days: {
-    label: "Số ngày tự động nghiệm thu",
+  milestone_review_sla_duration: {
+    label: "Thời gian tự động nghiệm thu",
     description:
-      "Số ngày chờ phản hồi trước khi mốc đủ điều kiện tự động nghiệm thu.",
+      "Thời gian chờ phản hồi trước khi mốc được hệ thống tự động nghiệm thu.",
   },
   dispute_staff_max_active_cases: {
     label: "Số tranh chấp tối đa mỗi nhân viên",
@@ -51,7 +51,35 @@ const settingLabels: Record<string, { label: string; description: string }> = {
   },
 };
 
+const REVIEW_SLA_KEY = "milestone_review_sla_duration";
+type ReviewSlaUnit = "MINUTE" | "HOUR" | "DAY";
+
+function parseReviewSla(value?: string): { value: string; unit: ReviewSlaUnit } {
+  const [rawValue = "", rawUnit = "DAY"] = String(value || "").split(":");
+  const unit = ["MINUTE", "HOUR", "DAY"].includes(rawUnit)
+    ? (rawUnit as ReviewSlaUnit)
+    : "DAY";
+  return { value: rawValue, unit };
+}
+
+function reviewSlaLabel(value?: string) {
+  const parsed = parseReviewSla(value);
+  const labels: Record<ReviewSlaUnit, string> = {
+    MINUTE: "phút",
+    HOUR: "giờ",
+    DAY: "ngày",
+  };
+  return `${parsed.value} ${labels[parsed.unit]}`;
+}
+
 function settingMeta(setting: SystemSetting) {
+  if (setting.settingKey === REVIEW_SLA_KEY) {
+    return {
+      label: "Thời gian tự động nghiệm thu",
+      description:
+        "Thời gian Doanh nghiệp có thể chấp nhận hoặc từ chối sau khi Chuyên gia nộp sản phẩm cuối.",
+    };
+  }
   return (
     settingLabels[setting.settingKey] || {
       label: setting.settingKey,
@@ -75,6 +103,8 @@ export function SettingsPage() {
     isActive: true,
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const [slaValue, setSlaValue] = useState("3");
+  const [slaUnit, setSlaUnit] = useState<ReviewSlaUnit>("DAY");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -117,20 +147,34 @@ export function SettingsPage() {
       description: setting.description || settingMeta(setting).description,
       isActive: setting.isActive,
     });
+    if (setting.settingKey === REVIEW_SLA_KEY) {
+      const parsed = parseReviewSla(setting.settingValue);
+      setSlaValue(parsed.value);
+      setSlaUnit(parsed.unit);
+    }
     setModalOpen(true);
   };
 
   const save = async () => {
     if (!editing) return;
+    const isReviewSla = editing.settingKey === REVIEW_SLA_KEY;
+    const normalizedSlaValue = Number(slaValue);
+    if (isReviewSla && (!Number.isInteger(normalizedSlaValue) || normalizedSlaValue <= 0)) {
+      setError("Thời gian SLA phải là số nguyên lớn hơn 0.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
       const saved = await adminApi.updateSettingBody(editing.settingKey, {
         ...form,
         settingKey: editing.settingKey,
-        settingValue: form.settingValue?.trim(),
-        valueType: form.valueType?.trim().toUpperCase(),
+        settingValue: isReviewSla
+          ? `${normalizedSlaValue}:${slaUnit}`
+          : form.settingValue?.trim(),
+        valueType: isReviewSla ? "STRING" : form.valueType?.trim().toUpperCase(),
         description: form.description?.trim(),
+        isActive: isReviewSla ? true : form.isActive,
       });
       setSettings((items) =>
         items.map((item) => (item.settingKey === saved.settingKey ? saved : item)),
@@ -210,14 +254,18 @@ export function SettingsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 md:justify-end">
                 <span className="rounded-2xl bg-slate-50 px-4 py-2 font-display text-lg font-black text-ink">
-                  {setting.settingValue}
+                  {setting.settingKey === REVIEW_SLA_KEY
+                    ? reviewSlaLabel(setting.settingValue)
+                    : setting.settingValue}
                 </span>
                 <Button variant="secondary" onClick={() => beginEdit(setting)}>
                   Sửa
                 </Button>
-                <Button variant="ghost" onClick={() => toggle(setting)}>
-                  {setting.isActive ? "Tắt" : "Bật"}
-                </Button>
+                {setting.settingKey !== REVIEW_SLA_KEY && (
+                  <Button variant="ghost" onClick={() => toggle(setting)}>
+                    {setting.isActive ? "Tắt" : "Bật"}
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
@@ -240,6 +288,37 @@ export function SettingsPage() {
           </>
         }
       >
+        {editing?.settingKey === REVIEW_SLA_KEY ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Thời lượng">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={slaValue}
+                onChange={(event) => setSlaValue(event.target.value)}
+              />
+            </Field>
+            <Field label="Đơn vị">
+              <select
+                value={slaUnit}
+                onChange={(event) => setSlaUnit(event.target.value as ReviewSlaUnit)}
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-ink outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+              >
+                <option value="MINUTE">Phút</option>
+                <option value="HOUR">Giờ</option>
+                <option value="DAY">Ngày</option>
+              </select>
+            </Field>
+            <Notice
+              tone="info"
+              title="Áp dụng cho lượt nộp tiếp theo"
+              className="md:col-span-2"
+            >
+              Mốc đang chờ nghiệm thu giữ nguyên hạn đã được hệ thống ghi nhận khi Chuyên gia nộp sản phẩm.
+            </Notice>
+          </div>
+        ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Mã cấu hình">
             <Input value={form.settingKey || ""} disabled />
@@ -286,6 +365,7 @@ export function SettingsPage() {
             Đang bật
           </label>
         </div>
+        )}
       </Modal>
     </div>
   );

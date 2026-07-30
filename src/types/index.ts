@@ -224,6 +224,7 @@ export interface Milestone {
   inProgressStartedAt?: string;
   dueAt?: string;
   overdue?: boolean;
+  reviewStartedAt?: string;
   reviewDueAt?: string;
   status: string;
   durationValue?: number;

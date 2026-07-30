@@ -37,6 +37,7 @@ import {
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
+import { getJobSowSummary } from "../../../lib/jobSow";
 import type {
   AcceptanceCriteria,
   ExpertProfile,
@@ -799,7 +800,7 @@ export function SubmitProposalPage() {
               </div>
             </div>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
-              {job.structuredSow || job.rawRequirements}
+              {getJobSowSummary(job) || job.rawRequirements}
             </p>
           </Card>
           {savedProposal && (

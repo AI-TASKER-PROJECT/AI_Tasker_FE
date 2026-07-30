@@ -217,7 +217,14 @@ export function StaffPage() {
             </p>
           )}
 
-          <Field label="Nhân viên">
+          <Field label="Họ tên nhân viên">
+            <Input
+              value={editing?.fullName || "Nhân viên chưa có tên"}
+              readOnly
+            />
+          </Field>
+
+          <Field label="Email">
             <Input
               value={editing?.email || "Nhân viên chưa có email"}
               readOnly

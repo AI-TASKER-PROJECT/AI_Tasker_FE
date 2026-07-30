@@ -18,6 +18,7 @@ import {
   selectedDomainIdsFromSpecialization,
   specializationFromDomains,
   SpecializationSelector,
+  AdminPagination,
 } from "../AdminPages.shared";
 import type { AccountStatus, AdminAccount, Role } from "../../../types";
 
@@ -35,6 +36,8 @@ const statusLabels: Record<AccountStatus, string> = {
   Lock: "Đã khóa",
 };
 
+const ACCOUNTS_PER_PAGE = 8;
+
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -42,6 +45,7 @@ export function AccountsPage() {
     "internal",
   );
   const [open, setOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [editing, setEditing] = useState<AdminAccount | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pageNotice, setPageNotice] = useState<{
@@ -72,6 +76,12 @@ export function AccountsPage() {
     accountTab === "internal"
       ? internalRoles.includes(account.role)
       : externalRoles.includes(account.role),
+  );
+  const totalPages = Math.max(1, Math.ceil(visibleAccounts.length / ACCOUNTS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedAccounts = visibleAccounts.slice(
+    (effectivePage - 1) * ACCOUNTS_PER_PAGE,
+    effectivePage * ACCOUNTS_PER_PAGE,
   );
 
   const beginCreate = () => {
@@ -218,13 +228,19 @@ export function AccountsPage() {
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
           <Button
             variant={accountTab === "internal" ? "primary" : "secondary"}
-            onClick={() => setAccountTab("internal")}
+            onClick={() => {
+              setAccountTab("internal");
+              setCurrentPage(1);
+            }}
           >
             Nội bộ
           </Button>
           <Button
             variant={accountTab === "external" ? "primary" : "secondary"}
-            onClick={() => setAccountTab("external")}
+            onClick={() => {
+              setAccountTab("external");
+              setCurrentPage(1);
+            }}
           >
             Bên ngoài
           </Button>
@@ -235,7 +251,7 @@ export function AccountsPage() {
           <span>Trạng thái</span>
           <span>Thao tác</span>
         </div>
-        {visibleAccounts.map((account) => (
+        {paginatedAccounts.map((account) => (
           <div
             key={account.accountId}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm md:grid-cols-[1fr_150px_130px_180px] md:items-center"
@@ -286,6 +302,13 @@ export function AccountsPage() {
             </div>
           </div>
         ))}
+        <AdminPagination
+          currentPage={effectivePage}
+          pageSize={ACCOUNTS_PER_PAGE}
+          totalItems={visibleAccounts.length}
+          itemLabel="tài khoản"
+          onPageChange={setCurrentPage}
+        />
       </Card>
       <Modal
         open={open}

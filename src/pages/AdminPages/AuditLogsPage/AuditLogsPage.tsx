@@ -8,8 +8,10 @@ import {
   Notice,
   PageHeader,
 } from "../../../components/ui";
-import { formatAuditTimestamp } from "../AdminPages.shared";
+import { AdminPagination, formatAuditTimestamp } from "../AdminPages.shared";
 import type { AuditLog } from "../../../types";
+
+const AUDIT_LOGS_PER_PAGE = 10;
 
 export function AuditLogsPage() {
   const [tab, setTab] =
@@ -17,6 +19,13 @@ export function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(logs.length / AUDIT_LOGS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedLogs = logs.slice(
+    (effectivePage - 1) * AUDIT_LOGS_PER_PAGE,
+    effectivePage * AUDIT_LOGS_PER_PAGE,
+  );
 
   const load = useCallback(
     async (actorGroup = tab) => {
@@ -53,13 +62,19 @@ export function AuditLogsPage() {
         <div className="flex flex-wrap gap-2 border-b border-slate-100 bg-white px-5 py-4">
           <Button
             variant={tab === "INTERNAL" ? "primary" : "secondary"}
-            onClick={() => setTab("INTERNAL")}
+            onClick={() => {
+              setTab("INTERNAL");
+              setCurrentPage(1);
+            }}
           >
             Nội bộ
           </Button>
           <Button
             variant={tab === "EXTERNAL" ? "primary" : "secondary"}
-            onClick={() => setTab("EXTERNAL")}
+            onClick={() => {
+              setTab("EXTERNAL");
+              setCurrentPage(1);
+            }}
           >
             Bên ngoài
           </Button>
@@ -93,8 +108,9 @@ export function AuditLogsPage() {
         )}
         {!loading &&
           !error &&
-          logs.map((log) => {
+          paginatedLogs.map((log) => {
             const timestamp = formatAuditTimestamp(log.createdAt);
+            const systemActor = !log.actorAccountId && log.actor === "Hệ thống tự động";
             return (
               <div
                 key={log.logId}
@@ -141,9 +157,13 @@ export function AuditLogsPage() {
                 <div className="space-y-1">
                   <p className="font-extrabold text-ink">{log.actor}</p>
                   <p className="break-all text-xs text-slate-500">
-                    {log.actorEmail || "Không có email"}
+                    {systemActor
+                      ? "Tác vụ nền của hệ thống"
+                      : log.actorEmail || "Không có email"}
                   </p>
-                  {log.actorRole && (
+                  {systemActor ? (
+                    <Badge tone="violet">HỆ THỐNG</Badge>
+                  ) : log.actorRole ? (
                     <Badge
                       tone={
                         log.actorRole === "ADMIN"
@@ -155,11 +175,20 @@ export function AuditLogsPage() {
                     >
                       {log.actorRole}
                     </Badge>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );
           })}
+        {!loading && !error && (
+          <AdminPagination
+            currentPage={effectivePage}
+            pageSize={AUDIT_LOGS_PER_PAGE}
+            totalItems={logs.length}
+            itemLabel="nhật ký"
+            onPageChange={setCurrentPage}
+          />
+        )}
       </Card>
     </div>
   );

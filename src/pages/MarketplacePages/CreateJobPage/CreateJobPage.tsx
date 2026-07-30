@@ -32,6 +32,7 @@ import {
   type Technology,
 } from "../../../services";
 import { cn, formatCurrency } from "../../../lib/utils";
+import { formatJobSowText, getEditableJobSow } from "../../../lib/jobSow";
 import type { Job, UserQuota } from "../../../types";
 import {
   Badge,
@@ -550,11 +551,12 @@ export function CreateJobPage() {
             .then((job) => {
               if (!isActive) return;
               setSavedJob(job);
+              setGeneratedSow(getEditableJobSow(job) || null);
               setForm((prev) => ({
                 ...prev,
                 title: job.title || "",
                 rawRequirements: job.rawRequirements || "",
-                structuredSow: job.structuredSow || "",
+                structuredSow: formatJobSowText(job),
                 budgetAmount: job.budget ? String(job.budget) : "",
                 plannedDurationValue: job.plannedDurationValue
                   ? String(job.plannedDurationValue)
