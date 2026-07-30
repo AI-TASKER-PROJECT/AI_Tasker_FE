@@ -1,6 +1,7 @@
 ﻿import {
   CheckCircle2,
   FileText,
+  History,
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
@@ -210,6 +211,7 @@ export function ContractDetailPage() {
   const [changeRequestLoading, setChangeRequestLoading] = useState(false);
   const [viewingChangeRequest, setViewingChangeRequest] =
     useState<ContractChangeRequest | null>(null);
+  const [changeHistoryOpen, setChangeHistoryOpen] = useState(false);
   const [rejectingChangeRequest, setRejectingChangeRequest] =
     useState<ContractChangeRequest | null>(null);
   const [changeRequestReviewNote, setChangeRequestReviewNote] = useState("");
@@ -783,6 +785,15 @@ export function ContractDetailPage() {
     .filter((request) => request.status.toUpperCase() === "ACCEPTED")
     .slice()
     .sort((a, b) => acceptedChangeTime(a) - acceptedChangeTime(b));
+  const latestChangeRequest = changeRequests
+    .slice()
+    .sort((a, b) => acceptedChangeTime(b) - acceptedChangeTime(a))[0];
+  const previousChangeRequests = latestChangeRequest
+    ? changeRequests
+        .filter((request) => request.requestId !== latestChangeRequest.requestId)
+        .slice()
+        .sort((a, b) => acceptedChangeTime(b) - acceptedChangeTime(a))
+    : [];
   const latestAcceptedChange =
     acceptedChangeRequests[acceptedChangeRequests.length - 1];
   const acceptedChangeNumber = acceptedChangeRequests.length;
@@ -1070,34 +1081,46 @@ export function ContractDetailPage() {
           <SectionHeading
             title="Yêu cầu thay đổi về cột mốc của hợp đồng"
             description="Các thay đổi chỉ có hiệu lực sau khi bên còn lại chấp nhận."
+            action={
+              previousChangeRequests.length > 0 ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setChangeHistoryOpen(true)}
+                >
+                  <History className="h-4 w-4" />
+                  Lịch sử ({previousChangeRequests.length})
+                </Button>
+              ) : undefined
+            }
           />
           <div className="mt-4 space-y-3">
-            {changeRequests.map((request) => (
+            {latestChangeRequest && (
               <div
-                key={request.requestId}
+                key={latestChangeRequest.requestId}
                 className="rounded-2xl border border-slate-100 p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-extrabold text-ink">
-                      {changeRequestHeading(request)}
+                      {changeRequestHeading(latestChangeRequest)}
                     </p>
                   </div>
-                  <StatusBadge status={request.status} />
+                  <StatusBadge status={latestChangeRequest.status} />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setViewingChangeRequest(request)}
+                    onClick={() => setViewingChangeRequest(latestChangeRequest)}
                   >
                     Xem chi tiết
                   </Button>
-                  {canReviewChangeRequest(request) && (
+                  {canReviewChangeRequest(latestChangeRequest) && (
                     <>
                       <Button
                         size="sm"
-                        onClick={() => acceptChangeRequest(request)}
+                        onClick={() => acceptChangeRequest(latestChangeRequest)}
                       >
                         Chấp nhận
                       </Button>
@@ -1107,27 +1130,27 @@ export function ContractDetailPage() {
                         onClick={() => {
                           setChangeRequestReviewError("");
                           setChangeRequestReviewNote("");
-                          setRejectingChangeRequest(request);
+                          setRejectingChangeRequest(latestChangeRequest);
                         }}
                       >
                         Từ chối
                       </Button>
                     </>
                   )}
-                  {request.status.toUpperCase() === "PENDING" &&
-                    isChangeRequestCreator(request) && (
+                  {latestChangeRequest.status.toUpperCase() === "PENDING" &&
+                    isChangeRequestCreator(latestChangeRequest) && (
                       <span className="text-sm font-semibold text-slate-500">
                         Đang chờ đối tác phản hồi
                       </span>
                     )}
-                  {request.reviewNote && (
+                  {latestChangeRequest.reviewNote && (
                     <span className="text-sm font-semibold text-slate-500">
                       Đã có phản hồi · xem chi tiết
                     </span>
                   )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </Card>
       )}
@@ -2002,6 +2025,63 @@ export function ContractDetailPage() {
             )}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={changeHistoryOpen}
+        onClose={() => setChangeHistoryOpen(false)}
+        title="Lịch sử thay đổi hợp đồng"
+        description="Các yêu cầu thay đổi trước đó của hợp đồng."
+        size="lg"
+        footer={
+          <Button
+            variant="secondary"
+            onClick={() => setChangeHistoryOpen(false)}
+          >
+            Đóng
+          </Button>
+        }
+      >
+        <div className="space-y-3">
+          {previousChangeRequests
+            .map((request, index) => (
+              <div
+                key={request.requestId}
+                className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-extrabold text-ink">
+                      {changeRequestHeading(request)}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-600">
+                      Lần thay đổi {previousChangeRequests.length - index} ·{" "}
+                      {formatDateTime(
+                        request.reviewedAt ||
+                          request.updatedAt ||
+                          request.createdAt,
+                      )}
+                    </p>
+                  </div>
+                  <StatusBadge status={request.status} />
+                </div>
+                <p className="mt-3 line-clamp-2 text-sm text-slate-700">
+                  {request.changeSummary}
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => {
+                    setChangeHistoryOpen(false);
+                    setViewingChangeRequest(request);
+                  }}
+                >
+                  Xem chi tiết
+                </Button>
+              </div>
+            ))}
+        </div>
       </Modal>
 
       <Modal

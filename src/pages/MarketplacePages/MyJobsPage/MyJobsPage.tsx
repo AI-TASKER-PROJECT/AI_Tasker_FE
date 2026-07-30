@@ -28,7 +28,6 @@ import {
 } from "../../../services";
 import {
   cn,
-  formatCompactCurrency,
   formatCurrency,
   formatDate,
 } from "../../../lib/utils";
@@ -368,7 +367,7 @@ export function MyJobsPage() {
                 <div>
                   <p className="text-xs font-bold text-slate-400">Ngân sách</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
-                    {formatCompactCurrency(job.budget)}
+                    {formatCurrency(job.budget)}
                   </p>
                 </div>
                 <div>
