@@ -14,6 +14,7 @@ import { useParams } from "react-router-dom";
 import {
   contractApi,
   disputeApi,
+  marketplaceApi,
   profileApi,
   walletApi,
 } from "../../../lib/api";
@@ -207,6 +208,7 @@ export function ContractDetailPage() {
   const [changeRequests, setChangeRequests] = useState<ContractChangeRequest[]>(
     [],
   );
+  const [initialProposedBudget, setInitialProposedBudget] = useState<number | null>(null);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [changeRequestLoading, setChangeRequestLoading] = useState(false);
   const [viewingChangeRequest, setViewingChangeRequest] =
@@ -247,14 +249,22 @@ export function ContractDetailPage() {
     let ignore = false;
     const jobId = contract.jobId;
     const activeContractId = contract.contractId;
+    const proposalId = contract.proposalId;
 
     async function loadOperationalData() {
       try {
-        const [jobMilestoneItems, contractMilestoneItems, disputeItems] =
+        const proposalItems =
+          session?.role === "BUSINESS"
+            ? marketplaceApi.listProposals(jobId).catch(() => [])
+            : session?.role === "EXPERT"
+              ? marketplaceApi.listMyProposals().catch(() => [])
+              : Promise.resolve([]);
+        const [jobMilestoneItems, contractMilestoneItems, disputeItems, proposals] =
           await Promise.all([
             contractApi.listJobMilestones(jobId).catch(() => []),
             contractApi.listMilestones(activeContractId).catch(() => []),
             disputeApi.listByContract(activeContractId).catch(() => []),
+            proposalItems,
           ]);
         if (ignore) return;
         setJobMilestones(jobMilestoneItems);
@@ -263,6 +273,12 @@ export function ContractDetailPage() {
           contractMilestoneItems as unknown as ContractMilestone[],
         );
         setDisputes(disputeItems);
+        const selectedProposal = proposals.find(
+          (proposal) => proposal.proposalId === proposalId,
+        );
+        setInitialProposedBudget(
+          selectedProposal ? Number(selectedProposal.bidAmount) : null,
+        );
         contractApi
           .listChangeRequests(activeContractId)
           .then(setChangeRequests)
@@ -280,7 +296,7 @@ export function ContractDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [contract]);
+  }, [contract, session?.role]);
 
   const canRequestChange = ["DRAFT", "PENDING", "ACTIVE"].includes(
     (contract?.status || "").toUpperCase(),
@@ -717,16 +733,6 @@ export function ContractDetailPage() {
     contract.contractMilestones && contract.contractMilestones.length > 0
       ? contract.contractMilestones
       : contractMilestones;
-  const originalContractBudget = renderedMilestones.length
-    ? renderedMilestones.reduce(
-        (total, milestone) =>
-          total +
-          Number(
-            "originalBudget" in milestone ? milestone.originalBudget || 0 : 0,
-          ),
-        0,
-      ) || Number(contract.totalBudget || 0)
-    : Number(contract.totalBudget || 0);
   const proposedContractBudget = renderedMilestones.length
     ? renderedMilestones.reduce(
         (total, milestone) =>
@@ -739,12 +745,13 @@ export function ContractDetailPage() {
         0,
       ) || Number(contract.totalBudget || 0)
     : Number(contract.totalBudget || 0);
+  const initialContractBudget = initialProposedBudget ?? proposedContractBudget;
   const currentDepositPercentage =
     session?.role === "EXPERT"
       ? depositRates.expertPercentage
       : depositRates.businessPercentage;
   const currentDepositAmount =
-    (proposedContractBudget * currentDepositPercentage) / 100;
+    (initialContractBudget * currentDepositPercentage) / 100;
   const currentDepositRoleLabel =
     session?.role === "EXPERT" ? "Chuyên gia" : "Doanh nghiệp";
   const ndaSigned = Boolean(
@@ -819,6 +826,8 @@ export function ContractDetailPage() {
       ? formatTimelineWeeks(changedTimelineDays)
       : undefined;
   const hasAcceptedChange = acceptedChangeNumber > 0;
+  const hasBudgetChange =
+    changedBudget != null && changedBudget !== initialContractBudget;
   const displayedContractBudget = changedBudget ?? proposedContractBudget;
   const displayedTimelineDays = changedTimelineDays ?? originalTimelineDays;
   const displayedTimelineLabel =
@@ -1205,32 +1214,21 @@ export function ContractDetailPage() {
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <ContractMetric
-              label="Tổng ngân sách gốc"
-              value={formatCurrency(originalContractBudget)}
+              label="Ngân sách hợp đồng (gốc)"
+              value={formatCurrency(initialContractBudget)}
             />
+            {hasBudgetChange && <ContractMetric label="Ngân sách hợp đồng hiện tại" value={formatCurrency(displayedContractBudget)} />}
             <ContractMetric
-              label={`Tổng ngân sách đề xuất${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
-              value={formatCurrency(displayedContractBudget)}
-            />
-            <ContractMetric
-              label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách đề xuất)`}
+              label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách hợp đồng gốc)`}
               value={formatCurrency(currentDepositAmount)}
             />
             <ContractMetric
-              label={`Timeline${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+              label={`Thời hạn${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
               value={displayedTimelineLabel}
             />
             <ContractMetric
               label="Ngày tạo hợp đồng"
               value={formatDateTime(contract.createdAt)}
-            />
-            <ContractMetric
-              label="Chờ nghiệm thu"
-              value={`${underReviewCount} mốc`}
-            />
-            <ContractMetric
-              label="Tranh chấp mở"
-              value={`${activeDisputes.length} vụ`}
             />
           </div>
 
@@ -1284,23 +1282,20 @@ export function ContractDetailPage() {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <ContractMetric
-                label="Tổng ngân sách gốc"
-                value={formatCurrency(originalContractBudget)}
+                label="Ngân sách hợp đồng (gốc)"
+                value={formatCurrency(initialContractBudget)}
               />
+              {hasBudgetChange && <ContractMetric label="Ngân sách hợp đồng hiện tại" value={formatCurrency(displayedContractBudget)} />}
               <ContractMetric
-                label={`Tổng ngân sách đề xuất${hasAcceptedChange && changedBudget != null ? " sau thay đổi" : ""}`}
-                value={formatCurrency(displayedContractBudget)}
-              />
-              <ContractMetric
-                label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách đề xuất)`}
+                label={`Ký quỹ ${currentDepositPercentage}% (theo ngân sách hợp đồng gốc)`}
                 value={formatCurrency(currentDepositAmount)}
               />
               <ContractMetric
-                label={`Thời hạn${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+                label={`Tổng thời gian${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
                 value={displayedTimelineLabel}
               />
               <ContractMetric
-                label={`Timeline${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
+                label={`Thời hạn${hasAcceptedChange && changedTimelineLabel ? " sau thay đổi" : ""}`}
                 value={contractTimelineLabel}
               />
             </div>
@@ -1386,18 +1381,22 @@ export function ContractDetailPage() {
             <SectionHeading
               title="Mốc"
               description="Các ngân sách chốt được tạo từ dự án và proposal đã được chấp nhận."
-              action={
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right">
-                  <p className="text-xs font-bold text-slate-400">
-                    Tổng thời gian mốc
-                  </p>
-                  <p className="mt-1 font-display text-lg font-black text-ink">
-                    {totalMilestoneDurationLabel}
-                  </p>
-                </div>
-              }
             />
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4 hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:grid md:grid-cols-[minmax(0,1fr)_160px_160px] md:items-center md:gap-3">
+              <div className="px-2">
+                <p className="text-sm font-extrabold text-ink">Tổng quan các mốc</p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">Tổng thời gian: {totalMilestoneDurationLabel}</p>
+              </div>
+              <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-right">
+                <p className="text-xs font-bold text-rose-700">Tổng ngân sách gốc</p>
+                <p className="mt-1 text-lg font-black text-rose-700">{formatCurrency(initialContractBudget)}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-right">
+                <p className="text-xs font-bold text-emerald-700">Tổng ngân sách hiện tại</p>
+                <p className="mt-1 text-lg font-black text-emerald-700">{formatCurrency(displayedContractBudget)}</p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3">
               {renderedMilestones.map((milestone) => (
                 <div
                   key={
@@ -1420,23 +1419,25 @@ export function ContractDetailPage() {
                       Thời gian: {getMilestoneDurationLabel(milestone)}
                     </p>
                   </div>
-                  <ContractMetric
-                    label="Ngân sách gốc"
-                    value={formatCurrency(
-                      "originalBudget" in milestone
-                        ? milestone.originalBudget
-                        : milestone.fundsAllocated,
-                    )}
-                  />
-                  <ContractMetric
-                    label="Ngân sách chốt"
-                    value={formatCurrency(getMilestoneBudget(milestone))}
-                  />
+                  <div className="rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2 text-right">
+                    <p className="text-xs font-bold text-rose-700 md:hidden">Ngân sách hợp đồng gốc</p>
+                    <p className="font-extrabold text-rose-700">
+                      {formatCurrency(
+                        "originalBudget" in milestone
+                          ? milestone.originalBudget
+                          : milestone.fundsAllocated,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-right">
+                    <p className="text-xs font-bold text-emerald-700 md:hidden">Ngân sách hợp đồng hiện tại</p>
+                    <p className="font-extrabold text-emerald-700">{formatCurrency(getMilestoneBudget(milestone))}</p>
+                  </div>
                 </div>
               ))}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có mốc draft"
+                  title="Chưa có mốc nháp"
                   description="Hệ thống chưa có dữ liệu mốc cho hợp đồng này."
                 />
               )}
@@ -1953,7 +1954,7 @@ export function ContractDetailPage() {
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <p className="text-sm text-slate-700">
                       Ngân sách hiện tại:{" "}
-                      <strong>{formatCurrency(originalContractBudget)}</strong>
+                      <strong>{formatCurrency(displayedContractBudget)}</strong>
                     </p>
                     <p className="text-sm text-slate-700">
                       Thời lượng hiện tại:{" "}
@@ -2176,8 +2177,8 @@ export function ContractDetailPage() {
         <div className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <ContractMetric
-              label="Tổng ngân sách đề xuất"
-              value={formatCurrency(proposedContractBudget)}
+              label="Ngân sách đề xuất ban đầu"
+              value={formatCurrency(initialContractBudget)}
             />
             <ContractMetric
               label={`Ký quỹ ${currentDepositPercentage}%`}

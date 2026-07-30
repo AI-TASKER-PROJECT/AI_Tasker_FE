@@ -1925,7 +1925,7 @@ export function WorkspacePage() {
                       {milestone.description}
                     </p>
                   )}
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold text-slate-500">
+                  <div className="mt-3 grid gap-1.5 text-sm font-bold text-slate-500">
                     <span>Ngân sách mốc: {formatCurrency(getMilestoneBudget(milestone))}</span>
                     <span>Thời gian: {milestoneDurationLabel(milestone)}</span>
                     {milestone.updatedAt && (

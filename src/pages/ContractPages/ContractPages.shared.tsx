@@ -17,56 +17,40 @@ import { Button, Modal, Notice } from "../../components/ui";
 
 export const NDA_TERMS = [
   {
-    title: "1. Phạm vi thông tin bảo mật",
-    body: "Thông tin bảo mật bao gồm tài liệu dự án, mã nguồn (source code), dữ liệu nghiệp vụ, tài khoản truy cập, quy trình vận hành, báo giá và mọi thông tin được chia sẻ trong quá trình hợp tác mà chưa công khai.",
+    title: "1. Thông tin bảo mật và mục đích sử dụng",
+    body: "Thông tin bảo mật gồm tài liệu dự án, mã nguồn, dữ liệu nghiệp vụ, tài khoản truy cập, báo giá và mọi nội dung chưa công khai. Các bên chỉ được sử dụng các thông tin này để thực hiện, nghiệm thu và vận hành hợp đồng trên AI Tasker.",
   },
   {
-    title: "2. Mục đích sử dụng",
-    body: "Mọi thông tin chỉ được phép sử dụng để đánh giá, thực hiện, nghiệm thu và vận hành các công việc liên quan đến hợp đồng (contract) trên nền tảng AI Tasker. Không bên nào được sử dụng cho mục đích cá nhân hoặc chuyển giao cho bên thứ ba.",
+    title: "2. Giải quyết tranh chấp",
+    body: "Mọi tranh chấp liên quan đến hợp đồng, dữ liệu, sản phẩm bàn giao hoặc nghĩa vụ bảo mật phải được gửi trên AI Tasker. Hai bên phải cung cấp bằng chứng; mọi quyết định giải quyết tranh chấp do hệ thống AI Tasker đưa ra và được ghi nhận trên hệ thống là căn cứ cuối cùng để tiếp tục thực hiện hợp đồng. Hai bên phải chấp thuận hoàn toàn quyết định giải quyết tranh chấp từ hệ thống.",
   },
   {
-    title: "3. Nghĩa vụ bảo vệ",
-    body: "Hai bên cam kết bảo mật thông tin bằng các biện pháp hợp lý, giới hạn quyền truy cập theo nhu cầu công việc, không sao chép, phát tán, công bố hoặc cho phép người không có thẩm quyền tiếp cận.",
+    title: "3. Hủy ngang và bồi thường",
+    body: "Khi một bên hủy ngang hợp đồng đang hoạt động, mức bồi thường là 10% tổng giá trị hợp đồng và được khấu trừ từ khoản ký quỹ của bên yêu cầu để chuyển cho bên còn lại. Quy định này không áp dụng cho việc từ chối hoặc hủy hợp đồng nháp trước khi kích hoạt.",
   },
   {
-    title: "4. Ngoại lệ",
-    body: "Nghĩa vụ bảo mật không áp dụng với thông tin đã công khai hợp pháp, thông tin đã nắm giữ hợp lệ trước khi nhận, hoặc thông tin buộc phải cung cấp theo yêu cầu của cơ quan có thẩm quyền.",
+    title: "4. Nghĩa vụ bảo vệ",
+    body: "Hai bên phải áp dụng biện pháp bảo mật hợp lý, chỉ cấp quyền truy cập theo nhu cầu công việc và không sao chép, công bố, phát tán hoặc cho người không có thẩm quyền tiếp cận thông tin bảo mật.",
   },
   {
-    title: "5. Hoàn trả và hủy dữ liệu",
-    body: "Khi hợp đồng (contract) kết thúc hoặc khi bên cung cấp thông tin yêu cầu, bên nhận thông tin phải ngừng sử dụng, hoàn trả hoặc hủy các tài liệu và bản sao nằm ngoài phạm vi lưu trữ bắt buộc theo quy định pháp luật.",
+    title: "5. Dữ liệu cá nhân, AI và bên thứ ba",
+    body: "Dữ liệu cá nhân, thông tin đăng nhập, khóa API và dữ liệu hệ thống chỉ được xử lý trong phạm vi cần thiết. Không được đưa dữ liệu mật vào công cụ AI, kho mã nguồn, dịch vụ lưu trữ hoặc nền tảng bên thứ ba nếu chưa được chấp thuận.",
   },
   {
-    title: "6. Thời hạn ràng buộc",
-    body: "Cam kết bảo mật có hiệu lực từ thời điểm xác nhận ký NDA trên hệ thống và tiếp tục duy trì trong 24 tháng kể từ ngày hợp đồng (contract) kết thúc, trừ khi hai bên có thỏa thuận khác bằng văn bản.",
+    title: "6. Sự cố và vi phạm bảo mật",
+    body: "Bên phát hiện truy cập trái phép, thất thoát hoặc tiết lộ thông tin phải thông báo sớm qua hệ thống, phối hợp khắc phục và chịu trách nhiệm đối với thiệt hại do vi phạm của mình.",
   },
   {
-    title: "7. Vi phạm",
-    body: "Bên vi phạm phải chịu trách nhiệm đối với các thiệt hại phát sinh và phối hợp xử lý sự cố bảo mật theo quy trình của nền tảng và thỏa thuận giữa hai bên.",
+    title: "7. Thời hạn, hoàn trả và hủy dữ liệu",
+    body: "Cam kết bảo mật có hiệu lực từ khi ký NDA và kéo dài 24 tháng sau khi hợp đồng kết thúc. Khi kết thúc hợp đồng hoặc theo yêu cầu hợp lệ, bên nhận phải ngừng sử dụng, hoàn trả hoặc hủy dữ liệu ngoài phạm vi phải lưu giữ theo pháp luật.",
   },
   {
-    title: "8. Dữ liệu cá nhân và dữ liệu truy cập",
-    body: "Các bên chỉ được thu thập, truy cập và xử lý dữ liệu cá nhân, thông tin liên hệ, thông tin đăng nhập, khóa API hoặc dữ liệu hệ thống trong phạm vi cần thiết cho hợp đồng. Không được dùng lại, bán, chia sẻ hoặc chuyển dữ liệu cho bên khác khi chưa có căn cứ hợp pháp và sự chấp thuận phù hợp.",
+    title: "8. Tài sản trí tuệ và dữ liệu đầu ra",
+    body: "NDA chỉ điều chỉnh nghĩa vụ bảo mật, không tự động chuyển giao quyền sở hữu trí tuệ. Quyền đối với mã nguồn, tài liệu, mô hình, dữ liệu và sản phẩm bàn giao được xác định theo hợp đồng, proposal và thỏa thuận bằng văn bản.",
   },
   {
-    title: "9. Source code, tài sản trí tuệ và dữ liệu đầu ra",
-    body: "NDA này chỉ điều chỉnh nghĩa vụ bảo mật và không tự động chuyển giao quyền sở hữu trí tuệ. Quyền đối với source code, tài liệu, mô hình, dữ liệu, sản phẩm bàn giao và kết quả công việc được xác định theo nội dung contract, proposal và các thỏa thuận bằng văn bản giữa hai bên.",
-  },
-  {
-    title: "10. Công cụ AI và bên thứ ba",
-    body: "Không bên nào được đưa thông tin mật, source code, dữ liệu khách hàng hoặc dữ liệu production vào công cụ AI, kho mã nguồn, dịch vụ lưu trữ hay nền tảng của bên thứ ba nếu chưa được bên cung cấp thông tin cho phép. Trường hợp được phép, bên sử dụng phải áp dụng cấu hình bảo mật phù hợp và chịu trách nhiệm với nhà cung cấp phụ trợ của mình.",
-  },
-  {
-    title: "11. Sự cố bảo mật",
-    body: "Khi phát hiện truy cập trái phép, thất thoát, tiết lộ hoặc sử dụng sai mục đích thông tin mật, bên phát hiện phải thông báo sớm cho bên còn lại qua kênh liên hệ trên hệ thống, phối hợp khoanh vùng, bảo toàn bằng chứng và thực hiện biện pháp khắc phục hợp lý.",
-  },
-  {
-    title: "12. Bằng chứng điện tử và liên hệ trên hệ thống",
-    body: "Thời điểm ký NDA, lịch sử cập nhật, tệp đính kèm, nhật ký truy cập và thông báo được ghi nhận trên AI Tasker có thể được sử dụng để đối chiếu việc thực hiện nghĩa vụ bảo mật. Mỗi bên có trách nhiệm duy trì thông tin liên hệ và tài khoản của mình ở trạng thái chính xác, an toàn.",
-  },
-  {
-    title: "13. Hủy ngang hợp đồng và bồi thường",
-    body: "Hủy ngang là thao tác chấm dứt ngay hợp đồng đang ở trạng thái Đang hoạt động theo yêu cầu đơn phương của một bên. Mức bồi thường cố định là 10% tổng giá trị hợp đồng, được tính theo công thức: tổng giá trị hợp đồng × 10/100. Ví dụ, hợp đồng trị giá 1.000.000 đồng thì khoản bồi thường là 100.000 đồng. Nếu Doanh nghiệp hủy ngang, 100.000 đồng được khấu trừ từ khoản ký quỹ của Doanh nghiệp và chuyển cho Chuyên gia; khoản ký quỹ còn lại của hai bên được hoàn theo quy trình hệ thống. Nếu Chuyên gia hủy ngang, 100.000 đồng được khấu trừ từ khoản ký quỹ của Chuyên gia và chuyển cho Doanh nghiệp; khoản ký quỹ của Doanh nghiệp được hoàn theo quy trình hệ thống. Hệ thống chỉ thực hiện khi cả hai khoản ký quỹ đang được giữ, người yêu cầu xác nhận khoản phạt và hợp đồng không có yêu cầu chấm dứt, tranh chấp, mốc đang nghiệm thu hoặc mốc đang tranh chấp. Quy định này không áp dụng cho việc từ chối draft contract, hủy draft contract trước khi kích hoạt, hoặc chấm dứt theo thỏa thuận/quyết định của staff/admin.",
+    title: "9. Ngoại lệ và bằng chứng điện tử",
+    body: "Nghĩa vụ bảo mật không áp dụng với thông tin đã công khai hợp pháp, đã được nắm giữ hợp lệ hoặc buộc phải cung cấp theo yêu cầu có thẩm quyền. Thời điểm ký, lịch sử cập nhật, tệp đính kèm và thông báo trên AI Tasker được dùng làm bằng chứng đối chiếu.",
   },
 ];
 

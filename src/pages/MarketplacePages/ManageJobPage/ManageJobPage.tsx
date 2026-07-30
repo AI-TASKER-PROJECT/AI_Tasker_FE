@@ -189,7 +189,6 @@ export function ManageJobPage() {
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
     contractTitle: "",
-    timelineWeeks: "6",
   });
   const [contractTermsOpen, setContractTermsOpen] = useState(false);
   const [contractError, setContractError] = useState("");
@@ -288,38 +287,33 @@ export function ManageJobPage() {
 
   const jobStatus = job.status.trim().toUpperCase();
   const jobInProgress = jobStatus === "IN_PROGRESS";
-  const contractTimelineWeeks = Math.max(
-    1,
-    Number(contractForm.timelineWeeks) || 1,
-  );
-  const contractTimelineDays = contractTimelineWeeks * 7;
-  const totalMilestoneWeeks = milestones.reduce(
-    (total, milestone) =>
-      total + Number(milestone.durationValue ?? milestone.duration ?? 0),
-    0,
-  );
-  const minimumTimelineWeeks = Math.max(1, totalMilestoneWeeks);
-  const totalMilestoneDays = totalMilestoneWeeks * 7;
-  const timelineValid = contractTimelineWeeks >= minimumTimelineWeeks;
+  const totalMilestoneDays = milestones.reduce((total, milestone) => {
+    const duration = Number(milestone.durationValue ?? milestone.duration ?? 0);
+    const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+    if (!Number.isFinite(duration) || duration <= 0) return total;
+    if (unit.includes("DAY")) return total + duration;
+    if (unit.includes("MONTH")) return total + duration * 30;
+    return total + duration * 7;
+  }, 0);
+  const contractTimelineDays = Math.max(1, totalMilestoneDays);
+  const contractTimelineWeeks = Math.ceil(contractTimelineDays / 7);
+  const totalMilestoneWeeks = contractTimelineWeeks;
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
   contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
   const contractProposalMilestones = parseProposalMilestones(
     contractModal?.proposalMilestone,
   );
-  const totalProjectBudget = milestones.reduce((total, milestone) => {
-    const proposalMilestone = contractProposalMilestones.find(
-      (item) => item.milestoneId === milestone.milestoneId,
-    );
-    return (
-      total +
-      (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0)
-    );
-  }, 0);
   const originalProjectBudget = milestones.reduce(
     (total, milestone) => total + Number(milestone.fundsAllocated || 0),
     0,
   );
+  const finalProjectBudget = milestones.reduce((total, milestone) => {
+    const proposalMilestone = contractProposalMilestones.find(
+      (item) => item.milestoneId === milestone.milestoneId,
+    );
+    return total + (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0);
+  }, 0);
 
   const review = async (
     proposalId: number,
@@ -359,12 +353,6 @@ export function ManageJobPage() {
     if (milestones.length === 0) {
       setContractError(
         "Job cần có ít nhất một mốc để tạo contract draft.",
-      );
-      return;
-    }
-    if (!timelineValid) {
-      setContractError(
-        `Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian mốc (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuan.`,
       );
       return;
     }
@@ -545,7 +533,6 @@ export function ManageJobPage() {
                     setContractForm((value) => ({
                       ...value,
                       contractTitle: `Contract - ${job.title}`,
-                      timelineWeeks: String(minimumTimelineWeeks),
                     }));
                   }}
                 />
@@ -662,7 +649,6 @@ export function ManageJobPage() {
               disabled={
                 contractLoading ||
                 jobInProgress ||
-                !timelineValid ||
                 contractModal?.status !== "Accepted" ||
                 milestones.length === 0
               }
@@ -697,43 +683,11 @@ export function ManageJobPage() {
               }
             />
           </Field>
-          <Field label="Thời gian (tuần)">
-            <Input
-              type="number"
-              min={minimumTimelineWeeks}
-              value={contractForm.timelineWeeks}
-              onChange={(event) =>
-                setContractForm((value) => ({
-                  ...value,
-                  timelineWeeks: event.target.value,
-                }))
-              }
-            />
-            <p className="mt-2 text-xs font-semibold text-slate-500">
-              Bạn có thể nhập số tuần tối thiểu {minimumTimelineWeeks} tuần để
-              đảm bảo hợp đồng đủ thời gian cho các mốc.
-            </p>
-          </Field>
-          {!timelineValid && (
-            <Notice
-              tone="warning"
-              title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
-            />
-          )}
-          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
             <ContractPreviewMetric
               label="Tổng thời gian mốc"
               value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
-            <ContractPreviewMetric
-              label="Tổng ngân sách gốc"
-              value={formatCurrency(originalProjectBudget)}
-            />
-            <ContractPreviewMetric
-              label="Tổng ngân sách đề xuất"
-              value={formatCurrency(totalProjectBudget)}
-            />
-
             <ContractPreviewMetric
               label="Ngày bắt đầu dự kiến"
               value={formatDate(contractStartDate.toISOString())}
@@ -742,17 +696,28 @@ export function ManageJobPage() {
               label="Ngày kết thúc dự kiến"
               value={formatDate(contractEndDate.toISOString())}
             />
-            <ContractPreviewMetric
-              label="Tổng thời gian"
-              value={`${contractTimelineWeeks} tuần (${contractTimelineDays} ngày)`}
-            />
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
-              title="Ngân sách sẽ dựa vào hợp đồng"
+              title="Ngân sách theo mốc hợp đồng"
+              description="So sánh ngân sách ban đầu với ngân sách được chốt cho từng mốc."
               // Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi.
             />
             <div className="mt-4 grid gap-3">
+              <div className="hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:grid lg:grid-cols-[120px_minmax(320px,1fr)_170px_170px] lg:items-center lg:gap-4">
+                <div className="col-span-2 px-2">
+                  <p className="text-sm font-extrabold text-ink">Phân bổ theo từng mốc</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Ngân sách cuối cùng có thể thay đổi theo đề xuất đã chọn.</p>
+                </div>
+                <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-right">
+                  <p className="text-xs font-bold text-rose-700">Tổng ngân sách gốc</p>
+                  <p className="mt-1 text-lg font-black text-rose-700">{formatCurrency(originalProjectBudget)}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-right">
+                  <p className="text-xs font-bold text-emerald-700">Tổng ngân sách cuối cùng</p>
+                  <p className="mt-1 text-lg font-black text-emerald-700">{formatCurrency(finalProjectBudget)}</p>
+                </div>
+              </div>
               {milestones
                 .slice()
                 .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -788,19 +753,19 @@ export function ManageJobPage() {
                             : "Chưa có thời gian"}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
+                      <div className="rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2 lg:text-right">
+                        <p className="text-xs font-bold text-slate-400 lg:hidden">
                           Ngân sách gốc
                         </p>
-                        <p className="font-extrabold text-slate-700">
+                        <p className="font-extrabold text-rose-700">
                           {formatCurrency(milestone.fundsAllocated)}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 lg:text-right">
+                        <p className="text-xs font-bold text-slate-400 lg:hidden">
                           Ngân sách cuối cùng
                         </p>
-                        <p className="font-extrabold text-ink">
+                        <p className="font-extrabold text-emerald-700">
                           {formatCurrency(finalBudget)}
                         </p>
                       </div>
