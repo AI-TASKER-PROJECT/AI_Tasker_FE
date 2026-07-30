@@ -93,7 +93,7 @@ const revenueSourceConfig: Array<{
   { key: "EXPERT_PLUS", label: "Gói Expert Plus", color: "#db2777" },
   { key: "EXPERT_PREMIUM", label: "Gói Expert Premium", color: "#0891b2" },
   { key: "JOB_POST_CREDIT", label: "Gói lượt đăng bài", color: "#dc2626" },
-  { key: "PROPOSAL_CREDIT", label: "Gói lượt nộp bản đề xuất", color: "#475569" },
+  { key: "PROPOSAL_CREDIT", label: "Gói lượt nộp proposal", color: "#475569" },
 ];
 
 const tabs: Array<{ key: DashboardTab; label: string }> = [
@@ -198,11 +198,7 @@ function creditRevenueKey(
   ) {
     return "JOB_POST_CREDIT";
   }
-  if (
-    text.includes("proposal") ||
-    text.includes("nộp proposal") ||
-    text.includes("bản đề xuất")
-  ) {
+  if (text.includes("proposal") || text.includes("nộp proposal")) {
     return "PROPOSAL_CREDIT";
   }
   return null;
@@ -2088,6 +2084,7 @@ export function AnalyticsPage() {
 
         </>
       ) : null}
+
     </div>
   );
 }

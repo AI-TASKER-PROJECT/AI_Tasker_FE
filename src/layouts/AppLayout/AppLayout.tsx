@@ -525,9 +525,17 @@ export function AppShell() {
     }
     return [...commonNav, ...roleNav[role]].filter((item) => {
       if (role === "ADMIN") return item.to !== "/app/verifications";
+      if (
+        accountStatus === "Approved" &&
+        ((role === "EXPERT" && item.to === "/app/expert/kyc") ||
+          (role === "BUSINESS" && item.to === "/app/business/kyb"))
+      ) {
+        return false;
+      }
       return true;
     });
   }, [
+    accountStatus,
     needsVerification,
     role,
     staffHomePath,

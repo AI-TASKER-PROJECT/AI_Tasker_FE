@@ -172,20 +172,19 @@ export function ProfileFilePicker({
           <input
             type="file"
             accept={accept}
-            disabled={disabled}
             className="hidden"
             aria-required={required}
+            disabled={disabled}
             onChange={(event) => {
               onChange(event.target.files?.[0] || null);
               event.target.value = "";
             }}
           />
         </label>
-        {file && (
+        {file && !disabled && (
           <button
             type="button"
             onClick={() => onChange(null)}
-            disabled={disabled}
             className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-extrabold text-slate-500 shadow-sm hover:text-rose-600"
           >
             <X className="h-4 w-4" />
@@ -216,7 +215,11 @@ export function readApiError(error: unknown, fallback: string) {
     response?: { data?: { message?: string } };
     message?: string;
   };
-  return apiError.response?.data?.message || apiError.message || fallback;
+  const message = apiError.response?.data?.message || apiError.message || fallback;
+  const translatedMessages: Record<string, string> = {
+    "MA SO THUE KHONG HOP LE": "Mã số thuế không hợp lệ.",
+  };
+  return translatedMessages[message.trim().toUpperCase()] || message;
 }
 
 export function parseCatalogIds(ids?: string) {
@@ -235,7 +238,7 @@ export function normalizeAccountStatus(status?: string): AccountStatus {
 
 export function translateVerificationStatus(status?: string) {
   const normalized = (status || "").trim().toLowerCase();
-  if (normalized === "approved") return "Đã duyệt";
+  if (normalized === "approved") return "Đã xác thực";
   if (normalized === "rejected") return "Bị từ chối";
   if (normalized === "pending") return "Đang chờ duyệt";
   if (normalized === "lock") return "Đã khóa";
