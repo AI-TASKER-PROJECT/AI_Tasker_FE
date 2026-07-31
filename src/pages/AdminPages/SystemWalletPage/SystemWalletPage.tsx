@@ -262,7 +262,38 @@ function walletTransactionIsSuccessful(status: string) {
   return status === "SUCCESS" || status === "POSTED";
 }
 
+const ADMIN_OUTFLOW_TRANSACTION_TYPES = new Set([
+  "CONTRACT_SECURITY_DEPOSIT_REFUND",
+  "EXPERT_CONTRACT_DEPOSIT_REFUND",
+  "MILESTONE_ESCROW_RELEASE",
+  "MILESTONE_ESCROW_REFUND",
+  "MILESTONE_ESCROW_SETTLEMENT_PAYOUT",
+  "MILESTONE_ESCROW_SETTLEMENT_REFUND",
+  "IMMEDIATE_TERMINATION_COMPENSATION",
+]);
+
+const ADMIN_ESCROW_INFLOW_TRANSACTION_TYPES = new Set([
+  "CONTRACT_SECURITY_DEPOSIT_HOLD",
+  "EXPERT_CONTRACT_DEPOSIT_HOLD",
+  "MILESTONE_ESCROW_DEPOSIT",
+]);
+
+const ADMIN_REVENUE_INFLOW_TRANSACTION_TYPES = new Set([
+  "MEMBERSHIP_PURCHASE",
+  "CREDIT_PURCHASE",
+  "PLATFORM_REVENUE_CREDIT",
+]);
+
 function walletTransactionDisplayIsPositive(tx: WalletTransaction) {
+  if (ADMIN_REVENUE_INFLOW_TRANSACTION_TYPES.has(tx.transactionType)) {
+    return true;
+  }
+  if (ADMIN_ESCROW_INFLOW_TRANSACTION_TYPES.has(tx.transactionType)) {
+    return true;
+  }
+  if (ADMIN_OUTFLOW_TRANSACTION_TYPES.has(tx.transactionType)) {
+    return false;
+  }
   return ["CREDIT", "RELEASE"].includes(
     String(tx.direction || "").toUpperCase(),
   );
@@ -310,7 +341,9 @@ function TransactionParty({
 }) {
   return (
     <div className="grid min-w-0 gap-0.5 text-sm">
-      <span className="text-xs font-bold text-slate-400 md:hidden">{label}</span>
+      <span className="text-xs font-bold text-slate-400 md:hidden">
+        {label}
+      </span>
       <span className="truncate font-extrabold text-slate-600">
         {name || "Chưa có thông tin"}
       </span>
@@ -666,12 +699,12 @@ export function SystemWalletPage() {
                 tone="mint"
               />
               <WalletFact
-                label="Doanh nghiệp ký quỹ"
-                value={wallet.depositedBusinessCount}
+                label="Giao dịch nền tảng"
+                value={normalizedUserActivity.length}
                 tone="brand"
               />
               <WalletFact
-                label="Giao dịch thành công"
+                label="Giao dịch ví doanh thu"
                 value={successfulPlatformTransactionCount}
                 tone="mint"
               />
@@ -705,8 +738,8 @@ export function SystemWalletPage() {
             {activeTab === "ledger" ? (
               <>
                 <SectionHeading
-                  title="Lịch sử ví nền tảng"
-                  description="Sổ cái các giao dịch làm thay đổi số dư của ví nền tảng."
+                  title="Lịch sử doanh thu"
+                  description="Sổ các giao dịch doanh thu của ví nền tảng."
                 />
                 <div className="mt-5">
                   <TransactionList
@@ -794,6 +827,11 @@ export function SystemWalletPage() {
       <WalletTransactionDetailModal
         transaction={selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
+        amountIsPositive={
+          selectedTransaction
+            ? walletTransactionDisplayIsPositive(selectedTransaction)
+            : undefined
+        }
       />
     </div>
   );

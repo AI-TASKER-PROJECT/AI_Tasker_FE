@@ -102,6 +102,16 @@ export const contractApi = {
       data: payload,
     });
   },
+  requestRejectedMilestoneChangeTermination(
+    contractId: number,
+    payload: { contractMilestoneId: number; reason: string },
+  ) {
+    return call<TerminationRequest>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/termination-requests/rejected-milestone-change`,
+      data: payload,
+    });
+  },
   // Lấy danh sách yêu cầu chấm dứt hợp đồng, dùng khi chuyên gia hoặc doanh nghiệp muốn xem danh sách yêu cầu chấm dứt hợp đồng.
   listTerminationRequests(contractId: number) {
     return call<TerminationRequest[]>({

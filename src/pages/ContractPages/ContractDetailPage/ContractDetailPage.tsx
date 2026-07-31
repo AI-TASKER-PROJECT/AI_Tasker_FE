@@ -1,4 +1,6 @@
 ﻿import {
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   FileText,
   LockKeyhole,
@@ -17,11 +19,7 @@ import {
   walletApi,
 } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import {
-  formatCurrency,
-  formatDate,
-  formatDateTime,
-} from "../../../lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "../../../lib/utils";
 import type {
   BusinessProfile,
   Contract,
@@ -136,6 +134,13 @@ function proposedChangeMilestones(request?: ContractChangeRequest | null) {
   }
 }
 
+function formatPlainVndInput(value: string) {
+  const normalized = value.replace(/\D/g, "");
+  return normalized
+    ? new Intl.NumberFormat("vi-VN").format(Number(normalized))
+    : "";
+}
+
 function milestoneDurationDays(
   milestone: Partial<ContractMilestone | Milestone | ContractChangeMilestone>,
 ) {
@@ -164,6 +169,28 @@ function acceptedChangeTime(request: ContractChangeRequest) {
   ).getTime();
 }
 
+function translateChangeRequestStatus(status?: string) {
+  const normalized = (status || "").trim().toUpperCase();
+  switch (normalized) {
+    case "PENDING":
+      return "Chờ phản hồi";
+    case "ACCEPTED":
+      return "Chấp nhận";
+    case "REJECTED":
+      return "Bị từ chối";
+    default:
+      return status || "Chưa cập nhật";
+  }
+}
+
+const ACTIVE_MILESTONE_STATUSES = new Set([
+  "DEPOSITED",
+  "IN_PROGRESS",
+  "OVERDUE",
+  "UNDER_REVIEW",
+  "DISPUTED",
+]);
+
 export function ContractDetailPage() {
   const { contractId } = useParams();
   const session = useSession();
@@ -182,7 +209,7 @@ export function ContractDetailPage() {
     expert: null,
   });
   const [contractNotice, setContractNotice] = useState<{
-    tone: "success" | "danger" | "info";
+    tone: "success" | "danger" | "info" | "warning";
     title: string;
     message?: string;
   } | null>(null);
@@ -194,10 +221,12 @@ export function ContractDetailPage() {
   const [cancelDraftLoading, setCancelDraftLoading] = useState(false);
   const [depositPaidLocally, setDepositPaidLocally] = useState(false);
   const [paymentWallet, setPaymentWallet] = useState<SystemWallet | null>(null);
-  const [depositRates, setDepositRates] = useState<ContractDepositRateResponse>({
-    businessPercentage: 20,
-    expertPercentage: 10,
-  });
+  const [depositRates, setDepositRates] = useState<ContractDepositRateResponse>(
+    {
+      businessPercentage: 20,
+      expertPercentage: 10,
+    },
+  );
   const [ndaModalMode, setNdaModalMode] = useState<"view" | "sign" | null>(
     null,
   );
@@ -206,16 +235,29 @@ export function ContractDetailPage() {
   const [changeRequests, setChangeRequests] = useState<ContractChangeRequest[]>(
     [],
   );
+  const [changeRequestsExpanded, setChangeRequestsExpanded] = useState(true);
+  const [changeRequestFilter, setChangeRequestFilter] = useState<
+    "ALL" | "MINE" | "PARTNER"
+  >("ALL");
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [changeRequestLoading, setChangeRequestLoading] = useState(false);
+  const [changeRequestSuccessMessage, setChangeRequestSuccessMessage] =
+    useState("");
   const [viewingChangeRequest, setViewingChangeRequest] =
     useState<ContractChangeRequest | null>(null);
   const [rejectingChangeRequest, setRejectingChangeRequest] =
+    useState<ContractChangeRequest | null>(null);
+  const [counteringChangeRequest, setCounteringChangeRequest] =
     useState<ContractChangeRequest | null>(null);
   const [changeRequestReviewNote, setChangeRequestReviewNote] = useState("");
   const [changeRequestReviewLoading, setChangeRequestReviewLoading] =
     useState(false);
   const [changeRequestReviewError, setChangeRequestReviewError] = useState("");
+  const [terminatingChangeRequest, setTerminatingChangeRequest] =
+    useState<ContractChangeRequest | null>(null);
+  const [terminationReason, setTerminationReason] = useState("");
+  const [terminationError, setTerminationError] = useState("");
+  const [terminationLoading, setTerminationLoading] = useState(false);
   const [changeForm, setChangeForm] = useState({
     changeType: "MILESTONE",
     changeSummary: "",
@@ -283,6 +325,7 @@ export function ContractDetailPage() {
   const canRequestChange = ["DRAFT", "PENDING", "ACTIVE"].includes(
     (contract?.status || "").toUpperCase(),
   );
+  const contractStatus = normalizeContractStatus(contract?.status || "");
   const currentAccountId = Number(
     session?.accountId ||
       (session?.role === "BUSINESS"
@@ -314,6 +357,109 @@ export function ContractDetailPage() {
       currentAccountId > 0 &&
       !isChangeRequestCreator(request),
     );
+  const changeRequestContractMilestoneId = (
+    request?: ContractChangeRequest | null,
+  ) => proposedChangeMilestones(request)[0]?.contractMilestoneId;
+  const rejectedChangeCountForMilestone = (contractMilestoneId?: number) => {
+    if (!contractMilestoneId || currentAccountId <= 0) return 0;
+    return changeRequests.filter(
+      (item) =>
+        item.status.toUpperCase() === "REJECTED" &&
+        item.changeType === "MILESTONE" &&
+        Number(item.requestedByAccountId) === currentAccountId &&
+        proposedChangeMilestones(item).some(
+          (milestone) =>
+            Number(milestone.contractMilestoneId) ===
+            Number(contractMilestoneId),
+        ),
+    ).length;
+  };
+  const hasActiveMilestone = contractMilestoneViews.some((item) =>
+    ACTIVE_MILESTONE_STATUSES.has(normalizeContractStatus(item.status)),
+  );
+  const canRequestRejectedChangeTermination = (
+    request?: ContractChangeRequest | null,
+  ) => {
+    const contractMilestoneId = changeRequestContractMilestoneId(request);
+    return Boolean(
+      request &&
+      contractStatus === "ACTIVE" &&
+      request.status.toUpperCase() === "REJECTED" &&
+      isChangeRequestCreator(request) &&
+      contractMilestoneId &&
+      rejectedChangeCountForMilestone(contractMilestoneId) >= 1,
+    );
+  };
+  const rejectedChangeTerminationRequest =
+    changeRequests.find((request) =>
+      canRequestRejectedChangeTermination(request),
+    ) ?? null;
+  const partnerChangeRequestFilterLabel =
+    session?.role === "EXPERT"
+      ? "Yêu cầu của doanh nghiệp"
+      : "Yêu cầu của chuyên gia";
+  const filteredChangeRequests = changeRequests.filter((request) => {
+    if (changeRequestFilter === "MINE") return isChangeRequestCreator(request);
+    if (changeRequestFilter === "PARTNER") {
+      return !isChangeRequestCreator(request);
+    }
+    return true;
+  });
+  const openRejectedChangeTermination = (request: ContractChangeRequest) => {
+    if (hasActiveMilestone) {
+      setContractNotice({
+        tone: "warning",
+        title:
+          "Không thể yêu cầu hủy hợp đồng trong khi đang có mốc hoạt động.",
+        message: "Vui lòng đợi nghiệm thu mốc hoặc tiến hành mở tranh chấp.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setTerminationReason("");
+    setTerminationError("");
+    setTerminatingChangeRequest(request);
+  };
+  const respondWithAnotherChangeRequest = (
+    request?: ContractChangeRequest | null,
+  ) => {
+    const proposedMilestone = proposedChangeMilestones(request)[0];
+    const sourceMilestone = contractMilestoneViews.find(
+      (milestone) =>
+        Number(milestone.contractMilestoneId) ===
+        Number(proposedMilestone?.contractMilestoneId),
+    );
+    if (!sourceMilestone) {
+      setChangeRequestReviewError(
+        "Không xác định được mốc tương ứng để phản hồi yêu cầu khác.",
+      );
+      return;
+    }
+    setChangeRequestReviewError("");
+    setChangeRequestSuccessMessage("");
+    setCounteringChangeRequest(request ?? null);
+    setRejectingChangeRequest(null);
+    setChangeForm({
+      changeType: "MILESTONE",
+      changeSummary: "",
+      proposedBudget: "",
+      proposedTimelineDays: "",
+      proposedScope: "",
+      milestoneId: String(sourceMilestone.contractMilestoneId),
+      milestoneName: sourceMilestone.milestoneName || "",
+      milestoneDescription: sourceMilestone.description || "",
+      milestoneDuration: String(sourceMilestone.duration || ""),
+      milestoneBudget: String(sourceMilestone.finalBudget || ""),
+    });
+    setChangeRequestOpen(true);
+  };
+  const closeChangeRequestModal = () => {
+    setChangeRequestOpen(false);
+    setChangeRequestSuccessMessage("");
+    setCounteringChangeRequest(null);
+    setChangeRequestReviewNote("");
+    setChangeRequestReviewError("");
+  };
   const selectedChangeMilestone = contractMilestoneViews.find(
     (item) => item.contractMilestoneId === Number(changeForm.milestoneId),
   );
@@ -327,8 +473,43 @@ export function ContractDetailPage() {
       item.contractMilestoneId ===
       Number(viewingProposedMilestone?.contractMilestoneId),
   );
+  const changeRequestFormComplete = Boolean(
+    changeForm.milestoneId &&
+    changeForm.milestoneDescription.trim() &&
+    changeForm.milestoneBudget.trim() &&
+    changeForm.milestoneDuration.trim() &&
+    changeForm.changeSummary.trim(),
+  );
+  const formattedMilestoneBudget = formatPlainVndInput(
+    changeForm.milestoneBudget,
+  );
+  const pendingChangeResponseRoleLabel =
+    session?.role === "BUSINESS" ? "chuyên gia" : "doanh nghiệp";
+  const hasPendingChangeForSelectedMilestone = Boolean(
+    selectedChangeMilestone &&
+    changeRequests.some(
+      (request) =>
+        request.status.toUpperCase() === "PENDING" &&
+        request.requestId !== counteringChangeRequest?.requestId &&
+        changeRequestContractMilestoneId(request) ===
+          selectedChangeMilestone.contractMilestoneId,
+    ),
+  );
+  const pendingChangeRequestMessage = `Mốc hiện đang có yêu cầu thay đổi. Vui lòng chờ phản hồi từ ${pendingChangeResponseRoleLabel}.`;
+  const canSubmitChangeRequest =
+    changeRequestFormComplete && !hasPendingChangeForSelectedMilestone;
   const submitChangeRequest = async () => {
-    if (!contract || !changeForm.changeSummary.trim()) return;
+    if (!contract) return;
+    if (!changeRequestFormComplete) {
+      setContractNotice({
+        tone: "danger",
+        title: "Chưa đủ thông tin yêu cầu thay đổi",
+        message:
+          "Vui lòng nhập đầy đủ mốc, mô tả / deliverable mới, ngân sách mốc mới, thời lượng mới và tóm tắt lý do thay đổi.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setChangeRequestLoading(true);
     try {
       const selectedMilestone = contractMilestoneViews.find(
@@ -342,6 +523,16 @@ export function ContractDetailPage() {
         });
         return;
       }
+      const hasPendingChangeForMilestone = changeRequests.some(
+        (request) =>
+          request.status.toUpperCase() === "PENDING" &&
+          request.requestId !== counteringChangeRequest?.requestId &&
+          changeRequestContractMilestoneId(request) ===
+            selectedMilestone.contractMilestoneId,
+      );
+      if (hasPendingChangeForMilestone) {
+        return;
+      }
       const proposedMilestones: ContractChangeRequest["proposedMilestones"] =
         selectedMilestone
           ? [
@@ -351,16 +542,10 @@ export function ContractDetailPage() {
                 milestoneName:
                   changeForm.milestoneName.trim() ||
                   selectedMilestone.milestoneName,
-                description:
-                  changeForm.milestoneDescription.trim() ||
-                  selectedMilestone.description,
-                finalBudget: Number(
-                  changeForm.milestoneBudget || selectedMilestone.finalBudget,
-                ),
+                description: changeForm.milestoneDescription.trim(),
+                finalBudget: Number(changeForm.milestoneBudget),
                 orderIndex: selectedMilestone.orderIndex,
-                duration: Number(
-                  changeForm.milestoneDuration || selectedMilestone.duration,
-                ),
+                duration: Number(changeForm.milestoneDuration),
                 durationUnit: "WEEK",
                 criteriaSnapshot: selectedMilestone.criteriaSnapshot,
                 deliverableExpectation:
@@ -368,6 +553,15 @@ export function ContractDetailPage() {
               },
             ]
           : undefined;
+      let rejectedCounterSource: ContractChangeRequest | null = null;
+      if (counteringChangeRequest) {
+        rejectedCounterSource = await contractApi.rejectChangeRequest(
+          contract.contractId,
+          counteringChangeRequest.requestId,
+          changeRequestReviewNote.trim() ||
+            "Từ chối yêu cầu hiện tại và phản hồi bằng một yêu cầu thay đổi khác cho cùng mốc.",
+        );
+      }
       const created = await contractApi.createChangeRequest(
         contract.contractId,
         {
@@ -376,8 +570,20 @@ export function ContractDetailPage() {
           proposedMilestones,
         },
       );
-      setChangeRequests((items) => [created, ...items]);
-      setChangeRequestOpen(false);
+      setChangeRequests((items) => {
+        const updatedItems = rejectedCounterSource
+          ? items.map((item) =>
+              item.requestId === rejectedCounterSource?.requestId
+                ? rejectedCounterSource
+                : item,
+            )
+          : items;
+        return [created, ...updatedItems];
+      });
+      setChangeRequestSuccessMessage("Đã gửi yêu cầu thành công.");
+      setCounteringChangeRequest(null);
+      setChangeRequestReviewNote("");
+      setChangeRequestReviewError("");
       setChangeForm({
         changeType: "MILESTONE",
         changeSummary: "",
@@ -390,6 +596,18 @@ export function ContractDetailPage() {
         milestoneDuration: "",
         milestoneBudget: "",
       });
+    } catch (error) {
+      setContractNotice({
+        tone: "danger",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Không thể gửi yêu cầu thay đổi.",
+        message: counteringChangeRequest
+          ? "Yêu cầu phản hồi khác chưa được gửi thành công. Vui lòng thử lại."
+          : undefined,
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setChangeRequestLoading(false);
     }
@@ -447,6 +665,57 @@ export function ContractDetailPage() {
       );
     } finally {
       setChangeRequestReviewLoading(false);
+    }
+  };
+
+  const requestTerminationAfterRejectedChange = async () => {
+    if (!contract || !terminatingChangeRequest) return;
+    const contractMilestoneId = changeRequestContractMilestoneId(
+      terminatingChangeRequest,
+    );
+    if (!contractMilestoneId) {
+      setTerminationError("Không xác định được mốc cần hủy hợp đồng.");
+      return;
+    }
+    if (!terminationReason.trim()) {
+      setTerminationError("Vui lòng nhập lý do hủy hợp đồng.");
+      return;
+    }
+    if (hasActiveMilestone) {
+      setTerminationError(
+        "Không thể yêu cầu hủy hợp đồng trong khi đang có mốc hoạt động. Vui lòng đợi nghiệm thu mốc hoặc tiến hành mở tranh chấp.",
+      );
+      return;
+    }
+    setTerminationLoading(true);
+    setTerminationError("");
+    setContractNotice(null);
+    try {
+      await contractApi.requestRejectedMilestoneChangeTermination(
+        contract.contractId,
+        {
+          contractMilestoneId,
+          reason: terminationReason.trim(),
+        },
+      );
+      setTerminatingChangeRequest(null);
+      setTerminationReason("");
+      await refreshContract();
+      setContractNotice({
+        tone: "success",
+        title: "Đã hủy hợp đồng thành công.",
+        message:
+          "Hợp đồng đã kết thúc vì yêu cầu thay đổi cùng một mốc đã bị từ chối. Tiền ký quỹ tương ứng đã được hoàn lại.",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setTerminationError(
+        error instanceof Error
+          ? error.message
+          : "Không thể yêu cầu hủy hợp đồng. Vui lòng thử lại.",
+      );
+    } finally {
+      setTerminationLoading(false);
     }
   };
 
@@ -648,12 +917,15 @@ export function ContractDetailPage() {
 
   const refreshContract = async () => {
     const updated = await contractApi.getContract(contract.contractId);
+    const [jobMilestoneItems, contractMilestoneItems] = await Promise.all([
+      contractApi.listJobMilestones(updated.jobId).catch(() => []),
+      contractApi.listMilestones(updated.contractId).catch(() => []),
+    ]);
     setContract(updated);
-    setJobMilestones(
-      await contractApi.listJobMilestones(updated.jobId).catch(() => []),
-    );
-    setContractMilestones(
-      await contractApi.listMilestones(updated.contractId).catch(() => []),
+    setJobMilestones(jobMilestoneItems);
+    setContractMilestones(contractMilestoneItems);
+    setContractMilestoneViews(
+      contractMilestoneItems as unknown as ContractMilestone[],
     );
     return updated;
   };
@@ -709,7 +981,6 @@ export function ContractDetailPage() {
   };
   const contractTitle =
     contract.contractTitle || contract.title || "Hợp đồng chưa có tên";
-  const contractStatus = normalizeContractStatus(contract.status);
   const contractInProgress = ["ACTIVE", "IN_PROGRESS"].includes(contractStatus);
   const renderedMilestones =
     contract.contractMilestones && contract.contractMilestones.length > 0
@@ -1023,7 +1294,12 @@ export function ContractDetailPage() {
               {canRequestChange && (
                 <Button
                   variant="secondary"
-                  onClick={() => setChangeRequestOpen(true)}
+                  onClick={() => {
+                    setCounteringChangeRequest(null);
+                    setChangeRequestReviewNote("");
+                    setChangeRequestSuccessMessage("");
+                    setChangeRequestOpen(true);
+                  }}
                 >
                   Yêu cầu thay đổi
                 </Button>
@@ -1067,68 +1343,137 @@ export function ContractDetailPage() {
       )}
       {changeRequests.length > 0 && (
         <Card className="p-5">
-          <SectionHeading
-            title="Yêu cầu thay đổi về cột mốc của hợp đồng"
-            description="Các thay đổi chỉ có hiệu lực sau khi bên còn lại chấp nhận."
-          />
-          <div className="mt-4 space-y-3">
-            {changeRequests.map((request) => (
-              <div
-                key={request.requestId}
-                className="rounded-2xl border border-slate-100 p-4"
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <SectionHeading
+              title="Yêu cầu thay đổi về cột mốc của hợp đồng"
+              description="Các thay đổi chỉ có hiệu lực sau khi bên còn lại chấp nhận."
+            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setChangeRequestsExpanded((current) => !current)}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-extrabold text-ink">
-                      {changeRequestHeading(request)}
-                    </p>
-                  </div>
-                  <StatusBadge status={request.status} />
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setViewingChangeRequest(request)}
-                  >
-                    Xem chi tiết
-                  </Button>
-                  {canReviewChangeRequest(request) && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => acceptChangeRequest(request)}
-                      >
-                        Chấp nhận
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => {
-                          setChangeRequestReviewError("");
-                          setChangeRequestReviewNote("");
-                          setRejectingChangeRequest(request);
-                        }}
-                      >
-                        Từ chối
-                      </Button>
-                    </>
-                  )}
-                  {request.status.toUpperCase() === "PENDING" &&
-                    isChangeRequestCreator(request) && (
-                      <span className="text-sm font-semibold text-slate-500">
-                        Đang chờ đối tác phản hồi
-                      </span>
-                    )}
-                  {request.reviewNote && (
-                    <span className="text-sm font-semibold text-slate-500">
-                      Đã có phản hồi · xem chi tiết
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+                {changeRequestsExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+                {changeRequestsExpanded ? "Thu gọn" : "Mở chi tiết"}
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={!rejectedChangeTerminationRequest}
+                title={
+                  rejectedChangeTerminationRequest
+                    ? undefined
+                    : "Chỉ hoạt động khi yêu cầu thay đổi của cùng một mốc đã bị từ chối."
+                }
+                onClick={() => {
+                  if (rejectedChangeTerminationRequest) {
+                    openRejectedChangeTermination(
+                      rejectedChangeTerminationRequest,
+                    );
+                  }
+                }}
+              >
+                <XCircle className="h-4 w-4" />
+                Hủy hợp đồng
+              </Button>
+            </div>
           </div>
+          {changeRequestsExpanded && (
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { label: "Tất cả", value: "ALL" as const },
+                  { label: "Yêu cầu của bạn", value: "MINE" as const },
+                  {
+                    label: partnerChangeRequestFilterLabel,
+                    value: "PARTNER" as const,
+                  },
+                ].map((item) => (
+                  <Button
+                    key={item.value}
+                    size="sm"
+                    variant={
+                      changeRequestFilter === item.value
+                        ? "primary"
+                        : "secondary"
+                    }
+                    onClick={() => setChangeRequestFilter(item.value)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              {filteredChangeRequests.length > 0 ? (
+                filteredChangeRequests.map((request) => (
+                  <div
+                    key={request.requestId}
+                    className="rounded-2xl border border-slate-100 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-extrabold text-ink">
+                          {changeRequestHeading(request)}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        status={translateChangeRequestStatus(request.status)}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setViewingChangeRequest(request)}
+                      >
+                        Xem chi tiết
+                      </Button>
+                      {canReviewChangeRequest(request) && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => acceptChangeRequest(request)}
+                          >
+                            Chấp nhận
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => {
+                              setChangeRequestReviewError("");
+                              setChangeRequestReviewNote("");
+                              setRejectingChangeRequest(request);
+                            }}
+                          >
+                            Từ chối
+                          </Button>
+                        </>
+                      )}
+                      {request.status.toUpperCase() === "PENDING" &&
+                        isChangeRequestCreator(request) && (
+                          <span className="text-sm font-semibold text-slate-500">
+                            Đang chờ đối tác phản hồi
+                          </span>
+                        )}
+                      {request.reviewNote && (
+                        <span className="text-sm font-semibold text-green-500">
+                          Đã có phản hồi
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm font-semibold text-slate-500">
+                  Không có yêu cầu phù hợp với bộ lọc hiện tại.
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       )}
       {canPayDeposit && (
@@ -1590,24 +1935,19 @@ export function ContractDetailPage() {
 
       <Modal
         open={changeRequestOpen}
-        onClose={() => !changeRequestLoading && setChangeRequestOpen(false)}
-        title="Yêu cầu thay đổi hợp đồng"
+        onClose={() => !changeRequestLoading && closeChangeRequestModal()}
+        title="Yêu cầu thay đổi mốc nghiệm thu"
         description="Bên còn lại cần chấp nhận trước khi hợp đồng được cập nhật."
         size="xl"
         footer={
           <>
-            <Button
-              variant="secondary"
-              onClick={() => setChangeRequestOpen(false)}
-            >
+            <Button variant="secondary" onClick={closeChangeRequestModal}>
               Hủy
             </Button>
             <Button
               onClick={submitChangeRequest}
               loading={changeRequestLoading}
-              disabled={
-                !changeForm.milestoneId || !changeForm.changeSummary.trim()
-              }
+              disabled={!canSubmitChangeRequest}
             >
               Gửi yêu cầu
             </Button>
@@ -1617,8 +1957,8 @@ export function ContractDetailPage() {
         <div className="grid gap-5">
           <>
             <Notice tone="warning" title="Chỉ các mốc chưa bắt đầu">
-              Các mốc đã hoàn thành, đang thực hiện hoặc đã giải ngân escrow
-              không thể được thay đổi.
+              Các mốc đã hoàn thành, đang thực hiện hoặc đã giải ngân không thể
+              được thay đổi.
             </Notice>
             <Field label="Chọn mốc cần thay đổi">
               <select
@@ -1715,13 +2055,9 @@ export function ContractDetailPage() {
                   <p className="mb-3 text-sm font-extrabold text-brand-700">
                     Thông tin bạn đề xuất thay đổi
                   </p>
-                  <Field label="Mô tả / deliverable mới">
+                  <Field label="Mô tả thay đổi mới">
                     <Textarea
-                      value={
-                        changeForm.milestoneDescription ||
-                        selectedChangeMilestone?.description ||
-                        ""
-                      }
+                      value={changeForm.milestoneDescription}
                       onChange={(event) =>
                         setChangeForm((value) => ({
                           ...value,
@@ -1732,27 +2068,34 @@ export function ContractDetailPage() {
                   </Field>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Ngân sách mốc mới (VND)">
-                      <Input
-                        type="number"
-                        value={
-                          changeForm.milestoneBudget ||
-                          String(selectedChangeMilestone?.finalBudget || "")
-                        }
-                        onChange={(event) =>
-                          setChangeForm((value) => ({
-                            ...value,
-                            milestoneBudget: event.target.value,
-                          }))
-                        }
-                      />
+                      <div className="flex h-11 min-w-0 w-full max-w-full items-center rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink transition focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-50">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={formattedMilestoneBudget}
+                          className="min-w-[1ch] max-w-[calc(100%-1.25rem)] bg-transparent outline-none"
+                          style={{
+                            width: `${Math.max(formattedMilestoneBudget.length, 1)}ch`,
+                          }}
+                          onChange={(event) =>
+                            setChangeForm((value) => ({
+                              ...value,
+                              milestoneBudget: event.target.value.replace(
+                                /\D/g,
+                                "",
+                              ),
+                            }))
+                          }
+                        />
+                        <span className="ml-1 shrink-0 text-sm font-extrabold text-slate-500">
+                          đ
+                        </span>
+                      </div>
                     </Field>
                     <Field label="Thời lượng mới (tuần)">
                       <Input
                         type="number"
-                        value={
-                          changeForm.milestoneDuration ||
-                          String(selectedChangeMilestone?.duration || "")
-                        }
+                        value={changeForm.milestoneDuration}
                         onChange={(event) =>
                           setChangeForm((value) => ({
                             ...value,
@@ -1769,15 +2112,26 @@ export function ContractDetailPage() {
           <Field label="Tóm tắt lý do thay đổi">
             <Textarea
               value={changeForm.changeSummary}
-              onChange={(event) =>
+              onChange={(event) => {
+                setChangeRequestSuccessMessage("");
                 setChangeForm((value) => ({
                   ...value,
                   changeSummary: event.target.value,
-                }))
-              }
+                }));
+              }}
               placeholder="Giải thích lý do và kết quả mong muốn để bên còn lại dễ đánh giá..."
             />
           </Field>
+          {changeRequestSuccessMessage && (
+            <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3 text-sm font-bold text-emerald-800">
+              {changeRequestSuccessMessage}
+            </div>
+          )}
+          {hasPendingChangeForSelectedMilestone && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+              {pendingChangeRequestMessage}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -1829,7 +2183,11 @@ export function ContractDetailPage() {
         {viewingChangeRequest && (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-end gap-3">
-              <StatusBadge status={viewingChangeRequest.status} />
+              <StatusBadge
+                status={translateChangeRequestStatus(
+                  viewingChangeRequest.status,
+                )}
+              />
             </div>
             <Field label="Bạn muốn thay đổi gì?">
               <Input
@@ -2013,15 +2371,17 @@ export function ContractDetailPage() {
           setChangeRequestReviewError("");
         }}
         title="Từ chối yêu cầu thay đổi"
-        description="Lý do từ chối sẽ được gửi cho đối tác tạo yêu cầu."
+        description="Từ chối yêu cầu có thể mở quyền kết thúc hợp đồng cho đối tác."
         footer={
           <>
             <Button
               variant="secondary"
-              onClick={() => setRejectingChangeRequest(null)}
+              onClick={() =>
+                respondWithAnotherChangeRequest(rejectingChangeRequest)
+              }
               disabled={changeRequestReviewLoading}
             >
-              Hủy
+              Phản hồi 1 yêu cầu khác cho mốc này
             </Button>
             <Button
               variant="danger"
@@ -2033,22 +2393,81 @@ export function ContractDetailPage() {
           </>
         }
       >
-        <Field label="Lý do từ chối">
-          <Textarea
-            value={changeRequestReviewNote}
-            onChange={(event) => {
-              setChangeRequestReviewNote(event.target.value);
-              setChangeRequestReviewError("");
-            }}
-            placeholder="Nêu rõ lý do không thể chấp nhận yêu cầu thay đổi này..."
-            className="min-h-28"
+        <div className="space-y-4">
+          <Notice
+            tone="warning"
+            title={
+              session?.role === "EXPERT"
+                ? "Doanh nghiệp có thể sẽ kết thúc hợp đồng với bạn khi bạn từ chối yêu cầu thay đổi này hoặc bạn có thể phản hồi bằng 1 yêu cầu mới."
+                : "Chuyên gia có thể sẽ kết thúc hợp đồng với bạn khi bạn từ chối yêu cầu thay đổi này hoặc bạn có thể phản hồi bằng 1 yêu cầu mới."
+            }
           />
-          {changeRequestReviewError && (
-            <p className="mt-2 text-sm font-bold text-rose-600">
-              {changeRequestReviewError}
-            </p>
-          )}
-        </Field>
+          <Field label="Lý do từ chối">
+            <Textarea
+              value={changeRequestReviewNote}
+              onChange={(event) => {
+                setChangeRequestReviewNote(event.target.value);
+                setChangeRequestReviewError("");
+              }}
+              placeholder="Nêu rõ lý do không thể chấp nhận yêu cầu thay đổi này..."
+              className="min-h-28"
+            />
+            {changeRequestReviewError && (
+              <p className="mt-2 text-sm font-bold text-rose-600">
+                {changeRequestReviewError}
+              </p>
+            )}
+          </Field>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(terminatingChangeRequest)}
+        onClose={() => !terminationLoading && setTerminatingChangeRequest(null)}
+        title="Hủy hợp đồng"
+        description="Chỉ áp dụng khi yêu cầu thay đổi của cùng một mốc đã bị từ chối và không có mốc nào đang hoạt động."
+        size="lg"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setTerminatingChangeRequest(null)}
+              disabled={terminationLoading}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="danger"
+              onClick={requestTerminationAfterRejectedChange}
+              loading={terminationLoading}
+            >
+              Xác nhận hủy hợp đồng
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Notice tone="warning" title="Hợp đồng sẽ kết thúc sau khi xác nhận.">
+            Tiền ký quỹ tương ứng sẽ được hoàn lại cho Doanh nghiệp và Chuyên
+            gia theo xử lý hiện có của hệ thống.
+          </Notice>
+          <Field label="Lý do hủy hợp đồng">
+            <Textarea
+              value={terminationReason}
+              onChange={(event) => {
+                setTerminationReason(event.target.value);
+                setTerminationError("");
+              }}
+              placeholder="Nhập lý do hủy hợp đồng..."
+              className="min-h-28"
+            />
+            {terminationError && (
+              <p className="mt-2 text-sm font-bold text-rose-600">
+                {terminationError}
+              </p>
+            )}
+          </Field>
+        </div>
       </Modal>
 
       <Modal

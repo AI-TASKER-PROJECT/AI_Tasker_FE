@@ -41,7 +41,6 @@ import {
   LinkButton,
   ListLink,
   MetricCard,
-  Notice,
   PageHeader,
   SectionHeading,
   StatusBadge,
@@ -51,6 +50,13 @@ const PROFILE_REVIEW_DOMAIN_CODE = "PROFILE_REVIEW";
 
 export function DashboardPage() {
   const session = useSession();
+  const approvalBonusNoticeSessionKey =
+    (session?.role === "BUSINESS" || session?.role === "EXPERT") &&
+    session.accessToken
+      ? `aitasker:approval-bonus-notice-dismissed:${
+          session.accountId ?? session.email
+        }:${session.accessToken.slice(-24)}`
+      : "";
   const [jobs, setJobs] = useState<Job[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [businessNames, setBusinessNames] = useState<Record<number, string>>(
@@ -66,7 +72,11 @@ export function DashboardPage() {
   const [staffProfile, setStaffProfile] = useState<Staff | null>(null);
   const [quota, setQuota] = useState<UserQuota | null>(null);
   const [approvalBonusNoticeDismissed, setApprovalBonusNoticeDismissed] =
-    useState(false);
+    useState(
+      () =>
+        Boolean(approvalBonusNoticeSessionKey) &&
+        sessionStorage.getItem(approvalBonusNoticeSessionKey) === "1",
+    );
 
   const isStaff = session?.role === "STAFF";
   const isProfileReviewStaff = useMemo(
@@ -183,6 +193,15 @@ export function DashboardPage() {
   }, [session?.role]);
 
   useEffect(() => {
+    void Promise.resolve().then(() =>
+      setApprovalBonusNoticeDismissed(
+        Boolean(approvalBonusNoticeSessionKey) &&
+          sessionStorage.getItem(approvalBonusNoticeSessionKey) === "1",
+      ),
+    );
+  }, [approvalBonusNoticeSessionKey]);
+
+  useEffect(() => {
     if (session?.role !== "STAFF") {
       void Promise.resolve().then(() => {
         setStaffProfile(null);
@@ -232,10 +251,6 @@ export function DashboardPage() {
       .then((response) => setPendingStaffDisputes(response.totalElements))
       .catch(() => setPendingStaffDisputes(0));
   }, [isProfileReviewStaff, session?.role, staffProfile]);
-
-  useEffect(() => {
-    void Promise.resolve().then(() => setApprovalBonusNoticeDismissed(false));
-  }, [session?.accountId, session?.email, session?.role]);
 
   if (!session) return null;
 
@@ -340,6 +355,12 @@ export function DashboardPage() {
     (session.role === "BUSINESS" || session.role === "EXPERT") &&
     session.accountStatus === "Approved" &&
     !approvalBonusNoticeDismissed;
+  const dismissApprovalBonusNotice = () => {
+    if (approvalBonusNoticeSessionKey) {
+      sessionStorage.setItem(approvalBonusNoticeSessionKey, "1");
+    }
+    setApprovalBonusNoticeDismissed(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -358,16 +379,30 @@ export function DashboardPage() {
       </div>
 
       {showApprovalBonusNotice && (
-        <Notice tone={approvalBonusNoticeTone} title={approvalBonusNoticeTitle}>
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 text-sm ${
+            approvalBonusNoticeTone === "warning"
+              ? "border-amber-100 bg-amber-50 text-amber-800"
+              : "border-mint-100 bg-mint-50 text-emerald-800"
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <FileCheck2 className="h-4 w-4 shrink-0" />
+            <p className="break-words font-bold">{approvalBonusNoticeTitle}</p>
+          </div>
           <button
             type="button"
-            onClick={() => setApprovalBonusNoticeDismissed(true)}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-extrabold text-mint-700 shadow-sm transition hover:bg-mint-50"
+            onClick={dismissApprovalBonusNotice}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-extrabold shadow-sm transition ${
+              approvalBonusNoticeTone === "warning"
+                ? "text-amber-700 hover:bg-amber-50"
+                : "text-mint-700 hover:bg-mint-50"
+            }`}
           >
             <X className="h-3.5 w-3.5" />
             Đã hiểu
           </button>
-        </Notice>
+        </div>
       )}
 
       <div

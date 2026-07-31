@@ -44,7 +44,10 @@ function Party({
   );
 }
 
-function amountSign(tx: WalletTransaction) {
+function amountSign(tx: WalletTransaction, amountIsPositive?: boolean) {
+  if (typeof amountIsPositive === "boolean") {
+    return amountIsPositive ? "+" : "−";
+  }
   return ["CREDIT", "RELEASE"].includes(String(tx.direction).toUpperCase())
     ? "+"
     : "−";
@@ -53,9 +56,11 @@ function amountSign(tx: WalletTransaction) {
 export function WalletTransactionDetailModal({
   transaction,
   onClose,
+  amountIsPositive,
 }: {
   transaction: WalletTransaction | null;
   onClose: () => void;
+  amountIsPositive?: boolean;
 }) {
   if (!transaction) return null;
   const tx = transaction;
@@ -93,7 +98,7 @@ export function WalletTransactionDetailModal({
             {tx.statusLabel && <Badge tone="slate">{tx.statusLabel}</Badge>}
           </div>
           <p className="text-2xl font-black text-ink">
-            {amountSign(tx)}{formatCurrency(Math.abs(tx.amount))}
+            {amountSign(tx, amountIsPositive)}{formatCurrency(Math.abs(tx.amount))}
           </p>
         </div>
 
