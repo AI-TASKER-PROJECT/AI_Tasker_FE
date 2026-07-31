@@ -1,24 +1,13 @@
 import { BarChart3, Bot, BriefcaseBusiness, CheckCircle2, Cpu, Eye, FileSignature, PenTool, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
-import { useEffect, useState } from "react";
-import { marketplaceApi } from "../../../lib/api";
 import { getPublicExperience } from "../../../lib/roleExperience";
 import { useSession } from "../../../lib/session";
-import type { Job } from "../../../types";
 import { Badge, Button, Card, LinkButton } from "../../../components/ui";
 import { ScrollReveal } from "../../../components/ui/ScrollReveal";
-import { heroImage, JobCard } from "../PublicPages.shared";
+import { heroImage } from "../PublicPages.shared";
 
 export function JobsPage() {
   const session = useSession();
   const publicExperience = getPublicExperience(session);
-  const [jobs, setJobs] = useState<Job[]>([]);
-
-  useEffect(() => {
-    marketplaceApi
-      .listJobs()
-      .then((data) => setJobs(data || []))
-      .catch(() => setJobs([]));
-  }, []);
 
   return (
     <div className="relative overflow-x-hidden bg-[#f7faff] pb-24 pt-16">
@@ -31,15 +20,15 @@ export function JobsPage() {
                 tone="brand"
                 className="bg-[#ffe6f0] text-[#C50070] ring-[#f6dce5]"
               >
-                BUSINESS SOLUTION
+            GIẢI PHÁP DOANH NGHIỆP
               </Badge>
               <h1 className="mt-6 font-display text-4xl font-black leading-tight tracking-[-0.02em] text-ink lg:text-5xl lg:leading-[1.15]">
-                Đưa dự án AI của doanh nghiệp từ ý tưởng dến triển khai thực tế
+                Đưa dự án AI của doanh nghiệp từ ý tưởng đến triển khai thực tế
               </h1>
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                AITASKER giúp doanh nghiệp tìm dúng chuyên gia AI, dăng dự án
-                nhanh chóng, nhận dề xuất phù hợp và quản lý toàn bộ quá trình
-                hợp tác qua hợp dồng, milestone, escrow và nghiệm thu minh bạch.
+                AITASKER giúp doanh nghiệp tìm đúng chuyên gia AI, đăng dự án
+                nhanh chóng, nhận đề xuất phù hợp và quản lý toàn bộ quá trình
+                hợp tác qua hợp đồng, cột mốc, ký quỹ và nghiệm thu minh bạch.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <LinkButton
@@ -47,7 +36,7 @@ export function JobsPage() {
                   to={publicExperience.primaryPath}
                   className="bg-[#C50070] text-white hover:bg-[#a3005c]"
                 >
-                  Bắt dầu dự án
+                  Bắt đầu dự án
                 </LinkButton>
                 <Button
                   size="lg"
@@ -80,8 +69,8 @@ export function JobsPage() {
             {[
               { label: "Chuyên gia trong mạng lưới", value: "5,000+" },
               { label: "Lĩnh vực AI có thể triển khai", value: "30+" },
-              { label: "Hợp dồng, NDA và escrow", value: "Minh bạch" },
-              { label: "Nhận dề xuất phù hợp", value: "Nhanh chóng" },
+              { label: "Hợp đồng, bảo mật và ký quỹ", value: "Minh bạch" },
+              { label: "Nhận đề xuất phù hợp", value: "Nhanh chóng" },
             ].map((metric) => (
               <Card
                 key={metric.label}
@@ -98,31 +87,6 @@ export function JobsPage() {
           </div>
         </ScrollReveal>
 
-        {/* New Section: Job Listings */}
-        <ScrollReveal>
-          <div className="mt-32">
-            <div className="mb-12 text-center">
-              <h2 className="font-display text-3xl font-black text-ink">
-                Dự án đang nổi bật
-              </h2>
-              <p className="mt-4 text-lg text-slate-600">
-                Khám phá các dự án AI đang tuyển dụng chuyên gia trên nền tảng.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <JobCard key={job.jobId} job={job} hideStatus={true} />
-                ))
-              ) : (
-                <div className="col-span-full py-10 text-center text-slate-500">
-                  Chưa có dự án nào để hiển thị.
-                </div>
-              )}
-            </div>
-          </div>
-        </ScrollReveal>
-
         {/* Section 3: AI Capabilities */}
         <ScrollReveal>
           <div className="mt-32 text-center">
@@ -134,22 +98,22 @@ export function JobsPage() {
             {[
               {
                 title: "Chatbot chăm sóc khách hàng",
-                desc: "Tích hợp trợ lý ảo AI dể hỗ trợ khách hàng 24/7.",
+                desc: "Tích hợp trợ lý ảo AI để hỗ trợ khách hàng 24/7.",
                 icon: <Bot />,
               },
               {
-                title: "Tự dộng hóa quy trình nội bộ",
+                title: "Tự động hóa quy trình nội bộ",
                 desc: "Tối ưu hóa các tác vụ lặp di lặp lại bằng AI và RPA.",
                 icon: <Workflow />,
               },
               {
                 title: "Phân tích dữ liệu kinh doanh",
-                desc: "Dự báo xu hướng và phân tích dữ liệu dể ra quyết dịnh.",
+                desc: "Dự báo xu hướng và phân tích dữ liệu để ra quyết định.",
                 icon: <BarChart3 />,
               },
               {
                 title: "Computer Vision",
-                desc: "Nhận diện hình ảnh, OCR, và kiểm tra chất lượng tự dộng.",
+                desc: "Nhận diện hình ảnh, OCR và kiểm tra chất lượng tự động.",
                 icon: <Eye />,
               },
               {
@@ -159,12 +123,12 @@ export function JobsPage() {
               },
               {
                 title: "Xây dựng MVP sản phẩm AI",
-                desc: "Triển khai nhanh chóng phiên bản MVP dể thử nghiệm thị trường.",
+                desc: "Triển khai nhanh chóng phiên bản MVP để thử nghiệm thị trường.",
                 icon: <PenTool />,
               },
               {
                 title: "Tối ưu vận hành bằng AI",
-                desc: "Ứng dụng AI dể giảm chi phí và nâng cao hiệu suất hoạt dộng.",
+                desc: "Ứng dụng AI để giảm chi phí và nâng cao hiệu suất hoạt động.",
                 icon: <Target />,
               },
               {
@@ -197,29 +161,29 @@ export function JobsPage() {
             <div className="mt-12 grid gap-8 lg:grid-cols-4">
               {[
                 {
-                  title: "Tìm chuyên gia phù hợp bằng AI Matching",
-                  desc: "Thuật toán thông minh tự dộng phân tích dự án và dề xuất chuyên gia có kỹ năng sát nhất.",
+                  title: "Tìm chuyên gia phù hợp bằng đối sánh AI",
+                  desc: "Thuật toán thông minh tự động phân tích dự án và đề xuất chuyên gia có kỹ năng sát nhất.",
                   icon: <Sparkles />,
                   color: "text-[#0B7AEA]",
                   bg: "bg-[#e6f0ff]",
                 },
                 {
-                  title: "Hồ sơ chuyên gia dược kiểm tra",
-                  desc: "100% chuyên gia trên hệ thống dều trải qua quá trình xác minh danh tính và kiểm dịnh năng lực.",
+                  title: "Hồ sơ chuyên gia được kiểm tra",
+                  desc: "100% chuyên gia trên hệ thống đều trải qua quá trình xác minh danh tính và kiểm định năng lực.",
                   icon: <ShieldCheck />,
                   color: "text-teal-600",
                   bg: "bg-teal-50",
                 },
                 {
-                  title: "Quản lý dự án theo milestone",
-                  desc: "Chia nhỏ dự án thành các giai doạn rõ ràng dể dễ dàng nghiệm thu và dánh giá tiến dộ.",
+                  title: "Quản lý dự án theo mốc",
+                  desc: "Chia nhỏ dự án thành các giai đoạn rõ ràng để dễ dàng nghiệm thu và đánh giá tiến độ.",
                   icon: <Target />,
                   color: "text-emerald-600",
                   bg: "bg-emerald-50",
                 },
                 {
-                  title: "Thanh toán an toàn qua escrow",
-                  desc: "Ngân sách dược hệ thống giữ an toàn và chỉ giải ngân khi bạn dã nghiệm thu công việc.",
+                  title: "Thanh toán an toàn qua ký quỹ",
+                  desc: "Ngân sách được hệ thống giữ an toàn và chỉ giải ngân khi bạn đã nghiệm thu công việc.",
                   icon: <FileSignature />,
                   color: "text-[#C50070]",
                   bg: "bg-[#ffe6f0]",
@@ -262,18 +226,18 @@ export function JobsPage() {
                 },
                 {
                   step: 2,
-                  title: "Nhận gợi ý chuyên gia và proposal phù hợp",
-                  desc: "Hệ thống dề xuất chuyên gia phù hợp và nhận báo giá chi tiết.",
+                  title: "Nhận gợi ý chuyên gia và bản đề xuất phù hợp",
+                  desc: "Hệ thống đề xuất chuyên gia phù hợp và nhận báo giá chi tiết.",
                 },
                 {
                   step: 3,
-                  title: "Ký hợp dồng, NDA và thống nhất milestone",
-                  desc: "Ký kết văn bản pháp lý diện tử và chốt kế hoạch thực hiện.",
+                  title: "Ký hợp đồng, thỏa thuận bảo mật và thống nhất cột mốc",
+                  desc: "Ký kết văn bản pháp lý điện tử và chốt kế hoạch thực hiện.",
                 },
                 {
                   step: 4,
                   title: "Theo dõi tiến dộ, nghiệm thu và thanh toán",
-                  desc: "Quản lý tiến dộ theo từng cột mốc và thanh toán minh bạch qua escrow.",
+                  desc: "Quản lý tiến dộ theo từng mốc và thanh toán minh bạch qua escrow.",
                 },
               ].map((step) => (
                 <div key={step.step} className="relative z-10 text-center">
@@ -302,10 +266,10 @@ export function JobsPage() {
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
               {[
                 "KYB/KYC",
-                "NDA diện tử",
-                "Hợp dồng diện tử",
+                "Thỏa thuận bảo mật điện tử",
+                "Hợp đồng điện tử",
                 "Escrow",
-                "Milestone rõ ràng",
+                "Mốc rõ ràng",
                 "Đánh giá sau dự án",
                 "Quản lý tranh chấp",
               ].map((feature) => (

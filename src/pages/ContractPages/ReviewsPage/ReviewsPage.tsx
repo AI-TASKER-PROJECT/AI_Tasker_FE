@@ -202,7 +202,7 @@ export function ReviewsPage() {
     } catch (error) {
       setNotice({
         tone: "danger",
-        title: "Khong tai duoc danh sach hop dong.",
+        title: "Không tải được danh sách hợp đồng.",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -253,7 +253,7 @@ export function ReviewsPage() {
     ) {
       setNotice({
         tone: "danger",
-        title: "Du lieu danh gia chua hop le.",
+        title: "Dữ liệu đánh giá chưa hợp lệ.",
         message: "Vui lòng chọn hợp đồng và mức đánh giá từ 1 đến 5 sao.",
       });
       return;
@@ -447,7 +447,7 @@ export function ReviewsPage() {
       {closedContracts.length === 0 && !loading && (
         <Notice tone="info" title="Chưa có hợp đồng đủ điều kiện đánh giá.">
           Hợp đồng sẽ xuất hiện sau khi được tất toán và chuyển sang trạng thái
-          CLOSED.
+          đã đóng.
         </Notice>
       )}
 

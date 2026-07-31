@@ -16,14 +16,14 @@ export function ExpertDirectoryPage() {
         <ScrollReveal>
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <Badge tone="brand">EXPERT NETWORK</Badge>
+      <Badge tone="brand">MẠNG LƯỚI CHUYÊN GIA</Badge>
               <h1 className="mt-6 font-display text-4xl font-black leading-tight tracking-[-0.02em] text-ink lg:text-5xl lg:leading-[1.15]">
                 Mạng lưới chuyên gia AI sẵn sàng đồng hành cùng doanh nghiệp
               </h1>
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                Kết nối với các chuyên gia AI dã dược chọn lọc, có năng lực thực
+                Kết nối với các chuyên gia AI đã được chọn lọc, có năng lực thực
                 chiến và phù hợp với nhu cầu dự án của bạn — từ tư vấn chiến
-                lược, xây dựng chatbot, automation, phân tích dữ liệu dến triển
+                lược, xây dựng trợ lý trò chuyện, tự động hóa, phân tích dữ liệu đến triển
                 khai mô hình AI.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -64,7 +64,7 @@ export function ExpertDirectoryPage() {
             {[
               { label: "Chuyên gia đã tham gia", value: "5,000+" },
               { label: "Lĩnh vực AI", value: "30+" },
-              { label: "Hồ sơ dược kiểm tra", value: "100%" },
+              { label: "Hồ sơ được kiểm tra", value: "100%" },
               { label: "Hợp đồng & thanh toán", value: "Minh bạch" },
             ].map((metric) => (
               <Card
@@ -89,7 +89,7 @@ export function ExpertDirectoryPage() {
               Chuyên gia AI cho mọi nhu cầu
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-              Đội ngũ chuyên gia da dạng, dáp ứng toàn diện vòng dời phát triển
+              Đội ngũ chuyên gia đa dạng, đáp ứng toàn diện vòng đời phát triển
               dự án AI của doanh nghiệp.
             </p>
           </div>
@@ -111,13 +111,13 @@ export function ExpertDirectoryPage() {
                 icon: <Eye />,
               },
               {
-                title: "Data Science & Analytics",
-                desc: "Khai phá dữ liệu, dự báo xu hướng và xây dựng dashboard BI nâng cao.",
+      title: "Khoa học dữ liệu và phân tích",
+                desc: "Khai phá dữ liệu, dự báo xu hướng và xây dựng bảng điều khiển BI nâng cao.",
                 icon: <BarChart3 />,
               },
               {
                 title: "Workflow Automation",
-                desc: "Tự dộng hóa quy trình nghiệp vụ với AI agent, n8n, Zapier và RPA.",
+                desc: "Tự động hóa quy trình nghiệp vụ với tác nhân AI, n8n, Zapier và RPA.",
                 icon: <Workflow />,
               },
               {
@@ -132,7 +132,7 @@ export function ExpertDirectoryPage() {
               },
               {
                 title: "Prompt Engineer",
-                desc: "Tối ưu hóa câu lệnh giao tiếp với AI dể dạt dược kết quả chính xác cao nhất.",
+                desc: "Tối ưu hóa câu lệnh giao tiếp với AI để đạt được kết quả chính xác cao nhất.",
                 icon: <MessageSquareText />,
               },
             ].map((role) => (
@@ -160,29 +160,29 @@ export function ExpertDirectoryPage() {
             <div className="mt-12 grid gap-8 lg:grid-cols-4">
               {[
                 {
-                  title: "Hồ sơ dược xác minh",
-                  desc: "Mọi chuyên gia dều phải trải qua quá trình KYC và kiểm dịnh năng lực khắt khe.",
+                  title: "Hồ sơ được xác minh",
+                  desc: "Mọi chuyên gia đều phải trải qua quá trình KYC và kiểm định năng lực khắt khe.",
                   icon: <ShieldCheck />,
                   color: "text-emerald-600",
                   bg: "bg-emerald-50",
                 },
                 {
                   title: "AI gợi ý chuyên gia",
-                  desc: "Hệ thống AI tự động phân tích SoW và match dúng chuyên gia phù hợp nhất.",
+                  desc: "Hệ thống AI tự động phân tích phạm vi công việc và đối sánh đúng chuyên gia phù hợp nhất.",
                   icon: <Sparkles />,
                   color: "text-blue-600",
                   bg: "bg-blue-50",
                 },
                 {
-                  title: "Làm việc theo milestone",
-                  desc: "Chia nhỏ dự án thành các cột mốc rõ ràng, dễ dàng nghiệm thu và quản lý rủi ro.",
+                  title: "Làm việc theo mốc",
+                  desc: "Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng nghiệm thu và quản lý rủi ro.",
                   icon: <Target />,
                   color: "text-brand-600",
                   bg: "bg-brand-50",
                 },
                 {
-                  title: "Minh bạch hợp đồng & escrow",
-                  desc: "Hợp đồng diện tử, NDA bảo mật và cơ chế giữ tiền an toàn cho cả hai bên.",
+                  title: "Minh bạch hợp đồng và ký quỹ",
+                  desc: "Hợp đồng điện tử, thỏa thuận bảo mật và cơ chế giữ tiền an toàn cho cả hai bên.",
                   icon: <FileSignature />,
                   color: "text-indigo-600",
                   bg: "bg-indigo-50",
@@ -221,22 +221,22 @@ export function ExpertDirectoryPage() {
                 {
                   step: 1,
                   title: "Mô tả nhu cầu",
-                  desc: "Doanh nghiệp dăng tải yêu cầu dự án AI cần giải quyết.",
+                  desc: "Doanh nghiệp đăng tải yêu cầu dự án AI cần giải quyết.",
                 },
                 {
                   step: 2,
                   title: "AI gợi ý chuyên gia",
-                  desc: "Hệ thống phân tích và dề xuất chuyên gia phù hợp năng lực.",
+                  desc: "Hệ thống phân tích và đề xuất chuyên gia phù hợp năng lực.",
                 },
                 {
                   step: 3,
                   title: "Ký hợp đồng",
-                  desc: "Trao dổi proposal, chốt ngân sách và ký hợp đồng diện tử.",
+                  desc: "Trao đổi bản đề xuất, chốt ngân sách và ký hợp đồng điện tử.",
                 },
                 {
                   step: 4,
                   title: "Nghiệm thu",
-                  desc: "Theo dõi milestone, nghiệm thu công việc và thanh toán.",
+                  desc: "Theo dõi mốc, nghiệm thu công việc và thanh toán.",
                 },
               ].map((step) => (
                 <div key={step.step} className="relative z-10 text-center">
@@ -266,9 +266,9 @@ export function ExpertDirectoryPage() {
             <div className="flex flex-wrap justify-center gap-4 md:gap-8">
               {[
                 "Định danh KYC/KYB",
-                "Ký NDA diện tử",
+                "Ký thỏa thuận bảo mật điện tử",
                 "Hợp đồng pháp lý",
-                "Thanh toán Escrow",
+                "Thanh toán ký quỹ",
                 "Đánh giá năng lực",
                 "Hỗ trợ giải quyết tranh chấp",
               ].map((feature) => (

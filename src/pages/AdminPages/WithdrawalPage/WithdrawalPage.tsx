@@ -23,6 +23,9 @@ import {
   SectionHeading,
   Tabs,
 } from "../../../components/ui";
+import { AdminPagination } from "../AdminPages.shared";
+
+const WITHDRAWALS_PER_PAGE = 8;
 
 function withdrawalStatusLabel(status: string) {
   const map: Record<string, string> = {
@@ -270,7 +273,7 @@ function ReviewModal({
           </Notice>
         )}
 
-        <Field label="Ghi chú Admin">
+        <Field label="Ghi chú quản trị viên">
           <textarea
             className="min-h-[80px] w-full resize-y rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
             placeholder={
@@ -320,7 +323,7 @@ function ViewDetailsModal({
               value={accountDisplayName(withdrawal, accounts)}
             />
             <DetailRow
-              label="Account"
+            label="Tài khoản"
               value={accountSubLabel(withdrawal, accounts)}
             />
             <DetailRow label="Số tiền" value={formatCurrency(withdrawal.amount)} />
@@ -361,7 +364,7 @@ function ViewDetailsModal({
           </div>
           <div className="flex flex-col gap-1">
             <span className="font-semibold text-slate-500">
-              Ghi chú của Admin
+              Ghi chú của quản trị viên
             </span>
             <div className="mt-1 max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-all rounded-xl border border-slate-200 bg-white p-3 text-ink">
               {withdrawal.adminNote || "Không có ghi chú"}
@@ -388,6 +391,7 @@ export function AdminWithdrawalPage() {
     null,
   );
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -439,6 +443,12 @@ export function AdminWithdrawalPage() {
       wr.bankAccountHolder.toLowerCase().includes(q);
     return matchTab && matchSearch;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / WITHDRAWALS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedWithdrawals = filtered.slice(
+    (effectivePage - 1) * WITHDRAWALS_PER_PAGE,
+    effectivePage * WITHDRAWALS_PER_PAGE,
+  );
 
   const counts = {
     ALL: withdrawals.length,
@@ -516,7 +526,10 @@ export function AdminWithdrawalPage() {
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
               value={search}
-              onChange={setSearch}
+              onChange={(value) => {
+                setSearch(value);
+                setCurrentPage(1);
+              }}
               placeholder="Tìm theo tên, email, số TK..."
             />
             <Tabs
@@ -527,7 +540,10 @@ export function AdminWithdrawalPage() {
                 { id: "REJECTED", label: "Từ chối", count: counts.REJECTED },
               ]}
               active={tab}
-              onChange={(id) => setTab(id as typeof tab)}
+              onChange={(id) => {
+                setTab(id as typeof tab);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -555,7 +571,7 @@ export function AdminWithdrawalPage() {
             </div>
 
             <div className="divide-y divide-slate-50">
-              {filtered.map((wr) => (
+              {paginatedWithdrawals.map((wr) => (
                 <div
                   key={wr.withdrawalId}
                   className="grid min-w-[980px] grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
@@ -630,6 +646,15 @@ export function AdminWithdrawalPage() {
               ))}
             </div>
           </div>
+        )}
+        {!loading && (
+          <AdminPagination
+            currentPage={effectivePage}
+            pageSize={WITHDRAWALS_PER_PAGE}
+            totalItems={filtered.length}
+            itemLabel="yêu cầu rút tiền"
+            onPageChange={setCurrentPage}
+          />
         )}
       </Card>
 

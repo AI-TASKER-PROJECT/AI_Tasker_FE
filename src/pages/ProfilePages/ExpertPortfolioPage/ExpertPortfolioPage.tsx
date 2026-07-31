@@ -142,7 +142,7 @@ export function ExpertPortfolioPage() {
       setForm((value) => ({ ...value, certificates }));
       setSaved(true); //lưu
     } catch (submitError) {
-      setError(readApiError(submitError, "Không thể lưu portfolio."));
+      setError(readApiError(submitError, "Không thể lưu hồ sơ năng lực."));
     } finally {
       setLoading(false);
     }
@@ -152,8 +152,8 @@ export function ExpertPortfolioPage() {
     <div className="space-y-7">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="Portfolio năng lực AI"
-          description="Biến hồ sơ chuyên gia thành một bản giới thiệu đủ rõ để doanh nghiệp nhìn thấy lĩnh vực mạnh, stack công nghệ, chứng chỉ và cách bạn giải quyết dự án."
+          title="Hồ sơ năng lực AI"
+          description="Biến hồ sơ chuyên gia thành một bản giới thiệu rõ ràng để doanh nghiệp nhìn thấy lĩnh vực mạnh, nhóm công nghệ, chứng chỉ và cách bạn giải quyết dự án."
         />
       </div>
 
@@ -186,7 +186,7 @@ export function ExpertPortfolioPage() {
           <Card className="p-6">
             <SectionHeading
               title="Kỹ năng & công nghệ"
-              description="Ghép skill nghiệp vụ với stack triển khai để matching tốt hơn."
+              description="Kết hợp kỹ năng nghiệp vụ với công nghệ triển khai để hệ thống đối sánh chính xác hơn."
             />
             <div className="mt-5 grid gap-6 lg:grid-cols-2">
               <div>
@@ -243,10 +243,10 @@ export function ExpertPortfolioPage() {
                 />
               </Field>
               <Field
-                label="Chứng chỉ trong Portfolio AI"
+                label="Chứng chỉ trong hồ sơ năng lực AI"
                 hint={
                   form.certificates ||
-                  "Chứng chỉ trong mục Portfolio AI. Chọn ảnh, PDF hoặc DOC/DOCX để upload lên Firebase Storage."
+                  "Chứng chỉ trong hồ sơ năng lực AI. Chọn ảnh, PDF hoặc DOC/DOCX để tải lên kho lưu trữ."
                 }
               >
                 <ProfileFilePicker
@@ -277,7 +277,7 @@ export function ExpertPortfolioPage() {
             <div className="mt-5 flex justify-end">
               <Button type="submit" loading={loading}>
                 <ClipboardCheck className="h-4 w-4" />
-                Nộp Portfolio AI
+                Nộp hồ sơ năng lực AI
               </Button>
             </div>
           </Card>
@@ -319,7 +319,7 @@ export function ExpertPortfolioPage() {
               />
               <PreviewGroup
                 icon={<Cpu className="h-4 w-4" />}
-                title="Stack công nghệ"
+                title="Nhóm công nghệ"
                 emptyText="Chưa chọn công nghệ"
                 items={selectedTechnologies.map((item) => item.technologyName)}
                 tone="coral"
@@ -346,20 +346,20 @@ export function ExpertPortfolioPage() {
               </span>
               <div>
                 <h3 className="font-display text-base font-extrabold text-ink">
-                  Gợi ý để matching tốt
+                  Gợi ý để đối sánh tốt
                 </h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
                   Chọn đúng công nghệ đang dùng trong dự án thật và viết mô tả
                   theo kết quả đã bàn giao. Điều này giúp doanh nghiệp đọc hồ sơ
-                  nhanh hơn khi so sánh proposal.
+                  nhanh hơn khi so sánh bản đề xuất.
                 </p>
               </div>
             </div>
           </Card>
 
           {saved && (
-            <Notice tone="success" title="Đã lưu portfolio">
-              Portfolio đã sẵn sàng để doanh nghiệp xem khi đánh giá proposal.
+            <Notice tone="success" title="Đã lưu hồ sơ năng lực">
+              Hồ sơ năng lực đã sẵn sàng để doanh nghiệp xem khi đánh giá bản đề xuất.
             </Notice>
           )}
         </aside>

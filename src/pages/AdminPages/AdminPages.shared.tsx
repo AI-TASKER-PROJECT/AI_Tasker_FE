@@ -1,7 +1,8 @@
 import { type ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type Domain } from "../../lib/api";
 import { formatDate, formatTime } from "../../lib/utils";
-import { Card, Progress } from "../../components/ui";
+import { Button, Card, Progress } from "../../components/ui";
 import type { AccountStatus, Role } from "../../types";
 
 export function AdminMetric({
@@ -37,6 +38,68 @@ export function AdminMetric({
         </span>
       </div>
     </Card>
+  );
+}
+
+export function AdminPagination({
+  currentPage,
+  pageSize,
+  totalItems,
+  itemLabel,
+  onPageChange,
+}: {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  itemLabel: string;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const effectivePage = Math.min(Math.max(1, currentPage), totalPages);
+  if (totalItems <= pageSize) return null;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-semibold text-slate-500">
+        Hiển thị {(effectivePage - 1) * pageSize + 1}–{Math.min(effectivePage * pageSize, totalItems)} trên tổng {totalItems} {itemLabel}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          disabled={effectivePage === 1}
+          onClick={() => onPageChange(effectivePage - 1)}
+          title="Trang trước"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => onPageChange(page)}
+            className={`h-9 min-w-9 rounded-xl px-3 text-sm font-extrabold transition ${
+              effectivePage === page
+                ? "bg-brand-600 text-white shadow-[0_8px_20px_rgba(23,103,242,.18)]"
+                : "bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          disabled={effectivePage === totalPages}
+          onClick={() => onPageChange(effectivePage + 1)}
+          title="Trang sau"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 

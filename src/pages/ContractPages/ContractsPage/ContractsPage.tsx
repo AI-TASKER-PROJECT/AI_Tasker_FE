@@ -1,12 +1,57 @@
 import { useEffect, useState } from "react";
-import type { Contract } from "../../../types";
+import type {
+  Contract,
+  ContractChangeMilestone,
+  ContractChangeRequest,
+  ContractMilestone,
+} from "../../../types";
 import { contractApi } from "../../../lib/api";
 import { formatCompactCurrency, formatDateTime } from "../../../lib/utils";
 import { Badge, Button, Card, EmptyState, LinkButton, PageHeader, StatusBadge } from "../../../components/ui";
 import { formatTimelineWeeks, normalizeContractStatus, translateContractStatus } from "../ContractPages.shared";
 
+function proposedChangeMilestones(request?: ContractChangeRequest | null) {
+  if (!request?.proposedMilestones) return [];
+  if (Array.isArray(request.proposedMilestones))
+    return request.proposedMilestones;
+  try {
+    const parsed = JSON.parse(request.proposedMilestones);
+    return Array.isArray(parsed) ? (parsed as ContractChangeMilestone[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function acceptedChangeTime(request: ContractChangeRequest) {
+  return new Date(
+    request.reviewedAt || request.updatedAt || request.createdAt || 0,
+  ).getTime();
+}
+
+function milestoneDurationDays(
+  milestone: Partial<ContractMilestone | ContractChangeMilestone>,
+) {
+  const duration = Number(milestone.duration || 0);
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+  const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+  if (unit.includes("DAY")) return duration;
+  if (unit.includes("MONTH")) return duration * 30;
+  return duration * 7;
+}
+
+function sumMilestoneDurationDays(
+  milestones: Array<Partial<ContractMilestone | ContractChangeMilestone>>,
+) {
+  return milestones.reduce(
+    (total, milestone) => total + milestoneDurationDays(milestone),
+    0,
+  );
+}
+
 export function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [changedTimelineDaysByContract, setChangedTimelineDaysByContract] =
+    useState<Record<number, number>>({});
   const [activeStatus, setActiveStatus] = useState<
     "ALL" | "DRAFT" | "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED"
   >("ALL");
@@ -17,6 +62,46 @@ export function ContractsPage() {
       .then(setContracts)
       .catch(() => setContracts([]));
   }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadAcceptedChangeTimelines() {
+      const entries = await Promise.all(
+        contracts.map(async (contract) => {
+          const changeRequests = await contractApi
+            .listChangeRequests(contract.contractId)
+            .catch(() => [] as ContractChangeRequest[]);
+          const acceptedRequests = changeRequests
+            .filter((request) => request.status.toUpperCase() === "ACCEPTED")
+            .sort((a, b) => acceptedChangeTime(a) - acceptedChangeTime(b));
+          const latestAccepted = acceptedRequests[acceptedRequests.length - 1];
+          if (!latestAccepted) return null;
+          if (latestAccepted.proposedTimelineDays) {
+            return [contract.contractId, latestAccepted.proposedTimelineDays] as const;
+          }
+          const proposedMilestones = proposedChangeMilestones(latestAccepted);
+          if (!proposedMilestones.some((milestone) => milestone.duration != null)) {
+            return null;
+          }
+          const milestones = await contractApi
+            .listMilestones(contract.contractId)
+            .catch(() => [] as ContractMilestone[]);
+          const totalDays = sumMilestoneDurationDays(milestones);
+          return totalDays > 0 ? ([contract.contractId, totalDays] as const) : null;
+        }),
+      );
+      if (ignore) return;
+      setChangedTimelineDaysByContract(
+        Object.fromEntries(entries.filter((entry): entry is [number, number] => Boolean(entry))),
+      );
+    }
+
+    void loadAcceptedChangeTimelines();
+    return () => {
+      ignore = true;
+    };
+  }, [contracts]);
 
   const filteredContracts =
     activeStatus === "ALL"
@@ -96,9 +181,12 @@ export function ContractsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400">Timeline</p>
+                <p className="text-xs font-bold text-slate-400">Thời gian</p>
                 <p className="mt-1 text-sm font-extrabold text-ink">
-                  {formatTimelineWeeks(contract.timelineDays)}
+                  {formatTimelineWeeks(
+                    changedTimelineDaysByContract[contract.contractId] ||
+                      contract.timelineDays,
+                  )}
                 </p>
               </div>
             </div>
@@ -115,7 +203,7 @@ export function ContractsPage() {
                 to={`/app/contracts/${contract.contractId}/workspace`}
                 size="sm"
               >
-                Workspace
+                Không gian làm việc
               </LinkButton>
             </div>
           </Card>
@@ -128,7 +216,7 @@ export function ContractsPage() {
               ? "Chưa có hợp đồng nháp"
               : "Chưa có hợp đồng"
           }
-          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp accept proposal và bấm tạo contract từ màn hình quản lý job."
+          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp chấp nhận bản đề xuất và bấm tạo hợp đồng từ màn hình quản lý dự án."
         />
       )}
     </div>

@@ -19,7 +19,10 @@ import { useLocation } from "react-router-dom";
 import { Avatar, Badge, Card, LinkButton } from "../../../components/ui";
 import { ScrollReveal } from "../../../components/ui/ScrollReveal";
 import { useSession } from "../../../context/sessionContext";
+import { marketplaceApi } from "../../../lib/api";
 import { getPublicExperience } from "../../../lib/roleExperience";
+import type { Job } from "../../../types";
+import { JobCard } from "../PublicPages.shared";
 
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX";
@@ -43,14 +46,14 @@ const workflowSteps = [
   },
   {
     title: "Thanh toán",
-    description: "Nghiệm thu từng giai đoạn và giải ngân minh bạch.",
+    description: "Nghiệm thu từng mốc và giải ngân minh bạch.",
   },
 ] as const;
 
 const trustHighlights = [
   {
     icon: ShieldCheck,
-    title: "Bảo mật Escrow",
+    title: "Ký quỹ bảo đảm",
     description:
       "Ngân sách dự án được giữ an toàn bởi AITASKER và chỉ chuyển cho chuyên gia khi công việc được hoàn thành.",
   },
@@ -78,7 +81,7 @@ const trustCards = [
   {
     icon: Star,
     title: "Đánh giá thực",
-    description: "Hệ thống feedback hai chiều sau mỗi dự án.",
+      description: "Hệ thống phản hồi hai chiều sau mỗi dự án.",
     offset: false,
   },
   {
@@ -116,7 +119,7 @@ const useCases = [
   },
   {
     icon: Workflow,
-    title: "Data Dashboard",
+    title: "Bảng điều khiển dữ liệu",
     description:
       "Phân tích dữ liệu lớn và trực quan hóa xu hướng để hỗ trợ ra quyết định kinh doanh.",
   },
@@ -126,12 +129,12 @@ const faqs = [
   {
     question: "Làm thế nào để chọn được chuyên gia phù hợp nhất?",
     answer:
-      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, portfolio và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, AI Matching của chúng tôi sẽ gợi ý top 5 ứng viên sát nhất với yêu cầu của bạn.",
+      "Bạn có thể dựa vào điểm đánh giá, lịch sử dự án, hồ sơ năng lực và bài kiểm tra năng lực của chuyên gia trên hệ thống. Ngoài ra, hệ thống ghép nối AI sẽ gợi ý 5 ứng viên sát nhất với yêu cầu của bạn.",
   },
   {
     question: "Tiền của tôi có được an toàn khi thanh toán trước không?",
     answer:
-      "Có. AITASKER sử dụng hệ thống Escrow. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và bấm xác nhận hoàn thành công việc theo từng mốc.",
+      "Có. AITASKER sử dụng hệ thống ký quỹ. Tiền của bạn sẽ được hệ thống giữ lại và chỉ chuyển cho chuyên gia sau khi bạn đã kiểm tra và xác nhận hoàn thành công việc theo từng cột mốc.",
   },
   {
     question: "Dự án của tôi yêu cầu bảo mật cao, AITASKER hỗ trợ như thế nào?",
@@ -155,6 +158,7 @@ export function LandingPage() {
   const session = useSession();
   const experience = getPublicExperience(session);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
 
   useEffect(() => {
     const targetId =
@@ -172,6 +176,19 @@ export function LandingPage() {
     const target = document.getElementById(targetId);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [location.pathname]);
+
+  useEffect(() => {
+    marketplaceApi
+      .listJobs()
+      .then((data) =>
+        setFeaturedJobs(
+          [...(data || [])].sort(
+            (left, right) => Number(right.budget || 0) - Number(left.budget || 0),
+          ),
+        ),
+      )
+      .catch(() => setFeaturedJobs([]));
+  }, []);
 
   const primaryLabel = session ? experience.primaryLabel : "Đăng dự án ngay";
   const secondaryLabel = session ? experience.secondaryLabel : "Tìm kiếm cơ hội";
@@ -265,6 +282,36 @@ export function LandingPage() {
         </ScrollReveal>
       </section>
 
+      <section className="bg-[#fff8f8] px-4 py-24 md:px-10">
+        <div className="mx-auto max-w-7xl">
+          <ScrollReveal className="mx-auto max-w-3xl text-center">
+            <h2 className="text-[2.2rem] font-bold text-[#27171d]">
+              Dự án đang nổi bật
+            </h2>
+            <p className="mt-4 text-[18px] leading-8 text-[#594048]">
+              Khám phá các dự án AI đang tuyển dụng chuyên gia trên nền tảng.
+            </p>
+          </ScrollReveal>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredJobs.length > 0 ? (
+              featuredJobs.map((job) => (
+                <JobCard
+                  key={job.jobId}
+                  job={job}
+                  hideStatus={true}
+                  hidePublicStats
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-10 text-center text-slate-500">
+                Chưa có dự án nào để hiển thị.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="bg-white px-4 py-24 md:px-10">
         <div className="mx-auto max-w-7xl relative z-10">
           <ScrollReveal className="mx-auto max-w-3xl text-center">
@@ -302,7 +349,7 @@ export function LandingPage() {
                   Ví điện tử & Thanh toán
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
-                  Bảo mật tuyệt đối với hệ thống Escrow. Tiền chỉ được giải ngân
+                  Bảo mật tuyệt đối với hệ thống ký quỹ. Tiền chỉ được giải ngân
                   khi bạn hài lòng với kết quả nghiệm thu.
                 </p>
               </Card>
@@ -318,7 +365,7 @@ export function LandingPage() {
                 </h3>
                 <p className="text-[15px] leading-7 text-[#594048]">
                   Chia nhỏ dự án thành các mốc rõ ràng, dễ dàng theo dõi và đánh
-                  giá từng giai đoạn.
+                  giá từng mốc.
                 </p>
               </Card>
             </ScrollReveal>
@@ -394,8 +441,8 @@ export function LandingPage() {
               <ul className="mt-8 space-y-4 flex-1">
                 {[
                   "Tuyển dụng nhanh hơn 3 lần với bộ lọc thông minh",
-                  "Đảm bảo an toàn tài chính với thanh toán Escrow",
-                  "Quản lý tập trung mọi dự án trên một dashboard",
+                  "Đảm bảo an toàn tài chính với thanh toán ký quỹ",
+                  "Quản lý tập trung mọi dự án trên một bảng điều khiển",
                 ].map((item) => (
                   <li
                     key={item}
@@ -655,7 +702,7 @@ export function LandingPage() {
                 Vận hành an toàn
               </p>
               <p className="mt-1 text-sm leading-6 text-[#594048]">
-                Quy trình có Escrow, NDA và đánh giá hai chiều rõ ràng.
+                Quy trình có ký quỹ, thỏa thuận bảo mật và đánh giá hai chiều rõ ràng.
               </p>
             </div>
           </div>

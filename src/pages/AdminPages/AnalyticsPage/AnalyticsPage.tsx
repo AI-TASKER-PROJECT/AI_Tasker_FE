@@ -84,16 +84,16 @@ const revenueSourceConfig: Array<{
 }> = [
   {
     key: "BUSINESS_STANDARD",
-    label: "Gói Business Standard",
+    label: "Gói tiêu chuẩn doanh nghiệp",
     color: "#2563eb",
   },
-  { key: "BUSINESS_PLUS", label: "Gói Business Plus", color: "#059669" },
-  { key: "BUSINESS_PREMIUM", label: "Gói Business Premium", color: "#d97706" },
-  { key: "EXPERT_STANDARD", label: "Gói Expert Standard", color: "#7c3aed" },
-  { key: "EXPERT_PLUS", label: "Gói Expert Plus", color: "#db2777" },
-  { key: "EXPERT_PREMIUM", label: "Gói Expert Premium", color: "#0891b2" },
+  { key: "BUSINESS_PLUS", label: "Gói nâng cao doanh nghiệp", color: "#059669" },
+  { key: "BUSINESS_PREMIUM", label: "Gói cao cấp doanh nghiệp", color: "#d97706" },
+  { key: "EXPERT_STANDARD", label: "Gói tiêu chuẩn chuyên gia", color: "#7c3aed" },
+  { key: "EXPERT_PLUS", label: "Gói nâng cao chuyên gia", color: "#db2777" },
+  { key: "EXPERT_PREMIUM", label: "Gói cao cấp chuyên gia", color: "#0891b2" },
   { key: "JOB_POST_CREDIT", label: "Gói lượt đăng bài", color: "#dc2626" },
-  { key: "PROPOSAL_CREDIT", label: "Gói lượt nộp proposal", color: "#475569" },
+  { key: "PROPOSAL_CREDIT", label: "Gói quota nộp bản đề xuất", color: "#475569" },
 ];
 
 const tabs: Array<{ key: DashboardTab; label: string }> = [
@@ -1309,20 +1309,20 @@ function NewUsersTrendCard({ accounts }: { accounts: AdminAccount[] }) {
         />
         <TrendSummary
           color="bg-brand-600"
-          label="Business mới"
+        label="Doanh nghiệp mới"
           value={trend.business}
         />
         <TrendSummary
           color="bg-mint-500"
-          label="Expert mới"
+        label="Chuyên gia mới"
           value={trend.expert}
         />
       </div>
 
       <div className="mt-5 rounded-3xl border border-slate-100 bg-white p-3">
         <div className="mb-2 flex flex-wrap items-center justify-end gap-3 px-2">
-          <LegendDot color="bg-brand-600" label="Business mới" />
-          <LegendDot color="bg-mint-500" label="Expert mới" />
+      <LegendDot color="bg-brand-600" label="Doanh nghiệp mới" />
+      <LegendDot color="bg-mint-500" label="Chuyên gia mới" />
         </div>
         <div className="relative">
           {!trend.hasData && (
@@ -1480,13 +1480,13 @@ function NewUsersTrendCard({ accounts }: { accounts: AdminAccount[] }) {
                 />
                 <TooltipRow
                   color="bg-brand-600"
-                  label="Business"
+          label="Doanh nghiệp"
                   value={activePoint.business}
                   unit="tài khoản"
                 />
                 <TooltipRow
                   color="bg-mint-500"
-                  label="Expert"
+          label="Chuyên gia"
                   value={activePoint.expert}
                   unit="tài khoản"
                 />
@@ -1876,7 +1876,7 @@ export function AnalyticsPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Không tải được dữ liệu dashboard.",
+          : "Không tải được dữ liệu tổng quan.",
       );
     } finally {
       setLoading(false);
@@ -1946,7 +1946,7 @@ export function AnalyticsPage() {
           title={
             activeTab === "revenue"
               ? "Không thể tải dữ liệu doanh thu. Vui lòng thử lại."
-              : "Không thể tải dashboard"
+              : "Không thể tải trang tổng quan"
           }
         >
           {error}
@@ -1955,7 +1955,7 @@ export function AnalyticsPage() {
 
       {loading && !data ? (
         <Card className="p-8 text-center text-sm font-semibold text-slate-500">
-          Đang tải dữ liệu dashboard...
+          Đang tải dữ liệu tổng quan...
         </Card>
       ) : data ? (
         <>
@@ -2084,6 +2084,7 @@ export function AnalyticsPage() {
 
         </>
       ) : null}
+
     </div>
   );
 }

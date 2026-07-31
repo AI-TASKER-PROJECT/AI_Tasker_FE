@@ -9,7 +9,7 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-        Chưa có milestone.
+        Chưa có mốc.
       </div>
     );
   }
@@ -71,7 +71,7 @@ export function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
 export function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-      <p className="text-xs font-bold text-slate-400">Milestone</p>
+      <p className="text-xs font-bold text-slate-400">Mốc</p>
       <p className="mt-1 text-sm font-extrabold text-ink">{count} mốc</p>
     </div>
   );

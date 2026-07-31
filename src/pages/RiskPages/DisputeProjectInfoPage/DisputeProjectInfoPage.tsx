@@ -1,11 +1,15 @@
 import { Gavel } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { contractApi, disputeApi } from "../../../lib/api";
+import { contractApi, disputeApi, profileApi } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
-import { marketplaceApi } from "../../../services/marketplaceService";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
-import type { AcceptanceCriteria, Contract, Dispute, Job, Milestone } from "../../../types";
+import type {
+  AcceptanceCriteria,
+  Contract,
+  Dispute,
+  Milestone,
+} from "../../../types";
 import {
   Badge,
   Card,
@@ -25,6 +29,30 @@ function getJobMilestoneId(milestone: Milestone) {
   );
 }
 
+async function resolveParticipantNames(contract: Contract) {
+  const [businessResult, expertResult] = await Promise.allSettled([
+    contract.businessName
+      ? Promise.resolve(null)
+      : profileApi.getBusinessById(contract.businessId),
+    contract.expertName
+      ? Promise.resolve(null)
+      : profileApi.getExpertById(contract.expertId),
+  ]);
+
+  return {
+    businessName:
+      contract.businessName?.trim() ||
+      (businessResult.status === "fulfilled"
+        ? businessResult.value?.companyName
+        : undefined),
+    expertName:
+      contract.expertName?.trim() ||
+      (expertResult.status === "fulfilled"
+        ? expertResult.value?.fullName
+        : undefined),
+  };
+}
+
 export function DisputeProjectInfoPage() {
   const { disputeId } = useParams();
   const session = useSession();
@@ -34,9 +62,14 @@ export function DisputeProjectInfoPage() {
     Number.isFinite(parsedDisputeId) && parsedDisputeId > 0;
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
+  const [participantNames, setParticipantNames] = useState<{
+    businessName?: string;
+    expertName?: string;
+  }>({});
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [criteriaByMilestone, setCriteriaByMilestone] = useState<Record<number, AcceptanceCriteria[]>>({});
+  const [criteriaByMilestone, setCriteriaByMilestone] = useState<
+    Record<number, AcceptanceCriteria[]>
+  >({});
   const [loading, setLoading] = useState(true);
 
   // Tải bối cảnh dự án của tranh chấp: dispute, contract, job, milestone và criteria cho Staff tham khảo.
@@ -60,9 +93,9 @@ export function DisputeProjectInfoPage() {
         if (!mounted) return;
         setContract(contractData);
         setMilestones(milestoneData);
-        const jobData = await (contractData.jobId
-          ? marketplaceApi.getJob(contractData.jobId).catch(() => null)
-          : Promise.resolve(null));
+        const names = await resolveParticipantNames(contractData);
+        if (!mounted) return;
+        setParticipantNames(names);
         const criteriaEntries = await Promise.all(
           milestoneData.map(async (milestone) => {
             const jobMilestoneId = getJobMilestoneId(milestone);
@@ -73,13 +106,12 @@ export function DisputeProjectInfoPage() {
           }),
         );
         if (!mounted) return;
-        setJob(jobData);
         setCriteriaByMilestone(Object.fromEntries(criteriaEntries));
       } catch {
         if (!mounted) return;
         setDispute(null);
         setContract(null);
-        setJob(null);
+        setParticipantNames({});
         setMilestones([]);
         setCriteriaByMilestone({});
       } finally {
@@ -102,35 +134,41 @@ export function DisputeProjectInfoPage() {
   }
 
   if (loading) {
-    return <div className="py-8 text-center text-slate-500">Đang tải thông tin dự án...</div>;
+    return (
+      <div className="py-8 text-center text-slate-500">
+        Đang tải thông tin dự án...
+      </div>
+    );
   }
 
   if (!dispute || !contract) {
     return (
       <EmptyState
         title="Không mở được thông tin dự án"
-        description="Chưa lấy được dữ liệu hợp đồng và cột mốc tranh chấp."
+        description="Chưa lấy được dữ liệu hợp đồng và mốc tranh chấp."
       />
     );
   }
 
   const businessDisplayName =
+    participantNames.businessName ||
     contract.businessName?.trim() ||
     "Doanh nghiệp";
   const expertDisplayName =
-    contract.expertName?.trim() ||
-    "Chuyên gia";
-  const sowText = job?.structuredSow?.trim() || job?.rawRequirements?.trim() || "Doanh nghiệp chưa cung cấp đề bài chi tiết.";
-  const backTo = session?.role === "ADMIN"
-    ? `/app/disputes/${dispute.disputeId}`
-    : `/app/tickets/${dispute.disputeId}`;
+    participantNames.expertName || contract.expertName?.trim() || "Chuyên gia";
+  const backTo =
+    session?.role === "ADMIN"
+      ? `/app/disputes/${dispute.disputeId}`
+      : `/app/tickets/${dispute.disputeId}`;
 
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title={contract.contractTitle || dispute.jobTitle || "Thông tin dự án"}
-          description="Trang này chỉ cung cấp đề bài doanh nghiệp, SoW và các cột mốc của dự án để tham khảo."
+          title={
+            contract.contractTitle || dispute.jobTitle || "Thông tin dự án"
+          }
+          description="Trang này chỉ cung cấp đề bài doanh nghiệp, SoW và các mốc của dự án để tham khảo."
           actions={
             <LinkButton to={backTo} variant="secondary">
               <Gavel className="h-4 w-4" />
@@ -140,15 +178,16 @@ export function DisputeProjectInfoPage() {
         />
       </div>
 
-      <Notice tone="info" title="Trang thông tin">
-        Đây là trang chỉ đọc. Dùng màn này để xem đề bài của doanh nghiệp và thông tin cột mốc của dự án.
+      <Notice tone="success" title="Trang thông tin">
+        Đây là trang chỉ đọc. Dùng màn này để xem đề bài của doanh nghiệp và
+        thông tin mốc của dự án.
       </Notice>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+      <div className="grid gap-6">
         <Card className="p-6">
           <SectionHeading
-            title="Đề bài của doanh nghiệp / SoW"
-            description="Nội dung Staff cần đọc để hiểu phạm vi dự án và kỳ vọng từ doanh nghiệp."
+            title="Thông tin dự án"
+            description="Nội dung nhân viên cần đọc để hiểu phạm vi dự án và kỳ vọng từ doanh nghiệp."
           />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
@@ -177,7 +216,7 @@ export function DisputeProjectInfoPage() {
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Timeline
+                Thời gian
               </div>
               <div className="mt-2 text-base font-bold text-ink">
                 {contract.timelineDays} ngày
@@ -185,7 +224,7 @@ export function DisputeProjectInfoPage() {
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Business
+                Doanh nghiệp
               </div>
               <div className="mt-2 text-base font-bold text-ink">
                 {businessDisplayName}
@@ -193,20 +232,12 @@ export function DisputeProjectInfoPage() {
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Expert
+                Chuyên gia
               </div>
               <div className="mt-2 text-base font-bold text-ink">
                 {expertDisplayName}
               </div>
             </div>
-          </div>
-          <div className="mt-5 rounded-2xl border border-slate-100 bg-white p-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Nội dung đề bài
-            </div>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
-              {sowText}
-            </p>
           </div>
           {contract.technologyUsed && (
             <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-slate-700">
@@ -217,13 +248,13 @@ export function DisputeProjectInfoPage() {
 
         <Card className="p-6">
           <SectionHeading
-            title="Cột mốc của dự án"
-            description="Toàn bộ cột mốc và tiêu chí nghiệm thu của dự án."
+            title="Mốc của dự án"
+            description="Toàn bộ mốc và tiêu chí nghiệm thu của dự án."
           />
           {milestones.length === 0 ? (
             <EmptyState
-              title="Chua co du lieu cot moc"
-              description="Backend chưa trả danh sách cột mốc của dự án."
+              title="Chưa có dữ liệu cột mốc"
+              description="Máy chủ chưa trả danh sách cột mốc của dự án."
             />
           ) : (
             <div className="mt-5 grid gap-4">
@@ -231,32 +262,41 @@ export function DisputeProjectInfoPage() {
                 const jobMilestoneId = getJobMilestoneId(milestone);
                 const criteria = criteriaByMilestone[jobMilestoneId] || [];
                 return (
-                  <div key={jobMilestoneId} className="rounded-2xl border border-slate-100 bg-white p-4">
+                  <div
+                    key={jobMilestoneId}
+                    className="rounded-2xl border border-slate-100 bg-white p-4"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone="brand">Mốc {milestone.orderIndex ?? "-"}</Badge>
+                          <Badge tone="brand">
+                            Mốc {milestone.orderIndex ?? "-"}
+                          </Badge>
                           <StatusBadge status={milestone.status} />
                         </div>
                         <div className="mt-2 text-base font-bold text-ink">
-                          {milestone.milestoneName || "Cột mốc của dự án"}
+                          {milestone.milestoneName || "Mốc của dự án"}
                         </div>
                       </div>
                       <div className="text-sm text-slate-500">
-                        {formatCurrency(milestone.finalBudget || milestone.fundsAllocated)}
+                        {formatCurrency(
+                          milestone.finalBudget || milestone.fundsAllocated,
+                        )}
                       </div>
                     </div>
                     <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-600">
                       <p>
                         {milestone.description ||
-                          "Backend chưa trả mô tả chi tiết cho cột mốc này."}
+                          "Máy chủ chưa trả mô tả chi tiết cho cột mốc này."}
                       </p>
                       {milestone.deliverableExpectation && (
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
                           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                            Deliverable expectation
+                            Kỳ vọng sản phẩm bàn giao
                           </div>
-                          <p className="mt-2">{milestone.deliverableExpectation}</p>
+                          <p className="mt-2">
+                            {milestone.deliverableExpectation}
+                          </p>
                         </div>
                       )}
                       <div className="flex flex-wrap gap-2">
@@ -276,15 +316,23 @@ export function DisputeProjectInfoPage() {
                           Tiêu chí nghiệm thu
                         </div>
                         {criteria.length === 0 ? (
-                          <p className="mt-2">Backend chưa trả tiêu chí nghiệm thu cho cột mốc này.</p>
+                          <p className="mt-2">
+                            Máy chủ chưa trả tiêu chí nghiệm thu cho cột mốc
+                            này.
+                          </p>
                         ) : (
                           <div className="mt-3 space-y-2">
                             {criteria.map((item, index) => (
-                              <div key={item.criteriaId || index} className="rounded-2xl border border-white bg-white p-3">
+                              <div
+                                key={item.criteriaId || index}
+                                className="rounded-2xl border border-white bg-white p-3"
+                              >
                                 <div className="text-sm font-semibold text-ink">
                                   {item.category || `Tiêu chí ${index + 1}`}
                                 </div>
-                                <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                                <p className="mt-1 text-sm text-slate-600">
+                                  {item.description}
+                                </p>
                               </div>
                             ))}
                           </div>

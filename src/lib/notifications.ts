@@ -208,6 +208,7 @@ export function notificationHref(
       "related_ticket_id",
     ]),
   );
+  const summaryReady = notification?.type === "PROJECT_SUMMARY_READY";
   const contractRelated = isContractNotification(notification);
   const disputeHref = (disputeId: number) => {
     if (role === "ADMIN") return `/app/disputes/${disputeId}`;
@@ -217,6 +218,9 @@ export function notificationHref(
 
   if (!targetUrl) {
     if (metadataDisputeId) return disputeHref(metadataDisputeId);
+    if (metadataContractId && summaryReady) {
+      return `/app/contracts/${metadataContractId}/summary`;
+    }
     if (metadataContractId) return `/app/contracts/${metadataContractId}`;
     if (contractRelated) return "/app/contracts";
     if (metadataJobId) return `/app/jobs/${metadataJobId}/manage`;
@@ -266,6 +270,13 @@ export function notificationHref(
   );
   if (contractWorkspaceMatch) {
     return `/app/contracts/${contractWorkspaceMatch[1]}/workspace`;
+  }
+
+  const contractSummaryMatch = targetUrl.match(
+    /^\/(?:business\/|expert\/)?contracts\/(\d+)\/summary/,
+  );
+  if (contractSummaryMatch) {
+    return `/app/contracts/${contractSummaryMatch[1]}/summary`;
   }
 
   const contractDisputeMatch = targetUrl.match(

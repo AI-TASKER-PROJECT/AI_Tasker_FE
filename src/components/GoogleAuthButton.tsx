@@ -42,7 +42,7 @@ function loadGoogleScript() {
   if (existing) {
     googleScriptPromise = new Promise<void>((resolve, reject) => {
       existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Không tải dược Google Identity Services')), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Không tải được dịch vụ nhận dạng Google')), { once: true });
     });
     return googleScriptPromise;
   }
@@ -54,7 +54,7 @@ function loadGoogleScript() {
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Không tải dược Google Identity Services'));
+    script.onerror = () => reject(new Error('Không tải được dịch vụ nhận dạng Google'));
 
     if (!existing) document.head.appendChild(script);
   });
@@ -105,7 +105,7 @@ export function GoogleAuthButton({
         });
       })
       .catch(() => {
-        const message = 'Không tải dược Google Sign-In. Kiểm tra kết nối mạng hoặc cấu hình đăng nhập Google.';
+        const message = 'Không tải được chức năng đăng nhập bằng Google. Kiểm tra kết nối mạng hoặc cấu hình đăng nhập.';
         setError(message);
         onError?.(message);
       });
@@ -119,7 +119,7 @@ export function GoogleAuthButton({
     <div>
       <div ref={containerRef} className="flex min-h-11 justify-center" />
       {error && (
-        <Notice tone="danger" title="Google Sign-In lỗi" className="mt-3">
+        <Notice tone="danger" title="Đăng nhập bằng Google gặp lỗi" className="mt-3">
           {error}
         </Notice>
       )}

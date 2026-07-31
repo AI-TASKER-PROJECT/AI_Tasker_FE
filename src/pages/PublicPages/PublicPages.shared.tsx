@@ -1,14 +1,46 @@
-import { ArrowRight, CheckCircle2, Clock3, Star, WalletCards } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  Star,
+  WalletCards,
+} from "lucide-react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router-dom";
-import { catalogApi, contractApi, marketplaceApi, profileApi, type Domain, type Skill, type Technology } from "../../lib/api";
-import { cn, formatCompactCurrency, formatCurrency, formatDate } from "../../lib/utils";
+import {
+  catalogApi,
+  contractApi,
+  marketplaceApi,
+  profileApi,
+  type Domain,
+  type Skill,
+  type Technology,
+} from "../../lib/api";
+import {
+  cn,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+} from "../../lib/utils";
 import type { Job, Milestone } from "../../types";
+import { getJobSowSummary } from "../../lib/jobSow";
 import { jobDomainLabel } from "./publicPages.utils";
-import { Badge, Card, EmptyState, LinkButton, StatusBadge } from "../../components/ui";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  LinkButton,
+  StatusBadge,
+} from "../../components/ui";
+import heroLandingImage from "../../assets/images/img_landingPage.png";
 
-export const heroImage =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDqRp4QflFu-D-EIWMjnmYsbOjXRCdI4aDej1btMDToV9m43vKdHfxezJrNscBn_wTGgZ68l0pe_bwjwtTOa-bBsxSLO5Wn2yULNmTW55tm8Qc3FhuQKqgvLSYNIWzGEXnIhkICsECPzizVd1xtttbyCcysC0xqjUXz60YhmWz_nqv9tke8Gbk3joKQgpwtuogZ4NYoYf6DujYBglOeeGb4Z53KlBwPvjc1tcVT6yjGY9kzfokWXgoJYx24h92N_E4kL6u7cDQtOJLX";
+export const heroImage = heroLandingImage;
 
 export function skillCountLabel(count: number) {
   return `${count} kỹ năng`;
@@ -224,7 +256,7 @@ export function JobHoverPopover({
             <StatusBadge status={detail.status} />
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {detail.structuredSow || detail.rawRequirements}
+            {getJobSowSummary(detail) || detail.rawRequirements}
           </p>
           <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
             <InfoRow
@@ -235,16 +267,16 @@ export function JobHoverPopover({
             <InfoRow
               icon={<Clock3 className="h-4 w-4" />}
               label="Thời lượng"
-              value={`${detail.plannedDurationValue || 0} ${detail.plannedDurationUnit === "WEEK" ? "TUẦN" : (detail.plannedDurationUnit || "tuần")}`}
+              value={`${detail.plannedDurationValue || 0} ${detail.plannedDurationUnit === "WEEK" ? "TUẦN" : detail.plannedDurationUnit || "tuần"}`}
             />
             <InfoRow
               icon={<Star className="h-4 w-4" />}
-              label="Proposal"
+              label="Bản đề xuất"
               value={`${detail.proposalsCount || 0}`}
             />
             <InfoRow
               icon={<CheckCircle2 className="h-4 w-4" />}
-              label="Milestone"
+              label="Mốc"
               value={`${milestones.length}`}
             />
           </div>
@@ -277,7 +309,7 @@ export function JobHoverPopover({
           {milestones.length > 0 && (
             <div className="mt-4">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Milestones
+                Mốc
               </p>
               <div className="mt-2 grid gap-2">
                 {milestones.map((milestone) => (
@@ -337,11 +369,13 @@ export function JobCard({
   manage = false,
   hideStatus = false,
   compact = false,
+  hidePublicStats = false,
 }: {
   job: Job;
   manage?: boolean;
   hideStatus?: boolean;
   compact?: boolean;
+  hidePublicStats?: boolean;
 }) {
   const [milestoneCount, setMilestoneCount] = useState(0);
   const [skillCount, setSkillCount] = useState(0);
@@ -355,7 +389,7 @@ export function JobCard({
   useEffect(() => {
     let ignore = false;
 
-    if (!compact) {
+    if (!compact && !hidePublicStats) {
       contractApi
         .listJobMilestones(job.jobId)
         .then((items) => {
@@ -407,10 +441,13 @@ export function JobCard({
     return () => {
       ignore = true;
     };
-  }, [compact, job.jobId]);
+  }, [compact, hidePublicStats, job.jobId]);
 
   return (
-    <Card hover className={cn("flex h-full min-w-0 flex-col", compact ? "p-4" : "p-5")}>
+    <Card
+      hover
+      className={cn("flex h-full min-w-0 flex-col", compact ? "p-4" : "p-5")}
+    >
       <div className="flex min-h-9 items-start justify-between gap-3">
         {!isLoadingDomain ? (
           <JobDomainBadge label={domainName || "Chưa có lĩnh vực"} />
@@ -429,53 +466,66 @@ export function JobCard({
           {job.title}
         </h3>
       </Link>
-      <p className={cn(
-        "mt-2 line-clamp-3 text-sm leading-6 text-slate-500",
-        compact ? "min-h-[3.75rem]" : "min-h-[4.5rem]",
-      )}>
-        {job.structuredSow || job.rawRequirements}
+      <p
+        className={cn(
+          "mt-2 line-clamp-3 text-sm leading-6 text-slate-500",
+          compact ? "min-h-[3.75rem]" : "min-h-[4.5rem]",
+        )}
+      >
+        {getJobSowSummary(job) || job.rawRequirements}
       </p>
-      <div className={cn(
-        "grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3",
-        compact ? "mt-3" : "mt-5",
-      )}>
+      <div
+        className={cn(
+          "grid gap-3 rounded-2xl bg-slate-50 p-3",
+          hidePublicStats ? "grid-cols-1" : "grid-cols-2",
+          compact ? "mt-3" : "mt-5",
+        )}
+      >
         <div>
           <p className="text-xs font-bold text-slate-400">Ngân sách</p>
           <p className="mt-1 text-sm font-extrabold text-ink">
             {formatCompactCurrency(job.budget)}
           </p>
         </div>
-        <div>
-          <p className="text-xs font-bold text-slate-400">
-            {compact ? "Ngày đăng bài" : "Proposal"}
-          </p>
-          <p className="mt-1 text-sm font-extrabold text-ink">
-            {compact ? formatDate(job.createdAt) : job.proposalsCount || 0}
-          </p>
-        </div>
+        {!hidePublicStats && (
+          <div>
+            <p className="text-xs font-bold text-slate-400">
+              {compact ? "Ngày đăng bài" : "Bản đề xuất"}
+            </p>
+            <p className="mt-1 text-sm font-extrabold text-ink">
+              {compact ? formatDate(job.createdAt) : job.proposalsCount || 0}
+            </p>
+          </div>
+        )}
       </div>
 
-      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
-        <p className="mt-1 text-sm font-extrabold text-ink">
-          {skillCountLabel(skillCount)}
-        </p>
-      </div>}
-      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Mốc nghiệm thu</p>
-        <p className="mt-1 text-sm font-extrabold text-ink">
-          {milestoneCount} mốc
-        </p>
-      </div>}
-      {!compact && <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-bold text-slate-400">Ngày đăng bài</p>
-        <p className="mt-1 text-sm font-extrabold text-ink">
-          {formatDate(job.createdAt)}
-        </p>
-      </div>}
+      {!compact && !hidePublicStats && (
+        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-xs font-bold text-slate-400">Kỹ năng</p>
+          <p className="mt-1 text-sm font-extrabold text-ink">
+            {skillCountLabel(skillCount)}
+          </p>
+        </div>
+      )}
+      {!compact && !hidePublicStats && (
+        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-xs font-bold text-slate-400">Mốc</p>
+          <p className="mt-1 text-sm font-extrabold text-ink">
+            {milestoneCount} mốc
+          </p>
+        </div>
+      )}
+      {!compact && (
+        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-xs font-bold text-slate-400">Ngày đăng bài</p>
+          <p className="mt-1 text-sm font-extrabold text-ink">
+            {formatDate(job.createdAt)}
+          </p>
+        </div>
+      )}
       <div className="mt-auto border-t border-slate-100 pt-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <span className="min-w-0 break-words text-xs font-semibold text-slate-400">
+          <span className="min-w-0 break-words text-xs font-extrabold text-[#b30069]">
             {businessName}
           </span>
           <LinkButton
@@ -541,8 +591,8 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <EmptyState
-        title="Chưa có milestone"
-        description="Khi doanh nghiệp khai báo milestone, các mốc sẽ hiển thị tại dây."
+        title="Chưa có mốc"
+        description="Khi doanh nghiệp khai báo cột mốc, các cột mốc sẽ hiển thị tại đây."
       />
     );
   }

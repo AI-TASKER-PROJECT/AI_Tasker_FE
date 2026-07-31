@@ -127,7 +127,7 @@ export function ResetPasswordPage() {
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-500">
-        Muon nhan link moi?{" "}
+        Muốn nhận liên kết mới?{" "}
         <Link to="/forgot-password" className="font-bold text-brand-600">
           Quen mat khau
         </Link>

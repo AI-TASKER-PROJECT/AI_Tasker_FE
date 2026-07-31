@@ -5,6 +5,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CircleCheck,
+  LockKeyhole,
+  Eye,
   RefreshCw,
   Send,
   Shield,
@@ -49,6 +52,7 @@ import {
   StatusBadge,
   Tabs,
 } from "../../../components/ui";
+import { WalletTransactionDetailModal } from "../../../components/WalletTransactionDetailModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -73,7 +77,32 @@ function SplitDateTime({ value }: { value?: string }) {
   );
 }
 
-function txIcon(type: WalletTransaction["transactionType"]) {
+function isMilestoneEscrowDeposit(tx: WalletTransaction) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const operationKey = (tx.operationKey || "").toUpperCase();
+  return (
+    type === "MILESTONE_ESCROW_DEPOSIT" ||
+    operationKey.startsWith("MILESTONE_ESCROW_DEPOSIT:")
+  );
+}
+
+function isMilestoneEscrowRelease(tx: WalletTransaction) {
+  const type = (tx.transactionType || "").toUpperCase();
+  const operationKey = (tx.operationKey || "").toUpperCase();
+  return (
+    type === "MILESTONE_ESCROW_RELEASE" ||
+    operationKey.startsWith("MILESTONE_ESCROW_RELEASE:")
+  );
+}
+
+function txIcon(tx: WalletTransaction) {
+  if (isMilestoneEscrowDeposit(tx)) {
+    return <LockKeyhole className="h-5 w-5" />;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return <CircleCheck className="h-5 w-5" />;
+  }
+  const type = tx.transactionType;
   if (
     type === "TOPUP" ||
     type === "DEPOSIT_REFUND" ||
@@ -84,10 +113,26 @@ function txIcon(type: WalletTransaction["transactionType"]) {
 }
 
 function txDisplayLabel(tx: WalletTransaction, role?: string) {
+  if (tx.transactionTypeLabel?.trim()) return tx.transactionTypeLabel.trim();
+  if (tx.title?.trim()) return tx.title.trim();
   const type = (tx.transactionType || "").toUpperCase();
   const direction = (tx.direction || "").toUpperCase();
   const balanceType = (tx.balanceType || "").toUpperCase();
   const isExpert = role === "EXPERT";
+  const milestoneText = txMilestoneText(tx);
+  const contractTitle = txContractContextLabel(tx);
+  const milestoneAndContract = `${milestoneText ? ` mốc ${milestoneText}` : ""}${
+    contractTitle ? ` · ${contractTitle}` : ""
+  }`;
+
+  if (isMilestoneEscrowDeposit(tx)) {
+    return `Đã ký quỹ${milestoneAndContract}`;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return isExpert
+      ? `Đã nhận thanh toán${milestoneAndContract}`
+      : `Đã giải ngân${milestoneAndContract}`;
+  }
 
   if (type === "TOPUP") return "Nạp tiền vào ví";
   if (type === "MEMBERSHIP_PURCHASE") return "Thanh toán gói thành viên";
@@ -149,6 +194,16 @@ function txContractContextLabel(tx: WalletTransaction) {
   return tx.contractId ? "Hợp đồng liên quan" : tx.jobTitle?.trim() || "";
 }
 
+function txFlowLabel(tx: WalletTransaction) {
+  if (isMilestoneEscrowDeposit(tx)) {
+    return "Luồng tiền: Số dư khả dụng → Ví ký quỹ";
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return "Luồng tiền: Ví ký quỹ → Ví chuyên gia";
+  }
+  return "";
+}
+
 const TRANSACTIONS_PER_PAGE = 6;
 
 function cleanWalletDescription(value?: string) {
@@ -162,6 +217,8 @@ function cleanWalletDescription(value?: string) {
 }
 
 function txDisplayDescription(tx: WalletTransaction, role?: string) {
+  const apiDescription = cleanWalletDescription(tx.description);
+  if (apiDescription) return apiDescription;
   const text =
     `${tx.title || ""} ${tx.description || ""} ${tx.rawDescription || ""}`.toLowerCase();
   const type = (tx.transactionType || "").toUpperCase();
@@ -170,6 +227,16 @@ function txDisplayDescription(tx: WalletTransaction, role?: string) {
   const expertName = txPartyText(tx.expertName, "Chuyên gia");
   const contractTitle = txPartyText(tx.contractTitle, "hợp đồng chưa có tên");
   const milestoneText = txMilestoneText(tx);
+  if (isMilestoneEscrowDeposit(tx)) {
+    return isExpert
+      ? `${businessName} đã ký quỹ ${formatCurrency(Math.abs(tx.amount))} cho mốc ${milestoneText || "tương ứng"}. Khoản tiền được giữ an toàn và sẽ thanh toán sau khi mốc được nghiệm thu.`
+      : `Bạn đã chuyển ${formatCurrency(Math.abs(tx.amount))} từ số dư khả dụng sang ví ký quỹ cho mốc ${milestoneText || "tương ứng"}.`;
+  }
+  if (isMilestoneEscrowRelease(tx)) {
+    return isExpert
+      ? `Bạn đã nhận ${formatCurrency(Math.abs(tx.amount))} từ ví ký quỹ cho mốc ${milestoneText || "tương ứng"} sau khi được nghiệm thu.`
+      : `${formatCurrency(Math.abs(tx.amount))} đã được giải ngân từ ví ký quỹ cho chuyên gia ${expertName} sau khi mốc ${milestoneText || "tương ứng"} được nghiệm thu.`;
+  }
   const milestonePhrase = milestoneText
     ? `mốc ${milestoneText}`
     : "mốc tương ứng";
@@ -249,7 +316,7 @@ function txDisplayDescription(tx: WalletTransaction, role?: string) {
     return `${businessName} đã được hoàn lại tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}".`;
   }
   if (text.includes("admin resolved contract security deposit")) {
-    return `Tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}" đã được xử lý theo quyết định của Admin.`;
+    return `Tiền ký quỹ bảo đảm của hợp đồng "${contractTitle}" đã được xử lý theo quyết định của quản trị viên.`;
   }
 
   return (
@@ -543,14 +610,14 @@ function WithdrawalModal({
     ) {
       setNotice({
         tone: "danger",
-        msg: "Vui lòng diền dầy dủ thông tin ngân hàng.",
+        msg: "Vui lòng điền đầy đủ thông tin ngân hàng.",
       });
       return;
     }
     if (wallet && amount > wallet.availableBalance) {
       setNotice({
         tone: "danger",
-        msg: `Số dư khả dụng không dủ. Tối da: ${formatCurrency(wallet.availableBalance)}`,
+        msg: `Số dư khả dụng không đủ. Tối đa: ${formatCurrency(wallet.availableBalance)}`,
       });
       return;
     }
@@ -568,13 +635,13 @@ function WithdrawalModal({
       if (res.completed) {
         setNotice({
           tone: "success",
-          msg: "Yêu cầu rút tiền dã dược gửi. Admin sẽ xử lý và chuyển khoản thủ công.",
+        msg: "Yêu cầu rút tiền đã được gửi. Quản trị viên sẽ xử lý và chuyển khoản thủ công.",
         });
         onSuccess();
       } else if (res.needTopup) {
         setNotice({
           tone: "warning",
-          msg: `Số dư không dủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} dể thực hiện.`,
+          msg: `Số dư không đủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)} để thực hiện.`,
         });
       }
     } catch (err) {
@@ -589,7 +656,7 @@ function WithdrawalModal({
       open={open}
       onClose={handleClose}
       title="Yêu cầu rút tiền"
-      description="Số tiền sẽ được Admin kiểm duyệt và thanh toán cho tài khoản ngân hàng của bạn."
+          description="Số tiền sẽ được quản trị viên kiểm duyệt và thanh toán cho tài khoản ngân hàng của bạn."
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>
@@ -686,6 +753,8 @@ export function WalletPage() {
   );
   const [transactionPage, setTransactionPage] = useState(1);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<WalletTransaction | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -780,7 +849,7 @@ export function WalletPage() {
                 {formatCurrency(wallet.currentBalance)}
               </p>
               <p className="mt-2 text-xs font-semibold text-blue-200">
-                Bao gồm khả dụng, escrow/ký quỹ và chờ rút ·{" "}
+                Bao gồm số dư khả dụng, tiền ký quỹ và khoản chờ rút ·{" "}
                 {wallet.currency}
               </p>
             </div>
@@ -857,7 +926,7 @@ export function WalletPage() {
             <div className="p-6">
               <EmptyState
                 title="Chưa có giao dịch nào"
-                description="Các giao dịch nạp tiền, mua gói, dặt cọc hợp đồng và rút tiền sẽ xuất hiện tại dây."
+                description="Các giao dịch nạp tiền, mua gói, đặt cọc hợp đồng và rút tiền sẽ xuất hiện tại đây."
                 action={
                   isExternalRole ? (
                     <Button onClick={openTopup}>
@@ -872,30 +941,38 @@ export function WalletPage() {
             <>
             <div className="overflow-x-auto divide-y divide-slate-50">
               {/* Header */}
-              <div className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+              <div className="grid min-w-[800px] grid-cols-[auto_minmax(300px,1fr)_auto_auto_auto_auto] gap-3 bg-slate-50 px-5 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <span className="w-9" />
                 <span>Nội dung giao dịch</span>
                 <span className="text-right">Số tiền</span>
                 <span className="w-24 text-center">Trạng thái</span>
                 <span className="w-28 text-right">Thời gian</span>
+                <span className="w-10" />
               </div>
               {pagedTransactions.map((tx) => {
+                const isEscrowDeposit = isMilestoneEscrowDeposit(tx);
+                const isEscrowRelease = isMilestoneEscrowRelease(tx);
+                const isEscrowMovement = isEscrowDeposit || isEscrowRelease;
                 const isCredit =
-                  tx.direction === "CREDIT" || tx.direction === "RELEASE";
+                  isEscrowRelease ||
+                  tx.direction === "CREDIT" ||
+                  tx.direction === "RELEASE";
                 return (
                   <div
-                    key={tx.id}
-                    className="grid min-w-[720px] grid-cols-[auto_minmax(260px,1fr)_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
+                    key={tx.transactionId ?? tx.id}
+                    className="grid min-w-[800px] grid-cols-[auto_minmax(300px,1fr)_auto_auto_auto_auto] items-center gap-3 px-5 py-4 transition hover:bg-slate-50/50"
                   >
                     <span
                       className={cn(
                         "grid h-11 w-11 place-items-center rounded-2xl",
-                        isCredit
+                        isEscrowDeposit
+                          ? "bg-amber-50 text-amber-600"
+                          : isCredit
                           ? "bg-mint-50 text-mint-600"
                           : "bg-coral-50 text-coral-600",
                       )}
                     >
-                      {txIcon(tx.transactionType)}
+                      {txIcon(tx)}
                     </span>
                     <div className="min-w-0">
                       <p className="text-base font-extrabold leading-snug text-ink">
@@ -911,22 +988,48 @@ export function WalletPage() {
                           {txContractContextLabel(tx)}
                         </p>
                       )}
+                      {txFlowLabel(tx) && (
+                        <p className="mt-1 text-sm font-bold text-slate-600">
+                          {txFlowLabel(tx)}
+                        </p>
+                      )}
+                      <p className="mt-1.5 text-xs font-semibold text-slate-500">
+                        {tx.actorRole && `Vai trò: ${tx.actorRole}`}
+                        {tx.counterpartyName && ` · Đối tác: ${tx.counterpartyName}${tx.counterpartyRole ? ` (${tx.counterpartyRole})` : ""}`}
+                        {tx.balanceType && ` · Số dư: ${tx.balanceType}`}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-400">
+                        {tx.balanceTypeLabel && `${tx.balanceTypeLabel} · `}
+                        Số dư trước/sau: {formatCurrency(tx.availableBalanceBefore ?? tx.balanceBefore)} / {formatCurrency(tx.availableBalanceAfter ?? tx.balanceAfter)}
+                      </p>
                     </div>
                     <span
                       className={cn(
                         "whitespace-nowrap text-right text-base font-black",
-                        isCredit ? "text-emerald-600" : "text-rose-600",
+                        isEscrowDeposit
+                          ? "text-amber-700"
+                          : isCredit
+                            ? "text-emerald-600"
+                            : "text-rose-600",
                       )}
                     >
-                      {isCredit ? "+" : "-"}
-                      {formatCurrency(tx.amount)}
+                      {!isEscrowMovement && (isCredit ? "+" : "-")}
+                      {formatCurrency(Math.abs(tx.amount))}
                     </span>
                     <span className="w-24 text-center">
-                      <StatusBadge status={transactionStatusLabel(tx.status)} />
+                      <StatusBadge status={tx.statusLabel || transactionStatusLabel(tx.status)} />
                     </span>
                     <span className="w-28 text-right text-sm font-bold text-slate-600">
                       <SplitDateTime value={tx.createdAt} />
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedTransaction(tx)}
+                      title="Xem chi tiết giao dịch"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 );
               })}
@@ -971,7 +1074,7 @@ export function WalletPage() {
           <div className="p-6">
             <EmptyState
               title="Chưa có yêu cầu rút tiền"
-              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại dây sau khi bạn tạo."
+              description="Các yêu cầu rút tiền của bạn sẽ xuất hiện tại đây sau khi bạn tạo."
               action={
                 isExternalRole ? (
                   <Button onClick={() => setWithdrawOpen(true)}>
@@ -1034,6 +1137,10 @@ export function WalletPage() {
         onClose={() => setWithdrawOpen(false)}
         onSuccess={load}
         wallet={wallet}
+      />
+      <WalletTransactionDetailModal
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
       />
     </div>
   );

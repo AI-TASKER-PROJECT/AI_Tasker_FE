@@ -182,11 +182,11 @@ export function VerificationDetailPage() {
                   label="Giấy tờ định danh"
                   value={(profile as ExpertProfile).nationalId || "Chưa có"}
                 />
-                <FileInfo label="Tệp Portfolio">
+              <FileInfo label="Tệp hồ sơ năng lực">
                   <FirebaseFileLink
                     path={(profile as ExpertProfile).portfolioUrl}
-                    emptyText="Chưa có tệp Portfolio"
-                    buttonText="Xem Portfolio"
+                  emptyText="Chưa có tệp hồ sơ năng lực"
+                  buttonText="Xem hồ sơ năng lực"
                   />
                 </FileInfo>
                 <Info

@@ -37,8 +37,10 @@ import {
 import { cn, formatCompactCurrency, formatCurrency } from "../../../lib/utils";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
+import { getJobSowSummary } from "../../../lib/jobSow";
 import type {
   AcceptanceCriteria,
+  BusinessProfile,
   ExpertProfile,
   Job,
   Milestone,
@@ -78,7 +80,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
   if (milestones.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-        Chưa có milestone.
+        Chưa có mốc.
       </div>
     );
   }
@@ -101,7 +103,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
                 {milestone.milestoneName}
               </p>
               <p className="mt-1 text-xs font-semibold text-slate-400">
-                {milestone.status || "Pending"}
+                {milestone.status ? <StatusBadge status={milestone.status} /> : "Chờ xử lý"}
               </p>
             </div>
             <p className="font-extrabold text-ink md:text-right">
@@ -118,7 +120,7 @@ function CompactMilestones({ milestones }: { milestones: Milestone[] }) {
 function MilestoneCount({ count }: { count: number }) {
   return (
     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-      <p className="text-xs font-bold text-slate-400">Milestone</p>
+      <p className="text-xs font-bold text-slate-400">Mốc</p>
       <p className="mt-1 text-sm font-extrabold text-ink">{count} mốc</p>
     </div>
   );
@@ -153,6 +155,7 @@ export function SubmitProposalPage() {
   const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [proposalFile, setProposalFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -188,6 +191,7 @@ export function SubmitProposalPage() {
           jobTechnologyItems,
           milestoneItems,
           portfolioResult,
+          businessProfile,
           quotaItem,
         ] = await Promise.all([
           marketplaceApi.getJob(numericJobId),
@@ -199,6 +203,7 @@ export function SubmitProposalPage() {
           catalogApi.listJobTechnologies(numericJobId).catch(() => []),
           contractApi.listJobMilestones(numericJobId).catch(() => []),
           profileApi.getMyPortfolio().catch(() => null),
+          profileApi.getBusinessByJob(numericJobId).catch(() => null),
           userQuotaApi.getCurrent().catch(() => null),
         ]);
         if (ignore) return;
@@ -221,6 +226,7 @@ export function SubmitProposalPage() {
           ),
         );
         setPortfolio(portfolioResult);
+        setBusiness(businessProfile);
         setQuota(quotaItem);
       } catch {
         if (!ignore) setJob(null);
@@ -264,6 +270,14 @@ export function SubmitProposalPage() {
       ),
     [milestoneBudgets, milestones],
   );
+  const originalMilestoneTotal = useMemo(
+    () =>
+      milestones.reduce(
+        (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+        0,
+      ),
+    [milestones],
+  );
 
   const bidAmount = requestBudgetChange
     ? proposalMilestoneTotal
@@ -280,7 +294,7 @@ export function SubmitProposalPage() {
     }
     if (quota && (quota.proposalQuotaBalance ?? 0) <= 0) {
       setMessage(
-        "Bạn đã hết lượt gửi Proposal. Vui lòng mua thêm credit hoặc gói thành viên.",
+        "Bạn đã hết quota gửi bản đề xuất. Vui lòng mua thêm quota hoặc gói thành viên.",
       );
       return;
     }
@@ -298,7 +312,7 @@ export function SubmitProposalPage() {
     }
     if (!form.domainId || !form.skillId) {
       setMessage(
-        "Vui lòng chọn lĩnh vực và kỹ năng phù hợp với portfolio của bạn.",
+        "Vui lòng chọn lĩnh vực và kỹ năng phù hợp với hồ sơ năng lực của bạn.",
       );
       return;
     }
@@ -307,7 +321,7 @@ export function SubmitProposalPage() {
       milestones.length > 0 &&
       proposalMilestoneTotal <= 0
     ) {
-      setMessage("Vui lòng nhập ngân sách cho từng milestone trước khi gửi.");
+      setMessage("Vui lòng nhập ngân sách cho từng mốc trước khi gửi.");
       return;
     }
     if (
@@ -317,7 +331,7 @@ export function SubmitProposalPage() {
       proposalMilestoneTotal !== bidAmount
     ) {
       setMessage(
-        "Tổng ngân sách milestone đề xuất ít nhất phải bằng ngân sách.",
+        "Tổng ngân sách các mốc đề xuất ít nhất phải bằng ngân sách.",
       );
       return;
     }
@@ -351,7 +365,7 @@ export function SubmitProposalPage() {
       });
       setForm((value) => ({ ...value, proposalFileUrl }));
       setSavedProposal(proposal);
-      setMessage("Đã gửi proposal thành công.");
+      setMessage("Đã gửi bản đề xuất thành công.");
     } catch (error) {
       const apiError = error as {
         response?: { data?: { message?: string } };
@@ -360,7 +374,7 @@ export function SubmitProposalPage() {
       setMessage(
         apiError.response?.data?.message ||
           apiError.message ||
-          "Không thể gửi proposal.",
+          "Không thể gửi bản đề xuất.",
       );
     } finally {
       setLoading(false);
@@ -371,7 +385,7 @@ export function SubmitProposalPage() {
     return (
       <EmptyState
         title="Không tìm thấy dự án"
-        description="Dữ liệu job được tải trực tiếp từ backend."
+        description="Dữ liệu dự án được tải trực tiếp từ máy chủ."
       />
     );
   }
@@ -387,7 +401,7 @@ export function SubmitProposalPage() {
             <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#eef7ff,#effcf7)] p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <Badge tone="brand">Proposal packet</Badge>
+                  <Badge tone="brand">Hồ sơ đề xuất</Badge>
                   <h2 className="mt-3 font-display text-2xl font-black text-ink">
                     Bản đề xuất
                   </h2>
@@ -405,7 +419,7 @@ export function SubmitProposalPage() {
                   tone="danger"
                   title="Tài khoản hiện tại không phải Chuyên gia"
                 >
-                  Hãy đăng nhập bằng tài khoản Expert để gửi proposal cho dự án.
+                  Hãy đăng nhập bằng tài khoản chuyên gia để gửi bản đề xuất cho dự án.
                 </Notice>
               )}
               <section className="grid gap-4 rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
@@ -491,7 +505,7 @@ export function SubmitProposalPage() {
                         technicalSolution: event.target.value,
                       }))
                     }
-                    placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc nghiệm thu và chỉ số cam kết."
+                    placeholder="Mô tả kiến trúc, công nghệ, cách triển khai, mốc và chỉ số cam kết."
                     className="min-h-36"
                     required
                   />
@@ -522,7 +536,7 @@ export function SubmitProposalPage() {
                       Ngân sách & tài liệu
                     </h3>
                     <p className="text-sm text-slate-500">
-                      Đính kèm proposal_file và chốt ngân sách dự án trước khi
+                      Đính kèm file bản đề xuất và chốt ngân sách dự án trước khi
                       gửi.
                     </p>
                   </div>
@@ -540,7 +554,7 @@ export function SubmitProposalPage() {
                     />
                   </Field>
                   <Field
-                    label="Proposal file"
+                    label="File bản đề xuất"
                     hint={
                       proposalFile?.name ||
                       form.proposalFileUrl ||
@@ -549,7 +563,7 @@ export function SubmitProposalPage() {
                   >
                     <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50 hover:shadow-card">
                       <UploadCloud className="h-5 w-5" />
-                      <span>Chọn proposal file</span>
+                    <span>Chọn tệp đề xuất</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,application/pdf,.doc,.docx"
@@ -585,8 +599,8 @@ export function SubmitProposalPage() {
                 )}
                 {requestBudgetChange && (
                   <span className="ml-2 text-brand-600">
-                    · Hãy nhập số tiền đề xuất từng milestone và ngân sách sẽ
-                    cập nhật theo tổng milestone
+                    · Hãy nhập số tiền đề xuất từng mốc và ngân sách sẽ
+                    cập nhật theo tổng các mốc
                   </span>
                 )}
               </div>
@@ -600,21 +614,14 @@ export function SubmitProposalPage() {
                       </span>
                       <div>
                         <h3 className="font-display text-lg font-extrabold text-ink">
-                          Proposal milestone
+                          Mốc trong đề xuất
                         </h3>
                         <p className="text-sm text-slate-500">
-                          Tổng milestone đề xuất phải bằng ngân sách đề xuất nếu
+                          Tổng ngân sách các mốc đề xuất phải bằng ngân sách đề xuất nếu
                           bạn muốn thay đổi.
                         </p>
                       </div>
                     </div>
-                    <Badge
-                      tone={
-                        bidAmount === proposalMilestoneTotal ? "mint" : "amber"
-                      }
-                    >
-                      {formatCurrency(proposalMilestoneTotal)}
-                    </Badge>
                   </div>
                   <div className="grid gap-3">
                     {milestones.map((milestone) => (
@@ -670,6 +677,29 @@ export function SubmitProposalPage() {
                         </div>
                       </div>
                     ))}
+                    <div className="grid gap-4 rounded-2xl border border-slate-100 bg-white p-4 md:grid-cols-[1fr_180px_180px]">
+                      <div className="flex items-center">
+                        <p className="font-extrabold text-ink">
+                          Tổng ngân sách
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">
+                          Tổng ngân sách gốc
+                        </p>
+                        <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-600">
+                          {formatCurrency(originalMilestoneTotal)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+                          Tổng ngân sách đề xuất
+                        </p>
+                        <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
+                          {formatCurrency(proposalMilestoneTotal)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </section>
               )}
@@ -688,7 +718,7 @@ export function SubmitProposalPage() {
                   disabled={session?.role !== "EXPERT" || !!savedProposal}
                 >
                   <Save className="h-4 w-4" />
-                  Gửi proposal
+                  Gửi bản đề xuất
                 </Button>
               </div>
               {message && (
@@ -757,7 +787,7 @@ export function SubmitProposalPage() {
                     Doanh nghiệp
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
-                    {job.companyName || "Chưa cập nhật"}
+                    {business?.companyName || job.companyName || "Chưa cập nhật"}
                   </p>
                 </div>
               </div>
@@ -767,7 +797,7 @@ export function SubmitProposalPage() {
                   <CheckCircle2 className="h-5 w-5 text-pink-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Milestone</p>
+                  <p className="text-xs font-bold text-slate-400">Mốc</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {milestones.length} mốc
                   </p>
@@ -775,15 +805,15 @@ export function SubmitProposalPage() {
               </div>
             </div>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
-              {job.structuredSow || job.rawRequirements}
+              {getJobSowSummary(job) || job.rawRequirements}
             </p>
           </Card>
           {savedProposal && (
             <Card className="p-5">
-              <SectionHeading title="Proposal đã gửi" />
+              <SectionHeading title="Bản đề xuất đã gửi" />
               <div className="mt-4">
                 <LinkButton to="/app/proposals" variant="secondary">
-                  Xem proposal của tôi
+                  Xem bản đề xuất của tôi
                 </LinkButton>
               </div>
             </Card>

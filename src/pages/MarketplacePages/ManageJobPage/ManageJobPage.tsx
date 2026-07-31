@@ -6,6 +6,7 @@ import {
   Cpu,
   Eye,
   FileCheck2,
+  RefreshCw,
   Sparkles,
   Star,
   XCircle,
@@ -13,7 +14,7 @@ import {
   Layers,
   BadgeCheck,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   catalogApi,
@@ -140,7 +141,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản công việc",
     content:
-      "Hợp đồng được thực hiện dựa trên phạm vi công việc, milestone, ngân sách và timeline đã thống nhất trong job và proposal được chấp nhận.",
+  "Hợp đồng được thực hiện dựa trên phạm vi công việc, cột mốc, ngân sách và thời gian đã thống nhất trong dự án và bản đề xuất được chấp nhận.",
   },
   {
     title: "Phạm vi trách nhiệm",
@@ -150,7 +151,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản thanh toán",
     content:
-      "Ngân sách được phân bổ theo milestone. Doanh nghiệp thực hiện ký quỹ theo tỷ lệ nền tảng quy định, hệ thống giữ tiền trong escrow và giải ngân theo kết quả nghiệm thu.",
+      "Ngân sách được phân bổ theo mốc. Doanh nghiệp thực hiện ký quỹ theo tỷ lệ nền tảng quy định, hệ thống giữ tiền trong escrow và giải ngân theo kết quả nghiệm thu.",
   },
   {
     title: "Điều khoản bảo mật",
@@ -160,7 +161,7 @@ const CONTRACT_TERM_SECTIONS = [
   {
     title: "Điều khoản chấm dứt",
     content:
-      "Hợp đồng có thể bị chấm dứt khi một bên vi phạm cam kết, không phản hồi trong thời hạn hợp lý, hoặc hai bên thống nhất dừng dự án. Phần công việc đã nghiệm thu được xử lý theo trạng thái milestone thực tế.",
+      "Hợp đồng có thể bị chấm dứt khi một bên vi phạm cam kết, không phản hồi trong thời hạn hợp lý, hoặc hai bên thống nhất dừng dự án. Phần công việc đã nghiệm thu được xử lý theo trạng thái mốc thực tế.",
   },
   {
     title: "Điều khoản tranh chấp",
@@ -189,7 +190,6 @@ export function ManageJobPage() {
   const [contractModal, setContractModal] = useState<Proposal | null>(null);
   const [contractForm, setContractForm] = useState({
     contractTitle: "",
-    timelineWeeks: "6",
   });
   const [contractTermsOpen, setContractTermsOpen] = useState(false);
   const [contractError, setContractError] = useState("");
@@ -198,6 +198,7 @@ export function ManageJobPage() {
   const [reviewMessageTone, setReviewMessageTone] = useState<
     "success" | "danger"
   >("success");
+  const [refreshing, setRefreshing] = useState(false);
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
   const [recommendationResult, setRecommendationResult] =
@@ -208,46 +209,61 @@ export function ManageJobPage() {
     "info" | "success" | "warning" | "danger"
   >("info");
 
-  useEffect(() => {
+  const loadPageData = useCallback(async (showRefreshLoading = false) => {
     const id = Number(jobId);
-    marketplaceApi.getJob(id).then(setJob);
-    marketplaceApi.listProposals(id).then(setProposals);
-    Promise.all([
-      catalogApi.listDomains(true),
-      catalogApi.listSkills(true),
-      catalogApi.listJobDomains(id),
-      catalogApi.listJobSkills(id),
-    ])
-      .then(([domainItems, skillItems, jobDomainItems, jobSkillItems]) => {
+    if (!Number.isFinite(id)) return;
+    if (showRefreshLoading) setRefreshing(true);
+
+    try {
+      const [
+        jobItem,
+        proposalItems,
+        catalogItems,
+        milestoneItems,
+        contractItems,
+        savedRecommendation,
+      ] = await Promise.all([
+        marketplaceApi.getJob(id),
+        marketplaceApi.listProposals(id),
+        Promise.all([
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listJobDomains(id),
+          catalogApi.listJobSkills(id),
+        ]).catch(() => null),
+        contractApi.listJobMilestones(id).catch(() => []),
+        contractApi.listContracts().catch(() => []),
+        expertRecommendationApi.get(id).catch(() => null),
+      ]);
+
+      setJob(jobItem);
+      setProposals(proposalItems);
+      if (catalogItems) {
+        const [domainItems, skillItems, jobDomainItems, jobSkillItems] =
+          catalogItems;
         setDomains(domainItems);
         setSkills(skillItems);
         setJobDomains(jobDomainItems.map((item) => item.id.domainId));
         setJobSkills(jobSkillItems);
-      })
-      .catch(() => {
+      } else {
         setDomains([]);
         setSkills([]);
         setJobDomains([]);
         setJobSkills([]);
-      });
-    contractApi
-      .listJobMilestones(id)
-      .then(setMilestones)
-      .catch(() => setMilestones([]));
-    contractApi
-      .listContracts()
-      .then(setContracts)
-      .catch(() => setContracts([]));
-    // Load saved AI recommendations silently
-    expertRecommendationApi
-      .get(id)
-      .then((result) => {
-        if (result.recommendations?.length > 0) {
-          setRecommendationResult(result);
-        }
-      })
-      .catch(() => {});
+      }
+      setMilestones(milestoneItems);
+      setContracts(contractItems);
+      if (savedRecommendation?.recommendations?.length) {
+        setRecommendationResult(savedRecommendation);
+      }
+    } finally {
+      if (showRefreshLoading) setRefreshing(false);
+    }
   }, [jobId]);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => loadPageData());
+  }, [loadPageData]);
 
   const generateRecommendations = async () => {
     const id = Number(jobId);
@@ -284,37 +300,36 @@ export function ManageJobPage() {
     }
   };
 
-  if (!job) return <div>Đang tải job...</div>;
+  if (!job) return <div>Đang tải dự án...</div>;
 
   const jobStatus = job.status.trim().toUpperCase();
   const jobInProgress = jobStatus === "IN_PROGRESS";
-  const contractTimelineWeeks = Math.max(
-    1,
-    Number(contractForm.timelineWeeks) || 1,
-  );
-  const contractTimelineDays = contractTimelineWeeks * 7;
-  const totalMilestoneWeeks = milestones.reduce(
-    (total, milestone) =>
-      total + Number(milestone.durationValue ?? milestone.duration ?? 0),
-    0,
-  );
-  const minimumTimelineWeeks = Math.max(1, totalMilestoneWeeks);
-  const totalMilestoneDays = totalMilestoneWeeks * 7;
-  const timelineValid = contractTimelineWeeks >= minimumTimelineWeeks;
+  const totalMilestoneDays = milestones.reduce((total, milestone) => {
+    const duration = Number(milestone.durationValue ?? milestone.duration ?? 0);
+    const unit = (milestone.durationUnit || "WEEK").toUpperCase();
+    if (!Number.isFinite(duration) || duration <= 0) return total;
+    if (unit.includes("DAY")) return total + duration;
+    if (unit.includes("MONTH")) return total + duration * 30;
+    return total + duration * 7;
+  }, 0);
+  const contractTimelineDays = Math.max(1, totalMilestoneDays);
+  const contractTimelineWeeks = Math.ceil(contractTimelineDays / 7);
+  const totalMilestoneWeeks = contractTimelineWeeks;
   const contractStartDate = new Date();
   const contractEndDate = new Date(contractStartDate);
   contractEndDate.setDate(contractEndDate.getDate() + contractTimelineDays);
   const contractProposalMilestones = parseProposalMilestones(
     contractModal?.proposalMilestone,
   );
-  const totalProjectBudget = milestones.reduce((total, milestone) => {
+  const originalProjectBudget = milestones.reduce(
+    (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+    0,
+  );
+  const finalProjectBudget = milestones.reduce((total, milestone) => {
     const proposalMilestone = contractProposalMilestones.find(
       (item) => item.milestoneId === milestone.milestoneId,
     );
-    return (
-      total +
-      (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0)
-    );
+    return total + (proposalMilestone?.proposedBudget ?? milestone.fundsAllocated ?? 0);
   }, 0);
 
   const review = async (
@@ -331,8 +346,8 @@ export function ManageJobPage() {
       setReviewMessageTone(status === "Accepted" ? "success" : "danger");
       setReviewMessage(
         status === "Accepted"
-          ? "Đã chấp nhận proposal thành công!"
-          : "Đã từ chối proposal thành công!",
+          ? "Đã chấp nhận bản đề xuất thành công!"
+          : "Đã từ chối bản đề xuất thành công!",
       );
     } catch (error) {
       setReviewMessageTone("danger");
@@ -344,23 +359,17 @@ export function ManageJobPage() {
     if (!contractModal) return;
     if (jobInProgress) {
       setContractError(
-        "Job đang IN_PROGRESS nên không thể tạo hoặc thay đổi hợp đồng.",
+        "Dự án đang thực hiện nên không thể tạo hoặc thay đổi hợp đồng.",
       );
       return;
     }
     if (contractModal.status !== "Accepted") {
-      setContractError("Chỉ tạo contract draft sau khi proposal đã Accepted.");
+      setContractError("Chỉ tạo hợp đồng nháp sau khi bản đề xuất đã được chấp nhận.");
       return;
     }
     if (milestones.length === 0) {
       setContractError(
-        "Job cần có ít nhất một milestone để tạo contract draft.",
-      );
-      return;
-    }
-    if (!timelineValid) {
-      setContractError(
-        `Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian milestone (${totalMilestoneWeeks} tuần). Vui lòng nhập ít nhất ${minimumTimelineWeeks} tuan.`,
+        "Dự án cần có ít nhất một cột mốc để tạo hợp đồng nháp.",
       );
       return;
     }
@@ -371,7 +380,7 @@ export function ManageJobPage() {
         contractModal.proposalId,
         {
           contractTitle:
-            contractForm.contractTitle.trim() || `Contract - ${job.title}`,
+            contractForm.contractTitle.trim() || `Hợp đồng - ${job.title}`,
           timelineDays: contractTimelineDays,
         },
       );
@@ -390,11 +399,24 @@ export function ManageJobPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title={job.title}
-          description="Theo dõi job, milestone đã khai báo và proposal chuyên gia gửi cho doanh nghiệp."
+          description="Theo dõi dự án, cột mốc đã khai báo và bản đề xuất chuyên gia gửi cho doanh nghiệp."
           actions={
-            <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-              Xem bài đăng công khai
-            </LinkButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void loadPageData(true)}
+                loading={refreshing}
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  className={cn("h-4 w-4", refreshing && "animate-spin")}
+                />
+                Làm mới
+              </Button>
+              <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+                Xem bài đăng công khai
+              </LinkButton>
+            </div>
           }
         />
       </div>
@@ -418,7 +440,7 @@ export function ManageJobPage() {
               onClick={() => setProposalTab("proposal")}
             >
               <FileCheck2 className="h-4 w-4" />
-              Proposal của chuyên gia
+              Bản đề xuất của chuyên gia
             </Button>
           </div>
           {proposalTab === "ai" && (
@@ -505,13 +527,13 @@ export function ManageJobPage() {
           )}
           <div className={proposalTab === "proposal" ? "block" : "hidden"}>
             <SectionHeading
-              title="Proposal của chuyên gia"
-              description="Danh sách proposal được chuyên gia gửi cho dự án này."
+              title="Bản đề xuất của chuyên gia"
+              description="Danh sách bản đề xuất được chuyên gia gửi cho dự án này."
             />
             {jobInProgress && (
               <Notice
                 tone="info"
-                title="Dự án đã tạo hợp đồng, các thao tác với proposal và tạo hợp đồng mới sẽ không có hiệu lực."
+                  title="Dự án đã tạo hợp đồng; các thao tác với bản đề xuất và tạo hợp đồng mới sẽ không có hiệu lực."
                 className="mt-4"
               />
             )}
@@ -540,16 +562,15 @@ export function ManageJobPage() {
                     setContractModal(proposal);
                     setContractForm((value) => ({
                       ...value,
-                      contractTitle: `Contract - ${job.title}`,
-                      timelineWeeks: String(minimumTimelineWeeks),
+                      contractTitle: `Hợp đồng - ${job.title}`,
                     }));
                   }}
                 />
               ))}
               {proposals.length === 0 && (
                 <EmptyState
-                  title="Chưa có proposal"
-                  description="Job này chưa có proposal từ chuyên gia."
+                  title="Chưa có bản đề xuất"
+                  description="Dự án này chưa có bản đề xuất từ chuyên gia."
                 />
               )}
             </div>
@@ -595,13 +616,13 @@ export function ManageJobPage() {
               </span>
             </div>
             <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-500">Ngày tạo job</span>
+                  <span className="text-slate-500">Ngày tạo dự án</span>
               <span className="font-extrabold text-ink">
                 {formatDate(job.createdAt)}
               </span>
             </div>
             <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-500">Milestone</span>
+              <span className="text-slate-500">Mốc</span>
               <span className="font-extrabold text-ink">
                 {milestones.length} mốc
               </span>
@@ -631,7 +652,7 @@ export function ManageJobPage() {
             </div>
           </div>
           <div className="mt-5">
-            <SectionHeading title="Milestone" />
+            <SectionHeading title="Mốc" />
             <CompactMilestones milestones={milestones} />
           </div>
         </Card>
@@ -641,7 +662,7 @@ export function ManageJobPage() {
         open={Boolean(contractModal)}
         onClose={() => setContractModal(null)}
         title="Tạo hợp đồng nháp"
-        description="Tạo draft contract từ proposal đã chọn."
+        description="Tạo hợp đồng nháp từ bản đề xuất đã chọn."
         size="2xl"
         footer={
           <>
@@ -658,12 +679,11 @@ export function ManageJobPage() {
               disabled={
                 contractLoading ||
                 jobInProgress ||
-                !timelineValid ||
                 contractModal?.status !== "Accepted" ||
                 milestones.length === 0
               }
             >
-              Tạo Draft
+              Tạo hợp đồng nháp
             </Button>
           </>
         }
@@ -673,13 +693,13 @@ export function ManageJobPage() {
           {contractModal?.status !== "Accepted" && (
             <Notice
               tone="warning"
-              title="Proposal cần dược Accepted trước khi tạo contract draft."
+              title="Bản đề xuất cần được chấp nhận trước khi tạo hợp đồng nháp."
             />
           )}
           {milestones.length === 0 && (
             <Notice
               tone="warning"
-              title="Job chưa có milestone nên backend chưa thể tạo contract draft."
+              title="Dự án chưa có cột mốc nên máy chủ chưa thể tạo hợp đồng nháp."
             />
           )}
           <Field label="Tên hợp đồng">
@@ -693,39 +713,11 @@ export function ManageJobPage() {
               }
             />
           </Field>
-          <Field label="Thời gian (tuần)">
-            <Input
-              type="number"
-              min={minimumTimelineWeeks}
-              value={contractForm.timelineWeeks}
-              onChange={(event) =>
-                setContractForm((value) => ({
-                  ...value,
-                  timelineWeeks: event.target.value,
-                }))
-              }
-            />
-            <p className="mt-2 text-xs font-semibold text-slate-500">
-              Bạn có thể nhập số tuần tối thiểu {minimumTimelineWeeks} tuần để
-              đảm bảo hợp đồng đủ thời gian cho các mốc nghiệm thu.
-            </p>
-          </Field>
-          {!timelineValid && (
-            <Notice
-              tone="warning"
-              title={`Thời gian hợp đồng phải lớn hơn hoặc bằng tổng thời gian hoàn thành mốc nghiệm thu (${totalMilestoneWeeks} tuần). Tối thiểu ${minimumTimelineWeeks} tuần.`}
-            />
-          )}
-          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 rounded-3xl border border-brand-100 bg-brand-50/50 p-4 md:grid-cols-3">
             <ContractPreviewMetric
-              label="Tổng thời gian mốc nghiệm thu"
+              label="Tổng thời gian mốc"
               value={`${totalMilestoneWeeks} tuần (${totalMilestoneDays} ngày)`}
             />
-            <ContractPreviewMetric
-              label="Tổng tiền dự án"
-              value={formatCurrency(totalProjectBudget)}
-            />
-
             <ContractPreviewMetric
               label="Ngày bắt đầu dự kiến"
               value={formatDate(contractStartDate.toISOString())}
@@ -734,17 +726,28 @@ export function ManageJobPage() {
               label="Ngày kết thúc dự kiến"
               value={formatDate(contractEndDate.toISOString())}
             />
-            <ContractPreviewMetric
-              label="Tổng thời gian"
-              value={`${contractTimelineWeeks} tuần (${contractTimelineDays} ngày)`}
-            />
           </div>
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
-              title="Ngân sách sẽ dựa vào hợp đồng"
+              title="Ngân sách theo mốc hợp đồng"
+              description="So sánh ngân sách ban đầu với ngân sách được chốt cho từng mốc."
               // Backend lấy milestone gốc của job và ghi đè bằng ngân sách proposal nếu chuyên gia có đề xuất thay đổi.
             />
             <div className="mt-4 grid gap-3">
+              <div className="hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:grid lg:grid-cols-[120px_minmax(320px,1fr)_170px_170px] lg:items-center lg:gap-4">
+                <div className="col-span-2 px-2">
+                  <p className="text-sm font-extrabold text-ink">Phân bổ theo từng mốc</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Ngân sách cuối cùng có thể thay đổi theo đề xuất đã chọn.</p>
+                </div>
+                <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-right">
+                  <p className="text-xs font-bold text-rose-700">Tổng ngân sách gốc</p>
+                  <p className="mt-1 text-lg font-black text-rose-700">{formatCurrency(originalProjectBudget)}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-right">
+                  <p className="text-xs font-bold text-emerald-700">Tổng ngân sách cuối cùng</p>
+                  <p className="mt-1 text-lg font-black text-emerald-700">{formatCurrency(finalProjectBudget)}</p>
+                </div>
+              </div>
               {milestones
                 .slice()
                 .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -780,19 +783,19 @@ export function ManageJobPage() {
                             : "Chưa có thời gian"}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
+                      <div className="rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2 lg:text-right">
+                        <p className="text-xs font-bold text-slate-400 lg:hidden">
                           Ngân sách gốc
                         </p>
-                        <p className="font-extrabold text-slate-700">
+                        <p className="font-extrabold text-rose-700">
                           {formatCurrency(milestone.fundsAllocated)}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 lg:text-right">
+                        <p className="text-xs font-bold text-slate-400 lg:hidden">
                           Ngân sách cuối cùng
                         </p>
-                        <p className="font-extrabold text-ink">
+                        <p className="font-extrabold text-emerald-700">
                           {formatCurrency(finalBudget)}
                         </p>
                       </div>
@@ -950,7 +953,7 @@ function ProposalCard({
         expertResult.status === "rejected" ||
         portfoliosResult.status === "rejected"
       ) {
-        setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
+        setDetailMessage("Một số thông tin chưa lấy được từ máy chủ hiện tại.");
       }
     }
 
@@ -1042,7 +1045,7 @@ function ProposalCard({
           </p>
           <FirebaseFileLink
             path={proposal.proposalFileUrl}
-            emptyText="Chưa có file proposal"
+              emptyText="Chưa có tệp bản đề xuất"
             buttonText="Xem file"
             showPath={false}
           />
@@ -1114,10 +1117,10 @@ function ProposalCard({
                 disabled={!canCreateContract}
                 title={
                   canCreateContract
-                    ? "Tạo contract draft"
+                    ? "Tạo hợp đồng nháp"
                     : statusLocked
-                      ? "Job đang IN_PROGRESS nên không thể thay đổi"
-                      : "Chỉ tạo contract sau khi proposal dược Accepted"
+              ? "Dự án đang thực hiện nên không thể thay đổi"
+              : "Chỉ tạo hợp đồng sau khi bản đề xuất được chấp nhận"
                 }
               >
                 <FileCheck2 className="h-4 w-4" />
@@ -1131,7 +1134,7 @@ function ProposalCard({
       <Modal
         open={proposalDetailOpen}
         onClose={() => setProposalDetailOpen(false)}
-        title="Chi tiết proposal"
+        title="Chi tiết bản đề xuất"
         description="Thông tin đầy đủ về đề xuất của chuyên gia."
         size="2xl"
       >
@@ -1161,17 +1164,17 @@ function ProposalCard({
               {proposal.technicalSolution}
             </ProposalInfoBlock>
 
-            <ProposalInfoBlock title="Proposal description">
-              {proposal.proposalDescription || "Chưa có mô tả proposal."}
+            <ProposalInfoBlock title="Mô tả bản đề xuất">
+              {proposal.proposalDescription || "Chưa có mô tả bản đề xuất."}
             </ProposalInfoBlock>
 
             <div className="grid gap-4">
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                  Proposal milestone
+                  Mốc đề xuất
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Ngân sách đề xuất của chuyên gia theo từng milestone.
+                  Ngân sách đề xuất của chuyên gia theo từng mốc.
                 </p>
               </div>
 
@@ -1233,7 +1236,7 @@ function ProposalCard({
                 </div>
               ) : (
                 <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-400">
-                  Job chưa có milestone để hiển thị.
+                  Dự án chưa có cột mốc để hiển thị.
                 </p>
               )}
             </div>
@@ -1245,7 +1248,7 @@ function ProposalCard({
         open={expertOpen}
         onClose={() => setExpertOpen(false)}
         title="Thông tin chuyên gia"
-        description="Profile và portfolio của chuyên gia gửi proposal."
+        description="Hồ sơ và hồ sơ năng lực của chuyên gia gửi bản đề xuất."
         size="lg"
       >
         <div className="grid gap-5">
@@ -1277,7 +1280,7 @@ function ProposalCard({
             value={expertProfile?.averageRating ?? expertProfile?.rating}
           />
 
-          <SectionHeading title="Portfolio" />
+          <SectionHeading title="Hồ sơ năng lực" />
 
           <div className="grid gap-6">
             <PortfolioChipSection
@@ -1296,7 +1299,7 @@ function ProposalCard({
 
             <PortfolioChipSection
               icon={<Cpu className="h-5 w-5" />}
-              title="Stack công nghệ"
+              title="Nhóm công nghệ"
               items={portfolioTechnologyList}
               tone="coral"
             />
@@ -1324,7 +1327,7 @@ function ProposalCard({
             />
 
             <ExpertInfoItem
-              label="Skill"
+              label="Kỹ năng"
               value={skillNames || "Chưa có dữ liệu"}
               multiline
             />
@@ -1641,7 +1644,7 @@ function ExpertRecommendationCard({
         expertResult.status === "rejected" ||
         portfoliosResult.status === "rejected"
       ) {
-        setDetailMessage("Một số thông tin chưa lấy dược từ API hiện tại.");
+        setDetailMessage("Một số thông tin chưa lấy được từ máy chủ hiện tại.");
       }
     }
 
@@ -1857,7 +1860,7 @@ function ExpertRecommendationCard({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Thông tin chuyên gia"
-        description="Profile và portfolio của chuyên gia gửi proposal."
+        description="Hồ sơ và hồ sơ năng lực của chuyên gia gửi bản đề xuất."
         size="lg"
       >
         <div className="grid gap-5">
@@ -1889,7 +1892,7 @@ function ExpertRecommendationCard({
             value={expertProfile?.averageRating ?? expertProfile?.rating}
           />
 
-          <SectionHeading title="Portfolio" />
+          <SectionHeading title="Hồ sơ năng lực" />
 
           <div className="grid gap-6">
             <PortfolioChipSection
@@ -1908,7 +1911,7 @@ function ExpertRecommendationCard({
 
             <PortfolioChipSection
               icon={<Cpu className="h-5 w-5" />}
-              title="Stack công nghệ"
+              title="Nhóm công nghệ"
               items={portfolioTechnologyList}
               tone="coral"
             />
@@ -1936,7 +1939,7 @@ function ExpertRecommendationCard({
             />
 
             <ExpertInfoItem
-              label="Skill"
+              label="Kỹ năng"
               value={skillNames || "Chưa có dữ liệu"}
               multiline
             />

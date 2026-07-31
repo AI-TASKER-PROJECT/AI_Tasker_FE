@@ -4,7 +4,7 @@ import { BriefcaseBusiness, ExternalLink, IdCard, Layers3, MapPin, Users } from 
 import { profileApi } from "../../../lib/api";
 import { getSession } from "../../../lib/session";
 import { maskSensitiveValue } from "../../../lib/utils";
-import { Avatar, Badge, Button, Card, LinkButton, Notice, SectionHeading, Tabs } from "../../../components/ui";
+import { Avatar, Button, Card, LinkButton, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { BusinessProfile, Job } from "../../../types";
 import { EmptyProfileBlock, ProfileDetailRow, readApiError } from "../ProfilePages.shared";
 
@@ -150,7 +150,7 @@ export function PublicBusinessProfilePage() {
                 />
                 <ProfileDetailRow
                   icon={<Layers3 className="h-4 w-4" />}
-                  label="Lĩnh vực hoạt dộng"
+                  label="Lĩnh vực hoạt động"
                   value={profile.industry || "Chưa cập nhật"}
                 />
                 <ProfileDetailRow
@@ -185,7 +185,7 @@ export function PublicBusinessProfilePage() {
                             {job.rawRequirements || "Chưa có mô tả yêu cầu."}
                           </p>
                         </div>
-                        <Badge tone="mint">{job.status}</Badge>
+                      <StatusBadge status={job.status} />
                       </div>
                     </Link>
                   ))
@@ -193,7 +193,7 @@ export function PublicBusinessProfilePage() {
                 <EmptyProfileBlock
                   icon={<BriefcaseBusiness className="h-5 w-5" />}
                   title="Chưa có tin tuyển dụng nào"
-                  description="Doanh nghiệp hiện tại không có tin tuyển dụng OPEN."
+                  description="Doanh nghiệp hiện tại không có dự án đang mở."
                 />
               )}
             </div>

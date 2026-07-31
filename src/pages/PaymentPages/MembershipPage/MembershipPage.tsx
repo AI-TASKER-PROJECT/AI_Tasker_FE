@@ -19,6 +19,7 @@ import {
 import { useSession } from "../../../context/sessionContext";
 import { cn, formatCurrency } from "../../../lib/utils";
 import type {
+  CreditPriceResponse,
   MembershipPackage,
   PaymentActionResponse,
   MembershipPurchase,
@@ -116,7 +117,7 @@ function PackageCard({
           <li className="flex items-center gap-2.5 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-mint-500" />
             <span className="font-semibold text-slate-700">
-              Badge xác minh · {pkg.badgeDurationDays} ngày
+              Huy hiệu xác minh · {pkg.badgeDurationDays} ngày
             </span>
           </li>
 
@@ -124,7 +125,7 @@ function PackageCard({
             <li className="flex items-center gap-2.5 text-sm">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-mint-500" />
               <span className="font-semibold text-slate-700">
-                {pkg.jobPostQuota} job-post credits
+                {pkg.jobPostQuota} quota đăng dự án
               </span>
             </li>
           )}
@@ -133,7 +134,7 @@ function PackageCard({
             <li className="flex items-center gap-2.5 text-sm">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-mint-500" />
               <span className="font-semibold text-slate-700">
-                {pkg.proposalQuota} proposal credits
+                {pkg.proposalQuota} lượt nộp bản đề xuất
               </span>
             </li>
           )}
@@ -142,7 +143,7 @@ function PackageCard({
             <li className="flex items-center gap-2.5 text-sm">
               <Sparkles className="h-4 w-4 shrink-0 text-amber-500" />
               <span className="font-bold text-amber-700">
-                AI Expert Recommendation
+                Đề xuất chuyên gia bằng trí tuệ nhân tạo
               </span>
             </li>
           )}
@@ -171,12 +172,14 @@ function CreditPurchaseModal({
   onClose,
   role,
   wallet,
+  unitPrice,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   role: "BUSINESS" | "EXPERT";
   wallet: SystemWallet | null;
+  unitPrice: number;
   onSuccess: () => void | Promise<void>;
 }) {
   const [quantity, setQuantity] = useState("1");
@@ -189,9 +192,8 @@ function CreditPurchaseModal({
     msg: string;
   } | null>(null);
 
-  const unitPrice = role === "BUSINESS" ? 200 : 100;
   const creditType =
-    role === "BUSINESS" ? "Job-post credit" : "Proposal credit";
+    role === "BUSINESS" ? "quota đăng dự án" : "quota nộp bản đề xuất";
   const total = (Number(quantity) || 0) * unitPrice;
 
   const handleClose = () => {
@@ -225,7 +227,7 @@ function CreditPurchaseModal({
       } else if (res.needTopup) {
         setNotice({
           tone: "warning",
-          msg: `Số dư không dủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)}.`,
+          msg: `Số dư không đủ. Cần thêm ${formatCurrency(res.missingAmount ?? 0)}.`,
         });
       }
     } catch (err) {
@@ -245,7 +247,7 @@ function CreditPurchaseModal({
       open={open}
       onClose={handleClose}
       title={`Mua ${creditType}`}
-      description={`Đơn giá: ${formatCurrency(unitPrice)} / credit. Credits không hết hạn.`}
+      description={`Đơn giá: ${formatCurrency(unitPrice)} / quota. Quota đã mua không hết hạn.`}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>
@@ -272,7 +274,7 @@ function CreditPurchaseModal({
             </p>
           </div>
         )}
-        <Field label="Số lượng credits">
+        <Field label="Số lượng quota">
           <div className="flex items-center gap-3">
             <Button
               variant="secondary"
@@ -310,7 +312,7 @@ function CreditPurchaseModal({
         {result?.needTopup && (
           <Button variant="secondary" onClick={openTopup}>
             <TrendingUp className="h-4 w-4" />
-            Nạp tiền dể tiếp tục
+            Nạp tiền để tiếp tục
           </Button>
         )}
       </div>
@@ -331,16 +333,21 @@ export function MembershipPage() {
     pkg: MembershipPackage;
   } | null>(null);
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditPrices, setCreditPrices] = useState<CreditPriceResponse | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [pkgs, w] = await Promise.allSettled([
+      const [pkgs, w, prices] = await Promise.allSettled([
         membershipApi.listPackages(),
         walletApi.current(),
+        creditApi.prices(),
       ]);
       if (pkgs.status === "fulfilled") setPackages(pkgs.value);
       if (w.status === "fulfilled") setWallet(w.value);
+      if (prices.status === "fulfilled") setCreditPrices(prices.value);
     } finally {
       setLoading(false);
     }
@@ -385,14 +392,18 @@ export function MembershipPage() {
   if (!session) return null;
   const role = session.role;
   const isExternalRole = role === "BUSINESS" || role === "EXPERT";
-  const creditType = role === "BUSINESS" ? "lượt đăng bài" : "lượt nộp đề xuất";
+  const creditType = role === "BUSINESS" ? "quota đăng dự án" : "quota nộp bản đề xuất";
+  const currentCreditPrice =
+    role === "BUSINESS"
+      ? creditPrices?.jobPostPriceVnd
+      : creditPrices?.proposalPriceVnd;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Membership & Credits"
+        eyebrow="QUYỀN LỢI THÀNH VIÊN"
         title="Gói thành viên"
-        description="Nâng cấp tài khoản dể nhận badge xác minh, credits dăng job, nộp proposal và tính năng AI dộc quyền."
+        description="Nâng cấp tài khoản để nhận huy hiệu xác minh, quota đăng dự án hoặc nộp bản đề xuất và tính năng trí tuệ nhân tạo dành riêng."
       />
 
       {/* Wallet balance hint */}
@@ -419,7 +430,7 @@ export function MembershipPage() {
       ) : packages.length === 0 ? (
         <Card className="p-12 text-center">
           <p className="text-sm font-semibold text-slate-400">
-            Chưa có gói thành viên nào dược cấu hình cho vai trò của bạn.
+            Chưa có gói thành viên nào được cấu hình cho vai trò của bạn.
           </p>
         </Card>
       ) : (
@@ -440,7 +451,7 @@ export function MembershipPage() {
         <Card className="p-6">
           <SectionHeading
             title={`Mua thêm ${creditType}`}
-            description="Credits không di kèm gói thành viên. Mua lẻ theo nhu cầu thực tế."
+            description="Quota có thể mua riêng theo nhu cầu thực tế và không hết hạn."
           />
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-100 p-4">
@@ -454,21 +465,22 @@ export function MembershipPage() {
                 </span>
                 <div>
                   <p className="text-sm text-slate-500">
-                    {role === "BUSINESS"
-                      ? "200 VND / 1 credit"
-                      : "100 VND / 1 credit"}
+                    {currentCreditPrice != null
+                      ? `${formatCurrency(currentCreditPrice)} / 1 quota`
+                      : "Đang tải đơn giá..."}
                   </p>
                 </div>
               </div>
               <p className="mt-3 text-xs text-slate-400">
                 {role === "BUSINESS"
-                  ? "Dùng dể đăng dự án mới. Mỗi 1 lần đăng tiêu tốn 1 credit."
-                  : "Dùng dể nộp proposal. Mỗi 1 lần nộp proposal tiêu tốn 1 credit."}
+                  ? "Dùng để đăng dự án mới. Mỗi lần đăng sử dụng 1 quota."
+                  : "Dùng để nộp bản đề xuất. Mỗi lần nộp sử dụng 1 quota."}
               </p>
             </div>
             <div className="flex items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 p-4">
               <Button
                 onClick={() => setCreditModalOpen(true)}
+                disabled={currentCreditPrice == null}
                 className="h-12 w-full rounded-xl border-2 border-transparent bg-[#b30069] px-6 text-[15px] font-bold text-white transition-all hover:-translate-y-1 hover:border-[#b30069] hover:bg-white hover:text-[#b30069] hover:shadow-lg"
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -529,8 +541,8 @@ export function MembershipPage() {
                     </p>
                   </div>
                 </div>
-                <Notice tone="success" title="Badge xác minh dã dược kích hoạt">
-                  Badge sẽ hiển thị trên hồ sơ của bạn trong{" "}
+                <Notice tone="success" title="Huy hiệu xác minh đã được kích hoạt">
+                  Huy hiệu sẽ hiển thị trên hồ sơ của bạn trong{" "}
                   {purchaseResult.pkg.badgeDurationDays} ngày tới.
                 </Notice>
               </>
@@ -563,12 +575,13 @@ export function MembershipPage() {
       )}
 
       {/* Credit purchase modal */}
-      {isExternalRole && (
+      {isExternalRole && currentCreditPrice != null && (
         <CreditPurchaseModal
           open={creditModalOpen}
           onClose={() => setCreditModalOpen(false)}
           role={role as "BUSINESS" | "EXPERT"}
           wallet={wallet}
+          unitPrice={currentCreditPrice}
           onSuccess={load}
         />
       )}

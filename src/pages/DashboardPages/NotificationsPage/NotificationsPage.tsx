@@ -177,7 +177,7 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          eyebrow="Realtime Center"
+          eyebrow="TRUNG TÂM THỜI GIAN THỰC"
           title="Trung tâm thông báo"
           description="Theo dõi tất cả thông báo hệ thống và trạng thái đã đọc."
           actions={
@@ -195,7 +195,7 @@ export function NotificationsPage() {
             Đang tải thông báo...
           </Card>
         ) : notifications.length === 0 ? (
-          <EmptyState title="Chua co thong bao" description="" />
+          <EmptyState title="Chưa có thông báo" description="" />
         ) : (
           notifications.map((item) => {
             const tone = notificationTone(item);
@@ -262,7 +262,7 @@ export function NotificationsPage() {
                           </div>
                         )}
                         <div className="grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-2">
-                          <span>Loại: {item.type}</span>
+                          <span>Loại: {item.typeLabel || "Thông báo hệ thống"}</span>
                           <span>
                             Trạng thái: {item.isRead ? "Đã đọc" : "Chưa đọc"}
                           </span>

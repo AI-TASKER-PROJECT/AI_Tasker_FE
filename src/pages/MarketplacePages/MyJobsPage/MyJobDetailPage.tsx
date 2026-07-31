@@ -12,6 +12,7 @@ import {
 } from "../../../services";
 import type { Job, Milestone } from "../../../types";
 import { formatCurrency } from "../../../lib/utils";
+import { JobSowContent } from "../../../components/JobSowContent";
 import {
   Button,
   Card,
@@ -73,6 +74,7 @@ export function MyJobDetailPage() {
   }
 
   const isDraft = job.status.trim().toUpperCase() === "DRAFT";
+  const canEdit = isDraft;
 
   const updateStatus = async (jobId: number, status: string) => {
     try {
@@ -113,7 +115,7 @@ export function MyJobDetailPage() {
           description="Chi tiết công việc bạn đã đăng tải."
           actions={
             <div className="flex gap-2">
-              {isDraft && (
+              {canEdit && (
                 <LinkButton
                   to={`/app/jobs/${job.jobId}/edit`}
                   variant="secondary"
@@ -137,15 +139,8 @@ export function MyJobDetailPage() {
               title="Yêu cầu dự án"
               description="Nội dung SOW và mô tả chi tiết."
             />
-            <div className="prose prose-slate mt-4 max-w-none prose-p:leading-relaxed prose-a:text-brand-600">
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: (job.structuredSow || job.rawRequirements).replace(
-                    /\n/g,
-                    "<br/>",
-                  ),
-                }}
-              />
+            <div className="mt-4">
+              <JobSowContent job={job} />
             </div>
           </Card>
 
@@ -198,8 +193,8 @@ export function MyJobDetailPage() {
 
           <Card className="p-6">
             <SectionHeading
-              title="Milestone dự án"
-              description="Các mốc công việc doanh nghiệp đã khai báo khi tạo job."
+              title="Mốc dự án"
+              description="Các cột mốc doanh nghiệp đã khai báo khi tạo dự án."
             />
             <MilestoneList milestones={milestones} />
           </Card>
@@ -231,7 +226,7 @@ export function MyJobDetailPage() {
               />
               <InfoRow
                 icon={<CheckCircle2 className="h-4 w-4" />}
-                label="Milestone"
+                label="Mốc"
                 value={`${milestones.length} mốc`}
               />
             </div>

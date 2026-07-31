@@ -124,7 +124,7 @@ export function VerificationsPage() {
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge tone="mint">
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          MST verified
+                          Đã xác minh mã số thuế
                         </Badge>
                         {(item as BusinessProfile).businessLicenseUrl && (
                           <Badge tone="slate">Có giấy phép</Badge>

@@ -22,6 +22,7 @@ import {
 import { useSession } from "../../../lib/session";
 import { formatCurrency } from "../../../lib/utils";
 import type { BusinessProfile, Job, Milestone } from "../../../types";
+import { JobSowContent } from "../../../components/JobSowContent";
 import {
   Button,
   Card,
@@ -125,7 +126,7 @@ export function JobDetailPage() {
   if (!job) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-        Đang tải job...
+        Đang tải dự án...
       </main>
     );
   }
@@ -145,9 +146,11 @@ export function JobDetailPage() {
         <div>
           <Card className="p-6">
             <SectionHeading title="Thông tin dự án" />
-            <div className="mt-5 whitespace-pre-wrap rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5 text-sm leading-7 text-slate-700">
-              {job.structuredSow ||
-                "Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."}
+            <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5">
+              <JobSowContent
+                job={job}
+              emptyMessage="Chưa có phạm vi công việc. Doanh nghiệp có thể cập nhật bằng trợ lý tạo dự án AI."
+              />
             </div>
             <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5">
               <ChipRow
@@ -166,8 +169,8 @@ export function JobDetailPage() {
           </Card>
           <Card className="mt-6 p-6">
             <SectionHeading
-              title="Milestone dự án"
-              description="Các mốc công việc doanh nghiệp dã khai báo khi tạo job."
+              title="Mốc dự án"
+              description="Các cột mốc doanh nghiệp đã khai báo khi tạo dự án."
             />
             <MilestoneList milestones={milestones} />
             {(canSubmitProposal || !session) && (
@@ -177,7 +180,7 @@ export function JobDetailPage() {
                   size="lg"
                   className="px-8"
                 >
-                  Nộp proposal ngay
+                  Nộp bản đề xuất ngay
                 </LinkButton>
               </div>
             )}
@@ -216,7 +219,7 @@ export function JobDetailPage() {
               />
               <InfoRow
                 icon={<CheckCircle2 className="h-4 w-4" />}
-                label="Milestone"
+                label="Mốc"
                 value={`${milestones.length} mốc`}
               />
             </div>
@@ -233,12 +236,12 @@ export function JobDetailPage() {
                 to={`/app/jobs/${job.jobId}/proposal`}
                 className="mt-5 w-full"
               >
-                Nộp Proposal ngay
+                Nộp bản đề xuất ngay
               </LinkButton>
             )}
             {!session && (
               <LinkButton to="/login" className="mt-5 w-full">
-                Nộp Proposal ngay
+                Nộp bản đề xuất ngay
               </LinkButton>
             )}
 
@@ -248,7 +251,7 @@ export function JobDetailPage() {
                   Nộp báo giá dự thầu
                 </Button>
                 <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Dự án cần ở trạng thái OPEN dể nhận proposal.
+                  Dự án cần ở trạng thái đang mở để nhận bản đề xuất.
                 </p>
               </>
             )}
@@ -259,7 +262,7 @@ export function JobDetailPage() {
         open={businessOpen}
         onClose={() => setBusinessOpen(false)}
         title="Thông tin doanh nghiệp"
-        description="Dữ liệu hồ sơ KYB của doanh nghiệp dăng job."
+              description="Dữ liệu hồ sơ xác minh của doanh nghiệp đăng dự án."
         size="lg"
       >
         <div className="grid gap-4">
@@ -269,7 +272,7 @@ export function JobDetailPage() {
           {!businessLoading && !business && (
             <Notice
               tone="warning"
-              title="Chưa lấy dược hồ sơ doanh nghiệp từ API hiện tại."
+              title="Chưa lấy được hồ sơ doanh nghiệp từ máy chủ hiện tại."
             />
           )}
           <div className="grid gap-3 md:grid-cols-2">

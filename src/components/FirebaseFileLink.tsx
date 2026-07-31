@@ -25,6 +25,10 @@ export function FirebaseFileLink({
     setLoading(true);
     setError('');
     try {
+      if (/^https?:\/\//i.test(path)) {
+        window.open(path, '_blank', 'noopener,noreferrer');
+        return;
+      }
       const viewUrl = await profileApi.getFileViewUrl(path);
       window.open(viewUrl, '_blank', 'noopener,noreferrer');
     } catch (openError) {

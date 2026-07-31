@@ -147,6 +147,7 @@ export function ProfileFilePicker({
   buttonText = "Chọn tệp",
   emptyText = "Chưa chọn tệp",
   required,
+  disabled = false,
 }: {
   file: File | null;
   onChange: (file: File | null) => void;
@@ -154,11 +155,18 @@ export function ProfileFilePicker({
   buttonText?: string;
   emptyText?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-brand-600 shadow-sm hover:text-brand-700">
+        <label
+          className={`inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold shadow-sm ${
+            disabled
+              ? "cursor-not-allowed text-slate-300"
+              : "cursor-pointer text-brand-600 hover:text-brand-700"
+          }`}
+        >
           <UploadCloud className="h-4 w-4" />
           {buttonText}
           <input
@@ -166,13 +174,14 @@ export function ProfileFilePicker({
             accept={accept}
             className="hidden"
             aria-required={required}
+            disabled={disabled}
             onChange={(event) => {
               onChange(event.target.files?.[0] || null);
               event.target.value = "";
             }}
           />
         </label>
-        {file && (
+        {file && !disabled && (
           <button
             type="button"
             onClick={() => onChange(null)}
@@ -206,7 +215,11 @@ export function readApiError(error: unknown, fallback: string) {
     response?: { data?: { message?: string } };
     message?: string;
   };
-  return apiError.response?.data?.message || apiError.message || fallback;
+  const message = apiError.response?.data?.message || apiError.message || fallback;
+  const translatedMessages: Record<string, string> = {
+    "MA SO THUE KHONG HOP LE": "Mã số thuế không hợp lệ.",
+  };
+  return translatedMessages[message.trim().toUpperCase()] || message;
 }
 
 export function parseCatalogIds(ids?: string) {
@@ -225,7 +238,7 @@ export function normalizeAccountStatus(status?: string): AccountStatus {
 
 export function translateVerificationStatus(status?: string) {
   const normalized = (status || "").trim().toLowerCase();
-  if (normalized === "approved") return "Đã duyệt";
+  if (normalized === "approved") return "Đã xác thực";
   if (normalized === "rejected") return "Bị từ chối";
   if (normalized === "pending") return "Đang chờ duyệt";
   if (normalized === "lock") return "Đã khóa";

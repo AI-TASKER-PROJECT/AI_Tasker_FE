@@ -28,10 +28,10 @@ import {
 } from "../../../services";
 import {
   cn,
-  formatCompactCurrency,
   formatCurrency,
   formatDate,
 } from "../../../lib/utils";
+import { getJobSowSummary } from "../../../lib/jobSow";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
@@ -104,7 +104,7 @@ export function MyJobsPage() {
       setRestrictedActionNotices((prev) => ({
         ...prev,
         [jobId]:
-          "Du an da dong hoac hop dong da ket thuc nen khong the mo lai de tim kiem chuyen gia.",
+          "Dự án đã đóng hoặc hợp đồng đã kết thúc nên không thể mở lại để tìm kiếm chuyên gia.",
       }));
     } else if (status === "DRAFT") {
       e.preventDefault();
@@ -185,7 +185,7 @@ export function MyJobsPage() {
 
   const filtered = jobs.filter((job) => {
     const matchesQuery =
-      `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`
+      `${job.title} ${job.rawRequirements} ${getJobSowSummary(job)}`
         .toLowerCase()
         .includes(query.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || job.status === statusFilter;
@@ -233,7 +233,7 @@ export function MyJobsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Dự án của doanh nghiệp"
-          description="Tạo dự án mới, đăng tải, xem thông tin dự án và đánh giá proposal được gửi từ chuyên gia"
+          description="Tạo dự án mới, đăng tải, xem thông tin dự án và đánh giá bản đề xuất được gửi từ chuyên gia"
           actions={
             <LinkButton to="/app/jobs/new">
               <Plus className="h-4 w-4" />
@@ -329,7 +329,7 @@ export function MyJobsPage() {
             setQuery(value);
             resetPagination();
           }}
-          placeholder="Tìm job của tôi..."
+              placeholder="Tìm dự án của tôi..."
         />
       </Card>
       <div className="grid gap-4 lg:grid-cols-3">
@@ -338,6 +338,7 @@ export function MyJobsPage() {
           const isInProgress = jobStatus === "IN_PROGRESS";
           const canOpenJob = jobStatus === "DRAFT";
           const canCloseJob = jobStatus === "OPEN";
+          const sowSummary = getJobSowSummary(job) || job.rawRequirements || "Chưa có mô tả dự án.";
           return (
             <Card
               id={`job-card-${job.jobId}`}
@@ -359,7 +360,7 @@ export function MyJobsPage() {
                 </h3>
               </Link>
               <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
-                {job.structuredSow}
+                {sowSummary}
               </p>
               <p className="mt-2 text-xs font-bold text-slate-400">
                 Ngày tạo: {formatDate(job.createdAt)}
@@ -368,11 +369,11 @@ export function MyJobsPage() {
                 <div>
                   <p className="text-xs font-bold text-slate-400">Ngân sách</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
-                    {formatCompactCurrency(job.budget)}
+                    {formatCurrency(job.budget)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">Proposal</p>
+                  <p className="text-xs font-bold text-slate-400">Đề xuất</p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
                     {job.proposalsCount || 0}
                   </p>

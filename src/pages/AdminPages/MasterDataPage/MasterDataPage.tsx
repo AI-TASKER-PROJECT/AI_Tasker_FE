@@ -11,10 +11,12 @@ import {
   PageHeader,
 } from "../../../components/ui";
 import { catalogApi, type Domain, type Skill, type Technology } from "../../../lib/api";
-import { DateTimeCell } from "../AdminPages.shared";
+import { AdminPagination, DateTimeCell } from "../AdminPages.shared";
 
 type CatalogTab = "domains" | "skills" | "technologies";
 type CatalogItem = Domain | Skill | Technology;
+
+const CATALOG_ITEMS_PER_PAGE = 10;
 
 type CatalogForm = {
   code: string;
@@ -69,6 +71,7 @@ export function MasterDataPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
   const [form, setForm] = useState<CatalogForm>(blankForm);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadCatalog = async () => {
     setLoading(true);
@@ -102,6 +105,12 @@ export function MasterDataPage() {
       return itemName(left).localeCompare(itemName(right), "vi");
     });
   }, [domains, skills, technologies, tab]);
+  const totalPages = Math.max(1, Math.ceil(items.length / CATALOG_ITEMS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const paginatedItems = items.slice(
+    (effectivePage - 1) * CATALOG_ITEMS_PER_PAGE,
+    effectivePage * CATALOG_ITEMS_PER_PAGE,
+  );
 
   const beginCreate = () => {
     const nextSort = Math.max(0, ...items.map((item) => ("sortOrder" in item ? item.sortOrder || 0 : 0))) + 1;
@@ -225,7 +234,10 @@ export function MasterDataPage() {
           <Button
             key={key}
             variant={tab === key ? "primary" : "secondary"}
-            onClick={() => setTab(key)}
+            onClick={() => {
+              setTab(key);
+              setCurrentPage(1);
+            }}
           >
             {tabLabels[key]}
           </Button>
@@ -245,7 +257,7 @@ export function MasterDataPage() {
         </div>
         {loading && <div className="px-5 py-8 text-sm font-bold text-slate-500">Đang tải dữ liệu...</div>}
         {!loading && items.length === 0 && <div className="px-5 py-8 text-sm font-bold text-slate-500">Chưa có dữ liệu.</div>}
-        {!loading && items.map((item) => (
+        {!loading && paginatedItems.map((item) => (
           <div
             key={itemKey(tab, item)}
             className="grid gap-3 border-b border-slate-100 px-5 py-4 text-left text-sm md:grid-cols-[210px_minmax(0,1fr)_130px_160px_160px_150px] md:items-start"
@@ -271,13 +283,22 @@ export function MasterDataPage() {
             </div>
           </div>
         ))}
+        {!loading && (
+          <AdminPagination
+            currentPage={effectivePage}
+            pageSize={CATALOG_ITEMS_PER_PAGE}
+            totalItems={items.length}
+            itemLabel={tabLabels[tab].toLowerCase()}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </Card>
 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? `Cập nhật ${tabLabels[tab].toLowerCase()}` : `Tạo ${tabLabels[tab].toLowerCase()}`}
-        description={editing ? "Mã định danh không thể thay đổi sau khi tạo." : "Mã sẽ được backend chuẩn hóa thành chữ in hoa và dấu gạch dưới."}
+          description={editing ? "Mã định danh không thể thay đổi sau khi tạo." : "Mã sẽ được máy chủ chuẩn hóa thành chữ in hoa và dấu gạch dưới."}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Hủy</Button>
@@ -317,8 +338,8 @@ export function MasterDataPage() {
             Đang bật
           </label>
           {form.code.trim().toUpperCase() === "PROFILE_REVIEW" && (
-            <Notice tone="warning" title="Domain nội bộ" className="md:col-span-2">
-              Domain này chỉ dùng để phân quyền staff xét duyệt hồ sơ và không nên dùng cho marketplace.
+            <Notice tone="warning" title="Lĩnh vực nội bộ" className="md:col-span-2">
+              Lĩnh vực này chỉ dùng để phân quyền nhân viên xét duyệt hồ sơ và không hiển thị trên sàn dự án.
             </Notice>
           )}
           <Field label="Mô tả" className="md:col-span-2">

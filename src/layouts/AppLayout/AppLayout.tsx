@@ -53,6 +53,7 @@ import type {
   CreatePayOSPaymentResponse,
   NotificationItem,
   Role,
+  Staff,
   SystemWallet,
   UserQuota,
 } from "../../types";
@@ -63,6 +64,8 @@ import {
   userQuotaApi,
   walletApi,
   notificationApi,
+  profileApi,
+  staffApi,
 } from "../../services";
 import { cn, formatCurrency } from "../../lib/utils";
 
@@ -88,6 +91,8 @@ type NavItem = { label: string; to: string; icon: ReactNode };
 
 type PackageLabel = "Basic" | "Standard" | "Plus" | "Premium";
 type PackageTone = "slate" | "violet" | "brand" | "amber";
+
+const PROFILE_REVIEW_DOMAIN_CODE = "PROFILE_REVIEW";
 
 const packageConfig: Record<
   PackageLabel,
@@ -131,6 +136,61 @@ function getBadgeRemainingDays(expiredAt?: string): number | null {
   const ms = new Date(expiredAt).getTime() - Date.now();
   if (ms <= 0) return 0;
   return Math.ceil(ms / 86400000);
+}
+
+function verificationStatusLabel(status?: string | null) {
+  const normalized = (status || "").trim().toLowerCase();
+  if (normalized === "approved") return "Đã duyệt";
+  if (normalized === "rejected") return "Bị từ chối";
+  if (normalized === "pending") return "Đang chờ duyệt";
+  if (normalized === "lock") return "Đã khóa";
+  return "Chưa gửi";
+}
+
+type InlineVndInputProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+  placeholder?: string;
+};
+
+function InlineVndInput({
+  value,
+  onValueChange,
+  disabled,
+  required,
+  placeholder = "Ví dụ: 500.000",
+}: InlineVndInputProps) {
+  const displayValue = value ? Number(value).toLocaleString("vi-VN") : "";
+  const inputWidth = `${Math.max((displayValue || placeholder).length + 1, 4)}ch`;
+
+  return (
+    <div
+      className={cn(
+        "flex h-11 w-full max-w-full items-center rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-50",
+        disabled && "cursor-not-allowed opacity-100",
+      )}
+    >
+      <input
+        type="text"
+        value={displayValue}
+        onChange={(event) =>
+          onValueChange(event.target.value.replace(/\D/g, ""))
+        }
+        disabled={disabled}
+        required={required}
+        placeholder={placeholder}
+        style={{ width: inputWidth }}
+        className="h-full min-w-0 max-w-[calc(100%-1.25rem)] bg-transparent p-0 text-sm text-ink outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+      />
+      {displayValue && (
+        <span className="ml-1 shrink-0 text-sm font-bold text-slate-500">
+          đ
+        </span>
+      )}
+    </div>
+  );
 }
 
 const commonNav: NavItem[] = [
@@ -206,7 +266,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Sparkles className="h-4 w-4" />,
     },
     {
-      label: "Proposal của tôi",
+      label: "Bản đề xuất của tôi",
       to: "/app/proposals",
       icon: <FileText className="h-4 w-4" />,
     },
@@ -241,7 +301,7 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Star className="h-4 w-4" />,
     },
     {
-      label: "Portfolio AI",
+      label: "Hồ sơ năng lực AI",
       to: "/app/expert/portfolio",
       icon: <ClipboardCheck className="h-4 w-4" />,
     },
@@ -263,12 +323,12 @@ const roleNav: Record<Role, NavItem[]> = {
       icon: <Gavel className="h-4 w-4" />,
     },
     {
-      label: "Analytics",
+      label: "Phân tích số liệu",
       to: "/app/admin/analytics",
       icon: <BarChart3 className="h-4 w-4" />,
     },
     {
-      label: "System Settings",
+      label: "Cài đặt hệ thống",
       to: "/app/admin/settings",
       icon: <Settings2 className="h-4 w-4" />,
     },
@@ -353,6 +413,12 @@ export function AppShell() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [wallet, setWallet] = useState<SystemWallet | null>(null);
   const [quota, setQuota] = useState<UserQuota | null>(null);
+  const [verificationProfileStatus, setVerificationProfileStatus] = useState<
+    string | null
+  >(null);
+  const [staffProfile, setStaffProfile] = useState<Staff | null>(null);
+  const [staffProfileLoading, setStaffProfileLoading] = useState(false);
+  const [staffProfileError, setStaffProfileError] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupLoading, setTopupLoading] = useState(false);
@@ -376,20 +442,119 @@ export function AppShell() {
   const topupQrBoxRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.role;
-  const showBackButton = location.pathname !== "/app";
+  const sessionAccessToken = session?.accessToken;
   const accountStatus = session?.accountStatus || "Approved";
   const needsVerification =
     !!session &&
     (session.role === "BUSINESS" || session.role === "EXPERT") &&
     accountStatus !== "Approved";
   const verificationPath =
-    session?.role === "BUSINESS"
-      ? "/app/business/kyb"
-      : "/app/expert/kyc";
+    session?.role === "BUSINESS" ? "/app/business/kyb" : "/app/expert/kyc";
+  const showBackButton =
+    location.pathname !== "/app" &&
+    !(needsVerification && location.pathname.startsWith(verificationPath));
   const verificationAllowedPaths = useMemo(() => {
     if (!session) return [];
     return [verificationPath];
   }, [session, verificationPath]);
+  const displayedVerificationStatus =
+    needsVerification && verificationProfileStatus
+      ? verificationStatusLabel(verificationProfileStatus)
+      : verificationStatusLabel(accountStatus);
+  const showVerificationNotice =
+    needsVerification && verificationProfileStatus !== "Pending";
+
+  const loadVerificationProfileStatus = useCallback(async () => {
+    if (!sessionAccessToken) {
+      setVerificationProfileStatus(null);
+      return;
+    }
+    if (role === "BUSINESS") {
+      try {
+        const profile = await profileApi.getMyBusiness();
+        setVerificationProfileStatus(profile.kybStatus || "Chưa gửi");
+      } catch {
+        setVerificationProfileStatus("Chưa gửi");
+      }
+      return;
+    }
+    if (role === "EXPERT") {
+      try {
+        const profile = await profileApi.getMyExpert();
+        setVerificationProfileStatus(profile.kycStatus || "Chưa gửi");
+      } catch {
+        setVerificationProfileStatus("Chưa gửi");
+      }
+      return;
+    }
+    setVerificationProfileStatus(null);
+  }, [role, sessionAccessToken]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadVerificationProfileStatus);
+    window.addEventListener(
+      "aitasker:verification-profile-change",
+      loadVerificationProfileStatus,
+    );
+    return () => {
+      window.removeEventListener(
+        "aitasker:verification-profile-change",
+        loadVerificationProfileStatus,
+      );
+    };
+  }, [loadVerificationProfileStatus, location.pathname]);
+
+  const isStaffProfileReview = useMemo(
+    () =>
+      staffProfile?.domains?.some(
+        (domain) => domain.domainCode === PROFILE_REVIEW_DOMAIN_CODE,
+      ) || false,
+    [staffProfile],
+  );
+  const staffHomePath = isStaffProfileReview
+    ? "/app/verifications"
+    : "/app/tickets";
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (role !== "STAFF" || !sessionAccessToken) {
+      void Promise.resolve().then(() => {
+        if (ignore) return;
+        setStaffProfile(null);
+        setStaffProfileLoading(false);
+        setStaffProfileError(false);
+      });
+      return () => {
+        ignore = true;
+      };
+    }
+
+    void Promise.resolve().then(() => {
+      if (ignore) return;
+      setStaffProfileLoading(true);
+      staffApi
+        .current()
+        .then((profile) => {
+          if (ignore) return;
+          setStaffProfile(profile);
+          setStaffProfileError(false);
+        })
+        .catch(() => {
+          if (ignore) return;
+          setStaffProfile(null);
+          setStaffProfileError(true);
+        })
+        .finally(() => {
+          if (!ignore) setStaffProfileLoading(false);
+        });
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [role, sessionAccessToken]);
+
   const navItems = useMemo(() => {
     if (!role) return [];
     if (needsVerification) {
@@ -397,12 +562,33 @@ export function AppShell() {
         verificationAllowedPaths.includes(item.to),
       );
     }
+    if (role === "STAFF") {
+      if (staffProfileLoading || !staffProfile) return commonNav;
+      return [
+        ...commonNav,
+        ...roleNav.STAFF.filter((item) => item.to === staffHomePath),
+      ];
+    }
     return [...commonNav, ...roleNav[role]].filter((item) => {
-      if (role === "STAFF") return !item.to.startsWith("/app/admin");
       if (role === "ADMIN") return item.to !== "/app/verifications";
+      if (
+        accountStatus === "Approved" &&
+        ((role === "EXPERT" && item.to === "/app/expert/kyc") ||
+          (role === "BUSINESS" && item.to === "/app/business/kyb"))
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [needsVerification, role, verificationAllowedPaths]);
+  }, [
+    accountStatus,
+    needsVerification,
+    role,
+    staffHomePath,
+    staffProfile,
+    staffProfileLoading,
+    verificationAllowedPaths,
+  ]);
 
   const defaultTopupDescription = useMemo(() => {
     const payerName = session?.fullName || "AITasker";
@@ -495,7 +681,7 @@ export function AppShell() {
         if (paymentOrder.status === "PAID") {
           setTopupNotice({
             tone: "success",
-            title: "Thanh toán thành công. Số dư ví dã dược cập nhật.",
+            title: "Thanh toán thành công. Số dư ví đã được cập nhật.",
           });
           await loadWallet();
           window.dispatchEvent(new Event("aitasker:reload-wallet"));
@@ -512,7 +698,7 @@ export function AppShell() {
         ) {
           setTopupNotice({
             tone: "danger",
-            title: "Thanh toán không thành công, dã hủy hoặc dã hết hạn.",
+            title: "Thanh toán không thành công, đã hủy hoặc đã hết hạn.",
           });
           return true;
         }
@@ -595,7 +781,7 @@ export function AppShell() {
 
       setTopupNotice({
         tone: "info",
-        title: "Đã tạo mã thanh toán. Quét QR hoặc mở link payOS dể nạp tiền.",
+        title: "Đã tạo mã thanh toán. Quét QR hoặc mở liên kết payOS để nạp tiền.",
       });
     } catch (error) {
       setTopupNotice({
@@ -653,6 +839,25 @@ export function AppShell() {
     session,
     verificationAllowedPaths,
     verificationPath,
+  ]);
+
+  useEffect(() => {
+    if (role !== "STAFF" || staffProfileLoading || !staffProfile) return;
+    if (location.pathname.startsWith("/app/notifications")) return;
+
+    const isStaffOverview = location.pathname === "/app";
+    const isAllowedStaffPath =
+      isStaffOverview || location.pathname.startsWith(staffHomePath);
+    if (!isAllowedStaffPath) {
+      navigate(staffHomePath, { replace: true });
+    }
+  }, [
+    location.pathname,
+    navigate,
+    role,
+    staffHomePath,
+    staffProfile,
+    staffProfileLoading,
   ]);
 
   const refreshNotifications = useCallback(async () => {
@@ -804,7 +1009,7 @@ export function AppShell() {
             </p>
             {needsVerification && (
               <p className="mt-1 text-xs font-bold text-amber-700">
-                Status: {accountStatus}
+                Trạng thái: {displayedVerificationStatus}
               </p>
             )}
           </div>
@@ -815,6 +1020,21 @@ export function AppShell() {
             sidebarCollapsed && "px-3",
           )}
         >
+          {session.role === "STAFF" &&
+            staffProfileLoading &&
+            !sidebarCollapsed && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-500">
+                Đang tải phạm vi nhân viên...
+              </div>
+            )}
+          {session.role === "STAFF" &&
+            staffProfileError &&
+            !staffProfileLoading &&
+            !sidebarCollapsed && (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-700">
+                Không tải được phạm vi nhân viên. Hãy tải lại trang sau khi máy chủ sẵn sàng.
+              </div>
+            )}
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -931,8 +1151,8 @@ export function AppShell() {
                             )}
                           />
                           {realtimeConnected
-                            ? "Realtime đang bật"
-                            : "Đang kết nối realtime"}
+                            ? "Đã kết nối thời gian thực"
+                            : "Đang kết nối thời gian thực"}
                         </p>
                       </div>
                       {unreadCount > 0 && (
@@ -1096,7 +1316,7 @@ export function AppShell() {
                             {session?.role !== "EXPERT" && (
                               <div className="flex items-center justify-between">
                                 <p className="text-[11px] font-bold text-slate-400">
-                                  Lượt đăng Job
+                                  Lượt đăng bài
                                 </p>
                                 <p className="text-sm font-black text-ink">
                                   {quota.jobPostQuotaBalance ?? 0}
@@ -1106,7 +1326,7 @@ export function AppShell() {
                             {session?.role !== "BUSINESS" && (
                               <div className="flex items-center justify-between">
                                 <p className="text-[11px] font-bold text-slate-400">
-                                  Lượt nộp Proposal
+                                  Lượt nộp bản đề xuất
                                 </p>
                                 <p className="text-sm font-black text-ink">
                                   {quota.proposalQuotaBalance ?? 0}
@@ -1145,7 +1365,7 @@ export function AppShell() {
           </div>
         </header>
         <main className="min-w-0 overflow-x-hidden px-4 py-6 pt-[6.5rem] md:px-6 md:py-8 md:pt-28">
-            <div className="mx-auto w-full min-w-0 max-w-[1440px]">
+          <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {showBackButton && (
               <Button
                 type="button"
@@ -1158,10 +1378,10 @@ export function AppShell() {
                 Quay lại
               </Button>
             )}
-            {needsVerification && (
+            {showVerificationNotice && (
               <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Tài khoản đang ở trạng thái {accountStatus}. Hãy hoàn thiện hồ
-                sơ xác minh và đợi nhân viên duyệt để mở khóa chức năng
+                Tài khoản đang ở trạng thái {displayedVerificationStatus}. Hãy
+                hoàn thiện hồ sơ xác minh để mở khóa chức năng
               </div>
             )}
             <Outlet />
@@ -1255,23 +1475,16 @@ export function AppShell() {
             </div>
           </div>
           <Field label="Số tiền nạp" hint="Yêu cầu số tiền ít nhất 2.000 VNĐ.">
-            <Input
-              type="text"
-              value={
-                topupForm.amount
-                  ? Number(topupForm.amount).toLocaleString("vi-VN")
-                  : ""
-              }
-              onChange={(event) => {
+            <InlineVndInput
+              value={topupForm.amount}
+              onValueChange={(rawValue) => {
                 setTopupPayment(null);
                 setTopupQrDataUrl("");
-                const rawValue = event.target.value.replace(/\D/g, "");
                 setTopupForm((value) => ({
                   ...value,
                   amount: rawValue,
                 }));
               }}
-              placeholder="Ví dụ: 500.000"
               required
             />
           </Field>
@@ -1313,7 +1526,7 @@ export function AppShell() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand-500">
-                      Quét QR dể nạp ví
+                      Quét QR để nạp ví
                     </p>
                     <p className="mt-1 text-2xl font-black text-ink">
                       {formatCurrency(topupPayment.amount)}

@@ -46,7 +46,7 @@ export function roleLabel(role?: Role) {
     BUSINESS: 'Doanh nghiệp',
     EXPERT: 'Chuyên gia',
     ADMIN: 'Quản trị viên',
-    STAFF: 'Nhân viên thẩm dịnh',
+    STAFF: 'Nhân viên thẩm định',
   };
   return role ? labels[role] : 'Khách';
 }

@@ -73,7 +73,7 @@ export function ChatBox() {
     return (
       <button
         type="button"
-        aria-label="Open chat"
+        aria-label="Mở trò chuyện"
         onClick={() => {
           setOpen(true);
           setMinimized(false);
@@ -100,12 +100,12 @@ export function ChatBox() {
                 <Sparkles className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-extrabold">AI Tasker Assistant</p>
-                <p className="text-xs text-blue-50">Online support</p>
+                <p className="truncate text-sm font-extrabold">Trợ lý AI Tasker</p>
+                <p className="text-xs text-blue-50">Hỗ trợ trực tuyến</p>
               </div>
               <button
                 type="button"
-                aria-label="Minimize chat"
+                aria-label="Thu nhỏ trò chuyện"
                 onClick={() => setMinimized(true)}
                 className="grid h-9 w-9 place-items-center rounded-xl text-blue-50 transition hover:bg-white/10 hover:text-white"
               >
@@ -113,7 +113,7 @@ export function ChatBox() {
               </button>
               <button
                 type="button"
-                aria-label="Close chat"
+                aria-label="Đóng trò chuyện"
                 onClick={() => setOpen(false)}
                 className="grid h-9 w-9 place-items-center rounded-xl text-blue-50 transition hover:bg-white/10 hover:text-white"
               >
@@ -170,10 +170,10 @@ export function ChatBox() {
               <Input
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Type a message..."
+                placeholder="Nhập tin nhắn..."
                 className="h-10 rounded-xl"
               />
-              <Button type="submit" size="icon" aria-label="Send message">
+              <Button type="submit" size="icon" aria-label="Gửi tin nhắn">
                 <Send className="h-4 w-4" />
               </Button>
             </form>
@@ -188,7 +188,7 @@ export function ChatBox() {
           className="ml-auto flex h-12 items-center gap-2 rounded-2xl bg-brand-600 px-4 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700"
         >
           <MessageCircle className="h-4 w-4" />
-          Chat
+          Trò chuyện
         </button>
       )}
     </div>

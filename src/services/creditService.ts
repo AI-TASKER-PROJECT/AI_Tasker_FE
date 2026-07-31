@@ -1,7 +1,13 @@
 import { call } from "./apiClient";
-import type { PaymentActionResponse, UserQuota } from "../types";
+import type { CreditPriceResponse, PaymentActionResponse, UserQuota } from "../types";
 
 export const creditApi = {
+  prices() {
+    return call<CreditPriceResponse>({
+      method: "GET",
+      url: "/api/credits/prices",
+    });
+  },
   purchaseJobPost(quantity: number) {
     return call<PaymentActionResponse<UserQuota>>({
       method: "POST",

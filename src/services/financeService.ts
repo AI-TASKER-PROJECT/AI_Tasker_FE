@@ -2,7 +2,7 @@ import type { Transaction } from "../types";
 
 function unsupportedLegacyFinanceApi() {
   return Promise.reject(
-    new Error("Backend hien khong expose API transaction legacy. Vui long dung wallet history."),
+    new Error("Máy chủ hiện không cung cấp giao diện lập trình cho lịch sử giao dịch cũ. Vui lòng sử dụng lịch sử ví."),
   );
 }
 

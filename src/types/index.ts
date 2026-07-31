@@ -118,6 +118,7 @@ export interface Contract {
   businessId: number;
   expertId: number;
   contractTitle?: string;
+  contractScope?: string;
   technologyUsed?: string;
   totalBudget: number;
   timelineDays: number;
@@ -142,6 +143,37 @@ export interface Contract {
   contractMilestones?: ContractMilestone[];
 }
 
+export interface ContractChangeMilestone {
+  contractMilestoneId?: number;
+  jobMilestoneId?: number;
+  milestoneName?: string;
+  description?: string;
+  finalBudget?: number;
+  orderIndex?: number;
+  duration?: number;
+  durationUnit?: string;
+  criteriaSnapshot?: string;
+  deliverableExpectation?: string;
+}
+
+export interface ContractChangeRequest {
+  requestId: number;
+  contractId: number;
+  requestedByAccountId: number;
+  changeType: string;
+  changeSummary: string;
+  proposedBudget?: number;
+  proposedTimelineDays?: number;
+  proposedScope?: string;
+  proposedMilestones?: ContractChangeMilestone[] | string;
+  status: string;
+  reviewedByAccountId?: number;
+  reviewNote?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ContractDeposit {
   depositId: number;
   contractId: number;
@@ -159,6 +191,11 @@ export interface ContractDeposit {
   refundedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ContractDepositRateResponse {
+  businessPercentage: number;
+  expertPercentage: number;
 }
 
 export interface PaymentActionResponse<T> {
@@ -187,6 +224,7 @@ export interface Milestone {
   inProgressStartedAt?: string;
   dueAt?: string;
   overdue?: boolean;
+  reviewStartedAt?: string;
   reviewDueAt?: string;
   status: string;
   durationValue?: number;
@@ -230,6 +268,7 @@ export interface Deliverable {
   milestoneId: number;
   sourceCodeUrl?: string;
   sourceCodeFileUrl?: string;
+  userGuideFileUrl?: string;
   demoLink?: string;
   submissionNotes?: string;
   submissionRound?: number;
@@ -583,6 +622,49 @@ export interface SystemSetting {
   updatedAt?: string;
 }
 
+export interface CreditPriceResponse {
+  jobPostPriceVnd: number;
+  proposalPriceVnd: number;
+}
+
+export interface ProjectSummaryMilestone {
+  contractMilestoneId: number;
+  milestoneId: number;
+  milestoneName: string;
+  description?: string;
+  budget: number;
+  orderIndex: number;
+  status: string;
+  duration?: number;
+  durationUnit?: string;
+  deliverableExpectation?: string;
+  acceptanceCriteria: string[];
+  finalDeliverable?: Deliverable;
+  completedAt?: string;
+}
+
+export interface ProjectSummary {
+  contractId: number;
+  jobId: number;
+  projectTitle: string;
+  projectDescription?: string;
+  contractScope?: string;
+  structuredSow?: string;
+  sow?: Sow;
+  status: string;
+  totalBudget: number;
+  timelineDays: number;
+  businessId: number;
+  businessName: string;
+  expertId: number;
+  expertName: string;
+  domainId?: number;
+  domainName?: string;
+  startedAt?: string;
+  completedAt?: string;
+  milestones: ProjectSummaryMilestone[];
+}
+
 export interface SystemWallet {
   systemWalletId: number;
   accountId: number;
@@ -847,6 +929,7 @@ export interface DashboardFinanceBreakdownResponse {
 export interface NotificationItem {
   notificationId: number;
   type: string;
+  typeLabel?: string;
   title: string;
   message: string;
   targetUrl?: string;
@@ -868,6 +951,18 @@ export interface WalletTransaction {
   transactionId?: number;
   systemWalletId?: number;
   accountId?: number;
+  actorAccountId?: number;
+  actorRole?: string;
+  walletType?: string;
+  walletOwnerRole?: string;
+  historyScope?: string;
+  transactionCategory?: string;
+  transactionCategoryLabel?: string;
+  transactionGroup?: string;
+  transactionGroupLabel?: string;
+  transactionSubGroup?: string;
+  transactionSubGroupLabel?: string;
+  platformBalanceChanging?: boolean;
   paymentOrderId?: number;
   transactionType:
     | 'TOPUP'
@@ -879,12 +974,22 @@ export interface WalletTransaction {
     | 'WITHDRAW_APPROVED'
     | 'WITHDRAW_REJECTED'
     | string;
+  transactionTypeLabel?: string;
   direction: 'CREDIT' | 'DEBIT' | 'HOLD' | 'RELEASE' | string;
+  directionLabel?: string;
   balanceType: 'AVAILABLE' | 'ESCROW' | 'HOLDING' | 'DISPUTE' | string;
+  balanceTypeLabel?: string;
   amount: number;
+  grossAmount?: number;
+  feeAmount?: number;
+  netAmount?: number;
+  currency?: string;
   balanceBefore: number;
   balanceAfter: number;
+  availableBalanceBefore?: number;
+  availableBalanceAfter?: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | string;
+  statusLabel?: string;
   referenceType?: string;
   referenceId?: number;
   operationKey?: string;
@@ -893,7 +998,18 @@ export interface WalletTransaction {
   title?: string;
   description?: string;
   actorName?: string;
+  actorAccount?: string;
   counterpartyName?: string;
+  counterpartyAccount?: string;
+  counterpartyAccountId?: number;
+  counterpartyRole?: string;
+  counterpartyLabel?: string;
+  senderName?: string;
+  senderAccount?: string;
+  senderRoleLabel?: string;
+  receiverName?: string;
+  receiverAccount?: string;
+  receiverRoleLabel?: string;
   businessId?: number;
   businessName?: string;
   expertId?: number;
@@ -901,19 +1017,25 @@ export interface WalletTransaction {
   contractId?: number;
   contractTitle?: string;
   milestoneNumber?: number;
+  milestoneId?: number;
   milestoneName?: string;
   jobId?: number;
   jobTitle?: string;
   withdrawalId?: number;
   bankName?: string;
   bankAccountNumber?: string;
+  bankAccountNumberMasked?: string;
   bankAccountHolder?: string;
   adminId?: number;
   adminName?: string;
   adminNote?: string;
   packageId?: number;
   packageName?: string;
+  paymentProvider?: string;
   providerOrderCode?: number;
+  providerTransactionNo?: string;
+  providerPaymentLinkId?: string;
+  metadata?: string;
   createdAt?: string;
 }
 

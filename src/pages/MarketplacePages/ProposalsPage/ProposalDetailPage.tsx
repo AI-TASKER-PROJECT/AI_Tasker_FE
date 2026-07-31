@@ -21,6 +21,8 @@ import {
   StatusBadge,
 } from "../../../components/ui";
 import { resolveDomainName } from "../marketplacePages.utils";
+import { useSession } from "../../../context/sessionContext";
+import { Button, Notice } from "../../../components/ui";
 
 export function ProposalDetailPage() {
   const { proposalId } = useParams();
@@ -35,6 +37,12 @@ export function ProposalDetailPage() {
   const [jobDomainIds, setJobDomainIds] = useState<number[]>([]);
   const [jobSkillIds, setJobSkillIds] = useState<number[]>([]);
   const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
+  const session = useSession();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editMessage, setEditMessage] = useState("");
+  const [draft, setDraft] = useState<Partial<Proposal>>({});
+  const [proposalMilestoneText, setProposalMilestoneText] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -55,6 +63,12 @@ export function ProposalDetailPage() {
         }
 
         setProposal(foundProposal);
+        setDraft(foundProposal);
+        setProposalMilestoneText(
+          foundProposal.proposalMilestone
+            ? JSON.stringify(foundProposal.proposalMilestone, null, 2)
+            : "",
+        );
 
         const [
           jobData,
@@ -128,12 +142,70 @@ export function ProposalDetailPage() {
       return [];
     }
   })();
+  const proposedBudgetByMilestoneId = new Map(
+    parsedMilestones.map((item) => [item.milestoneId, item.proposedBudget]),
+  );
+  const totalOriginalBudget = milestones.reduce(
+    (total, milestone) => total + Number(milestone.fundsAllocated || 0),
+    0,
+  );
+  const totalProposedBudget = milestones.reduce((total, milestone) => {
+    const proposedBudget = proposedBudgetByMilestoneId.get(
+      Number(milestone.milestoneId),
+    );
+    return (
+      total +
+      Number(
+        Number.isFinite(proposedBudget)
+          ? proposedBudget
+          : milestone.fundsAllocated || 0,
+      )
+    );
+  }, 0);
 
   const bidAmountDisplay =
-    proposal.bidAmount > 0 ? proposal.bidAmount.toLocaleString("vi-VN") : "";
+    Number(editing ? draft.bidAmount : proposal.bidAmount || 0) > 0
+      ? Number(editing ? draft.bidAmount : proposal.bidAmount).toLocaleString(
+          "vi-VN",
+        )
+      : "";
+  const canEdit =
+    session?.role === "EXPERT" &&
+    ["PENDING", "ACCEPTED"].includes(proposal.status.toUpperCase()) &&
+    job.status.toUpperCase() === "OPEN";
+  const save = async () => {
+    if (
+      !draft.technicalSolution?.trim() ||
+      !draft.proposalDescription?.trim() ||
+      !draft.bidAmount
+    ) {
+      setEditMessage("Vui lòng điền giải pháp, mô tả và ngân sách.");
+      return;
+    }
+    setSaving(true);
+    setEditMessage("");
+    try {
+      const proposalMilestone = proposalMilestoneText.trim()
+        ? JSON.parse(proposalMilestoneText)
+        : undefined;
+      const updated = await marketplaceApi.updateProposal(proposal.proposalId, {
+        ...draft,
+        proposalMilestone,
+      });
+      setProposal(updated);
+      setDraft(updated);
+      setEditing(false);
+    } catch (error) {
+      setEditMessage(
+        error instanceof Error ? error.message : "Không thể cập nhật bản đề xuất.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const translateStatus = (status: string) => {
-    switch (status) {
+    switch ((status || "").trim().toUpperCase()) {
       case "ACCEPTED":
         return "Chấp nhận";
       case "PENDING":
@@ -141,7 +213,7 @@ export function ProposalDetailPage() {
       case "REJECTED":
         return "Từ chối";
       default:
-        return status;
+        return status || "Chưa có trạng thái";
     }
   };
 
@@ -152,10 +224,31 @@ export function ProposalDetailPage() {
           Bản đề xuất chi tiết
         </h1>
       </div>
+      {canEdit && editing && (
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setEditing(false);
+              setDraft(proposal);
+            }}
+          >
+            Hủy
+          </Button>
+          <Button onClick={save} loading={saving}>
+            Lưu thay đổi
+          </Button>
+        </div>
+      )}
+      {editMessage && (
+        <Notice tone="danger" title="Không thể lưu bản đề xuất">
+          {editMessage}
+        </Notice>
+      )}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
-        <PageHeader 
-          title={job.title} 
+        <PageHeader
+          title={job.title}
           actions={<StatusBadge status={translateStatus(proposal.status)} />}
         />
       </div>
@@ -242,15 +335,35 @@ export function ProposalDetailPage() {
           </div>
           <Field label="Giải pháp">
             <Textarea
-              value={proposal.technicalSolution}
-              readOnly
+              value={
+                editing
+                  ? draft.technicalSolution || ""
+                  : proposal.technicalSolution
+              }
+              readOnly={!editing}
+              onChange={(event) =>
+                setDraft((value) => ({
+                  ...value,
+                  technicalSolution: event.target.value,
+                }))
+              }
               className="min-h-36 bg-slate-50"
             />
           </Field>
           <Field label="Đề xuất">
             <Textarea
-              value={proposal.proposalDescription || ""}
-              readOnly
+              value={
+                editing
+                  ? draft.proposalDescription || ""
+                  : proposal.proposalDescription || ""
+              }
+              readOnly={!editing}
+              onChange={(event) =>
+                setDraft((value) => ({
+                  ...value,
+                  proposalDescription: event.target.value,
+                }))
+              }
               className="min-h-32 bg-slate-50"
             />
           </Field>
@@ -269,9 +382,20 @@ export function ProposalDetailPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <Field label="Ngân sách">
-              <Input type="text" value={bidAmountDisplay} readOnly />
+              <Input
+                type="text"
+                value={bidAmountDisplay}
+                readOnly={!editing}
+                onChange={(event) =>
+                  setDraft((value) => ({
+                    ...value,
+                    bidAmount:
+                      Number(event.target.value.replace(/\D/g, "")) || 0,
+                  }))
+                }
+              />
             </Field>
-            <Field label="Proposal file">
+            <Field label="File bản đề xuất">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm h-11 flex items-center">
                 <FirebaseFileLink
                   path={proposal.proposalFileUrl}
@@ -281,6 +405,20 @@ export function ProposalDetailPage() {
                 />
               </div>
             </Field>
+            {editing && (
+              <Field label="URL tệp đề xuất">
+                <Input
+                  value={draft.proposalFileUrl || ""}
+                  onChange={(event) =>
+                    setDraft((value) => ({
+                      ...value,
+                      proposalFileUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="Đường dẫn tệp đã tải lên"
+                />
+              </Field>
+            )}
           </div>
         </section>
 
@@ -293,17 +431,31 @@ export function ProposalDetailPage() {
                 </span>
                 <div>
                   <h3 className="font-display text-lg font-extrabold text-ink">
-                    Proposal milestone
+                    Mốc trong đề xuất
                   </h3>
                 </div>
               </div>
             </div>
             <div className="grid gap-3">
+              {editing && (
+                <Field label="Mốc trong đề xuất (JSON)">
+                  <Textarea
+                    value={proposalMilestoneText}
+                    onChange={(event) =>
+                      setProposalMilestoneText(event.target.value)
+                    }
+                    placeholder='[{"milestoneId": 1, "proposedBudget": 1000000}]'
+                    className="min-h-28 font-mono text-xs"
+                  />
+                </Field>
+              )}
               {milestones.map((milestone) => {
-                const proposedVal =
-                  parsedMilestones.find(
-                    (m: any) => m.milestoneId === milestone.milestoneId,
-                  )?.proposedBudget || milestone.fundsAllocated;
+                const proposedBudget = proposedBudgetByMilestoneId.get(
+                  Number(milestone.milestoneId),
+                );
+                const proposedVal = Number.isFinite(proposedBudget)
+                  ? proposedBudget
+                  : milestone.fundsAllocated;
                 return (
                   <div
                     key={milestone.milestoneId}
@@ -316,7 +468,9 @@ export function ProposalDetailPage() {
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         Mốc {milestone.orderIndex} ·{" "}
                         {milestone.durationValue ?? milestone.duration ?? 0}{" "}
-                        {milestone.durationUnit === "WEEK" ? "TUẦN" : (milestone.durationUnit || "TUẦN")}
+                        {milestone.durationUnit === "WEEK"
+                          ? "TUẦN"
+                          : milestone.durationUnit || "TUẦN"}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -327,7 +481,7 @@ export function ProposalDetailPage() {
                         type="text"
                         value={formatCurrency(milestone.fundsAllocated)}
                         readOnly
-                        className="bg-slate-100/50 text-slate-500"
+                        className="bg-white font-bold"
                       />
                     </div>
                     <div className="space-y-1">
@@ -338,12 +492,41 @@ export function ProposalDetailPage() {
                         type="text"
                         value={Number(proposedVal).toLocaleString("vi-VN")}
                         readOnly
-                        className="bg-slate-100/50"
+                        className="bg-white font-bold text-[#c50073]"
                       />
                     </div>
                   </div>
                 );
               })}
+              <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_180px]">
+                <div className="flex items-center">
+                  <p className="font-display text-base font-black uppercase text-ink">
+                    Tổng ngân sách
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    Tổng ngân sách gốc
+                  </p>
+                  <Input
+                    type="text"
+                    value={formatCurrency(totalOriginalBudget)}
+                    readOnly
+                    className="bg-white font-extrabold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    Tổng ngân sách đề xuất
+                  </p>
+                  <Input
+                    type="text"
+                    value={formatCurrency(totalProposedBudget)}
+                    readOnly
+                    className="bg-white font-extrabold text-[#c50073]"
+                  />
+                </div>
+              </div>
             </div>
           </section>
         )}
