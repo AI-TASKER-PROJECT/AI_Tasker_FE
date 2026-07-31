@@ -6,6 +6,7 @@ import {
   Cpu,
   Eye,
   FileCheck2,
+  RefreshCw,
   Sparkles,
   Star,
   XCircle,
@@ -13,7 +14,7 @@ import {
   Layers,
   BadgeCheck,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   catalogApi,
@@ -197,6 +198,7 @@ export function ManageJobPage() {
   const [reviewMessageTone, setReviewMessageTone] = useState<
     "success" | "danger"
   >("success");
+  const [refreshing, setRefreshing] = useState(false);
 
   // ── AI Expert Recommendations ──────────────────────────────────────────────
   const [recommendationResult, setRecommendationResult] =
@@ -207,46 +209,61 @@ export function ManageJobPage() {
     "info" | "success" | "warning" | "danger"
   >("info");
 
-  useEffect(() => {
+  const loadPageData = useCallback(async (showRefreshLoading = false) => {
     const id = Number(jobId);
-    marketplaceApi.getJob(id).then(setJob);
-    marketplaceApi.listProposals(id).then(setProposals);
-    Promise.all([
-      catalogApi.listDomains(true),
-      catalogApi.listSkills(true),
-      catalogApi.listJobDomains(id),
-      catalogApi.listJobSkills(id),
-    ])
-      .then(([domainItems, skillItems, jobDomainItems, jobSkillItems]) => {
+    if (!Number.isFinite(id)) return;
+    if (showRefreshLoading) setRefreshing(true);
+
+    try {
+      const [
+        jobItem,
+        proposalItems,
+        catalogItems,
+        milestoneItems,
+        contractItems,
+        savedRecommendation,
+      ] = await Promise.all([
+        marketplaceApi.getJob(id),
+        marketplaceApi.listProposals(id),
+        Promise.all([
+          catalogApi.listDomains(true),
+          catalogApi.listSkills(true),
+          catalogApi.listJobDomains(id),
+          catalogApi.listJobSkills(id),
+        ]).catch(() => null),
+        contractApi.listJobMilestones(id).catch(() => []),
+        contractApi.listContracts().catch(() => []),
+        expertRecommendationApi.get(id).catch(() => null),
+      ]);
+
+      setJob(jobItem);
+      setProposals(proposalItems);
+      if (catalogItems) {
+        const [domainItems, skillItems, jobDomainItems, jobSkillItems] =
+          catalogItems;
         setDomains(domainItems);
         setSkills(skillItems);
         setJobDomains(jobDomainItems.map((item) => item.id.domainId));
         setJobSkills(jobSkillItems);
-      })
-      .catch(() => {
+      } else {
         setDomains([]);
         setSkills([]);
         setJobDomains([]);
         setJobSkills([]);
-      });
-    contractApi
-      .listJobMilestones(id)
-      .then(setMilestones)
-      .catch(() => setMilestones([]));
-    contractApi
-      .listContracts()
-      .then(setContracts)
-      .catch(() => setContracts([]));
-    // Load saved AI recommendations silently
-    expertRecommendationApi
-      .get(id)
-      .then((result) => {
-        if (result.recommendations?.length > 0) {
-          setRecommendationResult(result);
-        }
-      })
-      .catch(() => {});
+      }
+      setMilestones(milestoneItems);
+      setContracts(contractItems);
+      if (savedRecommendation?.recommendations?.length) {
+        setRecommendationResult(savedRecommendation);
+      }
+    } finally {
+      if (showRefreshLoading) setRefreshing(false);
+    }
   }, [jobId]);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => loadPageData());
+  }, [loadPageData]);
 
   const generateRecommendations = async () => {
     const id = Number(jobId);
@@ -384,9 +401,22 @@ export function ManageJobPage() {
           title={job.title}
           description="Theo dõi dự án, cột mốc đã khai báo và bản đề xuất chuyên gia gửi cho doanh nghiệp."
           actions={
-            <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
-              Xem bài đăng công khai
-            </LinkButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void loadPageData(true)}
+                loading={refreshing}
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  className={cn("h-4 w-4", refreshing && "animate-spin")}
+                />
+                Làm mới
+              </Button>
+              <LinkButton to={`/jobs/${job.jobId}`} variant="secondary">
+                Xem bài đăng công khai
+              </LinkButton>
+            </div>
           }
         />
       </div>

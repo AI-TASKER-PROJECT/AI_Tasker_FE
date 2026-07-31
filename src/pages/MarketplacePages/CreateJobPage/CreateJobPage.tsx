@@ -146,6 +146,65 @@ function StepIndicator({ current }: { current: WizardStep }) {
 }
 
 // ─── SoW Section Card ─────────────────────────────────────────────────────────
+type VndInlineInputProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+  placeholder?: string;
+  ariaLabel?: string;
+  className?: string;
+  inputClassName?: string;
+};
+
+function VndInlineInput({
+  value,
+  onValueChange,
+  disabled,
+  required,
+  placeholder = "VND",
+  ariaLabel,
+  className,
+  inputClassName,
+}: VndInlineInputProps) {
+  const displayValue = value
+    ? new Intl.NumberFormat("vi-VN").format(Number(value))
+    : "";
+  const inputWidth = `${Math.max((displayValue || placeholder).length + 1, 4)}ch`;
+
+  return (
+    <div
+      className={cn(
+        "flex h-11 w-full max-w-full items-center rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink transition focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-50",
+        disabled && "cursor-not-allowed opacity-100",
+        className,
+      )}
+    >
+      <input
+        aria-label={ariaLabel}
+        type="text"
+        value={displayValue}
+        placeholder={placeholder}
+        disabled={disabled}
+        required={required}
+        style={{ width: inputWidth }}
+        className={cn(
+          "h-full min-w-0 max-w-[calc(100%-1.25rem)] bg-transparent p-0 text-sm text-ink outline-none placeholder:text-slate-400 disabled:cursor-not-allowed",
+          inputClassName,
+        )}
+        onChange={(event) =>
+          onValueChange(event.target.value.replace(/\D/g, ""))
+        }
+      />
+      {displayValue && (
+        <span className="ml-1 shrink-0 text-sm font-bold text-slate-500">
+          đ
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SowSectionCard({
   label,
   icon,
@@ -1179,18 +1238,6 @@ export function CreateJobPage() {
   };
 
   //cmt15 Cập nhật thuộc tính của skill đã chọn, ví dụ đánh dấu bắt buộc hay không.
-  const updateSkillAssignment = (
-    skillId: number,
-    patch: Partial<SkillAssignment>,
-  ) => {
-    invalidateBudgetConfirmation();
-    setSkillAssignments((items) =>
-      items.map((item) =>
-        item.skillId === skillId ? { ...item, ...patch } : item,
-      ),
-    );
-  };
-
   //cmt16 Cập nhật ngân sách tổng của Job trong form và bản Job đã lưu nếu có.
   const updateFormBudgetAmount = (amount: string) => {
     const numericAmount = Number(amount);
@@ -1746,7 +1793,7 @@ export function CreateJobPage() {
                         return (
                           <div
                             key={skill.skillId}
-                            className={`grid gap-3 rounded-xl border px-3 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_120px] md:items-center ${
+                            className={`grid gap-3 rounded-xl border px-3 py-3 transition-colors ${
                               isSelected
                                 ? "border-brand-100 bg-brand-50/50"
                                 : "border-slate-100 bg-white"
@@ -1763,21 +1810,6 @@ export function CreateJobPage() {
                                 {skill.skillName}
                               </span>
                             </label>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                              <input
-                                type="checkbox"
-                                checked={
-                                  assignment ? !assignment.isMandatory : false
-                                }
-                                disabled={!isSelected}
-                                onChange={(event) =>
-                                  updateSkillAssignment(skill.skillId, {
-                                    isMandatory: !event.target.checked,
-                                  })
-                                }
-                              />
-                              Optional
-                            </label>
                           </div>
                         );
                       })}
@@ -1793,30 +1825,12 @@ export function CreateJobPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Ngân sách dự kiến(VNĐ)">
-                  <div className="relative h-11 self-start">
-                    <Input
-                      placeholder="VND"
-                      type="text"
-                      value={
-                        form.budgetAmount
-                          ? new Intl.NumberFormat("vi-VN").format(
-                              Number(form.budgetAmount),
-                            )
-                          : ""
-                      }
-                      onChange={(event) =>
-                        updateFormBudgetAmount(
-                          event.target.value.replace(/\D/g, ""),
-                        )
-                      }
-                      disabled={businessBudgetInputLocked}
-                      className="pr-10"
-                      required
-                    />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                      ₫
-                    </span>
-                  </div>
+                  <VndInlineInput
+                    value={form.budgetAmount}
+                    onValueChange={updateFormBudgetAmount}
+                    disabled={businessBudgetInputLocked}
+                    required
+                  />
                   {attemptedSubmit && !form.budgetAmount && (
                     <p className="mt-1 text-xs text-rose-500">
                       Vui lòng nhập ngân sách dự án.
@@ -2197,36 +2211,23 @@ export function CreateJobPage() {
                         }
                       />
                       {/* Budget — editable only when not locked */}
-                      <div className="relative h-11 self-start">
-                        <Input
-                          aria-label={`Ngân sách ${index + 1}`}
-                          type="text"
-                          value={
-                            milestone.fundsAllocated
-                              ? new Intl.NumberFormat("vi-VN").format(
-                                  Number(milestone.fundsAllocated),
-                                )
-                              : ""
-                          }
-                          placeholder="VND"
-                          disabled={sowGeneratedLocked}
-                          className={cn(
-                            "pr-10",
-                            sowGeneratedLocked
-                              ? "bg-slate-50 text-black font-bold disabled:opacity-100 disabled:text-black"
-                              : "",
-                          )}
-                          onChange={(event) =>
-                            updateMilestoneBudgetAmount(
-                              index,
-                              event.target.value.replace(/\D/g, ""),
-                            )
-                          }
-                        />
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                          ₫
-                        </span>
-                      </div>
+                      <VndInlineInput
+                        ariaLabel={`Ngân sách ${index + 1}`}
+                        value={milestone.fundsAllocated}
+                        onValueChange={(value) =>
+                          updateMilestoneBudgetAmount(index, value)
+                        }
+                        disabled={sowGeneratedLocked}
+                        className={cn(
+                          "self-start",
+                          sowGeneratedLocked ? "bg-slate-50" : "",
+                        )}
+                        inputClassName={
+                          sowGeneratedLocked
+                            ? "text-black font-bold disabled:opacity-100 disabled:text-black"
+                            : ""
+                        }
+                      />
                       <div
                         className={`flex h-11 self-start rounded-2xl border border-slate-200 px-3 ${
                           sowGeneratedLocked ? "bg-slate-50" : "bg-white"

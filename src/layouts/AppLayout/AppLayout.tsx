@@ -147,6 +147,52 @@ function verificationStatusLabel(status?: string | null) {
   return "Chưa gửi";
 }
 
+type InlineVndInputProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+  placeholder?: string;
+};
+
+function InlineVndInput({
+  value,
+  onValueChange,
+  disabled,
+  required,
+  placeholder = "Ví dụ: 500.000",
+}: InlineVndInputProps) {
+  const displayValue = value ? Number(value).toLocaleString("vi-VN") : "";
+  const inputWidth = `${Math.max((displayValue || placeholder).length + 1, 4)}ch`;
+
+  return (
+    <div
+      className={cn(
+        "flex h-11 w-full max-w-full items-center rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-ink outline-none transition focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-50",
+        disabled && "cursor-not-allowed opacity-100",
+      )}
+    >
+      <input
+        type="text"
+        value={displayValue}
+        onChange={(event) =>
+          onValueChange(event.target.value.replace(/\D/g, ""))
+        }
+        disabled={disabled}
+        required={required}
+        placeholder={placeholder}
+        style={{ width: inputWidth }}
+        className="h-full min-w-0 max-w-[calc(100%-1.25rem)] bg-transparent p-0 text-sm text-ink outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+      />
+      {displayValue && (
+        <span className="ml-1 shrink-0 text-sm font-bold text-slate-500">
+          đ
+        </span>
+      )}
+    </div>
+  );
+}
+
 const commonNav: NavItem[] = [
   {
     label: "Tổng quan",
@@ -1429,23 +1475,16 @@ export function AppShell() {
             </div>
           </div>
           <Field label="Số tiền nạp" hint="Yêu cầu số tiền ít nhất 2.000 VNĐ.">
-            <Input
-              type="text"
-              value={
-                topupForm.amount
-                  ? Number(topupForm.amount).toLocaleString("vi-VN")
-                  : ""
-              }
-              onChange={(event) => {
+            <InlineVndInput
+              value={topupForm.amount}
+              onValueChange={(rawValue) => {
                 setTopupPayment(null);
                 setTopupQrDataUrl("");
-                const rawValue = event.target.value.replace(/\D/g, "");
                 setTopupForm((value) => ({
                   ...value,
                   amount: rawValue,
                 }));
               }}
-              placeholder="Ví dụ: 500.000"
               required
             />
           </Field>

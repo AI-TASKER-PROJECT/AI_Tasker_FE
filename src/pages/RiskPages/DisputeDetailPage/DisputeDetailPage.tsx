@@ -29,7 +29,12 @@ import {
   Textarea,
   Tabs,
 } from "../../../components/ui";
-import { contractApi, disputeApi, getApiErrorMessage } from "../../../lib/api";
+import {
+  contractApi,
+  disputeApi,
+  getApiErrorMessage,
+  profileApi,
+} from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import { formatCurrency, formatDateTime } from "../../../lib/utils";
 import type {
@@ -136,6 +141,39 @@ function formatInitiator(value?: string) {
     default:
       return "Người tạo tranh chấp";
   }
+}
+
+function formatInitiatorWithName(dispute: Dispute, contract?: Contract | null) {
+  const initiator = normalizeStatus(dispute.initiatedBy);
+  if (initiator === "BUSINESS") {
+    return contract?.businessName
+      ? `Doanh nghiệp ${contract.businessName}`
+      : "Doanh nghiệp";
+  }
+  if (initiator === "EXPERT") {
+    return contract?.expertName
+      ? `Chuyên gia ${contract.expertName}`
+      : "Chuyên gia";
+  }
+  return formatInitiator(dispute.initiatedBy);
+}
+
+function formatInitiatorWithResolvedName(
+  dispute: Dispute,
+  contract: Contract | null,
+  participantNames: { businessName?: string; expertName?: string },
+) {
+  const initiator = normalizeStatus(dispute.initiatedBy);
+  if (initiator === "BUSINESS") {
+    const businessName =
+      participantNames.businessName || contract?.businessName;
+    return businessName ? `Doanh nghiệp ${businessName}` : "Doanh nghiệp";
+  }
+  if (initiator === "EXPERT") {
+    const expertName = participantNames.expertName || contract?.expertName;
+    return expertName ? `Chuyên gia ${expertName}` : "Chuyên gia";
+  }
+  return formatInitiatorWithName(dispute, contract);
 }
 
 // Trả về metadata hiển thị tương ứng với từng trạng thái dispute.
@@ -321,6 +359,10 @@ export function DisputeDetailPage({
   const navigate = useNavigate();
   const session = useSession();
   const [contract, setContract] = useState<Contract | null>(null);
+  const [participantNames, setParticipantNames] = useState<{
+    businessName?: string;
+    expertName?: string;
+  }>({});
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [criteria, setCriteria] = useState<AcceptanceCriteria[]>([]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
@@ -363,6 +405,35 @@ export function DisputeDetailPage({
     note: "",
   });
 
+  const loadParticipantNames = async (contractData: Contract | null) => {
+    if (!contractData) {
+      setParticipantNames({});
+      return;
+    }
+
+    const [businessResult, expertResult] = await Promise.allSettled([
+      contractData.businessName
+        ? Promise.resolve(null)
+        : profileApi.getBusinessById(contractData.businessId),
+      contractData.expertName
+        ? Promise.resolve(null)
+        : profileApi.getExpertById(contractData.expertId),
+    ]);
+
+    setParticipantNames({
+      businessName:
+        contractData.businessName ||
+        (businessResult.status === "fulfilled"
+          ? businessResult.value?.companyName
+          : undefined),
+      expertName:
+        contractData.expertName ||
+        (expertResult.status === "fulfilled"
+          ? expertResult.value?.fullName
+          : undefined),
+    });
+  };
+
   // Tải chi tiết tranh chấp, bằng chứng, hợp đồng, milestone và dữ liệu bàn giao liên quan.
   //hàm Staff có thể xem chi tiết tranh chấp
   useEffect(() => {
@@ -397,6 +468,7 @@ export function DisputeDetailPage({
         ]);
         setContract(contractData);
         setMilestones(milestoneData);
+        await loadParticipantNames(contractData);
 
         if (disputeData.milestoneId) {
           const [criteriaData, deliverableData, reportData] = await Promise.all(
@@ -424,6 +496,7 @@ export function DisputeDetailPage({
       } catch {
         setDispute(null);
         setContract(null);
+        setParticipantNames({});
         setMilestones([]);
         setCriteria([]);
         setDeliverables([]);
@@ -465,6 +538,7 @@ export function DisputeDetailPage({
       ]);
       setContract(contractData);
       setMilestones(milestoneData);
+      await loadParticipantNames(contractData);
 
       if (disputeData.milestoneId) {
         const [criteriaData, deliverableData, reportData] = await Promise.all([
@@ -575,6 +649,8 @@ export function DisputeDetailPage({
     isParticipant &&
     ["STAFF_DECIDED", "RESOLVED"].includes(status) &&
     hasStaffDecisionData;
+  const shouldShowStaffDecisionResult =
+    ["STAFF_DECIDED", "RESOLVED"].includes(status) && hasStaffDecisionData;
   const baseDisputeReason = disputeReasonContent(dispute);
   const escalationReasonText = dispute.escalationReason?.trim();
   const supplementalReasonText =
@@ -1090,7 +1166,12 @@ export function DisputeDetailPage({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge tone="amber">
-            Khởi tạo bởi: {formatInitiator(dispute.initiatedBy)}
+            Khởi tạo bởi:{" "}
+            {formatInitiatorWithResolvedName(
+              dispute,
+              contract,
+              participantNames,
+            )}
           </Badge>
           {disputedMilestone?.dueAt && (
             <Badge tone="slate">
@@ -1946,7 +2027,7 @@ export function DisputeDetailPage({
             </Card>
           )}
 
-          {!isParticipant && (
+          {!isParticipant && shouldShowStaffDecisionResult && (
             <Card className="border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 shadow-sm md:p-7">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <SectionHeading
