@@ -14,7 +14,7 @@ export const disputeApi = {
   create(payload: Partial<Dispute>) {
     if (!payload.contractId || !payload.milestoneId) {
       return Promise.reject(
-        new Error("Backend yeu cau contractId va milestoneId de tao dispute."),
+        new Error("Máy chủ yêu cầu mã hợp đồng và mã cột mốc để tạo tranh chấp."),
       );
     }
     return call<Dispute>({
@@ -175,7 +175,7 @@ export const disputeApi = {
     void disputeId;
     void testResult;
     return Promise.reject(
-      new Error("Backend hien khong expose API demo-testing cho dispute."),
+      new Error("Máy chủ hiện không cung cấp chức năng thử nghiệm minh họa cho tranh chấp."),
     );
   },
 };

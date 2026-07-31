@@ -129,7 +129,7 @@ export function StaffPage() {
                   {item}
                 </Badge>
               ))}
-              <Badge tone="amber">{staff.activeTickets || 0} ticket</Badge>
+              <Badge tone="amber">{staff.activeTickets || 0} vụ việc</Badge>
             </div>
 
             <Button

@@ -89,7 +89,26 @@ function walletTransactionDisplayDescription(tx: WalletTransaction, role?: strin
       : `${businessName} đã được quyết toán tranh chấp ${milestonePhrase} của hợp đồng "${contractTitle}" với chuyên gia ${expertName}.`;
   }
 
-  return tx.contractTitle || tx.jobTitle || tx.rawDescription || "Wallet transaction";
+  return tx.contractTitle || tx.jobTitle || tx.rawDescription || "Giao dịch ví";
+}
+
+function contractStatus(contract: Contract) {
+  return (contract.status || "").trim().toUpperCase();
+}
+
+function isCompletedContract(contract: Contract) {
+  const status = contractStatus(contract);
+  return (
+    ["COMPLETED", "RELEASED"].includes(status) ||
+    (status === "CLOSED" && !contract.terminationReason && !contract.terminatedAt)
+  );
+}
+
+function isFinanceContract(contract: Contract) {
+  return (
+    ["ACTIVE", "IN_PROGRESS"].includes(contractStatus(contract)) ||
+    isCompletedContract(contract)
+  );
 }
 
 export function FinancePage() {
@@ -110,13 +129,7 @@ export function FinancePage() {
     contractApi
       .listContracts()
       .then((list) => {
-        setContracts(
-          list.filter((c) =>
-            ["ACTIVE", "IN_PROGRESS", "COMPLETED", "RELEASED"].includes(
-              (c.status || "").toUpperCase(),
-            ),
-          ),
-        );
+        setContracts(list.filter(isFinanceContract));
       })
       .catch(() => setContracts([]));
 
@@ -127,7 +140,7 @@ export function FinancePage() {
         .catch(() => {
           setTransactions([]);
           setMessage(
-            "Backend hiện chỉ expose wallet transaction history; chưa có API transaction legacy theo mốc.",
+      "Máy chủ hiện chỉ cung cấp lịch sử giao dịch ví; chưa có dịch vụ giao dịch cũ theo cột mốc.",
           );
         });
     }
@@ -138,10 +151,7 @@ export function FinancePage() {
     [transactions],
   );
   const completedContracts = useMemo(
-    () =>
-      contracts.filter((contract) =>
-        ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()),
-      ),
+    () => contracts.filter(isCompletedContract),
     [contracts],
   );
   const expertCompletedRevenue = useMemo(
@@ -164,7 +174,7 @@ export function FinancePage() {
           }
           description={
             isAdmin
-              ? "Theo dõi lịch sử biến động ví từ backend wallet transaction."
+              ? "Theo dõi lịch sử biến động ví từ dữ liệu giao dịch của máy chủ."
               : session?.role === "EXPERT"
                 ? "Theo dõi doanh thu từ các dự án và số tiền đang chờ nghiệm thu."
                 : "Theo dõi ngân sách, ký quỹ và các hợp đồng đang thực thi."
@@ -203,8 +213,8 @@ export function FinancePage() {
           </div>
         )}
         {isAdmin && (
-          <Notice tone="info" title="Đã tắt transaction legacy">
-            Backend hiện tại không expose API tạo transaction, webhook, hoặc cập nhật status theo mốc. Màn này chỉ đọc lịch sử wallet transaction thật.
+          <Notice tone="info" title="Đã tắt luồng giao dịch cũ">
+            Máy chủ hiện không cung cấp thao tác tạo giao dịch hoặc cập nhật trạng thái theo cột mốc tại màn hình này. Dữ liệu bên dưới là lịch sử giao dịch ví thực tế.
           </Notice>
         )}
         {message && <Notice tone="danger" title={message} className="mt-4" />}
@@ -265,7 +275,7 @@ export function FinancePage() {
             {transactions.length === 0 && (
               <EmptyState
                 title="Chưa có giao dịch"
-                description="Backend wallet transaction chưa trả dữ liệu cho tài khoản hiện tại."
+          description="Máy chủ chưa trả dữ liệu giao dịch ví cho tài khoản hiện tại."
               />
             )}
           </Card>
@@ -293,7 +303,7 @@ export function FinancePage() {
                 {
                   contracts.filter((c) =>
                     ["ACTIVE", "IN_PROGRESS"].includes(
-                      (c.status || "").toUpperCase(),
+                      contractStatus(c),
                     ),
                   ).length
                 }

@@ -941,7 +941,7 @@ export function ContractDetailPage() {
       if (result.needTopup) {
         setContractNotice({
           tone: "danger",
-          title: "Ví chưa đủ để ký quỹ contract.",
+          title: "Ví chưa đủ để ký quỹ hợp đồng.",
           message: result.missingAmount
             ? `Cần nạp thêm ${formatCurrency(result.missingAmount)}.`
             : result.message,
@@ -986,6 +986,12 @@ export function ContractDetailPage() {
     contract.contractMilestones && contract.contractMilestones.length > 0
       ? contract.contractMilestones
       : contractMilestones;
+  const projectSummaryAvailable =
+    ["COMPLETED", "CLOSED"].includes(contractStatus) &&
+    renderedMilestones.length > 0 &&
+    renderedMilestones.every(
+      (milestone) => normalizeContractStatus(milestone.status) === "COMPLETED",
+    );
   const originalContractBudget = renderedMilestones.length
     ? renderedMilestones.reduce(
         (total, milestone) =>
@@ -1291,6 +1297,12 @@ export function ContractDetailPage() {
               >
                 Không gian làm việc
               </LinkButton>
+              {projectSummaryAvailable && (
+                <LinkButton to={`/app/contracts/${contract.contractId}/summary`}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Xem tổng kết dự án
+                </LinkButton>
+              )}
               {canRequestChange && (
                 <Button
                   variant="secondary"
@@ -1326,15 +1338,15 @@ export function ContractDetailPage() {
               session?.role === "BUSINESS" && (
                 <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold leading-6 text-slate-700">
-                    Để Chuyên gia bắt đầu làm việc, bạn cần ký quỹ Mốc 1. Tiền
-                    sẽ được giữ trong Escrow và chỉ giải ngân sau khi bạn nghiệm
+                    Để chuyên gia bắt đầu làm việc, bạn cần ký quỹ cột mốc 1. Tiền
+                    sẽ được giữ trong quỹ bảo đảm và chỉ giải ngân sau khi bạn nghiệm
                     thu.
                   </p>
                   <LinkButton
                     to={`/app/contracts/${contract.contractId}/workspace?focus=milestone-deposit`}
                     size="sm"
                   >
-                    Đi tới Workspace và ký quỹ mốc
+                    Đi tới không gian làm việc và ký quỹ cột mốc
                   </LinkButton>
                 </div>
               )}
@@ -1668,7 +1680,7 @@ export function ContractDetailPage() {
                 ? "Hợp đồng đã hoạt động, ngân sách mốc và trạng thái công việc đã được hệ thống cập nhật."
                 : readyToActivate
                   ? "Doanh nghiệp và Chuyên gia đã hoàn tất hợp đồng cùng NDA. Doanh nghiệp có thể tiếp tục ký quỹ để kích hoạt luồng làm việc."
-                  : "Bên đã ký sẽ được ghi nhận ngay khi backend trả thời điểm ký/xác thực."}
+              : "Bên đã ký sẽ được ghi nhận ngay khi máy chủ trả thời điểm ký hoặc xác thực."}
             </Notice>
             {signatureProgress.length > 0 && !readyToActivate && (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1758,7 +1770,7 @@ export function ContractDetailPage() {
               ))}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có mốc draft"
+                  title="Chưa có mốc nháp"
                   description="Hệ thống chưa có dữ liệu mốc cho hợp đồng này."
                 />
               )}
@@ -1957,8 +1969,8 @@ export function ContractDetailPage() {
         <div className="grid gap-5">
           <>
             <Notice tone="warning" title="Chỉ các mốc chưa bắt đầu">
-              Các mốc đã hoàn thành, đang thực hiện hoặc đã giải ngân không thể
-              được thay đổi.
+              Các cột mốc đã hoàn thành, đang thực hiện hoặc đã giải ngân tiền ký quỹ
+              không thể được thay đổi.
             </Notice>
             <Field label="Chọn mốc cần thay đổi">
               <select
@@ -2055,7 +2067,7 @@ export function ContractDetailPage() {
                   <p className="mb-3 text-sm font-extrabold text-brand-700">
                     Thông tin bạn đề xuất thay đổi
                   </p>
-                  <Field label="Mô tả thay đổi mới">
+                  <Field label="Mô tả / sản phẩm bàn giao mới">
                     <Textarea
                       value={changeForm.milestoneDescription}
                       onChange={(event) =>
@@ -2233,7 +2245,7 @@ export function ContractDetailPage() {
                     </p>
                   </div>
                   <p className="mt-3 text-sm text-slate-700">
-                    Mô tả / deliverable hiện tại
+                    Mô tả / sản phẩm bàn giao hiện tại
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
                     {viewingCurrentMilestone?.description || "Chưa có mô tả."}
@@ -2243,7 +2255,7 @@ export function ContractDetailPage() {
                   <p className="mb-3 font-extrabold text-brand-700">
                     Thông tin mới được đề xuất
                   </p>
-                  <Field label="Mô tả / deliverable mới">
+                  <Field label="Mô tả / sản phẩm bàn giao mới">
                     <Textarea
                       disabled
                       value={
@@ -2548,7 +2560,7 @@ export function ContractDetailPage() {
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
             <SectionHeading
               title="Điều kiện trước khi ký quỹ"
-              description="Hợp đồng phải ở trạng thái PENDING và đã đủ chữ ký/xác thực của hai bên."
+              description="Hợp đồng phải ở trạng thái chờ ký quỹ và đã đủ chữ ký, xác thực của hai bên."
             />
             <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600">
               <span>Hợp đồng: {contractTitle}</span>

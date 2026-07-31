@@ -58,6 +58,21 @@ function normalizeStatus(status?: string) {
   return (status || "").trim().replace(/[\s-]+/g, "_").toUpperCase();
 }
 
+function isAutomaticSlaSettlement(settlementSourceType?: string) {
+  return normalizeStatus(settlementSourceType) === "REVIEW_SLA_AUTO_APPROVAL";
+}
+
+function automaticSlaSettlementNotice(role: string | undefined, expertName: string) {
+  return {
+    tone: "success" as const,
+    title: "Hệ thống đã tự động duyệt và giải ngân cột mốc.",
+    message:
+      role === "BUSINESS"
+        ? `Thời hạn nghiệm thu đã kết thúc mà không có phản hồi. Sản phẩm đã được duyệt và toàn bộ tiền ký quỹ của cột mốc đã được giải ngân cho Chuyên gia ${expertName}.`
+        : "Thời hạn nghiệm thu đã kết thúc. Sản phẩm của bạn đã được hệ thống tự động duyệt và toàn bộ tiền ký quỹ của cột mốc đã được giải ngân vào ví.",
+  };
+}
+
 function formatDisputeType(type?: string) {
   switch (normalizeStatus(type)) {
     case "BUSINESS_REJECTED_DELIVERABLE":
@@ -107,7 +122,7 @@ function contractStatusLabel(status?: string) {
     CANCELLED: "Đã hủy",
     COMPLETED: "Hoàn thành",
   };
-  return labels[normalized] || status || "Chua co trang thai";
+  return labels[normalized] || status || "Chưa có trạng thái";
 }
 
 function milestoneDurationLabel(milestone: Milestone) {
@@ -117,6 +132,26 @@ function milestoneDurationLabel(milestone: Milestone) {
   if (unit.includes("DAY")) return `${duration} ngày`;
   if (unit.includes("MONTH")) return `${duration} tháng`;
   return `${duration} tuần`;
+}
+
+function reviewSlaCountdownLabel(reviewDueAt: string | undefined, nowMs: number) {
+  if (!reviewDueAt) return "Đang chờ hệ thống ghi nhận hạn nghiệm thu";
+  const dueAtMs = new Date(reviewDueAt).getTime();
+  if (!Number.isFinite(dueAtMs)) return "Chưa xác định được hạn nghiệm thu";
+  const remainingSeconds = Math.max(0, Math.ceil((dueAtMs - nowMs) / 1000));
+  if (remainingSeconds === 0) return "Đã hết hạn, hệ thống đang tự động nghiệm thu";
+
+  const days = Math.floor(remainingSeconds / 86400);
+  const hours = Math.floor((remainingSeconds % 86400) / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+  const parts = [
+    days > 0 ? `${days} ngày` : "",
+    hours > 0 ? `${hours} giờ` : "",
+    minutes > 0 ? `${minutes} phút` : "",
+    days === 0 ? `${seconds} giây` : "",
+  ].filter(Boolean);
+  return `Tự động nghiệm thu sau ${parts.slice(0, 3).join(" ")}`;
 }
 
 function milestoneDeliverableDeadline(milestone?: Milestone | null) {
@@ -243,7 +278,7 @@ function deliverableSubmissionNotice(
     ? {
         tone: "warning",
         title: `Chuyên gia ${expertName} đã nộp sản phẩm cuối cùng này.`,
-        message: "Vui lòng kiểm tra source/demo và nghiệm thu hoặc từ chối bản nộp.",
+        message: "Vui lòng kiểm tra mã nguồn/bản chạy thử và nghiệm thu hoặc từ chối bản nộp.",
       }
     : {
         tone: "info",
@@ -259,6 +294,7 @@ function milestoneRoleNotice({
   latestProgressReport,
   latestDeliverable,
   milestoneStatus,
+  settlementSourceType,
 }: {
   role?: string;
   businessName: string;
@@ -266,6 +302,7 @@ function milestoneRoleNotice({
   latestProgressReport?: MilestoneProgressReport;
   latestDeliverable?: Deliverable;
   milestoneStatus?: string;
+  settlementSourceType?: string;
 }): { tone: NoticeTone; title: string; message?: string } | null {
   const status = normalizeStatus(milestoneStatus);
   const deliverableRejected =
@@ -286,6 +323,9 @@ function milestoneRoleNotice({
   }
 
   if (status === "COMPLETED") {
+    if (isAutomaticSlaSettlement(settlementSourceType)) {
+      return automaticSlaSettlementNotice(role, expertName);
+    }
     return role === "BUSINESS"
       ? {
           tone: "success",
@@ -314,7 +354,7 @@ function milestoneRoleNotice({
       ? {
           tone: "warning",
           title: `Chuyên gia ${expertName} đã nộp sản phẩm cuối cùng.`,
-          message: "Vui lòng kiểm tra source/demo theo tiêu chí nghiệm thu, sau đó nghiệm thu hoặc từ chối bản nộp này.",
+          message: "Vui lòng kiểm tra mã nguồn/bản chạy thử theo tiêu chí nghiệm thu, sau đó nghiệm thu hoặc từ chối bản nộp này.",
         }
       : {
           tone: "info",
@@ -357,8 +397,11 @@ function checkpointLabel(checkpointType?: string) {
   return "Báo cáo giữa kỳ";
 }
 
-function latestDeliverableStatusLabel(milestoneStatus?: string) {
+function latestDeliverableStatusLabel(milestoneStatus?: string, settlementSourceType?: string) {
   const normalized = normalizeStatus(milestoneStatus);
+  if (normalized === "COMPLETED" && isAutomaticSlaSettlement(settlementSourceType)) {
+    return "Đã tự động duyệt và giải ngân";
+  }
   if (normalized === "COMPLETED") return "Đã nghiệm thu";
   if (normalized === "UNDER_REVIEW") return "Đã nộp, chờ nghiệm thu";
   if (normalized === "DISPUTED") return "Đang tranh chấp";
@@ -382,22 +425,22 @@ function disputeWorkspaceNotice(dispute?: Dispute) {
     PENDING_SELF_RESOLVE: {
       title: "Hồ sơ tranh chấp đã được tạo",
       message:
-        "Hồ sơ chưa được gửi đến Staff. Vui lòng gửi yêu cầu Staff can thiệp để nhân viên tiếp nhận xử lý.",
+        "Hồ sơ chưa được gửi đến nhân viên hỗ trợ. Vui lòng gửi yêu cầu can thiệp để nhân viên tiếp nhận xử lý.",
     },
     ESCALATION_REQUESTED: {
-      title: "Tranh chấp - Đã gửi yêu cầu staff",
+      title: "Tranh chấp - Đã gửi yêu cầu hỗ trợ",
       message:
-        "Yêu cầu can thiệp đã được gửi. Hệ thống đang tự động định tuyến Staff phù hợp để tiếp nhận.",
+        "Yêu cầu can thiệp đã được gửi. Hệ thống đang tự động phân công nhân viên phù hợp để tiếp nhận.",
     },
     STAFF_REVIEWING: {
-      title: "Tranh chấp - Staff đang kiểm tra",
+      title: "Tranh chấp - Nhân viên đang kiểm tra",
       message:
-        "Staff đã tiếp nhận tranh chấp, đang kiểm tra source/demo theo Định nghĩa hoàn thành và sẽ ra quyết định xử lý.",
+        "Nhân viên đã tiếp nhận tranh chấp, đang kiểm tra mã nguồn/bản chạy thử theo định nghĩa hoàn thành và sẽ ra quyết định xử lý.",
     },
     STAFF_DECIDED: {
-      title: "Tranh chấp - Staff đã ra quyết định",
+      title: "Tranh chấp - Nhân viên đã ra quyết định",
       message:
-        "Staff đã gửi báo cáo kỹ thuật và tỷ lệ phân bổ ký quỹ. Hệ thống đang chờ bước quyết toán.",
+        "Nhân viên đã gửi báo cáo kỹ thuật và tỷ lệ phân bổ ký quỹ. Hệ thống đang chờ bước quyết toán.",
     },
     RESOLVED: {
       title: "Tranh chấp - Đã xử lý xong",
@@ -543,17 +586,22 @@ export function WorkspacePage() {
   );
   const [abruptTerminationOpen, setAbruptTerminationOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [reviewClockMs, setReviewClockMs] = useState(() => Date.now());
   const [deliverableForm, setDeliverableForm] = useState({
     type: "PROCESS",
     sourceCodeUrl: "",
     sourceCodeFileUrl: "",
     sourceCodeFileName: "",
+    userGuideFileUrl: "",
+    userGuideFileName: "",
     demoLink: "",
     submissionNotes: "",
     percentComplete: "50",
   });
   const [sourceArchiveFile, setSourceArchiveFile] = useState<File | null>(null);
   const [sourceArchiveError, setSourceArchiveError] = useState("");
+  const [userGuideFile, setUserGuideFile] = useState<File | null>(null);
+  const [userGuideError, setUserGuideError] = useState("");
   const [feedbackReason, setFeedbackReason] = useState("");
   const [failedCriteriaReasons, setFailedCriteriaReasons] = useState<Record<number, string>>({});
   const [selectedFailedCriteriaIds, setSelectedFailedCriteriaIds] = useState<number[]>([]);
@@ -624,7 +672,7 @@ export function WorkspacePage() {
     "Chuyên gia",
   );
 
-  //cmt1: Tải toàn bộ dữ liệu workspace: hợp đồng, milestone, tranh chấp và yêu cầu chấm dứt liên quan.
+  // Tải toàn bộ dữ liệu không gian làm việc của hợp đồng.
   const loadWorkspace = useCallback(async () => {
     if (!Number.isFinite(id) || id <= 0) return;
     try {
@@ -701,6 +749,24 @@ export function WorkspacePage() {
   useEffect(() => {
     queueMicrotask(() => void loadWorkspace());
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    const hasPendingReview = milestones.some(
+      (milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW",
+    );
+    if (!hasPendingReview) return;
+    const timer = window.setInterval(() => setReviewClockMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [milestones]);
+
+  useEffect(() => {
+    const hasPendingReview = milestones.some(
+      (milestone) => normalizeStatus(milestone.status) === "UNDER_REVIEW",
+    );
+    if (!hasPendingReview) return;
+    const timer = window.setInterval(() => void loadWorkspace(), 10000);
+    return () => window.clearInterval(timer);
+  }, [loadWorkspace, milestones]);
 
   useEffect(() => {
     milestones.forEach((milestone) => {
@@ -846,7 +912,7 @@ export function WorkspacePage() {
     if (!sourceMilestoneId) {
       setWorkspaceNotice({
         tone: "danger",
-        title: "Không xác định được milestone gốc để nộp deliverable.",
+        title: "Không xác định được cột mốc gốc để nộp sản phẩm.",
       });
       return;
     }
@@ -855,7 +921,7 @@ export function WorkspacePage() {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "danger",
         title: "Mốc đã quá hạn nộp sản phẩm.",
-        message: "Bạn không thể nộp final product hoặc upload source mới sau deadline. Hãy theo dõi luồng tranh chấp/xử lý quá hạn.",
+        message: "Bạn không thể nộp sản phẩm cuối hoặc tải mã nguồn mới sau hạn nộp. Hãy theo dõi luồng tranh chấp hoặc xử lý quá hạn.",
       });
       return;
     }
@@ -878,11 +944,23 @@ export function WorkspacePage() {
     try {
       const notes = deliverableForm.submissionNotes.trim();
       let sourceCodeFileUrl = deliverableForm.sourceCodeFileUrl || undefined;
+      let userGuideFileUrl = deliverableForm.userGuideFileUrl || undefined;
       if (!notes) {
         setMilestoneNotice(sourceMilestoneId, {
           tone: "warning",
           title: "Vui lòng nhập nội dung báo cáo hoặc ghi chú bàn giao.",
         });
+        return;
+      }
+      const finalOrderIndex = Math.max(...milestones.map((item) => Number(item.orderIndex) || 0));
+      const isFinalMilestone = Number(deliverableOpen.orderIndex) === finalOrderIndex;
+      if (
+        deliverableForm.type === "FINAL" &&
+        isFinalMilestone &&
+        !userGuideFile &&
+        !userGuideFileUrl
+      ) {
+        setUserGuideError("Vui lòng đính kèm tệp hướng dẫn sử dụng PDF hoặc DOCX cho cột mốc cuối cùng.");
         return;
       }
       if (sourceArchiveFile) {
@@ -908,14 +986,22 @@ export function WorkspacePage() {
         if (!normalizeExternalUrl(deliverableForm.sourceCodeUrl) && !sourceCodeFileUrl) {
           setMilestoneNotice(sourceMilestoneId, {
             tone: "warning",
-            title: "Vui lòng cung cấp Source code URL hoặc file ZIP source code.",
+            title: "Vui lòng cung cấp đường dẫn kho mã nguồn hoặc tệp ZIP mã nguồn.",
           });
           return;
+        }
+        if (userGuideFile) {
+          userGuideFileUrl = await contractApi.uploadMilestoneUserGuide(
+            contract.contractId,
+            sourceMilestoneId,
+            userGuideFile,
+          );
         }
         await contractApi.submitDeliverable(contract.contractId, sourceMilestoneId, {
           milestoneId: sourceMilestoneId,
           sourceCodeUrl: normalizeExternalUrl(deliverableForm.sourceCodeUrl) || undefined,
           sourceCodeFileUrl,
+          userGuideFileUrl,
           demoLink: normalizeExternalUrl(deliverableForm.demoLink) || undefined,
           submissionNotes: notes,
         });
@@ -940,22 +1026,26 @@ export function WorkspacePage() {
         sourceCodeUrl: "",
         sourceCodeFileUrl: "",
         sourceCodeFileName: "",
+        userGuideFileUrl: "",
+        userGuideFileName: "",
         demoLink: "",
         submissionNotes: "",
         percentComplete: "50",
       });
       setSourceArchiveFile(null);
       setSourceArchiveError("");
+      setUserGuideFile(null);
+      setUserGuideError("");
       setDeliverableOpen(null);
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
         title:
           deliverableForm.type === "FINAL"
-            ? "Đã nộp final product cho Business nghiệm thu."
-            : "Đã nộp progress report cho Business theo dõi.",
+            ? "Đã nộp sản phẩm cuối cho doanh nghiệp nghiệm thu."
+            : "Đã nộp báo cáo tiến độ cho doanh nghiệp theo dõi.",
         message:
           deliverableForm.type === "FINAL"
-            ? "Mốc đang chờ Business kiểm tra và nghiệm thu."
+            ? "Cột mốc đang chờ doanh nghiệp kiểm tra và nghiệm thu."
             : "Báo cáo tiến độ đã được ghi nhận trong lịch sử mốc.",
       });
     } catch (error) {
@@ -994,7 +1084,7 @@ export function WorkspacePage() {
           reason: failedCriteriaReasons[criteriaId]?.trim() || "Tiêu chí chưa đạt yêu cầu nghiệm thu.",
         })),
       }),
-      "Đã gửi feedback. Expert có thể chỉnh sửa và nộp lại final product.",
+      "Đã gửi phản hồi. Chuyên gia có thể chỉnh sửa và nộp lại sản phẩm cuối.",
     );
     setFeedbackReason("");
     setFeedbackRequired(false);
@@ -1090,7 +1180,7 @@ export function WorkspacePage() {
           message: "Đang chuyển về trang hợp đồng để cập nhật trạng thái hoàn ký quỹ.",
         });
         window.dispatchEvent(new Event("aitasker:reload-wallet"));
-        setTimeout(() => navigate(`/app/contracts/${contract.contractId}`), 900);
+        setTimeout(() => navigate(`/app/contracts/${contract.contractId}/summary`), 900);
       }
       setApproveConfirmOpen(null);
     } catch (error) {
@@ -1135,7 +1225,7 @@ export function WorkspacePage() {
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
         title: "Đã tạo hồ sơ tranh chấp.",
-        message: "Bạn có thể gửi yêu cầu Staff can thiệp khi cần nhân viên tiếp nhận xử lý.",
+        message: "Bạn có thể gửi yêu cầu can thiệp khi cần nhân viên tiếp nhận xử lý.",
       });
       setInitiateDisputeOpen(null);
       setInitiateDisputeType("OTHER");
@@ -1161,7 +1251,7 @@ export function WorkspacePage() {
     if (!reason) {
       setWorkspaceNotice({
         tone: "warning",
-        title: "Không tìm thấy lý do tranh chấp để gửi Staff.",
+        title: "Không tìm thấy lý do tranh chấp để gửi nhân viên hỗ trợ.",
       });
       return;
     }
@@ -1179,8 +1269,8 @@ export function WorkspacePage() {
       await refreshAfterAction();
       setMilestoneNotice(sourceMilestoneId, {
         tone: "success",
-        title: "Đã gửi yêu cầu Staff can thiệp.",
-        message: "Hệ thống sẽ tự động gán Staff phù hợp để xử lý.",
+        title: "Đã gửi yêu cầu nhân viên can thiệp.",
+        message: "Hệ thống sẽ tự động phân công nhân viên phù hợp để xử lý.",
       });
       setEscalateDisputeOpen(null);
       setDisputeReason("");
@@ -1282,8 +1372,8 @@ export function WorkspacePage() {
   const disputeBusinessTermination = async (request: TerminationRequest) => {
     if (!request.terminationRequestId) return;
     const reason = window.prompt(
-      "Lý do Expert không đồng ý với yêu cầu hủy contract của Business:",
-      "Business hủy contract khi Expert vẫn có khả năng tiếp tục thực hiện.",
+      "Lý do chuyên gia không đồng ý với yêu cầu hủy hợp đồng của doanh nghiệp:",
+      "Doanh nghiệp hủy hợp đồng khi chuyên gia vẫn có khả năng tiếp tục thực hiện.",
     );
     if (reason === null) return;
     setActionLoading(`termination-dispute:${request.terminationRequestId}`);
@@ -1291,14 +1381,14 @@ export function WorkspacePage() {
       await contractApi.disputeTerminationRequest(
         request.terminationRequestId,
         reason.trim() ||
-        "Expert yêu cầu staff hỗ trợ vì không đồng ý hủy contract.",
+        "Chuyên gia yêu cầu nhân viên hỗ trợ vì không đồng ý hủy hợp đồng.",
       );
       await refreshAfterAction();
       setWorkspaceNotice({
         tone: "success",
-        title: "Đã gửi yêu cầu staff hỗ trợ.",
+        title: "Đã gửi yêu cầu nhân viên hỗ trợ.",
         message:
-          "Tiền tiếp tục được tạm giữ. Admin sẽ phân công staff xem xét yêu cầu hủy contract này.",
+          "Tiền tiếp tục được tạm giữ. Quản trị viên sẽ phân công nhân viên xem xét yêu cầu hủy hợp đồng này.",
       });
     } catch (error) {
       setWorkspaceNotice({
@@ -1314,7 +1404,7 @@ export function WorkspacePage() {
     if (!request.terminationRequestId) return;
     if (
       !window.confirm(
-        "Dong y huy contract? He thong se huy contract va refund cac milestone chua hoan thanh cho Business.",
+        "Đồng ý hủy hợp đồng? Hệ thống sẽ hủy hợp đồng và hoàn tiền các cột mốc chưa hoàn thành cho doanh nghiệp.",
       )
     ) {
       return;
@@ -1325,7 +1415,7 @@ export function WorkspacePage() {
       await refreshAfterAction();
       setWorkspaceNotice({
         tone: "success",
-        title: "Da dong y huy contract.",
+        title: "Đã đồng ý hủy hợp đồng.",
         message:
           "Hợp đồng đã được hủy. Các mốc chưa hoàn thành sẽ được hoàn tiền cho Doanh nghiệp nếu mốc đó đang giữ ký quỹ.",
       });
@@ -1356,7 +1446,7 @@ export function WorkspacePage() {
         tone: "warning",
         title: "Hệ thống hiện chưa hỗ trợ chức năng tiếp tục/hủy hợp đồng sau khi có tranh chấp.",
         message:
-          "Vui lòng sử dụng chức năng staff decision và execute settlement của tranh chấp để cập nhật trạng thái.",
+          "Vui lòng sử dụng chức năng ra quyết định của nhân viên và quyết toán tranh chấp để cập nhật trạng thái.",
       });
     } catch (error) {
       setWorkspaceNotice({
@@ -1387,7 +1477,7 @@ export function WorkspacePage() {
         title: "Đã hủy ngang hợp đồng.",
         message:
           session?.role === "EXPERT"
-            ? "Hệ thống đã chuyển 10% giá trị hợp đồng từ khoản ký quỹ Expert sang Doanh nghiệp."
+            ? "Hệ thống đã chuyển 10% giá trị hợp đồng từ khoản ký quỹ của chuyên gia sang doanh nghiệp."
             : "Hệ thống đã chuyển 10% giá trị hợp đồng từ tiền ký quỹ sang ví Chuyên gia và hoàn phần còn lại cho Doanh nghiệp.",
       });
       setAbruptTerminationOpen(false);
@@ -1405,7 +1495,7 @@ export function WorkspacePage() {
   if (!contract) {
     return (
       <EmptyState
-        title="Không tìm thấy workspace"
+        title="Không tìm thấy không gian làm việc"
         description="Không thể tải dữ liệu làm việc của hợp đồng này."
       />
     );
@@ -1470,6 +1560,13 @@ export function WorkspacePage() {
   const abruptTerminationPenalty = Number(contract.totalBudget || 0) * 0.1;
   const deliverableOpenStatus = normalizeStatus(deliverableOpen?.status);
   const deliverableOpenDeadlineExceeded = isDeliverableDeadlineExceeded(deliverableOpen);
+  const finalMilestoneOrderIndex = milestones.reduce(
+    (maximum, item) => Math.max(maximum, Number(item.orderIndex) || 0),
+    0,
+  );
+  const deliverableOpenIsFinalMilestone =
+    deliverableOpen !== null &&
+    Number(deliverableOpen.orderIndex) === finalMilestoneOrderIndex;
   const canOpenProgressReport =
     !contractActionsFrozen &&
     deliverableOpen !== null &&
@@ -1484,11 +1581,11 @@ export function WorkspacePage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title={`Workspace: ${contract.contractTitle ||
+          title={`Không gian làm việc: ${contract.contractTitle ||
             contract.title ||
             "Hợp đồng chưa có tên"
             }`}
-          description="Business ký quỹ từng mốc, Expert nộp báo cáo tiến độ hoặc final product, Business nghiệm thu hoặc yêu cầu chỉnh sửa final product."
+          description="Doanh nghiệp ký quỹ từng cột mốc, chuyên gia nộp báo cáo tiến độ hoặc sản phẩm cuối, doanh nghiệp nghiệm thu hoặc yêu cầu chỉnh sửa sản phẩm."
           actions={
             <div className="flex flex-wrap gap-2">
               {session?.role === "ADMIN" && (
@@ -1567,10 +1664,10 @@ export function WorkspacePage() {
                 Doanh nghiệp đã yêu cầu hủy hợp đồng
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Chuyên gia có 3 ngày để phản hồi. Nếu Chuyên gia không phản hồi,
+                Chuyên gia có 3 ngày để phản hồi. Nếu chuyên gia không phản hồi,
                 hệ thống sẽ tự động hủy hợp đồng và hoàn tiền các mốc chưa
-                hoàn thành cho Doanh nghiệp. Nếu Chuyên gia không đồng ý,
-                Chuyên gia có thể yêu cầu staff hỗ trợ xử lý.
+                hoàn thành cho doanh nghiệp. Nếu chuyên gia không đồng ý,
+                chuyên gia có thể yêu cầu nhân viên hỗ trợ xử lý.
               </p>
             </div>
             {canExpertEscalateTermination && (
@@ -1599,7 +1696,7 @@ export function WorkspacePage() {
                   }
                 >
                   <Gavel className="h-4 w-4" />
-                  Yêu cầu staff hỗ trợ
+                  Yêu cầu nhân viên hỗ trợ
                 </Button>
               </div>
             )}
@@ -1609,7 +1706,7 @@ export function WorkspacePage() {
 
       {activeTerminationRequest && !awaitingExpertTerminationResponse && (
         <Notice tone="warning" title="Yêu cầu hủy hợp đồng đang được xử lý">
-          Tiền đang được tạm giữ và hợp đồng tạm khóa thao tác. Staff/admin
+          Tiền đang được tạm giữ và hợp đồng tạm khóa thao tác. Nhân viên hoặc quản trị viên
           sẽ xem xét yêu cầu hủy này trước khi quyết định hoàn tiền hoặc cho hợp
           đồng tiếp tục.
         </Notice>
@@ -1627,7 +1724,7 @@ export function WorkspacePage() {
                 Tranh chấp đã được xử lý. Doanh nghiệp cần quyết định bước tiếp theo.
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Nếu tiếp tục, contract được mở lại để làm các mốc còn lại.
+                Nếu tiếp tục, hợp đồng được mở lại để thực hiện các cột mốc còn lại.
                 Nếu hủy, hệ thống sẽ hủy toàn bộ mốc chưa hoàn thành và 
                 hoàn tiền mốc nào đang giữ tiền ký quỹ về ví Doanh nghiệp.
               </p>
@@ -1678,7 +1775,7 @@ export function WorkspacePage() {
         />
         <FlowStep
           icon={<UploadCloud className="h-4 w-4" />}
-          title="Expert nộp sản phẩm"
+          title="Chuyên gia nộp sản phẩm"
           description={`${counts.ready} mốc chờ bắt đầu, ${counts.working} đang làm, ${counts.overdue} quá hạn.`}
           active={counts.ready > 0 || counts.working > 0 || counts.overdue > 0}
           accent="sky"
@@ -1773,6 +1870,7 @@ export function WorkspacePage() {
             latestProgressReport,
             latestDeliverable,
             milestoneStatus: milestone.status,
+            settlementSourceType: milestone.settlementSourceType,
           });
           // A fresh action notice is the single source of truth for the milestone.
           // Do not render the derived role notice beside it.
@@ -1905,6 +2003,11 @@ export function WorkspacePage() {
                     )}
                     {milestone.reviewDueAt && (
                       <span>Hạn nghiệm thu: {formatDateTime(milestone.reviewDueAt)}</span>
+                    )}
+                    {status === "UNDER_REVIEW" && (
+                      <span className="text-brand-700">
+                        {reviewSlaCountdownLabel(milestone.reviewDueAt, reviewClockMs)}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -2063,7 +2166,7 @@ export function WorkspacePage() {
                       }}
                     >
                       <Gavel className="h-4 w-4" />
-                      Yêu cầu Staff can thiệp
+                      Yêu cầu nhân viên can thiệp
                     </Button>
                   )}
                   {sourceMilestoneId && (
@@ -2122,7 +2225,7 @@ export function WorkspacePage() {
                   {session?.role === "EXPERT" && deliverableDeadlineExceeded && (
                     <div className="mt-4">
                       <Notice tone="danger" title="Mốc đã quá hạn nộp sản phẩm">
-                        Bạn vẫn có thể gửi báo cáo tiến độ nếu cần cập nhật tình hình, nhưng không thể nộp final product hoặc upload source ZIP mới sau deadline.
+                        Bạn vẫn có thể gửi báo cáo tiến độ nếu cần cập nhật tình hình, nhưng không thể nộp sản phẩm cuối hoặc tải tệp ZIP mã nguồn mới sau hạn nộp.
                       </Notice>
                     </div>
                   )}
@@ -2175,9 +2278,9 @@ export function WorkspacePage() {
                         
                         <Badge tone="brand">
                           {normalizeStatus(currentDispute.status) === "ESCALATION_REQUESTED"
-                            ? "Đã chuyển yêu cầu đến Staff"
+                            ? "Đã chuyển yêu cầu đến nhân viên"
                             : normalizeStatus(currentDispute.status) === "STAFF_REVIEWING"
-                              ? "Staff đang xử lý"
+                              ? "Nhân viên đang xử lý"
                               : disputeWorkspaceNotice(currentDispute).title}
                         </Badge>
                       </div>
@@ -2308,7 +2411,7 @@ export function WorkspacePage() {
                                 {item.sourceCodeUrl && (
                                   <div className="rounded-lg bg-white px-3 py-2">
                                     <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                      Source code URL
+                                      Đường dẫn kho mã nguồn
                                     </p>
                                     <a
                                       href={normalizeExternalUrl(item.sourceCodeUrl)}
@@ -2323,7 +2426,7 @@ export function WorkspacePage() {
                                 {item.sourceCodeFileUrl && (
                                   <div className="min-w-[220px] rounded-lg bg-white px-3 py-2">
                                     <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                      Source ZIP
+                                      Tệp ZIP mã nguồn
                                     </p>
                                     <FirebaseFileLink
                                       path={item.sourceCodeFileUrl}
@@ -2335,7 +2438,7 @@ export function WorkspacePage() {
                                 {item.demoLink && (
                                   <div className="rounded-lg bg-white px-3 py-2">
                                     <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                      Demo URL
+                                      Đường dẫn bản chạy thử
                                     </p>
                                     <a
                                       href={normalizeExternalUrl(item.demoLink)}
@@ -2475,7 +2578,10 @@ export function WorkspacePage() {
                                   }
                                 >
                                   {latestDeliverable?.deliverableId === item.deliverableId
-                                    ? latestDeliverableStatusLabel(milestone.status)
+                                    ? latestDeliverableStatusLabel(
+                                        milestone.status,
+                                        milestone.settlementSourceType,
+                                      )
                                     : "Bản nộp trước"}
                                 </Badge>
                                 {latestSubmissionMeta?.kind === "DELIVERABLE" &&
@@ -2493,7 +2599,7 @@ export function WorkspacePage() {
                               {item.sourceCodeUrl && (
                                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                                   <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                    Source code URL
+                                    Đường dẫn kho mã nguồn
                                   </p>
                                   <a
                                     href={normalizeExternalUrl(item.sourceCodeUrl)}
@@ -2508,7 +2614,7 @@ export function WorkspacePage() {
                               {item.sourceCodeFileUrl && (
                                 <div className="min-w-[220px] rounded-lg bg-slate-50 px-3 py-2">
                                   <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                    Source ZIP
+                                    Tệp ZIP mã nguồn
                                   </p>
                                   <FirebaseFileLink
                                     path={item.sourceCodeFileUrl}
@@ -2517,10 +2623,22 @@ export function WorkspacePage() {
                                   />
                                 </div>
                               )}
+                              {item.userGuideFileUrl && (
+                                <div className="min-w-[220px] rounded-lg bg-emerald-50 px-3 py-2">
+                                  <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">
+                                    Hướng dẫn sử dụng
+                                  </p>
+                                  <FirebaseFileLink
+                                    path={item.userGuideFileUrl}
+                                    buttonText="Mở tệp hướng dẫn"
+                                    showPath={false}
+                                  />
+                                </div>
+                              )}
                               {item.demoLink && (
                                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                                   <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                                    Demo URL
+                                    Đường dẫn bản chạy thử
                                   </p>
                                   <a
                                     href={normalizeExternalUrl(item.demoLink)}
@@ -2653,6 +2771,8 @@ export function WorkspacePage() {
           setDeliverableOpen(null);
           setSourceArchiveFile(null);
           setSourceArchiveError("");
+          setUserGuideFile(null);
+          setUserGuideError("");
         }}
         title={
           deliverableForm.type === "FINAL"
@@ -2672,6 +2792,8 @@ export function WorkspacePage() {
                 setDeliverableOpen(null);
                 setSourceArchiveFile(null);
                 setSourceArchiveError("");
+                setUserGuideFile(null);
+                setUserGuideError("");
               }}
             >
               Hủy
@@ -2693,8 +2815,8 @@ export function WorkspacePage() {
       >
         <div className="grid gap-4">
           {deliverableOpenDeadlineExceeded && (
-            <Notice tone="danger" title="Đã quá hạn nộp source ZIP">
-              Backend sẽ từ chối upload source ZIP hoặc final product sau deadline. Bạn có thể gửi báo cáo tiến độ không kèm file ZIP nếu cần cập nhật tình hình.
+          <Notice tone="danger" title="Đã quá hạn nộp tệp ZIP mã nguồn">
+              Hệ thống sẽ từ chối tệp ZIP mã nguồn hoặc sản phẩm cuối sau hạn nộp. Bạn vẫn có thể gửi báo cáo tiến độ không kèm tệp ZIP để cập nhật tình hình.
             </Notice>
           )}
           <Field label="Loại nội dung">
@@ -2713,7 +2835,7 @@ export function WorkspacePage() {
                     }))
                   }
                 >
-                  Progress report
+                  Báo cáo tiến độ
                 </Button>
               )}
               {canOpenFinalProduct && (
@@ -2762,7 +2884,7 @@ export function WorkspacePage() {
               </div>
             </Field>
           )}
-          <Field label="Source code URL">
+          <Field label="Đường dẫn kho mã nguồn">
             <Input
               value={deliverableForm.sourceCodeUrl}
               onChange={(event) =>
@@ -2779,7 +2901,7 @@ export function WorkspacePage() {
               }
             />
           </Field>
-          <Field label="Source code ZIP">
+          <Field label="Tệp ZIP mã nguồn">
             <div className="grid gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <label
@@ -2868,11 +2990,79 @@ export function WorkspacePage() {
               )}
             </div>
           </Field>
+          {deliverableForm.type === "FINAL" && deliverableOpenIsFinalMilestone && (
+            <Field label="Tệp hướng dẫn sử dụng sản phẩm (bắt buộc)">
+              <div className="grid gap-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-emerald-700 shadow-sm hover:text-emerald-800">
+                    <UploadCloud className="h-4 w-4" />
+                    Chọn tệp PDF hoặc DOCX
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="hidden"
+                      disabled={deliverableOpenDeadlineExceeded}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        event.target.value = "";
+                        setUserGuideError("");
+                        if (!file) return;
+                        const fileName = file.name.toLowerCase();
+                        if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
+                          setUserGuideFile(null);
+                          setUserGuideError("Tệp hướng dẫn phải có định dạng PDF hoặc DOCX.");
+                          return;
+                        }
+                        if (file.size > 10 * 1024 * 1024) {
+                          setUserGuideFile(null);
+                          setUserGuideError("Tệp hướng dẫn không được vượt quá 10 MB.");
+                          return;
+                        }
+                        setUserGuideFile(file);
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          userGuideFileUrl: "",
+                          userGuideFileName: file.name,
+                        }));
+                      }}
+                    />
+                  </label>
+                  {(userGuideFile || deliverableForm.userGuideFileName) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setUserGuideFile(null);
+                        setDeliverableForm((value) => ({
+                          ...value,
+                          userGuideFileUrl: "",
+                          userGuideFileName: "",
+                        }));
+                      }}
+                    >
+                      Xóa tệp
+                    </Button>
+                  )}
+                </div>
+                {userGuideFile ? (
+                  <p className="text-sm font-bold text-slate-600">
+                    {userGuideFile.name} · {(userGuideFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-slate-500">
+                    Tệp này giúp doanh nghiệp sử dụng sản phẩm hoàn thiện sau khi dự án kết thúc.
+                  </p>
+                )}
+                {userGuideError && <p className="text-sm font-bold text-rose-600">{userGuideError}</p>}
+              </div>
+            </Field>
+          )}
           {deliverableForm.type === "FINAL" && (
-            <Field label="Demo URL (không bắt buộc)">
+            <Field label="Đường dẫn bản chạy thử (không bắt buộc)">
               <Input
                 value={deliverableForm.demoLink}
-                placeholder="Nhập liên kết demo..."
+                placeholder="Nhập liên kết bản chạy thử..."
                 onChange={(event) =>
                   setDeliverableForm((value) => ({
                     ...value,
@@ -2889,7 +3079,7 @@ export function WorkspacePage() {
             </Field>
           )}
           {deliverableForm.type === "PROCESS" && (
-            <Field label="Demo link">
+            <Field label="Đường dẫn bản chạy thử">
               <Input
                 value={deliverableForm.demoLink}
                 onChange={(event) =>
@@ -2910,8 +3100,8 @@ export function WorkspacePage() {
           <Field
             label={
               deliverableForm.type === "FINAL"
-                ? "Ghi chú bàn giao final product"
-                : "Nội dung progress report"
+                ? "Ghi chú bàn giao sản phẩm cuối"
+                : "Nội dung báo cáo tiến độ"
             }
           >
             <Textarea
@@ -3003,7 +3193,7 @@ export function WorkspacePage() {
         description={
           approvingLastMilestone
             ? "Đây là mốc cuối cùng của hợp đồng. Sau khi nghiệm thu, hệ thống sẽ hoàn tất hợp đồng và xử lý hoàn ký quỹ cho hai bên."
-            : "Sau khi xác nhận, mốc sẽ được nghiệm thu và hệ thống sẽ giải ngân ngân sách mốc theo Flow 4."
+            : "Sau khi xác nhận, cột mốc sẽ được nghiệm thu và hệ thống sẽ giải ngân ngân sách theo quy trình hợp đồng."
         }
         footer={
           <>
@@ -3038,15 +3228,15 @@ export function WorkspacePage() {
               tone="warning"
               title={`Mốc ${approveConfirmOpen.orderIndex}: ${approveConfirmOpen.milestoneName}`}
             >
-              Hãy chắc chắn source code, demo và nội dung bàn giao đã đáp ứng tiêu
+              Hãy chắc chắn mã nguồn, bản chạy thử và nội dung bàn giao đã đáp ứng tiêu
               chí nghiệm thu. Sau khi nghiệm thu, thao tác này sẽ không còn là bước
               phản hồi sửa sản phẩm.
             </Notice>
             {approvingLastMilestone && (
               <Notice tone="success" title="Bước tiếp theo sau khi nghiệm thu">
-                Hệ thống sẽ tự hoàn ký quỹ của Business và Chuyên gia, chuyển hợp
-                đồng sang trạng thái “Đã đóng” và hiển thị kết quả trên Contract
-                Detail.
+                Hệ thống sẽ tự hoàn ký quỹ của doanh nghiệp và chuyên gia, chuyển hợp
+                đồng sang trạng thái “Đã đóng” và hiển thị kết quả trên trang chi
+                tiết hợp đồng.
               </Notice>
             )}
           </div>
@@ -3145,7 +3335,7 @@ export function WorkspacePage() {
                           setFailedCriteriaError("");
                           setFailedCriteriaReasons((current) => ({ ...current, [criterion.criteriaId]: event.target.value }));
                         }}
-                        placeholder="Mô tả phần chưa đạt, bằng chứng hoặc yêu cầu Expert cần xử lý..."
+                        placeholder="Mô tả phần chưa đạt, bằng chứng hoặc yêu cầu chuyên gia cần xử lý..."
                         className="min-h-24"
                       />
                     </Field>
@@ -3166,7 +3356,7 @@ export function WorkspacePage() {
           setInitiateDisputeModalWarning("");
         }}
         title="Tạo hồ sơ tranh chấp"
-        description="Đây là hồ sơ tranh chấp chính thức. Sau khi tạo hồ sơ, bạn có thể yêu cầu Staff can thiệp nếu cần."
+        description="Đây là hồ sơ tranh chấp chính thức. Sau khi tạo hồ sơ, bạn có thể yêu cầu nhân viên hỗ trợ can thiệp nếu cần."
         footer={
           <>
             <Button
@@ -3211,7 +3401,7 @@ export function WorkspacePage() {
                   ]
                 : [
                     { value: "EXPERT_SCOPE_CONCERN", label: "Yêu cầu ngoài phạm vi" },
-                    { value: "EXPERT_NO_REVIEW_RESPONSE", label: "Business chưa phản hồi nghiệm thu" },
+                    { value: "EXPERT_NO_REVIEW_RESPONSE", label: "Doanh nghiệp chưa phản hồi nghiệm thu" },
                     { value: "EXPERT_BAD_FAITH_REJECTION", label: "Từ chối không phù hợp tiêu chí" },
                     { value: "OTHER", label: "Lý do khác" },
                   ]
@@ -3275,8 +3465,8 @@ export function WorkspacePage() {
           setDisputeReason("");
           setEscalateDisputeNote("");
         }}
-        title="Yêu cầu Staff can thiệp"
-        description="Hồ sơ đã được tạo. Vui lòng xác nhận lý do và ghi chú bổ sung để gửi Staff xử lý."
+        title="Yêu cầu nhân viên can thiệp"
+        description="Hồ sơ đã được tạo. Vui lòng xác nhận lý do và ghi chú bổ sung để gửi nhân viên xử lý."
         footer={
           <>
             <Button
@@ -3346,7 +3536,7 @@ export function WorkspacePage() {
             <Textarea
               value={escalateDisputeNote}
               onChange={(event) => setEscalateDisputeNote(event.target.value)}
-              placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn Staff lưu ý nếu cần..."
+              placeholder="Có thể bỏ trống. Nhập thêm nội dung muốn nhân viên lưu ý nếu cần..."
             />
           </Field>
         </div>
@@ -3422,7 +3612,7 @@ export function WorkspacePage() {
         }
         description={
           session?.role === "EXPERT"
-            ? `Hệ thống sẽ chuyển ${formatCurrency(abruptTerminationPenalty)} từ khoản ký quỹ Expert sang Doanh nghiệp.`
+            ? `Hệ thống sẽ chuyển ${formatCurrency(abruptTerminationPenalty)} từ khoản ký quỹ của chuyên gia sang doanh nghiệp.`
             : `Hành động này sẽ chuyển ${formatCurrency(abruptTerminationPenalty)} từ tiền cọc sang ví Chuyên gia để đền bù ngày công.`
         }
         footer={
@@ -3454,8 +3644,8 @@ export function WorkspacePage() {
             }
           >
             {session?.role === "EXPERT"
-              ? "Khoản bồi thường được lấy từ ký quỹ Expert đã giữ, không trừ từ số dư khả dụng."
-              : "Khoản bồi thường được lấy từ ký quỹ Business đã giữ; phần còn lại được hoàn theo quy định."}
+              ? "Khoản bồi thường được lấy từ ký quỹ chuyên gia đã giữ, không trừ từ số dư khả dụng."
+              : "Khoản bồi thường được lấy từ ký quỹ doanh nghiệp đã giữ; phần còn lại được hoàn theo quy định."}
           </Notice>
           <Field label="Ly do">
             <Textarea

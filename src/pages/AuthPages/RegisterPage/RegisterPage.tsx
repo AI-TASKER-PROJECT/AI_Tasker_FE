@@ -181,7 +181,7 @@ export function RegisterPage() {
       // Nếu authApi trả về toàn bộ response từ axios, bạn cần check isEmailAvailable.data
       if (emailExists) {
         setMessageTone("danger");
-        setMessage("Email này đã dược sử dụng. Vui lòng chọn email khác.");
+        setMessage("Email này đã được sử dụng. Vui lòng chọn email khác.");
         setLoading(false);
         return; // Dừng lại, không gửi OTP
       }
@@ -202,7 +202,7 @@ export function RegisterPage() {
 
       setMessageTone("success");
       setMessage(
-        `Mã OTP đã dược gửi dến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
+        `Mã OTP đã được gửi đến email ${form.email}. Vui lòng kiểm tra hộp thư.`,
       );
     } catch {
       setMessageTone("danger");
@@ -231,7 +231,7 @@ export function RegisterPage() {
       );
 
       setMessageTone("success");
-      setMessage("Mã OTP mới đã dược gửi. Vui lòng kiểm tra hộp thư.");
+      setMessage("Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.");
     } catch {
       setMessageTone("danger");
       setMessage("Lỗi khi gửi lại mã OTP. Vui lòng thử lại sau.");
@@ -295,8 +295,8 @@ export function RegisterPage() {
         step === "FORM"
           ? "Yêu cầu email với một vai trò duy nhất đã chọn."
           : step === "GOOGLE_PROFILE"
-            ? "Bổ sung thông tin liên hệ và vai trò dể tiếp tục với Google."
-            : "Vui lòng nhập mã gồm 6 chữ số vừa dược gửi tới email của bạn."
+            ? "Bổ sung thông tin liên hệ và vai trò để tiếp tục với Google."
+            : "Vui lòng nhập mã gồm 6 chữ số vừa được gửi tới email của bạn."
       }
     >
       {message && (
@@ -313,7 +313,7 @@ export function RegisterPage() {
               active={form.role === "BUSINESS"}
               icon={<Building2 className="h-5 w-5" />}
               title="Doanh nghiệp"
-              desc="Đăng job, quản lý bản đề xuất, hợp đồng và escrow."
+              desc="Đăng dự án, quản lý bản đề xuất, hợp đồng và tiền ký quỹ."
               onClick={() =>
                 setForm((value) => ({ ...value, role: "BUSINESS" }))
               }
@@ -322,7 +322,7 @@ export function RegisterPage() {
               active={form.role === "EXPERT"}
               icon={<UserRoundCheck className="h-5 w-5" />}
               title="Chuyên gia"
-              desc="Tạo portfolio, nộp bản đề xuất, bàn giao sản phẩm."
+              desc="Tạo hồ sơ năng lực, nộp bản đề xuất và bàn giao sản phẩm."
               onClick={() => setForm((value) => ({ ...value, role: "EXPERT" }))}
             />
           </div>
@@ -635,7 +635,7 @@ export function RegisterPage() {
             <div className="text-center text-sm my-1">
               {countdown > 0 ? (
                 <span className="text-slate-500">
-                  Chưa nhận dược mã? Gửi lại sau{" "}
+                  Chưa nhận được mã? Gửi lại sau{" "}
                   <strong className="text-slate-700">{countdown}s</strong>
                 </span>
               ) : (

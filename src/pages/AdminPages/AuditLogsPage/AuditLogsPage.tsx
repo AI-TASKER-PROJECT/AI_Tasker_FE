@@ -55,7 +55,7 @@ export function AuditLogsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Nhật ký hệ thống"
-          description="Admin theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
+          description="Quản trị viên theo dõi các thao tác quan trọng của tài khoản nội bộ và tài khoản bên ngoài."
         />
       </div>
       <Card className="overflow-hidden">
@@ -91,19 +91,19 @@ export function AuditLogsPage() {
         </div>
         {error && (
           <div className="px-5 py-4">
-            <Notice tone="danger" title="Không tải được audit log">
+            <Notice tone="danger" title="Không tải được nhật ký hệ thống">
               {error}
             </Notice>
           </div>
         )}
         {loading && (
           <div className="px-5 py-6 text-sm font-bold text-slate-500">
-            Đang tải audit log...
+            Đang tải nhật ký hệ thống...
           </div>
         )}
         {!loading && !error && logs.length === 0 && (
           <div className="px-5 py-8 text-sm font-bold text-slate-500">
-            Chưa có audit log cho nhóm này.
+            Chưa có nhật ký hệ thống cho nhóm này.
           </div>
         )}
         {!loading &&
@@ -132,7 +132,7 @@ export function AuditLogsPage() {
                   </p>
                   <div className="space-y-1 pt-1">
                     <p className="font-bold text-slate-700">
-                      {log.entityOwner || "Chưa xác dịnh tài khoản"}
+                      {log.entityOwner || "Chưa xác định tài khoản"}
                     </p>
                     <p className="break-all text-xs text-slate-500">
                       {log.entityOwnerEmail || "Không có email"}
@@ -150,7 +150,7 @@ export function AuditLogsPage() {
                         {log.entityOwnerRole}
                       </Badge>
                     ) : (
-                      <Badge tone="slate">Không có role</Badge>
+                      <Badge tone="slate">Không có vai trò</Badge>
                     )}
                   </div>
                 </div>

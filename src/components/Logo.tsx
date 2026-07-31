@@ -13,7 +13,7 @@ export function Logo({
       <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl">
         <img
           src="/logo.jpg"
-          alt="AITasker Logo"
+          alt="Biểu trưng AITasker"
           className="h-full w-full object-contain"
         />
       </span>

@@ -10,7 +10,7 @@ export const businessRejectionReasons = [
 
 export const expertRejectionReasons = [
   "Số CCCD không chính xác",
-  "Không xác minh được Portfolio",
+    "Không xác minh được hồ sơ năng lực",
 ];
 
 export function Info({ label, value }: { label: string; value: string }) {

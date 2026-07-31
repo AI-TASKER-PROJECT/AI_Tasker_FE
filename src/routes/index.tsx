@@ -28,6 +28,7 @@ import {
   ContractDetailPage,
   ContractsPage,
   FinancePage,
+  ProjectSummaryPage,
   ReviewsPage,
   WorkspacePage,
 } from "../pages/ContractPages";
@@ -337,6 +338,14 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="contracts/:contractId/summary"
+          element={
+            <PageTransition>
+              <ProjectSummaryPage />
+            </PageTransition>
+          }
+        />
+        <Route
           path="finance"
           element={
             <PageTransition>
@@ -554,8 +563,8 @@ function NotFoundPage() {
           Không tìm thấy giao diện
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Route này chưa dược dịnh nghĩa. Tất cả màn hình chính dều có trong
-          navigation theo role.
+          Đường dẫn này chưa được định nghĩa. Tất cả màn hình chính đều có trong
+          trình điều hướng theo vai trò.
         </p>
         <div className="mt-6">
           <LinkButton to="/">Về trang chủ</LinkButton>

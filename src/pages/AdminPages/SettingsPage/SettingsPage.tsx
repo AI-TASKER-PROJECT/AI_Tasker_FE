@@ -31,7 +31,7 @@ const settingLabels: Record<string, { label: string; description: string }> = {
   dispute_staff_max_active_cases: {
     label: "Số tranh chấp tối đa mỗi nhân viên",
     description:
-      "Giới hạn số hồ sơ tranh chấp đang xử lý đồng thời của mỗi Staff.",
+    "Giới hạn số hồ sơ tranh chấp đang xử lý đồng thời của mỗi nhân viên.",
   },
   "credit.job_post.price_vnd": {
     label: "Giá lượt đăng dự án",
@@ -212,7 +212,7 @@ export function SettingsPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[linear-gradient(135deg,#ffffff_0%,#eef7ff_55%,#f7fbf5_100%)] p-6 shadow-card md:p-8">
         <PageHeader
           title="Cấu hình hệ thống"
-          description="Quản lý các tham số vận hành đang được backend hỗ trợ."
+          description="Quản lý các tham số vận hành đang được máy chủ hỗ trợ."
           actions={null}
         />
       </div>
@@ -276,7 +276,7 @@ export function SettingsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Cập nhật cấu hình"
-        description="Chỉ cập nhật giá trị và trạng thái cho cấu hình được backend hỗ trợ."
+          description="Chỉ cập nhật giá trị và trạng thái cho cấu hình được máy chủ hỗ trợ."
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>

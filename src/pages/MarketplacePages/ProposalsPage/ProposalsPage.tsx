@@ -258,7 +258,7 @@ export function ProposalsPage() {
           description="Theo dõi bản đề xuất đã gửi, trạng thái xét duyệt và nội dung giải pháp đã nộp."
           actions={
             <LinkButton to="/app/opportunities" variant="secondary">
-              <RefreshCw className="h-4 w-4" /> Tìm job mới
+              <RefreshCw className="h-4 w-4" /> Tìm dự án mới
             </LinkButton>
           }
         />

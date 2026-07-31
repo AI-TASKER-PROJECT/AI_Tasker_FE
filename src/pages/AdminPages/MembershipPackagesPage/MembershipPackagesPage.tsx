@@ -186,8 +186,8 @@ export function MembershipPackagesPage() {
 
               <p className="mt-5 font-display text-2xl font-black text-ink">{formatCurrency(pkg.price)}</p>
               <div className="mt-5 grid gap-3 text-sm font-semibold text-slate-600">
-                <div className="rounded-2xl bg-slate-50 p-3">Badge xác minh: {pkg.badgeDurationDays} ngày</div>
-                <div className="rounded-2xl bg-slate-50 p-3">Credit đăng dự án: {pkg.jobPostQuota}</div>
+                <div className="rounded-2xl bg-slate-50 p-3">Huy hiệu xác minh: {pkg.badgeDurationDays} ngày</div>
+                <div className="rounded-2xl bg-slate-50 p-3">Quota đăng dự án: {pkg.jobPostQuota}</div>
                 <div className="rounded-2xl bg-slate-50 p-3">Lượt nộp đề xuất: {pkg.proposalQuota}</div>
                 <div
                   className={`flex min-h-11 items-center gap-2 rounded-2xl p-3 font-bold ${
@@ -201,7 +201,7 @@ export function MembershipPackagesPage() {
                     <Sparkles className="h-4 w-4" /> Ưu tiên gợi ý AI
                     </>
                   ) : (
-                    <span className="invisible" aria-hidden="true">AI recommendation visibility</span>
+                    <span className="invisible" aria-hidden="true">Mức ưu tiên gợi ý AI</span>
                   )}
                 </div>
               </div>
@@ -256,13 +256,13 @@ export function MembershipPackagesPage() {
           <Field label="Giá">
             <Input type="number" min={0} value={form.price ?? 0} onChange={(event) => setForm((value) => ({ ...value, price: Number(event.target.value) }))} />
           </Field>
-          <Field label="Thời hạn badge">
+          <Field label="Thời hạn huy hiệu">
             <Input type="number" min={0} value={form.badgeDurationDays ?? 0} onChange={(event) => setForm((value) => ({ ...value, badgeDurationDays: Number(event.target.value) }))} />
           </Field>
-          <Field label="Credit đăng dự án">
+              <Field label="Quota đăng dự án">
             <Input type="number" min={0} value={form.jobPostQuota ?? 0} onChange={(event) => setForm((value) => ({ ...value, jobPostQuota: Number(event.target.value) }))} />
           </Field>
-          <Field label="Credit nộp đề xuất">
+              <Field label="Quota nộp bản đề xuất">
             <Input type="number" min={0} value={form.proposalQuota ?? 0} onChange={(event) => setForm((value) => ({ ...value, proposalQuota: Number(event.target.value) }))} />
           </Field>
           <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-700">

@@ -78,7 +78,7 @@ export function applyReallocationByMilestoneIndex(
       !Number.isSafeInteger(allocation.fundsAllocated) ||
       allocation.fundsAllocated <= 0
     ) {
-      throw new Error("Phản hồi phân bổ milestone không hợp lệ.");
+    throw new Error("Phản hồi phân bổ cột mốc không hợp lệ.");
     }
     allocationsByIndex.set(
       allocation.milestoneIndex,
@@ -87,7 +87,7 @@ export function applyReallocationByMilestoneIndex(
   });
 
   if (allocationsByIndex.size !== milestones.length) {
-    throw new Error("Phản hồi phân bổ chưa đủ cho tất cả milestone.");
+    throw new Error("Phản hồi phân bổ chưa đủ cho tất cả cột mốc.");
   }
 
   const allocatedTotal = Array.from(allocationsByIndex.values()).reduce(
@@ -95,7 +95,7 @@ export function applyReallocationByMilestoneIndex(
     0,
   );
   if (allocatedTotal !== response.selectedBudget) {
-    throw new Error("Tổng phân bổ từ backend không khớp ngân sách đã chọn.");
+    throw new Error("Tổng phân bổ từ máy chủ không khớp ngân sách đã chọn.");
   }
 
   return milestones.map((milestone, milestoneIndex) => ({
@@ -110,7 +110,7 @@ export function applyManualMilestoneBudgetEdit(
   amount: string,
 ): { milestones: MilestoneDraft[]; totalBudget: number } {
   if (milestoneIndex < 0 || milestoneIndex >= milestones.length) {
-    throw new Error("Milestone cần chỉnh sửa không tồn tại.");
+    throw new Error("Cột mốc cần chỉnh sửa không tồn tại.");
   }
 
   const updatedMilestones = milestones.map((milestone, index) =>
@@ -159,7 +159,7 @@ export function validateBudgetIntegrity(
 ): string[] {
   const errors: string[] = [];
   if (milestones.length === 0) {
-    errors.push("Job phải có ít nhất một milestone.");
+    errors.push("Dự án phải có ít nhất một cột mốc.");
   }
   if (
     milestones.some(
@@ -168,14 +168,14 @@ export function validateBudgetIntegrity(
         milestone.fundsAllocated <= 0,
     )
   ) {
-    errors.push("Mọi milestone phải có fundsAllocated là số VND nguyên lớn hơn 0.");
+    errors.push("Mọi cột mốc phải có ngân sách là số VNĐ nguyên lớn hơn 0.");
   }
   const total = milestones.reduce(
     (sum, milestone) => sum + milestone.fundsAllocated,
     0,
   );
   if (!Number.isSafeInteger(jobBudget) || jobBudget <= 0 || total !== jobBudget) {
-    errors.push("Tổng fundsAllocated phải bằng chính xác ngân sách Job.");
+    errors.push("Tổng ngân sách cột mốc phải bằng chính xác ngân sách dự án.");
   }
   return errors;
 }

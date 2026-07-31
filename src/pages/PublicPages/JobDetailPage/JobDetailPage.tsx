@@ -126,7 +126,7 @@ export function JobDetailPage() {
   if (!job) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-        Đang tải job...
+        Đang tải dự án...
       </main>
     );
   }
@@ -149,7 +149,7 @@ export function JobDetailPage() {
             <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50 p-5">
               <JobSowContent
                 job={job}
-                emptyMessage="Chưa có SoW. Doanh nghiệp có thể cập nhật bằng AI Job Assistant."
+              emptyMessage="Chưa có phạm vi công việc. Doanh nghiệp có thể cập nhật bằng trợ lý tạo dự án AI."
               />
             </div>
             <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5">
@@ -170,7 +170,7 @@ export function JobDetailPage() {
           <Card className="mt-6 p-6">
             <SectionHeading
               title="Mốc dự án"
-              description="Các mốc doanh nghiệp dã khai báo khi tạo job."
+              description="Các cột mốc doanh nghiệp đã khai báo khi tạo dự án."
             />
             <MilestoneList milestones={milestones} />
             {(canSubmitProposal || !session) && (
@@ -251,7 +251,7 @@ export function JobDetailPage() {
                   Nộp báo giá dự thầu
                 </Button>
                 <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Dự án cần ở trạng thái OPEN dể nhận bản đề xuất.
+                  Dự án cần ở trạng thái đang mở để nhận bản đề xuất.
                 </p>
               </>
             )}
@@ -262,7 +262,7 @@ export function JobDetailPage() {
         open={businessOpen}
         onClose={() => setBusinessOpen(false)}
         title="Thông tin doanh nghiệp"
-        description="Dữ liệu hồ sơ KYB của doanh nghiệp dăng job."
+              description="Dữ liệu hồ sơ xác minh của doanh nghiệp đăng dự án."
         size="lg"
       >
         <div className="grid gap-4">
@@ -272,7 +272,7 @@ export function JobDetailPage() {
           {!businessLoading && !business && (
             <Notice
               tone="warning"
-              title="Chưa lấy dược hồ sơ doanh nghiệp từ API hiện tại."
+              title="Chưa lấy được hồ sơ doanh nghiệp từ máy chủ hiện tại."
             />
           )}
           <div className="grid gap-3 md:grid-cols-2">

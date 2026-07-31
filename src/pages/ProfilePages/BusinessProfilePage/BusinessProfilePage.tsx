@@ -4,7 +4,7 @@ import { Building2, MapPin, Save, ShieldCheck, Star } from "lucide-react";
 import { profileApi } from "../../../lib/api";
 import { getSession, saveSession } from "../../../lib/session";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
-import { Avatar, Badge, Button, Card, EmptyState, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
+import { Avatar, Button, Card, EmptyState, Field, Input, Modal, Notice, SectionHeading, StatusBadge, Tabs } from "../../../components/ui";
 import type { Job } from "../../../types";
 import { normalizeAccountStatus, ProfileFilePicker, ProfileRow, readApiError, translateVerificationStatus } from "../ProfilePages.shared";
 
@@ -193,7 +193,7 @@ export function BusinessProfilePage() {
         <Card className="p-6">
           <SectionHeading
             title="Dự án đã public"
-            description="Danh sách job doanh nghiệp đã đăng công khai."
+              description="Danh sách dự án doanh nghiệp đã đăng công khai."
           />
           <div className="mt-5 grid gap-4">
             {jobs.length ? (
@@ -212,14 +212,14 @@ export function BusinessProfilePage() {
                         {job.rawRequirements || "Chưa có mô tả."}
                       </p>
                     </div>
-                    <Badge tone="mint">{job.status}</Badge>
+                        <StatusBadge status={job.status} />
                   </div>
                 </Link>
               ))
             ) : (
               <EmptyState
                 title="Chưa có dự án public"
-                description="Khi doanh nghiệp đăng job, chúng sẽ xuất hiện ở đây."
+              description="Khi doanh nghiệp đăng dự án, chúng sẽ xuất hiện ở đây."
               />
             )}
           </div>
@@ -276,7 +276,7 @@ export function BusinessProfilePage() {
                   }
                 />
                 <p className="mt-2 text-xs font-semibold text-slate-500">
-                  Nộp kèm giấy phép kinh doanh để Staff đối chiếu thông tin doanh nghiệp.
+                  Nộp kèm giấy phép kinh doanh để nhân viên đối chiếu thông tin doanh nghiệp.
                 </p>
               </Field>
               <div className="flex justify-end">

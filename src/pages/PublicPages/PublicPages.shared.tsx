@@ -592,7 +592,7 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
     return (
       <EmptyState
         title="Chưa có mốc"
-        description="Khi doanh nghiệp khai báo mốc, các mốc sẽ hiển thị tại dây."
+        description="Khi doanh nghiệp khai báo cột mốc, các cột mốc sẽ hiển thị tại đây."
       />
     );
   }

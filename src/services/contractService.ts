@@ -1,5 +1,5 @@
 import { call } from "./apiClient";
-import type { AcceptanceCriteria, CaseAttachment, Contract, ContractChangeRequest, ContractDeposit, ContractDepositRateResponse, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, Review, TerminationRequest } from "../types";
+import type { AcceptanceCriteria, CaseAttachment, Contract, ContractChangeRequest, ContractDeposit, ContractDepositRateResponse, Deliverable, Milestone, MilestoneProgressReport, PaymentActionResponse, ProgressReportRequestRecord, ProjectSummary, Review, TerminationRequest } from "../types";
 
 export const contractApi = {
   getDepositRates() {
@@ -17,6 +17,12 @@ export const contractApi = {
     return call<Contract>({
       method: "GET",
       url: `/api/v1/contracts/${contractId}`,
+    });
+  },
+  getProjectSummary(contractId: number) {
+    return call<ProjectSummary>({
+      method: "GET",
+      url: `/api/v1/contracts/${contractId}/summary`,
     });
   },
   // Tạo hợp đồng từ proposalId, dùng khi doanh nghiệp chấp nhận proposal của chuyên gia.
@@ -298,6 +304,16 @@ export const contractApi = {
     return call<string>({
       method: "POST",
       url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/source-code-file`,
+      data: formData,
+      timeout: 60000,
+    });
+  },
+  uploadMilestoneUserGuide(contractId: number, milestoneId: number, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return call<string>({
+      method: "POST",
+      url: `/api/v1/contracts/${contractId}/milestones/${milestoneId}/user-guide-file`,
       data: formData,
       timeout: 60000,
     });

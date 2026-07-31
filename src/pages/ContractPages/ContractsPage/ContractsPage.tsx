@@ -203,7 +203,7 @@ export function ContractsPage() {
                 to={`/app/contracts/${contract.contractId}/workspace`}
                 size="sm"
               >
-                Workspace
+                Không gian làm việc
               </LinkButton>
             </div>
           </Card>
@@ -216,7 +216,7 @@ export function ContractsPage() {
               ? "Chưa có hợp đồng nháp"
               : "Chưa có hợp đồng"
           }
-          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp chấp nhận bản đề xuất và bấm tạo contract từ màn hình quản lý job."
+          description="Hợp đồng nháp sẽ xuất hiện sau khi doanh nghiệp chấp nhận bản đề xuất và bấm tạo hợp đồng từ màn hình quản lý dự án."
         />
       )}
     </div>

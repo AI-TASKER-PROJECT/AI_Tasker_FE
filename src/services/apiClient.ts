@@ -68,7 +68,7 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   if (error.code === "ECONNABORTED") {
-    return "Yêu cầu bị quá thời gian chờ. Tác vụ AI có thể mất lâu hơn bình thường.";
+    return "Yêu cầu đã vượt quá thời gian chờ. Tác vụ AI có thể mất lâu hơn bình thường.";
   }
 
   const status = error.response?.status;
@@ -98,13 +98,13 @@ export function getApiErrorMessage(error: unknown) {
     return "Tài khoản hiện tại không có quyền dùng chức năng này.";
   }
   if (status === 502) {
-    return "Backend không gọi được AI API hoặc khóa cấu hình chưa đúng.";
+    return "Máy chủ không kết nối được dịch vụ AI hoặc khóa cấu hình chưa đúng.";
   }
   if (status) {
-    return `Backend trả lỗi HTTP ${status}.`;
+    return `Máy chủ trả về mã lỗi HTTP ${status}.`;
   }
 
-  return "Không kết nối được backend. Vui lòng kiểm tra server backend hoặc VITE_API_BASE_URL.";
+  return "Không kết nối được máy chủ. Vui lòng kiểm tra trạng thái máy chủ hoặc cấu hình địa chỉ dịch vụ.";
 }
 
 function mapApiErrorCode(message: string) {
@@ -119,9 +119,9 @@ function mapApiErrorCode(message: string) {
     CONTRACT_DRAFT_CANCELLATION_NOT_ALLOWED:
       "Chỉ có thể hủy hợp đồng nháp chưa được ký hoặc xác thực.",
     DISPUTE_NOT_ESCALATION_REQUESTED:
-      "Tranh chấp chưa ở trạng thái chờ Staff tiếp nhận.",
+      "Tranh chấp chưa ở trạng thái chờ nhân viên tiếp nhận.",
     DISPUTE_NOT_STAFF_REVIEWING:
-      "Tranh chấp chưa ở trạng thái Staff đang xử lý.",
+      "Tranh chấp chưa ở trạng thái nhân viên đang xử lý.",
     "HO SO DANG CHO DUYET, VUI LONG DOI KET QUA XET DUYET":
       "Hồ sơ đang chờ duyệt, vui lòng đợi kết quả.",
     "CHI DUOC XET DUYET HO SO DANG CHO DUYET":
@@ -129,16 +129,16 @@ function mapApiErrorCode(message: string) {
     "SYSTEM SETTING KHONG DUOC HO TRO":
       "Cấu hình này không còn được hệ thống hỗ trợ.",
     "CHUA CO TAI KHOAN ADMIN DE NHAN DOANH THU":
-      "Chưa có tài khoản Admin để nhận doanh thu nền tảng.",
+      "Chưa có tài khoản quản trị viên để nhận doanh thu nền tảng.",
   };
   messages.MILESTONE_DA_QUA_HAN_NOP_SAN_PHAM =
-    "Cot moc da qua han nop san pham. Ban khong the nop them source hoac final product.";
+    "Cột mốc đã quá hạn nộp sản phẩm. Bạn không thể nộp thêm mã nguồn hoặc sản phẩm cuối.";
   messages.NO_MATCHING_STAFF_FOR_JOB_DOMAIN =
-    "Chua co Staff phu hop voi linh vuc cua job.";
+    "Chưa có nhân viên phù hợp với lĩnh vực của dự án.";
   messages.NO_AVAILABLE_STAFF_CAPACITY =
-    "Cac Staff phu hop deu dang qua tai.";
+    "Các nhân viên phù hợp đều đang quá tải.";
   messages.STAFF_DA_DAT_GIOI_HAN_DISPUTE_DANG_XU_LY =
-    "Staff nay da dat gioi han tranh chap dang xu ly.";
+    "Nhân viên này đã đạt giới hạn tranh chấp đang xử lý.";
   if (messages[normalized]) return messages[normalized];
   if (normalized === "PREMIUM_REQUIRED") {
     return "Tài khoản chưa đăng kí gói Premium hoặc gói Premium đã hết hạn.";
@@ -147,7 +147,7 @@ function mapApiErrorCode(message: string) {
     return "Số dư khả dụng trong ví không đủ để thực hiện giao dịch này.";
   }
   if (normalized === "CONTRACT_INVALID_STATUS") {
-    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Hai bên cần chấp nhận hợp đồng và ký NDA trước.";
+    return "Hợp đồng chưa ở trạng thái cho phép ký quỹ. Hai bên cần chấp nhận hợp đồng và ký thỏa thuận bảo mật trước.";
   }
   if (normalized === "DEPOSIT_ALREADY_HELD") {
     return "Hợp đồng này đã được ký quỹ rồi.";

@@ -194,7 +194,7 @@ export function MyJobDetailPage() {
           <Card className="p-6">
             <SectionHeading
               title="Mốc dự án"
-              description="Các mốc doanh nghiệp đã khai báo khi tạo job."
+              description="Các cột mốc doanh nghiệp đã khai báo khi tạo dự án."
             />
             <MilestoneList milestones={milestones} />
           </Card>

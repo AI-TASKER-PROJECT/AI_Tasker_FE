@@ -233,7 +233,7 @@ function SowPreviewPanel({ sow }: { sow: GeneratedSow }) {
           tone="violet"
         />
         <SowSectionCard
-          label="Giả dịnh"
+          label="Giả định"
           icon={<HelpCircle className="h-4 w-4" />}
           items={sow.assumptions}
           tone="amber"
@@ -521,7 +521,7 @@ export function CreateJobPage() {
     const handleLoadError = (error: unknown) => {
       if (!isActive) return;
       setCreateMessage(
-        `Không thể tải dữ liệu tạo job: ${getApiErrorMessage(error)}`,
+        `Không thể tải dữ liệu tạo dự án: ${getApiErrorMessage(error)}`,
       );
       setCreateMessageTone("danger");
     };
@@ -542,7 +542,7 @@ export function CreateJobPage() {
         if (jobId) {
           const id = Number(jobId);
           if (!Number.isSafeInteger(id) || id <= 0) {
-            setCreateMessage("Mã job không hợp lệ.");
+      setCreateMessage("Mã dự án không hợp lệ.");
             setCreateMessageTone("danger");
             return;
           }
@@ -644,7 +644,7 @@ export function CreateJobPage() {
     milestone: GeneratedSowMilestone,
     index: number,
   ): MilestoneDraft => ({
-    milestoneName: milestone.name || `Milestone ${index + 1}`,
+    milestoneName: milestone.name || `Cột mốc ${index + 1}`,
     description: milestone.description,
     fundsAllocated:
       milestone.budget !== undefined && milestone.budget !== null
@@ -739,7 +739,7 @@ export function CreateJobPage() {
     const selectedBudget = Number(budgetConfirmation.customBudget);
     try {
       if (milestones.length === 0) {
-        throw new Error("Job phải có ít nhất một milestone.");
+      throw new Error("Dự án phải có ít nhất một cột mốc.");
       }
       const request = buildReallocateBudgetRequest(selectedBudget, milestones);
       restoreBusinessBudgetAllocation(budgetAssessment);
@@ -1488,12 +1488,12 @@ export function CreateJobPage() {
         );
       } catch {
         setCreateMessage(
-          "Job nháp đã dược tạo, nhưng một phần domain/skill chưa lưu dược. Bạn vẫn có thể vào quản lý job dể kiểm tra.",
+          "Dự án nháp đã được tạo, nhưng một phần lĩnh vực hoặc kỹ năng chưa được lưu. Bạn vẫn có thể vào trang quản lý dự án để kiểm tra.",
         );
         setCreateMessageTone("warning");
       }
     } catch (error) {
-      setCreateMessage(`Không lưu dược job nháp: ${getApiErrorMessage(error)}`);
+      setCreateMessage(`Không lưu được dự án nháp: ${getApiErrorMessage(error)}`);
       setCreateMessageTone("danger");
     } finally {
       setLoading(false);
@@ -1585,7 +1585,7 @@ export function CreateJobPage() {
       );
       setCreateMessageTone("success");
     } catch (error) {
-      setPublishError(`Không thể dăng bài: ${getApiErrorMessage(error)}`);
+      setPublishError(`Không thể đăng dự án: ${getApiErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -1596,7 +1596,7 @@ export function CreateJobPage() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-[radial-gradient(circle_at_top_left,#f0f7ff,transparent_38%),linear-gradient(135deg,#ffffff_0%,#eef4ff_55%,#f5f0ff_100%)] p-6 shadow-card md:p-8">
         <PageHeader
-          title="AI Job Assistant"
+            title="Trợ lý tạo dự án AI"
           description="Nhập thông tin dự án, để AI hỗ trợ tạo Statement of Work và mốc."
         />
       </div>
@@ -1730,7 +1730,7 @@ export function CreateJobPage() {
                   </div>
                   {attemptedSubmit && selectedTechnologyIds.length === 0 && (
                     <p className="mt-1 text-xs text-rose-500">
-                      Vui lòng chọn ít nhất một công nghệ cho job.
+                      Vui lòng chọn ít nhất một công nghệ cho dự án.
                     </p>
                   )}
                 </Field>
@@ -1785,7 +1785,7 @@ export function CreateJobPage() {
                   </div>
                   {attemptedSubmit && skillAssignments.length === 0 && (
                     <p className="mt-1 text-xs text-rose-500">
-                      Vui lòng chọn ít nhất một kỹ năng cho job.
+                      Vui lòng chọn ít nhất một kỹ năng cho dự án.
                     </p>
                   )}
                 </Field>
@@ -1976,7 +1976,7 @@ export function CreateJobPage() {
                   title="Bước 3 — Kiểm tra & Điều chỉnh mô tả phạm vi dự án"
                   description={
                     sowGeneratedLocked
-                      ? 'AI đã tạo SoW. Xem preview bên dưới. Nhấn "Chỉnh sửa lại" nếu cần sửa.'
+                      ? 'AI đã tạo phạm vi công việc. Xem bản xem trước bên dưới. Nhấn "Chỉnh sửa lại" nếu cần sửa.'
                       : "Mô tả phạm vi dự án sẽ hiển thị ngay sau khi sử dụng AI hoặc có thể tự điều chỉnh theo mong muốn"
                   }
                 />
@@ -2269,7 +2269,7 @@ export function CreateJobPage() {
                                     contentEditable={!sowGeneratedLocked}
                                     suppressContentEditableWarning
                                     aria-label={`Tieu chi nghiem thu ${criterionIndex + 1} cua moc ${index + 1}`}
-                                    data-placeholder="Ví dụ: Bàn giao đúng tài liệu/API/demo đã thống nhất."
+                            data-placeholder="Ví dụ: Bàn giao đúng tài liệu, giao diện lập trình và bản chạy thử đã thống nhất."
                                     className={`min-h-[32px] flex-1 min-w-0 border-0 bg-transparent px-1 py-1.5 text-xs shadow-none focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:font-normal break-words ${sowGeneratedLocked ? "cursor-default text-black font-bold" : "cursor-text font-semibold"}`}
                                     onBlur={(event) =>
                                       updateMilestoneCriterion(
@@ -2621,8 +2621,8 @@ export function CreateJobPage() {
       <Modal
         open={publishSuccessOpen}
         onClose={() => setPublishSuccessOpen(false)}
-        title="Mở public job thành công"
-        description="Job đã hiển thị với chuyên gia và có thể nhận bản đề xuất mới."
+          title="Đăng dự án công khai thành công"
+          description="Dự án đã hiển thị với chuyên gia và có thể nhận bản đề xuất mới."
         size="sm"
         footer={
           <>
@@ -2634,13 +2634,13 @@ export function CreateJobPage() {
             </Button>
             {savedJob && (
               <LinkButton to={`/app/jobs/${savedJob.jobId}/manage`}>
-                Quản lý job
+                Quản lý dự án
               </LinkButton>
             )}
           </>
         }
       >
-        <Notice tone="success" title="Chuyên gia đã có thể nhìn thấy job này.">
+        <Notice tone="success" title="Chuyên gia đã có thể nhìn thấy dự án này.">
           Bạn có thể vào màn quản lý để theo dõi bản đề xuất và tạo hợp đồng khi có
           chuyên gia phù hợp.
         </Notice>

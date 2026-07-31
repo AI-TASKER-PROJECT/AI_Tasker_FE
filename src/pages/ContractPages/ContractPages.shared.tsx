@@ -80,7 +80,7 @@ export function translateContractStatus(status?: string) {
     case "ACTIVE":
       return "Đang hoạt động";
     case "AWAITING_CONTINUATION_DECISION":
-      return "Chờ Business quyết định";
+      return "Chờ doanh nghiệp quyết định";
     case "IN_PROGRESS":
       return "Đang thực hiện";
     case "COMPLETED":
@@ -270,8 +270,8 @@ export function getContractNextAction({
   if (activeDisputeCount > 0) {
     return {
       tone: "warning",
-      title: "Contract đang có tranh chấp cần theo dõi.",
-      description: `${activeDisputeCount} dispute chưa xử lý xong. Hai bên nên ưu tiên xử lý trước khi tiếp tục nghiệm thu/thanh toán.`,
+      title: "Hợp đồng đang có tranh chấp cần theo dõi.",
+      description: `${activeDisputeCount} tranh chấp chưa xử lý xong. Hai bên nên ưu tiên xử lý trước khi tiếp tục nghiệm thu hoặc thanh toán.`,
     };
   }
   if (
@@ -303,7 +303,7 @@ export function getContractNextAction({
   if (contractStatus === "CANCELLED") {
     return {
       tone: "danger",
-      title: "Contract không còn tiếp tục thực hiện.",
+      title: "Hợp đồng không còn tiếp tục thực hiện.",
       description: `Hai bên không thể tiếp tục thực hiện các mốc.`,
     };
   }
@@ -354,7 +354,7 @@ export function getContractNextAction({
     return {
       tone: role === "EXPERT" ? "warning" : "info",
       title:
-        role === "EXPERT" ? "Bạn cần ký NDA." : "Đang chờ chuyên gia ký NDA.",
+      role === "EXPERT" ? "Bạn cần ký thỏa thuận bảo mật." : "Đang chờ chuyên gia ký thỏa thuận bảo mật.",
       description: "Hệ thống lưu thời điểm ký NDA riêng cho từng bên.",
     };
   }
@@ -367,7 +367,7 @@ export function getContractNextAction({
           : "Hợp đồng đang hoạt động.",
       description:
         underReviewCount > 0
-          ? `${underReviewCount} mốc đã có deliverable và đang Under Review.`
+          ? `${underReviewCount} cột mốc đã có sản phẩm bàn giao và đang được nghiệm thu.`
           : "Chuyên gia có thể tiếp tục thực hiện các mốc và gửi sản phẩm để doanh nghiệp nghiệm thu.",
     };
   }
@@ -375,7 +375,7 @@ export function getContractNextAction({
     tone: "info",
     title: "Hợp đồng đang trong giai đoạn chuẩn bị.",
     description:
-      "Theo dõi các điều kiện kích hoạt và action theo role ở bên dưới.",
+      "Theo dõi các điều kiện kích hoạt và thao tác theo vai trò ở bên dưới.",
   };
 }
 
@@ -581,8 +581,8 @@ export function CreateDisputeInline({
           </>
         }
       >
-        <Notice tone="info" title="Bang chung gui sau khi tao dispute">
-          Backend hien tai tao dispute bang contractId va milestoneId. Bang chung se duoc them qua case attachments trong man chi tiet dispute.
+        <Notice tone="info" title="Bằng chứng được gửi sau khi tạo tranh chấp">
+          Máy chủ hiện tạo tranh chấp theo hợp đồng và cột mốc. Bằng chứng sẽ được bổ sung tại màn hình chi tiết tranh chấp.
         </Notice>
       </Modal>
     </>
@@ -598,12 +598,12 @@ export function ContractQuickLinks({ contract }: { contract: Contract }) {
     },
     {
       to: `/app/contracts/${contract.contractId}/workspace`,
-      label: "Workspace",
+      label: "Không gian làm việc",
       icon: <FileCheck2 className="h-4 w-4" />,
     },
     {
       to: "/app/finance",
-      label: "Escrow",
+      label: "Ký quỹ",
       icon: <WalletCards className="h-4 w-4" />,
     },
     { to: "/app/reviews", label: "Review", icon: <Star className="h-4 w-4" /> },

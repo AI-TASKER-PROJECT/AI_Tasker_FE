@@ -175,7 +175,7 @@ export function PublicShell() {
                               {session?.role !== "EXPERT" && (
                                 <div className="flex items-center justify-between">
                                   <p className="text-[11px] font-bold text-slate-400">
-                                    Lượt đăng Job
+                                    Lượt đăng dự án
                                   </p>
                                   <p className="text-sm font-black text-ink">
                                     {quota.jobPostQuotaBalance ?? 0}
