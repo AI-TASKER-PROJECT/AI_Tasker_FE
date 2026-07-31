@@ -71,3 +71,38 @@ export function parseCatalogIdList(value?: string) {
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item));
 }
+
+// Đổi danh sách kết quả khớp từ API sang tên danh mục. Dữ liệu cũ có thể
+// được lưu dưới dạng một chuỗi CSV như "8,16,17", còn dữ liệu mới đã là tên.
+export function resolveMatchedCatalogNames(
+  values: string[] | undefined,
+  items: ReadonlyArray<Domain | Skill>,
+  idKey: "domainId" | "skillId",
+  nameKey: "domainName" | "skillName",
+) {
+  const namesById = new Map<number, string>();
+  items.forEach((item) => {
+    const id = Number(item[idKey as keyof typeof item]);
+    const name = String(item[nameKey as keyof typeof item] || "").trim();
+    if (Number.isFinite(id) && name) {
+      namesById.set(id, name);
+    }
+  });
+
+  const names = (values || []).flatMap((value) => {
+    const normalized = String(value).trim();
+    if (!normalized) return [];
+
+    const tokens = /^\d+(?:\s*,\s*\d+)*$/.test(normalized)
+      ? normalized.split(",")
+      : [normalized];
+
+    return tokens.map((token) => {
+      const label = token.trim();
+      const id = Number(label);
+      return Number.isFinite(id) ? namesById.get(id) || label : label;
+    });
+  });
+
+  return [...new Set(names)];
+}
