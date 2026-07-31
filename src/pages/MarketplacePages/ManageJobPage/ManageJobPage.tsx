@@ -63,6 +63,7 @@ import {
 import { JobDomainBadge } from "../../PublicPages";
 import {
   jobDomainLabel,
+  resolveMatchedCatalogNames,
   resolveDomainName,
   resolveSkillName,
   skillCountLabel,
@@ -506,6 +507,8 @@ export function ManageJobPage() {
                       key={rec.expertId}
                       rec={rec}
                       jobId={job.jobId}
+                      domainCatalog={domains}
+                      skillCatalog={skills}
                       onRefresh={() => {
                         setRecommendationResult((prev) => {
                           if (!prev) return prev;
@@ -1562,10 +1565,14 @@ function ExpertInfoBlock({
 function ExpertRecommendationCard({
   rec,
   jobId,
+  domainCatalog,
+  skillCatalog,
   onRefresh,
 }: {
   rec: ExpertRecommendationResponse;
   jobId: number;
+  domainCatalog: Domain[];
+  skillCatalog: Skill[];
   onRefresh: () => void;
 }) {
   const [selecting, setSelecting] = useState(false);
@@ -1685,6 +1692,19 @@ function ExpertRecommendationCard({
   const gradientClass =
     rankColors[(rec.rankPosition ?? 1) - 1] ?? rankColors[4];
 
+  const matchedSkillNames = resolveMatchedCatalogNames(
+    rec.matchedSkills,
+    skillCatalog,
+    "skillId",
+    "skillName",
+  );
+  const matchedDomainNames = resolveMatchedCatalogNames(
+    rec.matchedDomains,
+    domainCatalog,
+    "domainId",
+    "domainName",
+  );
+
   const expertName =
     expertProfile?.fullName || expert?.fullName || "Chuyên gia chưa có tên";
 
@@ -1753,14 +1773,14 @@ function ExpertRecommendationCard({
       {/* Body */}
       <div className="grid gap-4 p-5 pt-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(rec.matchedSkills?.length ?? 0) > 0 && (
+          {matchedSkillNames.length > 0 && (
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <Star className="h-3.5 w-3.5" />
                 Kỹ năng khớp
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {rec.matchedSkills!.map((skill) => (
+                {matchedSkillNames.map((skill) => (
                   <Badge key={skill} tone="brand">
                     {skill}
                   </Badge>
@@ -1769,14 +1789,14 @@ function ExpertRecommendationCard({
             </div>
           )}
 
-          {(rec.matchedDomains?.length ?? 0) > 0 && (
+          {matchedDomainNames.length > 0 && (
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 <Award className="h-3.5 w-3.5" />
                 Lĩnh vực khớp
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {rec.matchedDomains!.map((domain) => (
+                {matchedDomainNames.map((domain) => (
                   <Badge key={domain} tone="mint">
                     {domain}
                   </Badge>
