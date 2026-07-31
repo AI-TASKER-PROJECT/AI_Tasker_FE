@@ -40,6 +40,7 @@ import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import { getJobSowSummary } from "../../../lib/jobSow";
 import type {
   AcceptanceCriteria,
+  BusinessProfile,
   ExpertProfile,
   Job,
   Milestone,
@@ -154,6 +155,7 @@ export function SubmitProposalPage() {
   const [jobTechnologyIds, setJobTechnologyIds] = useState<number[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [proposalFile, setProposalFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -189,6 +191,7 @@ export function SubmitProposalPage() {
           jobTechnologyItems,
           milestoneItems,
           portfolioResult,
+          businessProfile,
           quotaItem,
         ] = await Promise.all([
           marketplaceApi.getJob(numericJobId),
@@ -200,6 +203,7 @@ export function SubmitProposalPage() {
           catalogApi.listJobTechnologies(numericJobId).catch(() => []),
           contractApi.listJobMilestones(numericJobId).catch(() => []),
           profileApi.getMyPortfolio().catch(() => null),
+          profileApi.getBusinessByJob(numericJobId).catch(() => null),
           userQuotaApi.getCurrent().catch(() => null),
         ]);
         if (ignore) return;
@@ -222,6 +226,7 @@ export function SubmitProposalPage() {
           ),
         );
         setPortfolio(portfolioResult);
+        setBusiness(businessProfile);
         setQuota(quotaItem);
       } catch {
         if (!ignore) setJob(null);
@@ -782,7 +787,7 @@ export function SubmitProposalPage() {
                     Doanh nghiệp
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-ink">
-                    {job.companyName || "Chưa cập nhật"}
+                    {business?.companyName || job.companyName || "Chưa cập nhật"}
                   </p>
                 </div>
               </div>

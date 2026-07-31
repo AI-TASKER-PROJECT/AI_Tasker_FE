@@ -92,6 +92,25 @@ function walletTransactionDisplayDescription(tx: WalletTransaction, role?: strin
   return tx.contractTitle || tx.jobTitle || tx.rawDescription || "Giao dịch ví";
 }
 
+function contractStatus(contract: Contract) {
+  return (contract.status || "").trim().toUpperCase();
+}
+
+function isCompletedContract(contract: Contract) {
+  const status = contractStatus(contract);
+  return (
+    ["COMPLETED", "RELEASED"].includes(status) ||
+    (status === "CLOSED" && !contract.terminationReason && !contract.terminatedAt)
+  );
+}
+
+function isFinanceContract(contract: Contract) {
+  return (
+    ["ACTIVE", "IN_PROGRESS"].includes(contractStatus(contract)) ||
+    isCompletedContract(contract)
+  );
+}
+
 export function FinancePage() {
   const session = useSession();
   const isAdmin = session?.role === "ADMIN";
@@ -110,13 +129,7 @@ export function FinancePage() {
     contractApi
       .listContracts()
       .then((list) => {
-        setContracts(
-          list.filter((c) =>
-            ["ACTIVE", "IN_PROGRESS", "COMPLETED", "RELEASED"].includes(
-              (c.status || "").toUpperCase(),
-            ),
-          ),
-        );
+        setContracts(list.filter(isFinanceContract));
       })
       .catch(() => setContracts([]));
 
@@ -138,10 +151,7 @@ export function FinancePage() {
     [transactions],
   );
   const completedContracts = useMemo(
-    () =>
-      contracts.filter((contract) =>
-        ["COMPLETED", "RELEASED"].includes((contract.status || "").toUpperCase()),
-      ),
+    () => contracts.filter(isCompletedContract),
     [contracts],
   );
   const expertCompletedRevenue = useMemo(
@@ -293,7 +303,7 @@ export function FinancePage() {
                 {
                   contracts.filter((c) =>
                     ["ACTIVE", "IN_PROGRESS"].includes(
-                      (c.status || "").toUpperCase(),
+                      contractStatus(c),
                     ),
                   ).length
                 }

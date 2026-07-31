@@ -31,6 +31,7 @@ import {
   formatCurrency,
   formatDate,
 } from "../../../lib/utils";
+import { getJobSowSummary } from "../../../lib/jobSow";
 import { useSession } from "../../../context/sessionContext";
 import { FirebaseFileLink } from "../../../components/FirebaseFileLink";
 import type {
@@ -184,7 +185,7 @@ export function MyJobsPage() {
 
   const filtered = jobs.filter((job) => {
     const matchesQuery =
-      `${job.title} ${job.rawRequirements} ${job.structuredSow || ""}`
+      `${job.title} ${job.rawRequirements} ${getJobSowSummary(job)}`
         .toLowerCase()
         .includes(query.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || job.status === statusFilter;
@@ -337,6 +338,7 @@ export function MyJobsPage() {
           const isInProgress = jobStatus === "IN_PROGRESS";
           const canOpenJob = jobStatus === "DRAFT";
           const canCloseJob = jobStatus === "OPEN";
+          const sowSummary = getJobSowSummary(job) || job.rawRequirements || "Chưa có mô tả dự án.";
           return (
             <Card
               id={`job-card-${job.jobId}`}
@@ -358,7 +360,7 @@ export function MyJobsPage() {
                 </h3>
               </Link>
               <p className="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-slate-500">
-                {job.structuredSow}
+                {sowSummary}
               </p>
               <p className="mt-2 text-xs font-bold text-slate-400">
                 Ngày tạo: {formatDate(job.createdAt)}

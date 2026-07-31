@@ -1425,7 +1425,7 @@ export function ContractDetailPage() {
               ))}
               {renderedMilestones.length === 0 && (
                 <EmptyState
-                  title="Chưa có mốc draft"
+                  title="Chưa có mốc nháp"
                   description="Hệ thống chưa có dữ liệu mốc cho hợp đồng này."
                 />
               )}

@@ -653,7 +653,7 @@ export function ManageJobPage() {
                 milestones.length === 0
               }
             >
-              Tạo Draft
+              Tạo hợp đồng nháp
             </Button>
           </>
         }
@@ -1087,7 +1087,7 @@ function ProposalCard({
                 disabled={!canCreateContract}
                 title={
                   canCreateContract
-                    ? "Tạo contract draft"
+                    ? "Tạo hợp đồng nháp"
                     : statusLocked
               ? "Dự án đang thực hiện nên không thể thay đổi"
               : "Chỉ tạo hợp đồng sau khi bản đề xuất được chấp nhận"

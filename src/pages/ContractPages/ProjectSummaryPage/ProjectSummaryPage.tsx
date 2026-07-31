@@ -73,7 +73,7 @@ export function ProjectSummaryPage() {
     return (
       <EmptyState
         title="Chưa thể mở trang tổng kết"
-        description={error || "Trang tổng kết chỉ có sau khi toàn bộ cột mốc được hoàn thành theo luồng nghiệm thu thành công."}
+        description={error || "Trang tổng kết chỉ có sau khi hợp đồng đã đóng và toàn bộ cột mốc có sản phẩm cuối."}
         action={<LinkButton to={`/app/contracts/${id}`}>Quay lại hợp đồng</LinkButton>}
       />
     );
@@ -85,7 +85,7 @@ export function ProjectSummaryPage() {
         <PageHeader
           eyebrow="TỔNG KẾT DỰ ÁN"
           title={summary.projectTitle}
-          description="Toàn bộ thông tin, kết quả nghiệm thu và sản phẩm cuối cùng của dự án đã được tập hợp tại đây."
+          description="Toàn bộ thông tin, kết quả hoàn thành và sản phẩm cuối cùng của dự án đã được tập hợp tại đây."
           actions={
             <>
               <LinkButton to={`/app/contracts/${summary.contractId}`} variant="secondary">Xem hợp đồng</LinkButton>
@@ -100,7 +100,7 @@ export function ProjectSummaryPage() {
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-emerald-600 shadow-sm"><CheckCircle2 className="h-5 w-5" /></span>
           <div>
             <h2 className="font-display text-lg font-extrabold text-emerald-950">Dự án đã hoàn thành thành công</h2>
-            <p className="mt-1 text-sm leading-6 text-emerald-800">Tất cả {summary.milestones.length} cột mốc đã được nghiệm thu và kết quả bàn giao đã được lưu lại.</p>
+            <p className="mt-1 text-sm leading-6 text-emerald-800">Tất cả {summary.milestones.length} cột mốc đã hoàn thành và kết quả bàn giao đã được lưu lại.</p>
           </div>
         </div>
       </Card>
@@ -136,17 +136,17 @@ export function ProjectSummaryPage() {
       </div>
 
       <section className="space-y-4">
-        <SectionHeading title="Kết quả bàn giao theo cột mốc" description="Mỗi mục hiển thị sản phẩm cuối đã được nghiệm thu; cột mốc cuối cùng kèm tệp hướng dẫn sử dụng." />
+        <SectionHeading title="Kết quả bàn giao theo cột mốc" description="Mỗi mục hiển thị sản phẩm cuối đã được ghi nhận; cột mốc cuối cùng kèm tệp hướng dẫn sử dụng." />
         {summary.milestones.map((milestone) => {
           const deliverable = milestone.finalDeliverable;
           return (
             <Card key={milestone.contractMilestoneId} className="p-5 md:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge tone="brand">Cột mốc {milestone.orderIndex}</Badge><Badge tone="mint">Đã nghiệm thu</Badge></div><h3 className="mt-3 font-display text-xl font-extrabold text-ink">{milestone.milestoneName}</h3>{milestone.description && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{milestone.description}</p>}</div>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge tone="brand">Cột mốc {milestone.orderIndex}</Badge><Badge tone="mint">Đã hoàn thành</Badge></div><h3 className="mt-3 font-display text-xl font-extrabold text-ink">{milestone.milestoneName}</h3>{milestone.description && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{milestone.description}</p>}</div>
                 <div className="shrink-0 text-left lg:text-right"><p className="font-display text-xl font-extrabold text-ink">{formatCurrency(milestone.budget)}</p><p className="mt-1 text-xs font-bold text-slate-400">{durationLabel(milestone.duration, milestone.durationUnit)}</p></div>
               </div>
 
-              {milestone.acceptanceCriteria.length > 0 && <div className="mt-5 rounded-2xl bg-slate-50 p-4"><p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">Tiêu chí đã nghiệm thu</p><ul className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">{milestone.acceptanceCriteria.map((criterion, index) => <li key={`${milestone.milestoneId}-${index}`} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /><span>{criterion}</span></li>)}</ul></div>}
+              {milestone.acceptanceCriteria.length > 0 && <div className="mt-5 rounded-2xl bg-slate-50 p-4"><p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-400">Tiêu chí hoàn thành</p><ul className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">{milestone.acceptanceCriteria.map((criterion, index) => <li key={`${milestone.milestoneId}-${index}`} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /><span>{criterion}</span></li>)}</ul></div>}
 
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {deliverable?.sourceCodeUrl && <a href={externalUrl(deliverable.sourceCodeUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-slate-100 bg-white p-4 transition hover:border-brand-200 hover:shadow-sm"><FileArchive className="h-5 w-5 text-brand-600" /><p className="mt-3 font-bold text-ink">Kho mã nguồn</p><p className="mt-1 line-clamp-2 break-all text-xs text-slate-500">{deliverable.sourceCodeUrl}</p></a>}
